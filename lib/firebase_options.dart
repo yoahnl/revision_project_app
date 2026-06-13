@@ -17,37 +17,49 @@ class DefaultFirebaseOptions {
     };
   }
 
-  static const _apiKey = String.fromEnvironment(
+  static const _appleApiKey = String.fromEnvironment(
     'FIREBASE_API_KEY',
-    defaultValue: 'AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    defaultValue: 'AIzaSyCHAH-qfPEZaJy22lbcIA2HvbWuGnFLiVY',
   );
   static const _appleAppId = String.fromEnvironment(
     'FIREBASE_APP_ID',
-    defaultValue: '1:000000000000:ios:0000000000000000000000',
+    defaultValue: '1:44948206826:ios:7fa2e3deac38d0c18a9393',
+  );
+  static const _androidApiKey = String.fromEnvironment(
+    'FIREBASE_ANDROID_API_KEY',
+    defaultValue: 'AIzaSyB9Y3wyF1HZeaXIUFy71z1rA41eY8BcpIM',
   );
   static const _androidAppId = String.fromEnvironment(
     'FIREBASE_ANDROID_APP_ID',
-    defaultValue: '1:000000000000:android:0000000000000000000000',
+    defaultValue: '1:44948206826:android:095dd55272d132f48a9393',
+  );
+  static const _webApiKey = String.fromEnvironment(
+    'FIREBASE_WEB_API_KEY',
+    defaultValue: 'AIzaSyAri7EqFNLCpFr1cjonNoPwYoyW1mWqZxo',
   );
   static const _webAppId = String.fromEnvironment(
     'FIREBASE_WEB_APP_ID',
-    defaultValue: '1:000000000000:web:0000000000000000000000',
+    defaultValue: '1:44948206826:web:879d53d4020758da8a9393',
   );
   static const _messagingSenderId = String.fromEnvironment(
     'FIREBASE_MESSAGING_SENDER_ID',
-    defaultValue: '000000000000',
+    defaultValue: '44948206826',
   );
   static const _projectId = String.fromEnvironment(
     'FIREBASE_PROJECT_ID',
-    defaultValue: 'revision-dev',
+    defaultValue: 'revision-app-1b799',
   );
   static const _storageBucket = String.fromEnvironment(
     'FIREBASE_STORAGE_BUCKET',
-    defaultValue: 'revision-dev.appspot.com',
+    defaultValue: 'revision-app-1b799.firebasestorage.app',
   );
   static const _authDomain = String.fromEnvironment(
     'FIREBASE_AUTH_DOMAIN',
-    defaultValue: 'revision-dev.firebaseapp.com',
+    defaultValue: 'revision-app-1b799.firebaseapp.com',
+  );
+  static const _measurementId = String.fromEnvironment(
+    'FIREBASE_MEASUREMENT_ID',
+    defaultValue: 'G-R9YJ5JWJ3L',
   );
   static const _iosBundleId = String.fromEnvironment(
     'FIREBASE_IOS_BUNDLE_ID',
@@ -55,16 +67,17 @@ class DefaultFirebaseOptions {
   );
 
   static const web = FirebaseOptions(
-    apiKey: _apiKey,
+    apiKey: _webApiKey,
     appId: _webAppId,
     messagingSenderId: _messagingSenderId,
     projectId: _projectId,
     authDomain: _authDomain,
     storageBucket: _storageBucket,
+    measurementId: _measurementId,
   );
 
   static const android = FirebaseOptions(
-    apiKey: _apiKey,
+    apiKey: _androidApiKey,
     appId: _androidAppId,
     messagingSenderId: _messagingSenderId,
     projectId: _projectId,
@@ -72,7 +85,7 @@ class DefaultFirebaseOptions {
   );
 
   static const ios = FirebaseOptions(
-    apiKey: _apiKey,
+    apiKey: _appleApiKey,
     appId: _appleAppId,
     messagingSenderId: _messagingSenderId,
     projectId: _projectId,
@@ -81,7 +94,7 @@ class DefaultFirebaseOptions {
   );
 
   static const macos = FirebaseOptions(
-    apiKey: _apiKey,
+    apiKey: _appleApiKey,
     appId: _appleAppId,
     messagingSenderId: _messagingSenderId,
     projectId: _projectId,
