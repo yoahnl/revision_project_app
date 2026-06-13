@@ -158,15 +158,19 @@ class _DocumentListItem extends StatelessWidget {
       leading: const Icon(Icons.picture_as_pdf_outlined),
       title: Text(document.fileName),
       subtitle: Text(_documentKindLabel(document.kind)),
-      trailing: _DocumentStatusChip(status: document.status),
+      trailing: _DocumentStatusChip(
+        status: document.status,
+        errorCode: document.errorCode,
+      ),
     );
   }
 }
 
 class _DocumentStatusChip extends StatelessWidget {
-  const _DocumentStatusChip({required this.status});
+  const _DocumentStatusChip({required this.status, this.errorCode});
 
   final String status;
+  final String? errorCode;
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +179,10 @@ class _DocumentStatusChip extends StatelessWidget {
       'UPLOADED' => (label: 'Importe', color: colorScheme.secondary),
       'PROCESSING' => (label: 'Analyse', color: colorScheme.primary),
       'READY' => (label: 'Pret', color: colorScheme.tertiary),
-      'FAILED' => (label: 'Echec', color: colorScheme.error),
+      'FAILED' => (
+        label: _failedDocumentLabel(errorCode),
+        color: colorScheme.error,
+      ),
       _ => (label: status, color: colorScheme.outline),
     };
 
@@ -186,6 +193,17 @@ class _DocumentStatusChip extends StatelessWidget {
       visualDensity: VisualDensity.compact,
     );
   }
+}
+
+String _failedDocumentLabel(String? errorCode) {
+  return switch (errorCode) {
+    'DOCUMENT_TEXT_EMPTY' => 'PDF sans texte',
+    'DOCUMENT_TEXT_EXTRACTION_FAILED' => 'Lecture PDF impossible',
+    'KNOWLEDGE_EXTRACTION_EMPTY' => 'Aucune notion',
+    'KNOWLEDGE_EXTRACTION_FAILED' => 'Erreur IA',
+    'DOCUMENT_UNSUPPORTED_MIME_TYPE' => 'Format invalide',
+    _ => 'Echec',
+  };
 }
 
 class _SubjectDetailData {

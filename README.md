@@ -6,7 +6,7 @@ Application Flutter mobile et desktop du MVP Revision.
 
 - Flutter
 - Clean architecture par feature
-- Firebase Auth + Storage
+- Firebase Auth
 - API NestJS Revision via HTTP
 - GenUI avec fallback natif
 
@@ -38,8 +38,7 @@ configuration en staging/production :
 ```bash
 flutter run -d macos \
   --dart-define=API_BASE_URL=https://revision-api.yoahn.me \
-  --dart-define=FIREBASE_PROJECT_ID=revision-app-1b799 \
-  --dart-define=FIREBASE_STORAGE_BUCKET=revision-app-1b799.firebasestorage.app
+  --dart-define=FIREBASE_PROJECT_ID=revision-app-1b799
 ```
 
 Apps Firebase creees :
@@ -47,6 +46,9 @@ Apps Firebase creees :
 - Apple iOS/macOS : `1:44948206826:ios:6c0b647ddb89ea8f8a9393`
 - Android : `1:44948206826:android:095dd55272d132f48a9393`
 - Web : `1:44948206826:web:879d53d4020758da8a9393`
+
+Les PDF ne passent pas par Firebase Storage. L'app les envoie a l'API NestJS,
+qui les stocke sur le volume persistant Dokploy configure cote backend.
 
 Defines disponibles par plateforme :
 
@@ -58,7 +60,6 @@ Defines disponibles par plateforme :
 - `FIREBASE_WEB_APP_ID`
 - `FIREBASE_MESSAGING_SENDER_ID`
 - `FIREBASE_PROJECT_ID`
-- `FIREBASE_STORAGE_BUCKET`
 - `FIREBASE_AUTH_DOMAIN`
 - `FIREBASE_MEASUREMENT_ID`
 

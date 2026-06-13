@@ -8,12 +8,12 @@ import 'package:revision_app/features/documents/application/documents_controller
 import 'package:revision_app/features/documents/domain/revision_document.dart';
 import 'package:revision_app/features/documents/presentation/document_import_button.dart';
 
-class CompletingUploader implements DocumentUploader {
+class CompletingDocumentsApi implements DocumentsApi {
   final completer = Completer<void>();
   int uploadCallCount = 0;
 
   @override
-  Future<UploadedDocumentFile> uploadCoursePdf({
+  Future<RevisionDocument> uploadCoursePdf({
     required String subjectId,
     required String fileName,
     required Uint8List bytes,
@@ -21,42 +21,13 @@ class CompletingUploader implements DocumentUploader {
     uploadCallCount += 1;
     await completer.future;
 
-    return const UploadedDocumentFile(
-      fileName: '1710000000000-cours.pdf',
-      storagePath:
-          'students/firebase-1/subjects/subject-1/1710000000000-cours.pdf',
-      mimeType: 'application/pdf',
-    );
-  }
-}
-
-class FailingUploader implements DocumentUploader {
-  @override
-  Future<UploadedDocumentFile> uploadCoursePdf({
-    required String subjectId,
-    required String fileName,
-    required Uint8List bytes,
-  }) async {
-    throw StateError('upload failed');
-  }
-}
-
-class NoopApi implements DocumentsApi {
-  @override
-  Future<RevisionDocument> registerDocument({
-    required String subjectId,
-    required String kind,
-    required String fileName,
-    required String storagePath,
-    required String mimeType,
-  }) async {
     return RevisionDocument(
       id: 'document-1',
       subjectId: subjectId,
-      kind: kind,
-      fileName: fileName,
+      kind: 'COURSE_PDF',
+      fileName: '1710000000000-cours.pdf',
       status: 'UPLOADED',
-      mimeType: mimeType,
+      mimeType: 'application/pdf',
     );
   }
 
@@ -73,12 +44,23 @@ class NoopApi implements DocumentsApi {
   }
 }
 
+class FailingDocumentsApi extends CompletingDocumentsApi {
+  @override
+  Future<RevisionDocument> uploadCoursePdf({
+    required String subjectId,
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    throw StateError('upload failed');
+  }
+}
+
 void main() {
   testWidgets('disables the button while upload is in progress', (
     tester,
   ) async {
-    final uploader = CompletingUploader();
-    final controller = DocumentsController(uploader, NoopApi());
+    final documentsApi = CompletingDocumentsApi();
+    final controller = DocumentsController(documentsApi);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -109,9 +91,9 @@ void main() {
     await tester.tap(find.byType(FilledButton));
     await tester.pump();
 
-    expect(uploader.uploadCallCount, 1);
+    expect(documentsApi.uploadCallCount, 1);
 
-    uploader.completer.complete();
+    documentsApi.completer.complete();
     await tester.pumpAndSettle();
 
     expect(
@@ -121,7 +103,7 @@ void main() {
   });
 
   testWidgets('shows a snackbar when upload fails', (tester) async {
-    final controller = DocumentsController(FailingUploader(), NoopApi());
+    final controller = DocumentsController(FailingDocumentsApi());
 
     await tester.pumpWidget(
       MaterialApp(
@@ -151,8 +133,8 @@ void main() {
     tester,
   ) async {
     var importedCount = 0;
-    final uploader = CompletingUploader();
-    final controller = DocumentsController(uploader, NoopApi());
+    final documentsApi = CompletingDocumentsApi();
+    final controller = DocumentsController(documentsApi);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -176,7 +158,7 @@ void main() {
     await tester.tap(find.byType(FilledButton));
     await tester.pump();
 
-    uploader.completer.complete();
+    documentsApi.completer.complete();
     await tester.pumpAndSettle();
 
     expect(importedCount, 1);

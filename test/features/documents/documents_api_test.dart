@@ -29,7 +29,7 @@ class CapturingHttpClientAdapter implements HttpClientAdapter {
 }
 
 void main() {
-  test('registers document metadata with a Firebase bearer token', () async {
+  test('uploads a course PDF with a Firebase bearer token', () async {
     final adapter = CapturingHttpClientAdapter(jsonResponse(documentJson()));
     final dio = Dio()..httpClientAdapter = adapter;
     final api = HttpDocumentsApi(
@@ -37,32 +37,36 @@ void main() {
       getIdToken: () async => 'firebase-id-token',
     );
 
-    final document = await api.registerDocument(
+    final document = await api.uploadCoursePdf(
       subjectId: 'subject-1',
-      kind: 'COURSE_PDF',
       fileName: 'cours.pdf',
-      storagePath: 'students/firebase-1/subjects/subject-1/cours.pdf',
-      mimeType: 'application/pdf',
+      bytes: Uint8List.fromList([1, 2, 3]),
     );
 
     expect(document.status, 'UPLOADED');
-    expect(adapter.lastOptions?.path, '/documents');
+    expect(adapter.lastOptions?.path, '/documents/course-pdf');
     expect(
       adapter.lastOptions?.headers['Authorization'],
       'Bearer firebase-id-token',
     );
-    expect(adapter.lastOptions?.data, {
-      'subjectId': 'subject-1',
-      'kind': 'COURSE_PDF',
-      'fileName': 'cours.pdf',
-      'storagePath': 'students/firebase-1/subjects/subject-1/cours.pdf',
-      'mimeType': 'application/pdf',
-    });
+    final formData = adapter.lastOptions?.data as FormData;
+    expect(Map.fromEntries(formData.fields), {'subjectId': 'subject-1'});
+    expect(formData.files.single.key, 'file');
+    expect(formData.files.single.value.filename, 'cours.pdf');
+    expect(
+      formData.files.single.value.contentType.toString(),
+      'application/pdf',
+    );
   });
 
   test('lists subject documents from the API', () async {
     final adapter = CapturingHttpClientAdapter(
-      jsonResponse([documentJson(status: 'READY')]),
+      jsonResponse([
+        documentJson(
+          status: 'FAILED',
+          errorCode: 'KNOWLEDGE_EXTRACTION_FAILED',
+        ),
+      ]),
     );
     final dio = Dio()..httpClientAdapter = adapter;
     final api = HttpDocumentsApi(
@@ -72,7 +76,8 @@ void main() {
 
     final documents = await api.listSubjectDocuments(subjectId: 'subject-1');
 
-    expect(documents.single.status, 'READY');
+    expect(documents.single.status, 'FAILED');
+    expect(documents.single.errorCode, 'KNOWLEDGE_EXTRACTION_FAILED');
     expect(adapter.lastOptions?.path, '/subjects/subject-1/documents');
   });
 
@@ -82,12 +87,10 @@ void main() {
     final api = HttpDocumentsApi(dio: dio, getIdToken: () async => '  ');
 
     await expectLater(
-      api.registerDocument(
+      api.uploadCoursePdf(
         subjectId: 'subject-1',
-        kind: 'COURSE_PDF',
         fileName: 'cours.pdf',
-        storagePath: 'students/firebase-1/subjects/subject-1/cours.pdf',
-        mimeType: 'application/pdf',
+        bytes: Uint8List.fromList([1, 2, 3]),
       ),
       throwsStateError,
     );
@@ -96,7 +99,10 @@ void main() {
   });
 }
 
-Map<String, Object?> documentJson({String status = 'UPLOADED'}) {
+Map<String, Object?> documentJson({
+  String status = 'UPLOADED',
+  String? errorCode,
+}) {
   return {
     'id': 'document-1',
     'subjectId': 'subject-1',
@@ -104,6 +110,7 @@ Map<String, Object?> documentJson({String status = 'UPLOADED'}) {
     'fileName': 'cours.pdf',
     'mimeType': 'application/pdf',
     'status': status,
+    'errorCode': errorCode,
   };
 }
 

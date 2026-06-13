@@ -12,7 +12,6 @@ import '../features/auth/data/firebase_auth_repository.dart';
 import '../features/auth/data/http_student_profile_bootstrapper.dart';
 import '../features/documents/application/documents_controller.dart';
 import '../features/documents/data/documents_api.dart';
-import '../features/documents/data/firebase_document_uploader.dart';
 import '../features/onboarding/application/revision_goals_controller.dart';
 import '../features/onboarding/data/http_revision_goals_api.dart';
 import '../features/subjects/application/subjects_controller.dart';
@@ -74,7 +73,6 @@ class _RevisionAppState extends State<RevisionApp> {
   late final DocumentsController _documentsController =
       widget.documentsController ??
       DocumentsController(
-        FirebaseDocumentUploader(),
         HttpDocumentsApi(dio: _dio, getIdToken: _authController.requireIdToken),
       );
   late final ActivityController _activityController =

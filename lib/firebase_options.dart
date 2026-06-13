@@ -49,10 +49,6 @@ class DefaultFirebaseOptions {
     'FIREBASE_PROJECT_ID',
     defaultValue: 'revision-app-1b799',
   );
-  static const _storageBucket = String.fromEnvironment(
-    'FIREBASE_STORAGE_BUCKET',
-    defaultValue: 'revision-app-1b799.firebasestorage.app',
-  );
   static const _authDomain = String.fromEnvironment(
     'FIREBASE_AUTH_DOMAIN',
     defaultValue: 'revision-app-1b799.firebaseapp.com',
@@ -72,7 +68,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: _messagingSenderId,
     projectId: _projectId,
     authDomain: _authDomain,
-    storageBucket: _storageBucket,
     measurementId: _measurementId,
   );
 
@@ -81,7 +76,6 @@ class DefaultFirebaseOptions {
     appId: _androidAppId,
     messagingSenderId: _messagingSenderId,
     projectId: _projectId,
-    storageBucket: _storageBucket,
   );
 
   static const ios = FirebaseOptions(
@@ -89,7 +83,6 @@ class DefaultFirebaseOptions {
     appId: _appleAppId,
     messagingSenderId: _messagingSenderId,
     projectId: _projectId,
-    storageBucket: _storageBucket,
     iosBundleId: _iosBundleId,
   );
 
@@ -98,7 +91,6 @@ class DefaultFirebaseOptions {
     appId: _appleAppId,
     messagingSenderId: _messagingSenderId,
     projectId: _projectId,
-    storageBucket: _storageBucket,
     iosBundleId: _iosBundleId,
   );
 }

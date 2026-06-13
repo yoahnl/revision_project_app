@@ -4,74 +4,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/documents/domain/revision_document.dart';
 
-class FakeDocumentUploader implements DocumentUploader {
-  FakeDocumentUploader({
-    this.uploaded = const UploadedDocumentFile(
-      fileName: '1710000000000-cours.pdf',
-      storagePath:
-          'students/firebase-1/subjects/subject-1/1710000000000-cours.pdf',
-      mimeType: 'application/pdf',
-    ),
-    this.error,
-  });
-
-  final UploadedDocumentFile uploaded;
-  final Object? error;
-
+class FakeDocumentsApi implements DocumentsApi {
+  int uploadCallCount = 0;
   String? uploadedSubjectId;
   String? uploadedFileName;
   Uint8List? uploadedBytes;
+  Object? uploadError;
+  final List<RevisionDocument> documents = [];
 
   @override
-  Future<UploadedDocumentFile> uploadCoursePdf({
+  Future<RevisionDocument> uploadCoursePdf({
     required String subjectId,
     required String fileName,
     required Uint8List bytes,
   }) async {
+    uploadCallCount += 1;
     uploadedSubjectId = subjectId;
     uploadedFileName = fileName;
     uploadedBytes = bytes;
 
-    final error = this.error;
+    final error = uploadError;
     if (error != null) {
       throw error;
     }
 
-    return uploaded;
-  }
-}
-
-class FakeDocumentsApi implements DocumentsApi {
-  int registerCallCount = 0;
-  String? registeredSubjectId;
-  String? registeredKind;
-  String? registeredFileName;
-  String? registeredStoragePath;
-  String? registeredMimeType;
-  final List<RevisionDocument> documents = [];
-
-  @override
-  Future<RevisionDocument> registerDocument({
-    required String subjectId,
-    required String kind,
-    required String fileName,
-    required String storagePath,
-    required String mimeType,
-  }) async {
-    registerCallCount += 1;
-    registeredSubjectId = subjectId;
-    registeredKind = kind;
-    registeredFileName = fileName;
-    registeredStoragePath = storagePath;
-    registeredMimeType = mimeType;
-
     final document = RevisionDocument(
       id: 'document-${documents.length + 1}',
       subjectId: subjectId,
-      kind: kind,
-      fileName: fileName,
+      kind: 'COURSE_PDF',
+      fileName: '1710000000000-$fileName',
       status: 'UPLOADED',
-      mimeType: mimeType,
+      mimeType: 'application/pdf',
     );
     documents.add(document);
 
@@ -94,10 +57,9 @@ class FakeDocumentsApi implements DocumentsApi {
 }
 
 void main() {
-  test('uploads and registers a course PDF', () async {
+  test('uploads a course PDF through the documents API', () async {
     final api = FakeDocumentsApi();
-    final uploader = FakeDocumentUploader();
-    final controller = DocumentsController(uploader, api);
+    final controller = DocumentsController(api);
     final bytes = Uint8List.fromList([1, 2, 3]);
 
     final document = await controller.uploadCoursePdf(
@@ -106,27 +68,16 @@ void main() {
       bytes: bytes,
     );
 
-    expect(uploader.uploadedSubjectId, 'subject-1');
-    expect(uploader.uploadedFileName, 'cours.pdf');
-    expect(uploader.uploadedBytes, bytes);
-    expect(api.registerCallCount, 1);
-    expect(api.registeredSubjectId, 'subject-1');
-    expect(api.registeredKind, 'COURSE_PDF');
-    expect(api.registeredFileName, '1710000000000-cours.pdf');
-    expect(
-      api.registeredStoragePath,
-      'students/firebase-1/subjects/subject-1/1710000000000-cours.pdf',
-    );
-    expect(api.registeredMimeType, 'application/pdf');
+    expect(api.uploadCallCount, 1);
+    expect(api.uploadedSubjectId, 'subject-1');
+    expect(api.uploadedFileName, 'cours.pdf');
+    expect(api.uploadedBytes, bytes);
     expect(document.status, 'UPLOADED');
   });
 
-  test('does not register the document when upload fails', () async {
-    final api = FakeDocumentsApi();
-    final controller = DocumentsController(
-      FakeDocumentUploader(error: StateError('upload failed')),
-      api,
-    );
+  test('surfaces upload failures', () async {
+    final api = FakeDocumentsApi()..uploadError = StateError('upload failed');
+    final controller = DocumentsController(api);
 
     await expectLater(
       controller.uploadCoursePdf(
@@ -136,13 +87,11 @@ void main() {
       ),
       throwsStateError,
     );
-
-    expect(api.registerCallCount, 0);
   });
 
   test('lists documents for a subject', () async {
     final api = FakeDocumentsApi();
-    final controller = DocumentsController(FakeDocumentUploader(), api);
+    final controller = DocumentsController(api);
 
     await controller.uploadCoursePdf(
       subjectId: 'subject-1',

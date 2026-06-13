@@ -170,10 +170,7 @@ _RevisionTestApp _createTestApp({AuthController? authController}) {
     authController: resolvedAuthController,
     subjectsController: SubjectsController(subjectsRepository),
     revisionGoalsController: RevisionGoalsController(revisionGoalsRepository),
-    documentsController: DocumentsController(
-      NoopDocumentUploader(),
-      documentsApi,
-    ),
+    documentsController: DocumentsController(documentsApi),
     activityController: ActivityController(activityApi),
     todayController: TodayController(todayRepository),
   );

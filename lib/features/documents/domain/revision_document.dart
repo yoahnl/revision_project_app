@@ -6,6 +6,7 @@ class RevisionDocument {
     required this.fileName,
     required this.status,
     required this.mimeType,
+    this.errorCode,
   });
 
   final String id;
@@ -14,4 +15,5 @@ class RevisionDocument {
   final String fileName;
   final String status;
   final String mimeType;
+  final String? errorCode;
 }

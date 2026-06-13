@@ -1,7 +1,9 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../application/documents_controller.dart';
+import 'platform_file_bytes_reader.dart';
 
 typedef DocumentFilePicker = Future<FilePickerResult?> Function();
 
@@ -43,11 +45,12 @@ class _DocumentImportButtonState extends State<DocumentImportButton> {
     try {
       final result = await (widget.pickFiles ?? _pickPdf)();
       final file = result?.files.single;
-      final bytes = file?.bytes;
 
-      if (file == null || bytes == null) {
+      if (file == null) {
         return;
       }
+
+      final bytes = await readPlatformFileBytes(file);
 
       await widget.controller.uploadCoursePdf(
         subjectId: widget.subjectId,
@@ -55,7 +58,10 @@ class _DocumentImportButtonState extends State<DocumentImportButton> {
         bytes: bytes,
       );
       widget.onImported?.call();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Document import failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+
       if (!mounted) {
         return;
       }
@@ -76,7 +82,7 @@ class _DocumentImportButtonState extends State<DocumentImportButton> {
     return FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
-      withData: true,
+      withData: kIsWeb,
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import '../application/documents_controller.dart';
@@ -15,24 +17,23 @@ class HttpDocumentsApi implements DocumentsApi {
   final Future<String?> Function() _getIdToken;
 
   @override
-  Future<RevisionDocument> registerDocument({
+  Future<RevisionDocument> uploadCoursePdf({
     required String subjectId,
-    required String kind,
     required String fileName,
-    required String storagePath,
-    required String mimeType,
+    required Uint8List bytes,
   }) async {
     final response = await _dio.post<Object?>(
-      '/documents',
-      data: {
+      '/documents/course-pdf',
+      data: FormData.fromMap({
         'subjectId': subjectId,
-        'kind': kind,
-        'fileName': fileName,
-        'storagePath': storagePath,
-        'mimeType': mimeType,
-      },
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: fileName,
+          contentType: DioMediaType('application', 'pdf'),
+        ),
+      }),
       options: await _authorizedOptions(
-        'A Firebase ID token is required to register documents',
+        'A Firebase ID token is required to upload documents',
       ),
     );
 
@@ -101,13 +102,15 @@ class _DocumentJson {
     final fileName = json['fileName'];
     final status = json['status'];
     final mimeType = json['mimeType'];
+    final errorCode = json['errorCode'];
 
     if (id is! String ||
         subjectId is! String ||
         kind is! String ||
         fileName is! String ||
         status is! String ||
-        mimeType is! String) {
+        mimeType is! String ||
+        (errorCode != null && errorCode is! String)) {
       throw const FormatException('Invalid document response');
     }
 
@@ -118,6 +121,7 @@ class _DocumentJson {
       fileName: fileName,
       status: status,
       mimeType: mimeType,
+      errorCode: errorCode as String?,
     );
   }
 }
