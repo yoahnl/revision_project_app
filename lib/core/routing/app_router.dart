@@ -57,39 +57,58 @@ GoRouter createAppRouter({
           revisionGoalsController: revisionGoalsController,
         ),
       ),
-      ShellRoute(
-        builder: (context, state, child) {
-          return RevisionHomeShell(currentPath: state.uri.path, child: child);
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return RevisionHomeShell(navigationShell: navigationShell);
         },
-        routes: [
-          GoRoute(
-            path: subjectsRoutePath,
-            builder: (context, state) =>
-                SubjectsHomePage(controller: subjectsController),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: subjectsRoutePath,
+                builder: (context, state) =>
+                    SubjectsHomePage(controller: subjectsController),
+                routes: [
+                  GoRoute(
+                    path: ':subjectId',
+                    builder: (context, state) => SubjectDetailPage(
+                      subjectId: state.pathParameters['subjectId'] ?? '',
+                      controller: subjectsController,
+                      documentsController: documentsController,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          GoRoute(
-            path: subjectDetailRoutePattern,
-            builder: (context, state) => SubjectDetailPage(
-              subjectId: state.pathParameters['subjectId'] ?? '',
-              controller: subjectsController,
-              documentsController: documentsController,
-            ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: todayRoutePath,
+                builder: (context, state) =>
+                    TodayPage(controller: todayController),
+              ),
+            ],
           ),
-          GoRoute(
-            path: todayRoutePath,
-            builder: (context, state) => TodayPage(controller: todayController),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: activitiesRoutePath,
+                builder: (context, state) => ActivitiesPage(
+                  controller: activityController,
+                  subjectId: state.uri.queryParameters['subjectId'],
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: activitiesRoutePath,
-            builder: (context, state) => ActivitiesPage(
-              controller: activityController,
-              subjectId: state.uri.queryParameters['subjectId'],
-            ),
-          ),
-          GoRoute(
-            path: profileRoutePath,
-            builder: (context, state) =>
-                ProfilePage(authController: authController),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: profileRoutePath,
+                builder: (context, state) =>
+                    ProfilePage(authController: authController),
+              ),
+            ],
           ),
         ],
       ),

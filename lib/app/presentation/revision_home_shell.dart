@@ -4,32 +4,18 @@ import 'package:go_router/go_router.dart';
 import '../../core/routing/route_paths.dart';
 
 class RevisionHomeShell extends StatelessWidget {
-  const RevisionHomeShell({
-    super.key,
-    required this.currentPath,
-    required this.child,
-  });
+  const RevisionHomeShell({super.key, required this.navigationShell});
 
   static const double _wideLayoutBreakpoint = 840;
   static const double _maxContentWidth = 900;
 
-  final String currentPath;
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
-  int get _selectedIndex {
-    final index = _destinations.indexWhere(
-      (destination) => currentPath == destination.path,
+  void _goToDestination(int index) {
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
     );
-
-    return index == -1 ? 0 : index;
-  }
-
-  void _goToDestination(BuildContext context, int index) {
-    final destinationPath = _destinations[index].path;
-
-    if (destinationPath != currentPath) {
-      context.go(destinationPath);
-    }
   }
 
   @override
@@ -38,17 +24,17 @@ class RevisionHomeShell extends StatelessWidget {
       builder: (context, constraints) {
         if (constraints.maxWidth >= _wideLayoutBreakpoint) {
           return _WideHomeScaffold(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) => _goToDestination(context, index),
-            child: child,
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: _goToDestination,
+            child: navigationShell,
           );
         }
 
         return Scaffold(
-          body: SafeArea(child: child),
+          body: SafeArea(child: navigationShell),
           bottomNavigationBar: NavigationBar(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) => _goToDestination(context, index),
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: _goToDestination,
             destinations: _navigationDestinations,
           ),
         );

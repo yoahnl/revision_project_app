@@ -86,13 +86,16 @@ class _SubjectListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.menu_book_outlined),
-      title: Text(subject.name),
-      subtitle: Text(_subjectSubtitle(subject)),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.menu_book_outlined),
+        title: Text(subject.name),
+        subtitle: Text(_subjectSubtitle(subject)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      ),
     );
   }
 }

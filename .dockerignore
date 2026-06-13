@@ -1,0 +1,15 @@
+.dart_tool/
+.idea/
+.metadata
+build/
+coverage/
+
+android/.gradle/
+android/build/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+macos/Flutter/ephemeral/
+
+.DS_Store
+*.iml

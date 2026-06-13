@@ -85,6 +85,32 @@ void main() {
     expect(find.text('Plan du jour'), findsOneWidget);
   });
 
+  testWidgets('keeps tab state when switching between destinations', (
+    tester,
+  ) async {
+    final testApp = _createTestApp();
+
+    await tester.pumpWidget(testApp.widget);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aujourd hui'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Plan du jour'), findsOneWidget);
+    expect(testApp.todayRepository.getTodayPlanCalls, 1);
+
+    await tester.tap(find.text('Activites'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aucune activite selectionnee'), findsOneWidget);
+
+    await tester.tap(find.text('Aujourd hui'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Plan du jour'), findsOneWidget);
+    expect(testApp.todayRepository.getTodayPlanCalls, 1);
+  });
+
   testWidgets('opens onboarding from the add subject action', (tester) async {
     await tester.pumpWidget(_createTestApp().widget);
     await tester.pumpAndSettle();
@@ -116,6 +142,53 @@ void main() {
     expect(find.text('Anatomie'), findsOneWidget);
     expect(find.text('Priorite 4'), findsOneWidget);
     expect(testApp.revisionGoalsRepository.goals.single.weeklyMinutes, 180);
+  });
+
+  testWidgets('keeps the home tab selected on subject detail and resets it', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_createTestApp().widget);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ajouter une matiere'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Droit');
+    await tester.enterText(find.byType(TextField).last, '120');
+    await tester.tap(find.text('Creer mon plan'));
+    await tester.pumpAndSettle();
+
+    final navigationBar = tester.widget<NavigationBar>(
+      find.byType(NavigationBar),
+    );
+    expect(navigationBar.selectedIndex, 0);
+    expect(find.text('Droit'), findsOneWidget);
+
+    await tester.tap(find.text('Accueil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tes matieres'), findsOneWidget);
+    expect(find.text('Droit'), findsOneWidget);
+  });
+
+  testWidgets('starts an activity with the selected subject id', (
+    tester,
+  ) async {
+    final testApp = _createTestApp();
+
+    await tester.pumpWidget(testApp.widget);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ajouter une matiere'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Constitutionnel');
+    await tester.enterText(find.byType(TextField).last, '90');
+    await tester.tap(find.text('Creer mon plan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lancer un diagnostic'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Question test'), findsOneWidget);
+    expect(testApp.activityApi.startedSubjectId, 'subject-1');
   });
 
   testWidgets('uses route-driven navigation rail on wide layouts', (
@@ -179,6 +252,8 @@ _RevisionTestApp _createTestApp({AuthController? authController}) {
     widget: widget,
     authController: resolvedAuthController,
     revisionGoalsRepository: revisionGoalsRepository,
+    activityApi: activityApi,
+    todayRepository: todayRepository,
   );
 }
 
@@ -187,9 +262,13 @@ class _RevisionTestApp {
     required this.widget,
     required this.authController,
     required this.revisionGoalsRepository,
+    required this.activityApi,
+    required this.todayRepository,
   });
 
   final RevisionApp widget;
   final AuthController authController;
   final InMemoryRevisionGoalsRepository revisionGoalsRepository;
+  final InMemoryActivityApi activityApi;
+  final InMemoryTodayRepository todayRepository;
 }
