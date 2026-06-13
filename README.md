@@ -34,7 +34,7 @@ flutter run -d macos \
 
 Apps Firebase creees :
 
-- Apple iOS/macOS : `1:44948206826:ios:7fa2e3deac38d0c18a9393`
+- Apple iOS/macOS : `1:44948206826:ios:6c0b647ddb89ea8f8a9393`
 - Android : `1:44948206826:android:095dd55272d132f48a9393`
 - Web : `1:44948206826:web:879d53d4020758da8a9393`
 

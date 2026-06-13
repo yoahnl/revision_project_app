@@ -23,7 +23,7 @@ class DefaultFirebaseOptions {
   );
   static const _appleAppId = String.fromEnvironment(
     'FIREBASE_APP_ID',
-    defaultValue: '1:44948206826:ios:7fa2e3deac38d0c18a9393',
+    defaultValue: '1:44948206826:ios:6c0b647ddb89ea8f8a9393',
   );
   static const _androidApiKey = String.fromEnvironment(
     'FIREBASE_ANDROID_API_KEY',
@@ -63,7 +63,7 @@ class DefaultFirebaseOptions {
   );
   static const _iosBundleId = String.fromEnvironment(
     'FIREBASE_IOS_BUNDLE_ID',
-    defaultValue: 'com.revision.revisionApp',
+    defaultValue: 'com.revision.revisionApp.yoahn',
   );
 
   static const web = FirebaseOptions(

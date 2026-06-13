@@ -8,7 +8,7 @@
 PRODUCT_NAME = revision_app
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.revision.revisionApp
+PRODUCT_BUNDLE_IDENTIFIER = com.revision.revisionApp.yoahn
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.revision. All rights reserved.
