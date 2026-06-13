@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
-import 'package:revision_app/features/activities/presentation/diagnostic_quiz_page.dart';
+import 'package:revision_app/presentation/pages/activities/diagnostic_quiz_page.dart';
+import 'package:revision_app/presentation/widgets/revision_button.dart';
 
 void main() {
   testWidgets('renders the diagnostic quiz fallback activity', (tester) async {
@@ -69,11 +70,8 @@ void main() {
       ),
     );
 
-    final submitButton = find.ancestor(
-      of: find.text('Valider'),
-      matching: find.byType(FilledButton),
-    );
-    expect(tester.widget<FilledButton>(submitButton).onPressed, isNull);
+    final submitButton = find.byType(RevisionButton);
+    expect(tester.widget<RevisionButton>(submitButton).onPressed, isNull);
 
     await tester.tap(find.text('Myocarde'));
     await tester.pump();

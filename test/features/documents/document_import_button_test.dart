@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/documents/domain/revision_document.dart';
-import 'package:revision_app/features/documents/presentation/document_import_button.dart';
+import 'package:revision_app/presentation/widgets/revision_button.dart';
+import 'package:revision_app/presentation/widgets/documents/document_import_button.dart';
 
 class CompletingDocumentsApi implements DocumentsApi {
   final completer = Completer<void>();
@@ -80,15 +81,15 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byType(FilledButton));
+    await tester.tap(find.byType(RevisionButton));
     await tester.pump();
 
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<RevisionButton>(find.byType(RevisionButton)).onPressed,
       isNull,
     );
 
-    await tester.tap(find.byType(FilledButton));
+    await tester.tap(find.byType(RevisionButton));
     await tester.pump();
 
     expect(documentsApi.uploadCallCount, 1);
@@ -97,7 +98,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<RevisionButton>(find.byType(RevisionButton)).onPressed,
       isNotNull,
     );
   });
@@ -123,7 +124,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byType(FilledButton));
+    await tester.tap(find.byType(RevisionButton));
     await tester.pump();
 
     expect(find.text("Impossible d'importer le document"), findsOneWidget);
@@ -155,7 +156,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byType(FilledButton));
+    await tester.tap(find.byType(RevisionButton));
     await tester.pump();
 
     documentsApi.completer.complete();

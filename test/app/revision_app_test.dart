@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/app/revision_app.dart';
+import 'package:revision_app/app/app_root.dart';
+import 'package:revision_app/app/di/providers.dart';
+import 'package:revision_app/core/storage/kv_storage_port.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
 import 'package:revision_app/features/auth/application/auth_controller.dart';
 import 'package:revision_app/features/auth/domain/auth_session.dart';
@@ -9,6 +12,7 @@ import 'package:revision_app/features/documents/application/documents_controller
 import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
 import 'package:revision_app/features/today/application/today_controller.dart';
+import 'package:revision_app/presentation/widgets/revision_navigation.dart';
 
 import '../fakes/in_memory_activity_api.dart';
 import '../fakes/in_memory_documents_api.dart';
@@ -62,6 +66,14 @@ class SignedOutAuthRepository implements AuthRepository {
   Future<void> signOut() async {}
 }
 
+class FakeKvStorage implements KvStoragePort {
+  @override
+  Future<String?> readString(String key) async => null;
+
+  @override
+  Future<void> writeString(String key, String value) async {}
+}
+
 void main() {
   testWidgets('shows the subject home as the first app screen', (tester) async {
     final testApp = _createTestApp();
@@ -71,7 +83,7 @@ void main() {
 
     expect(find.text('Tes matieres'), findsOneWidget);
     expect(find.text('Ajouter une matiere'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(RevisionBottomNavigation), findsOneWidget);
     expect(testApp.authController.isSignedIn, isTrue);
   });
 
@@ -157,8 +169,8 @@ void main() {
     await tester.tap(find.text('Creer mon plan'));
     await tester.pumpAndSettle();
 
-    final navigationBar = tester.widget<NavigationBar>(
-      find.byType(NavigationBar),
+    final navigationBar = tester.widget<RevisionBottomNavigation>(
+      find.byType(RevisionBottomNavigation),
     );
     expect(navigationBar.selectedIndex, 0);
     expect(find.text('Droit'), findsOneWidget);
@@ -203,8 +215,8 @@ void main() {
     await tester.pumpWidget(_createTestApp().widget);
     await tester.pumpAndSettle();
 
-    expect(find.byType(NavigationRail), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(RevisionNavigationRail), findsOneWidget);
+    expect(find.byType(RevisionBottomNavigation), findsNothing);
 
     await tester.tap(find.text('Activites'));
     await tester.pumpAndSettle();
@@ -239,13 +251,33 @@ _RevisionTestApp _createTestApp({AuthController? authController}) {
   final activityApi = InMemoryActivityApi();
   final todayRepository = InMemoryTodayRepository();
 
-  final widget = RevisionApp(
-    authController: resolvedAuthController,
-    subjectsController: SubjectsController(subjectsRepository),
-    revisionGoalsController: RevisionGoalsController(revisionGoalsRepository),
-    documentsController: DocumentsController(documentsApi),
-    activityController: ActivityController(activityApi),
-    todayController: TodayController(todayRepository),
+  resolvedAuthController.start();
+  addTearDown(resolvedAuthController.dispose);
+
+  final widget = ProviderScope(
+    overrides: [
+      kvStorageProvider.overrideWithValue(FakeKvStorage()),
+      authControllerProvider.overrideWithValue(resolvedAuthController),
+      subjectsRepositoryProvider.overrideWithValue(subjectsRepository),
+      subjectsControllerProvider.overrideWithValue(
+        SubjectsController(subjectsRepository),
+      ),
+      revisionGoalsControllerProvider.overrideWithValue(
+        RevisionGoalsController(revisionGoalsRepository),
+      ),
+      documentsControllerProvider.overrideWithValue(
+        DocumentsController(documentsApi),
+      ),
+      documentsApiProvider.overrideWithValue(documentsApi),
+      activityControllerProvider.overrideWithValue(
+        ActivityController(activityApi),
+      ),
+      todayRepositoryProvider.overrideWithValue(todayRepository),
+      todayControllerProvider.overrideWithValue(
+        TodayController(todayRepository),
+      ),
+    ],
+    child: const AppRoot(),
   );
 
   return _RevisionTestApp(
@@ -266,7 +298,7 @@ class _RevisionTestApp {
     required this.todayRepository,
   });
 
-  final RevisionApp widget;
+  final Widget widget;
   final AuthController authController;
   final InMemoryRevisionGoalsRepository revisionGoalsRepository;
   final InMemoryActivityApi activityApi;

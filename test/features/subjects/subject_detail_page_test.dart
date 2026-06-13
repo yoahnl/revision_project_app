@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:revision_app/app/di/providers.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/documents/domain/revision_document.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
@@ -66,13 +68,18 @@ void main() {
   testWidgets('shows a readable reason for failed AI processing', (
     tester,
   ) async {
+    final documentsApi = StaticDocumentsApi();
+
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SubjectDetailPage(
-            subjectId: 'subject-1',
-            controller: SubjectsController(SingleSubjectRepository()),
-            documentsController: DocumentsController(StaticDocumentsApi()),
+      ProviderScope(
+        overrides: [documentsApiProvider.overrideWithValue(documentsApi)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: SubjectDetailPage(
+              subjectId: 'subject-1',
+              controller: SubjectsController(SingleSubjectRepository()),
+              documentsController: DocumentsController(documentsApi),
+            ),
           ),
         ),
       ),
