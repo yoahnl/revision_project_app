@@ -14,10 +14,20 @@ Application Flutter mobile et desktop du MVP Revision.
 
 ```bash
 flutter pub get
-flutter run -d macos --dart-define=API_BASE_URL=http://localhost:3000
+flutter run -d macos
 ```
 
-L'API doit etre joignable via `API_BASE_URL`.
+Par defaut, l'app utilise l'API deployee :
+
+```text
+https://revision-api.yoahn.me
+```
+
+Pour tester une API locale, surcharge `API_BASE_URL` :
+
+```bash
+flutter run -d macos --dart-define=API_BASE_URL=http://localhost:3000
+```
 
 ## Firebase
 
@@ -27,7 +37,7 @@ configuration en staging/production :
 
 ```bash
 flutter run -d macos \
-  --dart-define=API_BASE_URL=http://localhost:3000 \
+  --dart-define=API_BASE_URL=https://revision-api.yoahn.me \
   --dart-define=FIREBASE_PROJECT_ID=revision-app-1b799 \
   --dart-define=FIREBASE_STORAGE_BUCKET=revision-app-1b799.firebasestorage.app
 ```
