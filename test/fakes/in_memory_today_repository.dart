@@ -1,0 +1,12 @@
+import 'package:revision_app/features/today/application/today_controller.dart';
+import 'package:revision_app/features/today/domain/today_plan.dart';
+
+class InMemoryTodayRepository implements TodayRepository {
+  TodayPlan plan = TodayPlan(
+    generatedAt: DateTime.utc(2026, 6, 13),
+    items: const [],
+  );
+
+  @override
+  Future<TodayPlan> getTodayPlan() async => plan;
+}
