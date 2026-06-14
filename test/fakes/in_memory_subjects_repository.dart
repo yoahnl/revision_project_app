@@ -30,4 +30,9 @@ class InMemorySubjectsRepository implements SubjectsRepository {
 
     return subject;
   }
+
+  @override
+  Future<void> deleteSubject(String id) async {
+    subjects.removeWhere((subject) => subject.id == id);
+  }
 }

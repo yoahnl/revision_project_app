@@ -22,6 +22,11 @@ class SingleSubjectRepository implements SubjectsRepository {
   }
 
   @override
+  Future<void> deleteSubject(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Subject> getSubject(String id) async {
     return const Subject(id: 'subject-1', name: 'Biologie', priority: 4);
   }
@@ -33,6 +38,18 @@ class SingleSubjectRepository implements SubjectsRepository {
 }
 
 class StaticDocumentsApi implements DocumentsApi {
+  final documents = <RevisionDocument>[
+    const RevisionDocument(
+      id: 'document-1',
+      subjectId: 'subject-1',
+      kind: 'COURSE_PDF',
+      fileName: 'cours.pdf',
+      status: 'FAILED',
+      mimeType: 'application/pdf',
+      errorCode: 'KNOWLEDGE_EXTRACTION_FAILED',
+    ),
+  ];
+
   @override
   Future<RevisionDocument> getDocument({required String documentId}) {
     throw UnimplementedError();
@@ -42,17 +59,14 @@ class StaticDocumentsApi implements DocumentsApi {
   Future<List<RevisionDocument>> listSubjectDocuments({
     required String subjectId,
   }) async {
-    return const [
-      RevisionDocument(
-        id: 'document-1',
-        subjectId: 'subject-1',
-        kind: 'COURSE_PDF',
-        fileName: 'cours.pdf',
-        status: 'FAILED',
-        mimeType: 'application/pdf',
-        errorCode: 'KNOWLEDGE_EXTRACTION_FAILED',
-      ),
-    ];
+    return documents
+        .where((document) => document.subjectId == subjectId)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> deleteDocument({required String documentId}) async {
+    documents.removeWhere((document) => document.id == documentId);
   }
 
   @override
@@ -162,5 +176,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Document document-1'), findsOneWidget);
+  });
+
+  testWidgets('deletes a document after confirmation', (tester) async {
+    final documentsApi = StaticDocumentsApi();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [documentsApiProvider.overrideWithValue(documentsApi)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: SubjectDetailPage(
+              subjectId: 'subject-1',
+              controller: SubjectsController(SingleSubjectRepository()),
+              documentsController: DocumentsController(documentsApi),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.text('cours.pdf'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Supprimer le cours'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Supprimer'));
+    await tester.pumpAndSettle();
+
+    expect(documentsApi.documents, isEmpty);
+    expect(find.text('cours.pdf'), findsNothing);
   });
 }

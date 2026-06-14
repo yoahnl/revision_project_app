@@ -50,6 +50,46 @@ class SubjectsHomePage extends ConsumerWidget {
                   _SubjectListItem(
                     subject: subject,
                     onTap: () => context.go(subjectDetailRoutePath(subject.id)),
+                    onDelete: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Supprimer la matiere ?'),
+                          content: const Text(
+                            'Cette action supprimera aussi ses cours et activites.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Annuler'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Supprimer'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirmed != true || !context.mounted) {
+                        return;
+                      }
+
+                      try {
+                        await notifier.deleteSubject(subject.id);
+                      } catch (_) {
+                        if (!context.mounted) {
+                          return;
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Impossible de supprimer la matiere',
+                            ),
+                          ),
+                        );
+                      }
+                    },
                   ),
               ],
             );
@@ -61,10 +101,15 @@ class SubjectsHomePage extends ConsumerWidget {
 }
 
 class _SubjectListItem extends StatelessWidget {
-  const _SubjectListItem({required this.subject, required this.onTap});
+  const _SubjectListItem({
+    required this.subject,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   final Subject subject;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +151,12 @@ class _SubjectListItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.m),
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Supprimer la matiere',
+          ),
+          const SizedBox(width: AppSpacing.s),
           Icon(
             Icons.chevron_right,
             color: Theme.of(

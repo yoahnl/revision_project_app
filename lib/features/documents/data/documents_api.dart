@@ -74,6 +74,16 @@ class HttpDocumentsApi implements DocumentsApi {
   }
 
   @override
+  Future<void> deleteDocument({required String documentId}) async {
+    await _dio.delete<Object?>(
+      '/documents/$documentId',
+      options: await _authorizedOptions(
+        'A Firebase ID token is required to delete documents',
+      ),
+    );
+  }
+
+  @override
   Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
     required String documentId,
   }) async {

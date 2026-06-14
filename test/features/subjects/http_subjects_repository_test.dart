@@ -75,6 +75,24 @@ void main() {
     },
   );
 
+  test('deletes a subject with a Firebase bearer token', () async {
+    final adapter = CapturingHttpClientAdapter(jsonResponse(null));
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = HttpSubjectsRepository(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await repository.deleteSubject('subject-1');
+
+    expect(adapter.lastOptions?.method, 'DELETE');
+    expect(adapter.lastOptions?.path, '/subjects/subject-1');
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+  });
+
   test('rejects blank Firebase ID tokens before calling the API', () async {
     final adapter = CapturingHttpClientAdapter(jsonResponse([]));
     final dio = Dio()..httpClientAdapter = adapter;
@@ -89,7 +107,7 @@ void main() {
   });
 }
 
-ResponseBody jsonResponse(Object body) {
+ResponseBody jsonResponse(Object? body) {
   return ResponseBody.fromString(
     jsonEncode(body),
     200,

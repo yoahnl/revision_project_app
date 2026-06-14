@@ -15,6 +15,8 @@ abstract interface class DocumentsApi {
 
   Future<RevisionDocument> getDocument({required String documentId});
 
+  Future<void> deleteDocument({required String documentId});
+
   Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
     required String documentId,
   });
@@ -82,6 +84,16 @@ class DocumentsController {
 
   Future<RevisionDocument> getDocument(String documentId) {
     return _api.getDocument(documentId: documentId);
+  }
+
+  Future<void> deleteDocument(String documentId) {
+    final trimmed = documentId.trim();
+
+    if (trimmed.isEmpty) {
+      throw ArgumentError('Document id is required');
+    }
+
+    return _api.deleteDocument(documentId: trimmed);
   }
 
   Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits(

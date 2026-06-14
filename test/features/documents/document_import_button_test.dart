@@ -45,6 +45,9 @@ class CompletingDocumentsApi implements DocumentsApi {
   }
 
   @override
+  Future<void> deleteDocument({required String documentId}) async {}
+
+  @override
   Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
     required String documentId,
   }) async {

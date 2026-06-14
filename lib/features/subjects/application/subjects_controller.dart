@@ -10,6 +10,8 @@ abstract interface class SubjectsRepository {
     required int priority,
     int weeklyMinutes = 0,
   });
+
+  Future<void> deleteSubject(String id);
 }
 
 class SubjectsController {
@@ -49,5 +51,15 @@ class SubjectsController {
       priority: priority,
       weeklyMinutes: weeklyMinutes,
     );
+  }
+
+  Future<void> deleteSubject(String id) {
+    final trimmed = id.trim();
+
+    if (trimmed.isEmpty) {
+      throw ArgumentError('Subject id is required');
+    }
+
+    return _repository.deleteSubject(trimmed);
   }
 }

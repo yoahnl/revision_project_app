@@ -63,6 +63,14 @@ class HttpSubjectsRepository implements SubjectsRepository {
     );
   }
 
+  @override
+  Future<void> deleteSubject(String id) async {
+    await _dio.delete<Object?>(
+      '/subjects/$id',
+      options: await _authorizedOptions(),
+    );
+  }
+
   Future<Options> _authorizedOptions() async {
     final token = (await _getIdToken()).trim();
 

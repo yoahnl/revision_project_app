@@ -54,6 +54,45 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
         .reload();
   }
 
+  Future<void> _deleteDocument(RevisionDocument document) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer le cours ?'),
+        content: const Text(
+          'Cette action supprimera les notions et supports lies a ce cours.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(subjectDocumentsNotifierProvider(widget.subjectId).notifier)
+          .deleteDocument(document.id);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible de supprimer le cours')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Subject>(
@@ -160,6 +199,7 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
                             documentId: document.id,
                           ),
                         ),
+                        onDelete: () => _deleteDocument(document),
                       ),
                   ],
                 );
@@ -201,10 +241,15 @@ class _DocumentsErrorState extends StatelessWidget {
 }
 
 class _DocumentListItem extends StatelessWidget {
-  const _DocumentListItem({required this.document, required this.onTap});
+  const _DocumentListItem({
+    required this.document,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   final RevisionDocument document;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -234,6 +279,12 @@ class _DocumentListItem extends StatelessWidget {
           _DocumentStatusChip(
             status: document.status,
             errorCode: document.errorCode,
+          ),
+          const SizedBox(width: AppSpacing.s),
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Supprimer le cours',
           ),
           const SizedBox(width: AppSpacing.s),
           const Icon(Icons.chevron_right),

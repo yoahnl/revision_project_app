@@ -37,6 +37,11 @@ class InMemoryDocumentsApi implements DocumentsApi {
   }
 
   @override
+  Future<void> deleteDocument({required String documentId}) async {
+    documents.removeWhere((document) => document.id == documentId);
+  }
+
+  @override
   Future<RevisionDocument> getDocument({required String documentId}) async {
     return documents.singleWhere((document) => document.id == documentId);
   }

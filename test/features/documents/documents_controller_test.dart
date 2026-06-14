@@ -16,6 +16,8 @@ class FakeDocumentsApi implements DocumentsApi {
   final List<RevisionDocument> documents = [];
   int generateSummaryCallCount = 0;
   int generateRevisionSheetCallCount = 0;
+  int deleteDocumentCallCount = 0;
+  String? deletedDocumentId;
 
   @override
   Future<RevisionDocument> uploadCoursePdf({
@@ -53,6 +55,13 @@ class FakeDocumentsApi implements DocumentsApi {
     return documents
         .where((document) => document.subjectId == subjectId)
         .toList(growable: false);
+  }
+
+  @override
+  Future<void> deleteDocument({required String documentId}) async {
+    deleteDocumentCallCount += 1;
+    deletedDocumentId = documentId;
+    documents.removeWhere((document) => document.id == documentId);
   }
 
   @override
@@ -145,6 +154,24 @@ void main() {
     final documents = await controller.listSubjectDocuments('subject-1');
 
     expect(documents.single.fileName, '1710000000000-cours.pdf');
+  });
+
+  test('trims document id before deleting a document', () async {
+    final api = FakeDocumentsApi();
+    final controller = DocumentsController(api);
+
+    await controller.deleteDocument(' document-1 ');
+
+    expect(api.deleteDocumentCallCount, 1);
+    expect(api.deletedDocumentId, 'document-1');
+  });
+
+  test('rejects empty document ids before deleting a document', () async {
+    final api = FakeDocumentsApi();
+    final controller = DocumentsController(api);
+
+    expect(() => controller.deleteDocument('  '), throwsArgumentError);
+    expect(api.deleteDocumentCallCount, 0);
   });
 
   test('loads ready document detail with knowledge units', () async {

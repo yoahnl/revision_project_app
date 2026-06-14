@@ -28,13 +28,20 @@ class InMemorySubjectsRepository implements SubjectsRepository {
     subjects.add(subject);
     return subject;
   }
+
+  @override
+  Future<void> deleteSubject(String id) async {
+    subjects.removeWhere((subject) => subject.id == id);
+  }
 }
 
 class CapturingSubjectsRepository implements SubjectsRepository {
   int createSubjectCallCount = 0;
+  int deleteSubjectCallCount = 0;
   String? createdName;
   int? createdPriority;
   int? createdWeeklyMinutes;
+  String? deletedSubjectId;
 
   @override
   Future<List<Subject>> listSubjects() async => const [];
@@ -61,6 +68,12 @@ class CapturingSubjectsRepository implements SubjectsRepository {
       priority: priority,
       weeklyMinutes: weeklyMinutes,
     );
+  }
+
+  @override
+  Future<void> deleteSubject(String id) async {
+    deleteSubjectCallCount += 1;
+    deletedSubjectId = id;
   }
 }
 
@@ -110,6 +123,16 @@ void main() {
     expect(subject.id, 'subject-1');
   });
 
+  test('trims subject id before deleting a subject', () async {
+    final repository = CapturingSubjectsRepository();
+    final controller = SubjectsController(repository);
+
+    await controller.deleteSubject(' subject-1 ');
+
+    expect(repository.deleteSubjectCallCount, 1);
+    expect(repository.deletedSubjectId, 'subject-1');
+  });
+
   test('rejects short subject names', () async {
     final repository = CapturingSubjectsRepository();
     final controller = SubjectsController(repository);
@@ -119,5 +142,13 @@ void main() {
       throwsArgumentError,
     );
     expect(repository.createSubjectCallCount, 0);
+  });
+
+  test('rejects empty subject ids before deleting a subject', () async {
+    final repository = CapturingSubjectsRepository();
+    final controller = SubjectsController(repository);
+
+    expect(() => controller.deleteSubject('  '), throwsArgumentError);
+    expect(repository.deleteSubjectCallCount, 0);
   });
 }

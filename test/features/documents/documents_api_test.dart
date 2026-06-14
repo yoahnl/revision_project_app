@@ -101,6 +101,24 @@ void main() {
     expect(adapter.lastOptions?.path, '/documents/document-1');
   });
 
+  test('deletes a document through the API', () async {
+    final adapter = CapturingHttpClientAdapter(jsonResponse(null));
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpDocumentsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await api.deleteDocument(documentId: 'document-1');
+
+    expect(adapter.lastOptions?.method, 'DELETE');
+    expect(adapter.lastOptions?.path, '/documents/document-1');
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+  });
+
   test('loads sourced document knowledge units from the API', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({
@@ -363,7 +381,7 @@ Map<String, Object?> documentJson({
   };
 }
 
-ResponseBody jsonResponse(Object body, {int statusCode = 200}) {
+ResponseBody jsonResponse(Object? body, {int statusCode = 200}) {
   return ResponseBody.fromString(
     jsonEncode(body),
     statusCode,

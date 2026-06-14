@@ -18,6 +18,11 @@ class SubjectsNotifier extends _$SubjectsNotifier {
       () => ref.read(subjectsRepositoryProvider).listSubjects(),
     );
   }
+
+  Future<void> deleteSubject(String id) async {
+    await ref.read(subjectsRepositoryProvider).deleteSubject(id);
+    await reload();
+  }
 }
 
 final subjectsNotifierProvider = subjectsProvider;
