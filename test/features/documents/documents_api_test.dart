@@ -139,10 +139,7 @@ void main() {
     expect(response.items.single.title, 'Séparation des pouvoirs');
     expect(response.items.single.sources.single.pageNumber, isNull);
     expect(response.items.single.sources.single.text, 'Extrait source.');
-    expect(
-      adapter.lastOptions?.path,
-      '/documents/document-1/knowledge-units',
-    );
+    expect(adapter.lastOptions?.path, '/documents/document-1/knowledge-units');
   });
 
   test('throws a document not ready error on knowledge units 409', () async {
@@ -182,6 +179,103 @@ void main() {
     );
   });
 
+  test('loads a document summary from the API', () async {
+    final adapter = CapturingHttpClientAdapter(jsonResponse(summaryJson()));
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpDocumentsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final summary = await api.getDocumentSummary(documentId: 'document-1');
+
+    expect(summary?.title, 'Résumé du cours');
+    expect(summary?.keyPoints, ['Point clé']);
+    expect(summary?.sources.single.pageNumber, isNull);
+    expect(adapter.lastOptions?.path, '/documents/document-1/summary');
+  });
+
+  test('returns null when a document summary does not exist', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({'message': 'Not found'}, statusCode: 404),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpDocumentsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final summary = await api.getDocumentSummary(documentId: 'document-1');
+
+    expect(summary, isNull);
+  });
+
+  test('generates a document summary through the API', () async {
+    final adapter = CapturingHttpClientAdapter(jsonResponse(summaryJson()));
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpDocumentsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final summary = await api.generateDocumentSummary(documentId: 'document-1');
+
+    expect(summary.title, 'Résumé du cours');
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(adapter.lastOptions?.path, '/documents/document-1/summary');
+  });
+
+  test('loads a revision sheet from the API', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(revisionSheetJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpDocumentsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final sheet = await api.getRevisionSheet(documentId: 'document-1');
+
+    expect(sheet?.title, 'Fiche de révision');
+    expect(sheet?.sections.single.title, 'Principe clé');
+    expect(sheet?.sections.single.sources.single.text, 'Extrait source.');
+    expect(adapter.lastOptions?.path, '/documents/document-1/revision-sheet');
+  });
+
+  test('generates a revision sheet through the API', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(revisionSheetJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpDocumentsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final sheet = await api.generateRevisionSheet(documentId: 'document-1');
+
+    expect(sheet.title, 'Fiche de révision');
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(adapter.lastOptions?.path, '/documents/document-1/revision-sheet');
+  });
+
+  test('rejects invalid summary JSON', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({'id': 'summary-1'}),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpDocumentsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      api.getDocumentSummary(documentId: 'document-1'),
+      throwsFormatException,
+    );
+  });
+
   test('rejects blank Firebase ID tokens before posting metadata', () async {
     final adapter = CapturingHttpClientAdapter(jsonResponse(documentJson()));
     final dio = Dio()..httpClientAdapter = adapter;
@@ -198,6 +292,60 @@ void main() {
 
     expect(adapter.fetchCallCount, 0);
   });
+}
+
+Map<String, Object?> summaryJson() {
+  return {
+    'id': 'summary-1',
+    'documentId': 'document-1',
+    'subjectId': 'subject-1',
+    'status': 'READY',
+    'title': 'Résumé du cours',
+    'content': 'Texte synthétique.',
+    'keyPoints': ['Point clé'],
+    'limits': 'Limite.',
+    'errorCode': null,
+    'sources': [
+      {
+        'chunkId': 'chunk-1',
+        'text': 'Extrait source.',
+        'pageNumber': null,
+        'index': 0,
+      },
+    ],
+  };
+}
+
+Map<String, Object?> revisionSheetJson() {
+  return {
+    'id': 'sheet-1',
+    'documentId': 'document-1',
+    'subjectId': 'subject-1',
+    'status': 'READY',
+    'title': 'Fiche de révision',
+    'introduction': "Vue d'ensemble.",
+    'keyPoints': ['À retenir'],
+    'commonMistakes': [],
+    'mustKnow': ['Indispensable'],
+    'practiceSuggestions': ['Relire la section.'],
+    'errorCode': null,
+    'sections': [
+      {
+        'id': 'section-1',
+        'displayOrder': 0,
+        'title': 'Principe clé',
+        'content': 'Explication structurée.',
+        'sources': [
+          {
+            'chunkId': 'chunk-1',
+            'text': 'Extrait source.',
+            'pageNumber': null,
+            'index': 0,
+          },
+        ],
+      },
+    ],
+  };
 }
 
 Map<String, Object?> documentJson({

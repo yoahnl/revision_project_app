@@ -11,7 +11,11 @@ class FakeDocumentsApi implements DocumentsApi {
   Uint8List? uploadedBytes;
   Object? uploadError;
   final Map<String, List<DocumentKnowledgeUnit>> unitsByDocumentId = {};
+  final Map<String, DocumentSummary> summariesByDocumentId = {};
+  final Map<String, RevisionSheet> revisionSheetsByDocumentId = {};
   final List<RevisionDocument> documents = [];
+  int generateSummaryCallCount = 0;
+  int generateRevisionSheetCallCount = 0;
 
   @override
   Future<RevisionDocument> uploadCoursePdf({
@@ -64,6 +68,34 @@ class FakeDocumentsApi implements DocumentsApi {
       documentId: documentId,
       items: unitsByDocumentId[documentId] ?? const [],
     );
+  }
+
+  @override
+  Future<DocumentSummary?> getDocumentSummary({
+    required String documentId,
+  }) async {
+    return summariesByDocumentId[documentId];
+  }
+
+  @override
+  Future<DocumentSummary> generateDocumentSummary({
+    required String documentId,
+  }) async {
+    generateSummaryCallCount += 1;
+    return summariesByDocumentId[documentId]!;
+  }
+
+  @override
+  Future<RevisionSheet?> getRevisionSheet({required String documentId}) async {
+    return revisionSheetsByDocumentId[documentId];
+  }
+
+  @override
+  Future<RevisionSheet> generateRevisionSheet({
+    required String documentId,
+  }) async {
+    generateRevisionSheetCallCount += 1;
+    return revisionSheetsByDocumentId[documentId]!;
   }
 }
 
@@ -194,4 +226,83 @@ void main() {
     expect(detail.state, DocumentDetailLoadState.failed);
     expect(detail.document.errorCode, 'KNOWLEDGE_EXTRACTION_FAILED');
   });
+
+  test('loads existing document artifacts', () async {
+    final api = FakeDocumentsApi()
+      ..summariesByDocumentId['document-1'] = summary()
+      ..revisionSheetsByDocumentId['document-1'] = revisionSheet();
+    final controller = DocumentsController(api);
+
+    final artifacts = await controller.loadDocumentArtifacts('document-1');
+
+    expect(artifacts.summary?.title, 'Résumé');
+    expect(artifacts.revisionSheet?.title, 'Fiche');
+  });
+
+  test('generates document artifacts through the API', () async {
+    final api = FakeDocumentsApi()
+      ..summariesByDocumentId['document-1'] = summary()
+      ..revisionSheetsByDocumentId['document-1'] = revisionSheet();
+    final controller = DocumentsController(api);
+
+    await controller.generateDocumentSummary('document-1');
+    await controller.generateRevisionSheet('document-1');
+
+    expect(api.generateSummaryCallCount, 1);
+    expect(api.generateRevisionSheetCallCount, 1);
+  });
+}
+
+DocumentSummary summary() {
+  return const DocumentSummary(
+    id: 'summary-1',
+    documentId: 'document-1',
+    subjectId: 'subject-1',
+    status: 'READY',
+    title: 'Résumé',
+    content: 'Contenu',
+    keyPoints: ['Point'],
+    limits: null,
+    errorCode: null,
+    sources: [
+      DocumentArtifactSource(
+        chunkId: 'chunk-1',
+        text: 'Source',
+        pageNumber: null,
+        index: 0,
+      ),
+    ],
+  );
+}
+
+RevisionSheet revisionSheet() {
+  return const RevisionSheet(
+    id: 'sheet-1',
+    documentId: 'document-1',
+    subjectId: 'subject-1',
+    status: 'READY',
+    title: 'Fiche',
+    introduction: 'Intro',
+    sections: [
+      RevisionSheetSection(
+        id: 'section-1',
+        displayOrder: 0,
+        title: 'Section',
+        content: 'Contenu',
+        sources: [
+          DocumentArtifactSource(
+            chunkId: 'chunk-1',
+            text: 'Source',
+            pageNumber: null,
+            index: 0,
+          ),
+        ],
+      ),
+    ],
+    keyPoints: ['Point'],
+    commonMistakes: [],
+    mustKnow: [],
+    practiceSuggestions: [],
+    errorCode: null,
+  );
 }

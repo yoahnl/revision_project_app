@@ -192,9 +192,9 @@ Ce tableau doit être mis à jour à chaque lot réalisé. Cette règle est éga
 | LOT-016 | Page détail document et notions | Réalisé | `docs/ROADMAP_EXECUTION_LOT_014_015_016.md` |
 | LOT-017 | Contrat artefacts générés | Réalisé | `docs/ROADMAP_EXECUTION_LOT_017.md` |
 | LOT-018 | Persistance Summary et RevisionSheet | Réalisé | `docs/ROADMAP_EXECUTION_LOT_018.md` |
-| LOT-019 | Flow Genkit résumé et fiche | À faire | À créer |
-| LOT-020 | API résumés et fiches | À faire | À créer |
-| LOT-021 | UI résumé et fiche | À faire | À créer |
+| LOT-019 | Flow Genkit résumé et fiche | Réalisé | `docs/ROADMAP_EXECUTION_LOT_019_020.md` |
+| LOT-020 | API résumés et fiches | Réalisé | `docs/ROADMAP_EXECUTION_LOT_019_020.md` |
+| LOT-021 | UI résumé et fiche | Réalisé | `docs/ROADMAP_EXECUTION_LOT_021_029.md` |
 | LOT-022 | Contrat QCM v2 | À faire | À créer |
 | LOT-023 | Genkit QCM enrichi | À faire | À créer |
 | LOT-024 | Persistance et soumission QCM enrichies | À faire | À créer |
@@ -202,7 +202,7 @@ Ce tableau doit être mis à jour à chaque lot réalisé. Cette règle est éga
 | LOT-026 | Contrat question ouverte | À faire | À créer |
 | LOT-027 | Genkit question ouverte et correction | À faire | À créer |
 | LOT-028 | UI question ouverte corrigée | À faire | À créer |
-| LOT-029 | GenUI composants lecture sourcée | À faire | À créer |
+| LOT-029 | GenUI composants lecture sourcée | Réalisé | `docs/ROADMAP_EXECUTION_LOT_021_029.md` |
 | LOT-030 | GenUI composants activité et correction | À faire | À créer |
 | LOT-031 | Session de révision IA minimale | À faire | À créer |
 | LOT-032 | Écran Révision IA minimal | À faire | À créer |

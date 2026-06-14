@@ -5,6 +5,8 @@ import 'package:revision_app/features/documents/domain/revision_document.dart';
 
 class InMemoryDocumentsApi implements DocumentsApi {
   final List<RevisionDocument> documents = [];
+  final Map<String, DocumentSummary> summariesByDocumentId = {};
+  final Map<String, RevisionSheet> revisionSheetsByDocumentId = {};
 
   @override
   Future<RevisionDocument> uploadCoursePdf({
@@ -47,5 +49,31 @@ class InMemoryDocumentsApi implements DocumentsApi {
       documentId: documentId,
       items: const [],
     );
+  }
+
+  @override
+  Future<DocumentSummary?> getDocumentSummary({
+    required String documentId,
+  }) async {
+    return summariesByDocumentId[documentId];
+  }
+
+  @override
+  Future<DocumentSummary> generateDocumentSummary({
+    required String documentId,
+  }) async {
+    return summariesByDocumentId[documentId]!;
+  }
+
+  @override
+  Future<RevisionSheet?> getRevisionSheet({required String documentId}) async {
+    return revisionSheetsByDocumentId[documentId];
+  }
+
+  @override
+  Future<RevisionSheet> generateRevisionSheet({
+    required String documentId,
+  }) async {
+    return revisionSheetsByDocumentId[documentId]!;
   }
 }

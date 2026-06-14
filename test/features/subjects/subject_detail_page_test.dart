@@ -66,6 +66,30 @@ class StaticDocumentsApi implements DocumentsApi {
   }
 
   @override
+  Future<DocumentSummary?> getDocumentSummary({
+    required String documentId,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<DocumentSummary> generateDocumentSummary({
+    required String documentId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<RevisionSheet?> getRevisionSheet({required String documentId}) async {
+    return null;
+  }
+
+  @override
+  Future<RevisionSheet> generateRevisionSheet({required String documentId}) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<RevisionDocument> uploadCoursePdf({
     required String subjectId,
     required String fileName,
@@ -117,9 +141,8 @@ void main() {
           routes: [
             GoRoute(
               path: 'documents/:documentId',
-              builder: (context, state) => Text(
-                'Document ${state.pathParameters['documentId']}',
-              ),
+              builder: (context, state) =>
+                  Text('Document ${state.pathParameters['documentId']}'),
             ),
           ],
         ),

@@ -53,6 +53,30 @@ class CompletingDocumentsApi implements DocumentsApi {
       items: const [],
     );
   }
+
+  @override
+  Future<DocumentSummary?> getDocumentSummary({
+    required String documentId,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<DocumentSummary> generateDocumentSummary({
+    required String documentId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<RevisionSheet?> getRevisionSheet({required String documentId}) async {
+    return null;
+  }
+
+  @override
+  Future<RevisionSheet> generateRevisionSheet({required String documentId}) {
+    throw UnimplementedError();
+  }
 }
 
 class FailingDocumentsApi extends CompletingDocumentsApi {

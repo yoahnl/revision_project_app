@@ -18,6 +18,14 @@ abstract interface class DocumentsApi {
   Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
     required String documentId,
   });
+
+  Future<DocumentSummary?> getDocumentSummary({required String documentId});
+
+  Future<DocumentSummary> generateDocumentSummary({required String documentId});
+
+  Future<RevisionSheet?> getRevisionSheet({required String documentId});
+
+  Future<RevisionSheet> generateRevisionSheet({required String documentId});
 }
 
 enum DocumentDetailLoadState { notReady, ready, failed }
@@ -32,6 +40,23 @@ class DocumentDetail {
   final RevisionDocument document;
   final List<DocumentKnowledgeUnit> knowledgeUnits;
   final DocumentDetailLoadState state;
+}
+
+class DocumentArtifacts {
+  const DocumentArtifacts({required this.summary, required this.revisionSheet});
+
+  final DocumentSummary? summary;
+  final RevisionSheet? revisionSheet;
+
+  DocumentArtifacts copyWith({
+    DocumentSummary? summary,
+    RevisionSheet? revisionSheet,
+  }) {
+    return DocumentArtifacts(
+      summary: summary ?? this.summary,
+      revisionSheet: revisionSheet ?? this.revisionSheet,
+    );
+  }
 }
 
 class DocumentsController {
@@ -63,6 +88,21 @@ class DocumentsController {
     String documentId,
   ) {
     return _api.listDocumentKnowledgeUnits(documentId: documentId);
+  }
+
+  Future<DocumentArtifacts> loadDocumentArtifacts(String documentId) async {
+    final summary = await _api.getDocumentSummary(documentId: documentId);
+    final revisionSheet = await _api.getRevisionSheet(documentId: documentId);
+
+    return DocumentArtifacts(summary: summary, revisionSheet: revisionSheet);
+  }
+
+  Future<DocumentSummary> generateDocumentSummary(String documentId) {
+    return _api.generateDocumentSummary(documentId: documentId);
+  }
+
+  Future<RevisionSheet> generateRevisionSheet(String documentId) {
+    return _api.generateRevisionSheet(documentId: documentId);
   }
 
   Future<DocumentDetail> loadDocumentDetail(String documentId) async {
@@ -104,4 +144,10 @@ class DocumentsController {
 
 class DocumentNotReadyException implements Exception {
   const DocumentNotReadyException();
+}
+
+class DocumentArtifactRequestException implements Exception {
+  const DocumentArtifactRequestException({required this.statusCode});
+
+  final int statusCode;
 }
