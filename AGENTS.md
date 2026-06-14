@@ -192,6 +192,7 @@ Required report shape:
 - Include the verdict of each sub-agent or named pass in the final report.
 - Include the initial and final Git state.
 - List every modified, created, or deleted file.
+- **Always include the code that was created or modified in the final lot report. This is mandatory, not optional.**
 - Include the complete content of every created file.
 - For modified files, include the exact changed zones or a diff-style excerpt.
 - Include tests created or modified, exact commands run, and exact results.

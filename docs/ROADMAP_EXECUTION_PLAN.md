@@ -185,8 +185,8 @@ Ce tableau doit être mis à jour à chaque lot réalisé. Cette règle est éga
 | LOT-010 | Persistance minimale des chunks et sources | Réalisé | `docs/ROADMAP_EXECUTION_LOT_009_010_011.md` |
 | LOT-010B | Réparation migration Prisma DocumentChunk / KnowledgeUnitSource | Réalisé | `docs/ROADMAP_EXECUTION_LOT_010B.md` |
 | LOT-011 | Chunking PDF dans le worker | Réalisé | `docs/ROADMAP_EXECUTION_LOT_009_010_011.md` |
-| LOT-012 | Extraction Genkit v2 basée sur chunks | À faire | À créer |
-| LOT-013 | Persistance KnowledgeUnit enrichie | À faire | À créer |
+| LOT-012 | Extraction Genkit v2 basée sur chunks | Réalisé | `docs/ROADMAP_EXECUTION_LOT_012_013.md` |
+| LOT-013 | Persistance KnowledgeUnit enrichie | Réalisé | `docs/ROADMAP_EXECUTION_LOT_012_013.md` |
 | LOT-014 | API détail document et notions sourcées | À faire | À créer |
 | LOT-015 | Data layer Flutter pour détail document | À faire | À créer |
 | LOT-016 | Page détail document et notions | À faire | À créer |
