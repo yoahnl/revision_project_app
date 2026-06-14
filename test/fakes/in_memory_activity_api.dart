@@ -4,8 +4,11 @@ import 'package:revision_app/features/activities/domain/open_question_activity.d
 
 class InMemoryActivityApi implements ActivityApi {
   String? startedSubjectId;
+  String? startedKnowledgeUnitId;
   String? startedOpenQuestionSubjectId;
   String? startedOpenQuestionKnowledgeUnitId;
+  int startedDiagnosticQuizCount = 0;
+  int startedOpenQuestionCount = 0;
   List<DiagnosticQuizAnswer>? submittedAnswers;
   String? submittedOpenAnswerText;
 
@@ -15,6 +18,8 @@ class InMemoryActivityApi implements ActivityApi {
     String? knowledgeUnitId,
   }) async {
     startedSubjectId = subjectId;
+    startedKnowledgeUnitId = knowledgeUnitId;
+    startedDiagnosticQuizCount += 1;
 
     return const DiagnosticQuizActivity(
       sessionId: 'session-1',
@@ -49,6 +54,7 @@ class InMemoryActivityApi implements ActivityApi {
   }) async {
     startedOpenQuestionSubjectId = subjectId;
     startedOpenQuestionKnowledgeUnitId = knowledgeUnitId;
+    startedOpenQuestionCount += 1;
 
     return const OpenQuestionActivity(
       sessionId: 'open-session-1',

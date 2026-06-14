@@ -37,9 +37,16 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   @override
   void initState() {
     super.initState();
-    final subjectId = widget.subjectId?.trim();
-    if (subjectId != null && subjectId.isNotEmpty) {
-      _activity = _loadDiagnosticQuiz(subjectId);
+    _setActivityFromCurrentParams();
+  }
+
+  @override
+  void didUpdateWidget(covariant ActivitiesPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (_normalizeId(oldWidget.subjectId) != _trimmedSubjectId ||
+        _normalizeId(oldWidget.knowledgeUnitId) != _trimmedKnowledgeUnitId) {
+      setState(_setActivityFromCurrentParams);
     }
   }
 
@@ -96,20 +103,42 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   }
 
   bool get _canStartOpenQuestion {
-    final subjectId = widget.subjectId?.trim();
-    final knowledgeUnitId = widget.knowledgeUnitId?.trim();
+    return _trimmedSubjectId != null && _trimmedKnowledgeUnitId != null;
+  }
 
-    return subjectId != null &&
-        subjectId.isNotEmpty &&
-        knowledgeUnitId != null &&
-        knowledgeUnitId.isNotEmpty;
+  String? get _trimmedSubjectId {
+    return _normalizeId(widget.subjectId);
   }
 
   String? get _trimmedKnowledgeUnitId {
-    final knowledgeUnitId = widget.knowledgeUnitId?.trim();
-    return knowledgeUnitId == null || knowledgeUnitId.isEmpty
-        ? null
-        : knowledgeUnitId;
+    return _normalizeId(widget.knowledgeUnitId);
+  }
+
+  String? _normalizeId(String? value) {
+    final trimmedValue = value?.trim();
+    return trimmedValue == null || trimmedValue.isEmpty ? null : trimmedValue;
+  }
+
+  void _setActivityFromCurrentParams() {
+    final subjectId = _trimmedSubjectId;
+    if (subjectId == null) {
+      _selectedKind = _ActivityKind.diagnosticQuiz;
+      _activity = null;
+      return;
+    }
+
+    final knowledgeUnitId = _trimmedKnowledgeUnitId;
+    if (knowledgeUnitId != null) {
+      _selectedKind = _ActivityKind.openQuestion;
+      _activity = _loadOpenQuestion(
+        subjectId: subjectId,
+        knowledgeUnitId: knowledgeUnitId,
+      );
+      return;
+    }
+
+    _selectedKind = _ActivityKind.diagnosticQuiz;
+    _activity = _loadDiagnosticQuiz(subjectId);
   }
 
   Future<_LoadedActivity> _loadDiagnosticQuiz(String subjectId) async {
@@ -134,8 +163,8 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   }
 
   void _startDiagnosticQuiz() {
-    final subjectId = widget.subjectId?.trim();
-    if (subjectId == null || subjectId.isEmpty) {
+    final subjectId = _trimmedSubjectId;
+    if (subjectId == null) {
       return;
     }
 
@@ -146,12 +175,9 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   }
 
   void _startOpenQuestion() {
-    final subjectId = widget.subjectId?.trim();
+    final subjectId = _trimmedSubjectId;
     final knowledgeUnitId = _trimmedKnowledgeUnitId;
-    if (subjectId == null ||
-        subjectId.isEmpty ||
-        knowledgeUnitId == null ||
-        knowledgeUnitId.isEmpty) {
+    if (subjectId == null || knowledgeUnitId == null) {
       return;
     }
 
