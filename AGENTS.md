@@ -179,3 +179,22 @@ The worktree can be dirty. Preserve unrelated user changes and do not silently c
 - Keep compatibility exports unless removing them is explicitly requested.
 - Do not rename public routes, storage keys, provider names, or domain fields without a clear migration reason.
 - Before saying work is complete, run the relevant verification commands and report the result.
+
+## 10. Codex Lot Reports
+
+When a task references `codex_rule.md`, that file is mandatory for the lot report. Apply it as a strict reporting contract for both this Flutter app and the sibling NestJS API when the requested work spans both repositories.
+
+Required report shape:
+
+- Audit the prompt before implementation and explicitly challenge unsafe, contradictory, or repo-inaccurate instructions.
+- Audit existing files, contracts, tests, prior reports, risks, and scope boundaries before editing.
+- Use sub-agents when available; otherwise run clearly named local passes for Audit / Architecture, Implementation, Tests, Build / Validation, and Critical Review.
+- Include the verdict of each sub-agent or named pass in the final report.
+- Include the initial and final Git state.
+- List every modified, created, or deleted file.
+- Include the complete content of every created file.
+- For modified files, include the exact changed zones or a diff-style excerpt.
+- Include tests created or modified, exact commands run, and exact results.
+- Include analysis commands, build commands, exact results, preserved scope limits, remaining risks, next steps, and final self-critique.
+
+For code lots, useful comments are expected where they protect an invariant, explain a lot boundary, or prevent a future false behavior. Comments should clarify why the code exists; they must not decorate obvious statements.
