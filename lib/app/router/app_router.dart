@@ -13,6 +13,7 @@ import '../../presentation/pages/activities/activities_page.dart';
 import '../../presentation/pages/auth/sign_in_page.dart';
 import '../../presentation/pages/onboarding/onboarding_page.dart';
 import '../../presentation/pages/profile/profile_page.dart';
+import '../../presentation/pages/documents/document_detail_page.dart';
 import '../../presentation/pages/subjects/subject_detail_page.dart';
 import '../../presentation/pages/subjects/subjects_home_page.dart';
 import '../../presentation/pages/today/today_page.dart';
@@ -84,6 +85,16 @@ GoRouter createAppRouter({
                       controller: subjectsController,
                       documentsController: documentsController,
                     ),
+                    routes: [
+                      GoRoute(
+                        path: 'documents/:documentId',
+                        builder: (context, state) => DocumentDetailPage(
+                          documentId:
+                              state.pathParameters['documentId'] ?? '',
+                          controller: documentsController,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -11,6 +11,13 @@ class AppRoutes {
 
   static String subjectDetail(String subjectId) => '/subjects/$subjectId';
 
+  static String documentDetail({
+    required String subjectId,
+    required String documentId,
+  }) {
+    return '/subjects/$subjectId/documents/$documentId';
+  }
+
   static String activitiesForSubject(String subjectId) {
     return Uri(
       path: activities,

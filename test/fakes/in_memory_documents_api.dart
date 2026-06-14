@@ -38,4 +38,14 @@ class InMemoryDocumentsApi implements DocumentsApi {
   Future<RevisionDocument> getDocument({required String documentId}) async {
     return documents.singleWhere((document) => document.id == documentId);
   }
+
+  @override
+  Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
+    required String documentId,
+  }) async {
+    return DocumentKnowledgeUnitsResponse(
+      documentId: documentId,
+      items: const [],
+    );
+  }
 }

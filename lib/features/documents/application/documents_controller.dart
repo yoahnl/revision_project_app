@@ -14,6 +14,24 @@ abstract interface class DocumentsApi {
   });
 
   Future<RevisionDocument> getDocument({required String documentId});
+
+  Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
+    required String documentId,
+  });
+}
+
+enum DocumentDetailLoadState { notReady, ready, failed }
+
+class DocumentDetail {
+  const DocumentDetail({
+    required this.document,
+    required this.knowledgeUnits,
+    required this.state,
+  });
+
+  final RevisionDocument document;
+  final List<DocumentKnowledgeUnit> knowledgeUnits;
+  final DocumentDetailLoadState state;
 }
 
 class DocumentsController {
@@ -40,4 +58,50 @@ class DocumentsController {
   Future<RevisionDocument> getDocument(String documentId) {
     return _api.getDocument(documentId: documentId);
   }
+
+  Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits(
+    String documentId,
+  ) {
+    return _api.listDocumentKnowledgeUnits(documentId: documentId);
+  }
+
+  Future<DocumentDetail> loadDocumentDetail(String documentId) async {
+    final document = await getDocument(documentId);
+
+    if (document.status == 'FAILED') {
+      return DocumentDetail(
+        document: document,
+        knowledgeUnits: const [],
+        state: DocumentDetailLoadState.failed,
+      );
+    }
+
+    if (document.status != 'READY') {
+      return DocumentDetail(
+        document: document,
+        knowledgeUnits: const [],
+        state: DocumentDetailLoadState.notReady,
+      );
+    }
+
+    try {
+      final response = await listDocumentKnowledgeUnits(documentId);
+
+      return DocumentDetail(
+        document: document,
+        knowledgeUnits: response.items,
+        state: DocumentDetailLoadState.ready,
+      );
+    } on DocumentNotReadyException {
+      return DocumentDetail(
+        document: document,
+        knowledgeUnits: const [],
+        state: DocumentDetailLoadState.notReady,
+      );
+    }
+  }
+}
+
+class DocumentNotReadyException implements Exception {
+  const DocumentNotReadyException();
 }

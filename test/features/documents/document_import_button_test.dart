@@ -43,6 +43,16 @@ class CompletingDocumentsApi implements DocumentsApi {
   Future<RevisionDocument> getDocument({required String documentId}) async {
     throw StateError('No documents available');
   }
+
+  @override
+  Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
+    required String documentId,
+  }) async {
+    return DocumentKnowledgeUnitsResponse(
+      documentId: documentId,
+      items: const [],
+    );
+  }
 }
 
 class FailingDocumentsApi extends CompletingDocumentsApi {

@@ -152,7 +152,15 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
                   spacing: AppSpacing.itemGap,
                   children: [
                     for (final document in documents)
-                      _DocumentListItem(document: document),
+                      _DocumentListItem(
+                        document: document,
+                        onTap: () => context.go(
+                          documentDetailRoutePath(
+                            subjectId: widget.subjectId,
+                            documentId: document.id,
+                          ),
+                        ),
+                      ),
                   ],
                 );
               },
@@ -193,13 +201,15 @@ class _DocumentsErrorState extends StatelessWidget {
 }
 
 class _DocumentListItem extends StatelessWidget {
-  const _DocumentListItem({required this.document});
+  const _DocumentListItem({required this.document, required this.onTap});
 
   final RevisionDocument document;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return RevisionPanel(
+      onTap: onTap,
       child: Row(
         children: [
           const _DocumentIcon(),
@@ -225,6 +235,8 @@ class _DocumentListItem extends StatelessWidget {
             status: document.status,
             errorCode: document.errorCode,
           ),
+          const SizedBox(width: AppSpacing.s),
+          const Icon(Icons.chevron_right),
         ],
       ),
     );

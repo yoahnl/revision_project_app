@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:revision_app/app/di/providers.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/documents/domain/revision_document.dart';
@@ -55,6 +56,16 @@ class StaticDocumentsApi implements DocumentsApi {
   }
 
   @override
+  Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
+    required String documentId,
+  }) async {
+    return DocumentKnowledgeUnitsResponse(
+      documentId: documentId,
+      items: const [],
+    );
+  }
+
+  @override
   Future<RevisionDocument> uploadCoursePdf({
     required String subjectId,
     required String fileName,
@@ -89,5 +100,44 @@ void main() {
 
     expect(find.text('cours.pdf'), findsOneWidget);
     expect(find.text('Erreur IA'), findsOneWidget);
+  });
+
+  testWidgets('opens document detail when tapping a document', (tester) async {
+    final documentsApi = StaticDocumentsApi();
+    final router = GoRouter(
+      initialLocation: '/subjects/subject-1',
+      routes: [
+        GoRoute(
+          path: '/subjects/:subjectId',
+          builder: (context, state) => SubjectDetailPage(
+            subjectId: state.pathParameters['subjectId'] ?? '',
+            controller: SubjectsController(SingleSubjectRepository()),
+            documentsController: DocumentsController(documentsApi),
+          ),
+          routes: [
+            GoRoute(
+              path: 'documents/:documentId',
+              builder: (context, state) => Text(
+                'Document ${state.pathParameters['documentId']}',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [documentsApiProvider.overrideWithValue(documentsApi)],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('cours.pdf'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Document document-1'), findsOneWidget);
   });
 }

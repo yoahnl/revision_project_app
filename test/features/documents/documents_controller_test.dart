@@ -10,6 +10,7 @@ class FakeDocumentsApi implements DocumentsApi {
   String? uploadedFileName;
   Uint8List? uploadedBytes;
   Object? uploadError;
+  final Map<String, List<DocumentKnowledgeUnit>> unitsByDocumentId = {};
   final List<RevisionDocument> documents = [];
 
   @override
@@ -53,6 +54,16 @@ class FakeDocumentsApi implements DocumentsApi {
   @override
   Future<RevisionDocument> getDocument({required String documentId}) async {
     return documents.singleWhere((document) => document.id == documentId);
+  }
+
+  @override
+  Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
+    required String documentId,
+  }) async {
+    return DocumentKnowledgeUnitsResponse(
+      documentId: documentId,
+      items: unitsByDocumentId[documentId] ?? const [],
+    );
   }
 }
 
@@ -102,5 +113,85 @@ void main() {
     final documents = await controller.listSubjectDocuments('subject-1');
 
     expect(documents.single.fileName, '1710000000000-cours.pdf');
+  });
+
+  test('loads ready document detail with knowledge units', () async {
+    final api = FakeDocumentsApi()
+      ..documents.add(
+        const RevisionDocument(
+          id: 'document-1',
+          subjectId: 'subject-1',
+          kind: 'COURSE_PDF',
+          fileName: 'cours.pdf',
+          status: 'READY',
+          mimeType: 'application/pdf',
+        ),
+      )
+      ..unitsByDocumentId['document-1'] = const [
+        DocumentKnowledgeUnit(
+          id: 'unit-1',
+          title: 'Constitution',
+          summary: 'Norme fondamentale.',
+          difficulty: 'MEDIUM',
+          displayOrder: 1,
+          confidence: 0.8,
+          sources: [
+            DocumentKnowledgeUnitSource(
+              chunkId: 'chunk-1',
+              text: 'Extrait source.',
+              pageNumber: null,
+              index: 0,
+            ),
+          ],
+        ),
+      ];
+    final controller = DocumentsController(api);
+
+    final detail = await controller.loadDocumentDetail('document-1');
+
+    expect(detail.document.status, 'READY');
+    expect(detail.knowledgeUnits.single.title, 'Constitution');
+    expect(detail.state, DocumentDetailLoadState.ready);
+  });
+
+  test('does not load knowledge units for processing documents', () async {
+    final api = FakeDocumentsApi()
+      ..documents.add(
+        const RevisionDocument(
+          id: 'document-1',
+          subjectId: 'subject-1',
+          kind: 'COURSE_PDF',
+          fileName: 'cours.pdf',
+          status: 'PROCESSING',
+          mimeType: 'application/pdf',
+        ),
+      );
+    final controller = DocumentsController(api);
+
+    final detail = await controller.loadDocumentDetail('document-1');
+
+    expect(detail.state, DocumentDetailLoadState.notReady);
+    expect(detail.knowledgeUnits, isEmpty);
+  });
+
+  test('exposes failed document detail error state', () async {
+    final api = FakeDocumentsApi()
+      ..documents.add(
+        const RevisionDocument(
+          id: 'document-1',
+          subjectId: 'subject-1',
+          kind: 'COURSE_PDF',
+          fileName: 'cours.pdf',
+          status: 'FAILED',
+          mimeType: 'application/pdf',
+          errorCode: 'KNOWLEDGE_EXTRACTION_FAILED',
+        ),
+      );
+    final controller = DocumentsController(api);
+
+    final detail = await controller.loadDocumentDetail('document-1');
+
+    expect(detail.state, DocumentDetailLoadState.failed);
+    expect(detail.document.errorCode, 'KNOWLEDGE_EXTRACTION_FAILED');
   });
 }
