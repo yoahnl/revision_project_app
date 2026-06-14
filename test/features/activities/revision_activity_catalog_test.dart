@@ -106,6 +106,54 @@ void main() {
       expect(find.text('Point A'), findsOneWidget);
       expect(find.text('Source isolée.'), findsOneWidget);
     });
+
+    testWidgets('renders a genUI badge on catalog-rendered components', (
+      tester,
+    ) async {
+      final catalog = buildRevisionActivityCatalog();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Column(
+            children: [
+              catalogWidget(
+                catalog,
+                type: 'QuestionCard',
+                data: {'prompt': 'Quelle est la bonne réponse ?'},
+              ),
+              catalogWidget(
+                catalog,
+                type: 'SummaryCard',
+                data: {
+                  'title': 'Résumé',
+                  'content': 'Contenu synthétique.',
+                  'keyPoints': ['Point 1'],
+                },
+              ),
+              catalogWidget(
+                catalog,
+                type: 'KeyPointsList',
+                data: {
+                  'title': 'Points clés',
+                  'items': ['Point A'],
+                },
+              ),
+              catalogWidget(
+                catalog,
+                type: 'SourceExcerptCard',
+                data: {
+                  'text': 'Source isolée.',
+                  'pageNumber': null,
+                  'index': 1,
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('genUI'), findsNWidgets(4));
+    });
   });
 }
 

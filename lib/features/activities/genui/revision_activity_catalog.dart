@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:genui/genui.dart';
 import 'package:json_schema_builder/json_schema_builder.dart';
 import 'package:revision_app/features/activities/genui/sourced_reading_component_validator.dart';
+import 'package:revision_app/presentation/theme/app_colors.dart';
+import 'package:revision_app/presentation/theme/app_radius.dart';
 import 'package:revision_app/presentation/theme/app_spacing.dart';
 import 'package:revision_app/presentation/widgets/documents/document_source_excerpt.dart';
 import 'package:revision_app/presentation/widgets/revision_panel.dart';
@@ -26,10 +28,12 @@ Catalog buildRevisionActivityCatalog() {
     dataSchema: questionCardSchema,
     widgetBuilder: (itemContext) {
       final json = itemContext.data as JsonMap;
-      return RevisionPanel(
-        child: Text(
-          json['prompt'] as String,
-          style: Theme.of(itemContext.buildContext).textTheme.titleMedium,
+      return _GenUiComponentFrame(
+        child: RevisionPanel(
+          child: Text(
+            json['prompt'] as String,
+            style: Theme.of(itemContext.buildContext).textTheme.titleMedium,
+          ),
         ),
       );
     },
@@ -79,36 +83,38 @@ Catalog buildRevisionActivityCatalog() {
       final keyPoints = _stringList(json['keyPoints']);
       final sources = _sourceList(json['sources']);
 
-      return RevisionPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              json['title'] as String,
-              style: Theme.of(itemContext.buildContext).textTheme.titleMedium,
-            ),
-            const SizedBox(height: AppSpacing.s),
-            Text(json['content'] as String),
-            if (keyPoints.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.m),
-              _CatalogTextList(title: 'Points cles', items: keyPoints),
-            ],
-            if (sources.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.m),
-              Column(
-                spacing: AppSpacing.s,
-                children: [
-                  for (final source in sources)
-                    DocumentSourceExcerpt(
-                      text: source.text,
-                      index: source.index,
-                      pageNumber: source.pageNumber,
-                      label: source.label,
-                    ),
-                ],
+      return _GenUiComponentFrame(
+        child: RevisionPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                json['title'] as String,
+                style: Theme.of(itemContext.buildContext).textTheme.titleMedium,
               ),
+              const SizedBox(height: AppSpacing.s),
+              Text(json['content'] as String),
+              if (keyPoints.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.m),
+                _CatalogTextList(title: 'Points cles', items: keyPoints),
+              ],
+              if (sources.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.m),
+                Column(
+                  spacing: AppSpacing.s,
+                  children: [
+                    for (final source in sources)
+                      DocumentSourceExcerpt(
+                        text: source.text,
+                        index: source.index,
+                        pageNumber: source.pageNumber,
+                        label: source.label,
+                      ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       );
     },
@@ -133,10 +139,12 @@ Catalog buildRevisionActivityCatalog() {
     ),
     widgetBuilder: (itemContext) {
       final json = itemContext.data as JsonMap;
-      return RevisionPanel(
-        child: _CatalogTextList(
-          title: json['title'] as String,
-          items: _stringList(json['items']),
+      return _GenUiComponentFrame(
+        child: RevisionPanel(
+          child: _CatalogTextList(
+            title: json['title'] as String,
+            items: _stringList(json['items']),
+          ),
         ),
       );
     },
@@ -147,11 +155,13 @@ Catalog buildRevisionActivityCatalog() {
     dataSchema: sourceSchema,
     widgetBuilder: (itemContext) {
       final source = _CatalogSource.fromJson(itemContext.data as JsonMap);
-      return DocumentSourceExcerpt(
-        text: source.text,
-        index: source.index,
-        pageNumber: source.pageNumber,
-        label: source.label,
+      return _GenUiComponentFrame(
+        child: DocumentSourceExcerpt(
+          text: source.text,
+          index: source.index,
+          pageNumber: source.pageNumber,
+          label: source.label,
+        ),
       );
     },
   );
@@ -162,6 +172,53 @@ Catalog buildRevisionActivityCatalog() {
     newItems: [questionCard, summaryCard, keyPointsList, sourceExcerptCard],
     catalogId: revisionActivityCatalogId,
   );
+}
+
+class _GenUiComponentFrame extends StatelessWidget {
+  const _GenUiComponentFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Align(alignment: Alignment.centerRight, child: _GenUiBadge()),
+        const SizedBox(height: AppSpacing.xs),
+        child,
+      ],
+    );
+  }
+}
+
+class _GenUiBadge extends StatelessWidget {
+  const _GenUiBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.violet.withValues(alpha: 0.14),
+        borderRadius: AppRadius.radiusPill,
+        border: Border.all(color: AppColors.violet.withValues(alpha: 0.34)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.s,
+          vertical: AppSpacing.xs,
+        ),
+        child: Text(
+          'genUI',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.violet,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _CatalogTextList extends StatelessWidget {
