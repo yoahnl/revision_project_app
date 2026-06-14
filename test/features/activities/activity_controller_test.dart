@@ -138,6 +138,55 @@ void main() {
     expect(controller.result?.items.single.explanation, 'Explication sourcée.');
   });
 
+  test('manages multiple selections and submits choiceIds', () async {
+    List<DiagnosticQuizAnswer>? submittedAnswers;
+    final controller = DiagnosticQuizSessionController(
+      activity: multipleActivity(),
+      submitter: (answers) async {
+        submittedAnswers = answers;
+
+        return const DiagnosticQuizResult(correctAnswers: 1, totalQuestions: 1);
+      },
+    );
+
+    expect(controller.canSubmit, isFalse);
+
+    controller.selectChoice(questionId: 'question-multiple', choiceId: 'a');
+    controller.selectChoice(questionId: 'question-multiple', choiceId: 'c');
+    controller.selectChoice(questionId: 'question-multiple', choiceId: 'b');
+
+    expect(controller.selectedChoiceIdsFor('question-multiple'), ['a', 'c']);
+    expect(controller.canSubmit, isTrue);
+
+    controller.selectChoice(questionId: 'question-multiple', choiceId: 'a');
+
+    expect(controller.selectedChoiceIdsFor('question-multiple'), ['c']);
+    expect(controller.canSubmit, isTrue);
+
+    await controller.submit();
+
+    expect(submittedAnswers?.single.choiceId, isNull);
+    expect(submittedAnswers?.single.choiceIds, ['c']);
+  });
+
+  test('requires the minimum selection count for multiple questions', () async {
+    final controller = DiagnosticQuizSessionController(
+      activity: multipleActivity(minSelections: 2, maxSelections: 3),
+      submitter: (_) async =>
+          const DiagnosticQuizResult(correctAnswers: 1, totalQuestions: 1),
+    );
+
+    controller.selectChoice(questionId: 'question-multiple', choiceId: 'a');
+
+    expect(controller.answeredCount, 0);
+    expect(controller.canSubmit, isFalse);
+
+    controller.selectChoice(questionId: 'question-multiple', choiceId: 'c');
+
+    expect(controller.answeredCount, 1);
+    expect(controller.canSubmit, isTrue);
+  });
+
   test('prevents duplicate submit while a submission is running', () async {
     final completer = Completer<DiagnosticQuizResult>();
     var submitCount = 0;
@@ -183,6 +232,30 @@ void main() {
     expect(controller.result, isNull);
     expect(controller.submitError, isA<StateError>());
   });
+}
+
+DiagnosticQuizActivity multipleActivity({
+  int minSelections = 1,
+  int maxSelections = 2,
+}) {
+  return DiagnosticQuizActivity(
+    sessionId: 'session-multiple',
+    title: 'Diagnostic multiple',
+    questions: [
+      DiagnosticQuizQuestion(
+        id: 'question-multiple',
+        prompt: 'Quels éléments contrôlent le pouvoir ?',
+        selectionMode: DiagnosticQuizSelectionMode.multiple,
+        minSelections: minSelections,
+        maxSelections: maxSelections,
+        choices: const [
+          DiagnosticQuizChoice(id: 'a', label: 'Contrôle juridictionnel'),
+          DiagnosticQuizChoice(id: 'b', label: 'Pouvoir absolu'),
+          DiagnosticQuizChoice(id: 'c', label: 'Séparation des pouvoirs'),
+        ],
+      ),
+    ],
+  );
 }
 
 DiagnosticQuizActivity longActivity({required int questionCount}) {

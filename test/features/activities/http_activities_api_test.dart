@@ -76,6 +76,53 @@ void main() {
     },
   );
 
+  test(
+    'parses a v3 quiz with multiple selection and bounded visuals',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(v3ActivityJsonWithAccidentalCorrection()),
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final api = HttpActivitiesApi(
+        dio: dio,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      final activity = await api.startNextActivity(subjectId: 'subject-1');
+      final question = activity.questions.single;
+      final chart = question.visuals
+          .whereType<DiagnosticQuizChartVisual>()
+          .single;
+      final diagram = question.visuals
+          .whereType<DiagnosticQuizDiagramVisual>()
+          .single;
+
+      expect(activity.version, 3);
+      expect(question.selectionMode, DiagnosticQuizSelectionMode.multiple);
+      expect(question.minSelections, 1);
+      expect(question.maxSelections, 2);
+      expect(question.visuals, hasLength(3));
+      expect(chart.title, 'Contrôles');
+      expect(chart.chartType, DiagnosticQuizChartType.bar);
+      expect(chart.data.single['value'], 2);
+      expect(chart.sources.single.chunkId, 'chunk-1');
+      expect(diagram.nodes.map((node) => node.label), ['Pouvoir', 'Contrôle']);
+      expect(diagram.edges.single.label, 'limite');
+      expect(
+        question.visuals
+            .whereType<DiagnosticQuizUnsupportedVisual>()
+            .single
+            .type,
+        'IMAGE',
+      );
+      expect(question.choices.map((choice) => choice.label), [
+        'Contrôle juridictionnel',
+        'Pouvoir absolu',
+        'Séparation des pouvoirs',
+      ]);
+    },
+  );
+
   test('submits answers and maps the public score', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({'correctAnswers': 1, 'totalQuestions': 2}),
@@ -102,6 +149,41 @@ void main() {
       ],
     });
   });
+
+  test(
+    'submits single and multiple answers with distinct payload shapes',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse({'correctAnswers': 2, 'totalQuestions': 2}),
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final api = HttpActivitiesApi(
+        dio: dio,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await api.submitResult(
+        sessionId: 'session-1',
+        answers: const [
+          DiagnosticQuizAnswer(questionId: 'question-single', choiceId: 'a'),
+          DiagnosticQuizAnswer(
+            questionId: 'question-multiple',
+            choiceIds: ['a', 'c'],
+          ),
+        ],
+      );
+
+      expect(adapter.lastOptions?.data, {
+        'answers': [
+          {'questionId': 'question-single', 'choiceId': 'a'},
+          {
+            'questionId': 'question-multiple',
+            'choiceIds': ['a', 'c'],
+          },
+        ],
+      });
+    },
+  );
 
   test(
     'parses enriched correction result with score feedback and sources',
@@ -136,6 +218,35 @@ void main() {
       expect(item.sources.single.text, 'Le myocarde est le muscle cardiaque.');
     },
   );
+
+  test('parses v3 multiple correction result', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(v3MultipleResultJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.submitResult(
+      sessionId: 'session-1',
+      answers: const [
+        DiagnosticQuizAnswer(
+          questionId: 'question-multiple',
+          choiceIds: ['a', 'c'],
+        ),
+      ],
+    );
+    final item = result.items.single;
+
+    expect(item.selectedChoiceId, isNull);
+    expect(item.correctChoiceId, isNull);
+    expect(item.selectedChoiceIds, ['a', 'c']);
+    expect(item.correctChoiceIds, ['a', 'b']);
+    expect(item.partialScore, 0.5);
+    expect(item.sources.single.text, 'Source textuelle après submit.');
+  });
 
   test(
     'rejects invalid activity JSON with a controlled format error',
@@ -223,6 +334,89 @@ Map<String, Object?> enrichedActivityJsonWithAccidentalCorrection() {
   };
 }
 
+Map<String, Object?> v3ActivityJsonWithAccidentalCorrection() {
+  return {
+    'sessionId': 'session-v3',
+    'type': 'diagnostic_quiz',
+    'version': 3,
+    'documentId': 'document-1',
+    'subjectId': 'subject-1',
+    'title': 'Diagnostic v3',
+    'questions': [
+      {
+        'id': 'question-multiple',
+        'knowledgeUnitId': 'unit-1',
+        'prompt': 'Quels éléments contrôlent le pouvoir ?',
+        'difficulty': 'MEDIUM',
+        'selectionMode': 'multiple',
+        'minSelections': 1,
+        'maxSelections': 2,
+        'correctChoiceIds': ['a', 'c'],
+        'explanation': 'Ne doit jamais être mappée avant submit.',
+        'choices': [
+          {
+            'id': 'a',
+            'label': 'Contrôle juridictionnel',
+            'feedback': 'Ne doit jamais être mappé avant submit.',
+          },
+          {'id': 'b', 'label': 'Pouvoir absolu'},
+          {'id': 'c', 'label': 'Séparation des pouvoirs'},
+        ],
+        'sources': [
+          {
+            'chunkId': 'chunk-1',
+            'pageNumber': null,
+            'index': 0,
+            'text': 'Ne doit pas être lu avant submit.',
+          },
+        ],
+        'visuals': [
+          {
+            'id': 'visual-chart',
+            'type': 'CHART',
+            'displayOrder': 0,
+            'chartType': 'bar',
+            'title': 'Contrôles',
+            'description': 'Répartition des éléments',
+            'data': [
+              {'category': 'Contrôle', 'value': 2},
+            ],
+            'xKey': 'category',
+            'yKeys': ['value'],
+            'sources': [
+              {'chunkId': 'chunk-1', 'pageNumber': null, 'index': 0},
+            ],
+          },
+          {
+            'id': 'visual-diagram',
+            'type': 'DIAGRAM',
+            'displayOrder': 1,
+            'title': 'Relations',
+            'nodes': [
+              {'id': 'n1', 'label': 'Pouvoir'},
+              {'id': 'n2', 'label': 'Contrôle'},
+            ],
+            'edges': [
+              {'from': 'n1', 'to': 'n2', 'label': 'limite'},
+            ],
+            'sources': [
+              {'chunkId': 'chunk-1', 'pageNumber': null, 'index': 0},
+            ],
+          },
+          {
+            'id': 'visual-image',
+            'type': 'IMAGE',
+            'displayOrder': 2,
+            'sources': [
+              {'chunkId': 'chunk-1', 'pageNumber': null, 'index': 0},
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
 Map<String, Object?> enrichedResultJson() {
   return {
     'correctAnswers': 0,
@@ -244,6 +438,37 @@ Map<String, Object?> enrichedResultJson() {
           {
             'chunkId': 'chunk-1',
             'text': 'Le myocarde est le muscle cardiaque.',
+            'pageNumber': null,
+            'index': 0,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+Map<String, Object?> v3MultipleResultJson() {
+  return {
+    'correctAnswers': 0,
+    'totalQuestions': 1,
+    'score': 0.0,
+    'items': [
+      {
+        'questionId': 'question-multiple',
+        'knowledgeUnitId': 'unit-1',
+        'prompt': 'Quels éléments contrôlent le pouvoir ?',
+        'selectedChoiceIds': ['a', 'c'],
+        'correctChoiceIds': ['a', 'b'],
+        'isCorrect': false,
+        'partialScore': 0.5,
+        'explanation': 'Explication post-submit.',
+        'choiceFeedback': [
+          {'choiceId': 'c', 'feedback': 'Feedback post-submit.'},
+        ],
+        'sources': [
+          {
+            'chunkId': 'chunk-1',
+            'text': 'Source textuelle après submit.',
             'pageNumber': null,
             'index': 0,
           },

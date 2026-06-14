@@ -41,10 +41,7 @@ class HttpActivitiesApi implements ActivityApi {
     final response = await _dio.post<Object?>(
       '/activities/$sessionId/result',
       data: {
-        'answers': [
-          for (final answer in answers)
-            {'questionId': answer.questionId, 'choiceId': answer.choiceId},
-        ],
+        'answers': [for (final answer in answers) _AnswerJson(answer).toJson()],
       },
       options: await _authorizedOptions(),
     );
@@ -119,9 +116,45 @@ class _QuestionJson {
     final difficulty = json['difficulty'];
     final choices = json['choices'];
     final sources = json['sources'];
+    final visuals = json['visuals'];
 
     if (id is! String || prompt is! String || choices is! List) {
       throw const FormatException('Invalid question response');
+    }
+
+    final parsedChoices = choices
+        .map((choice) => _ChoiceJson(choice).toChoice())
+        .toList(growable: false);
+    final selectionMode = _selectionMode(json['selectionMode']);
+    final minSelections = _selectionCount(
+      json['minSelections'],
+      fallback: 1,
+      fieldName: 'minSelections',
+    );
+    final maxSelections = _selectionCount(
+      json['maxSelections'],
+      fallback: selectionMode == DiagnosticQuizSelectionMode.multiple
+          ? parsedChoices.length
+          : 1,
+      fieldName: 'maxSelections',
+    );
+
+    if (selectionMode == DiagnosticQuizSelectionMode.multiple &&
+        (minSelections < 1 ||
+            maxSelections < minSelections ||
+            maxSelections > parsedChoices.length)) {
+      throw const FormatException('Invalid question selection response');
+    }
+
+    final parsedVisuals = <DiagnosticQuizVisual>[];
+    if (visuals is List) {
+      parsedVisuals.addAll([
+        for (final (index, visual) in visuals.indexed)
+          _VisualJson(visual, index).toVisual(),
+      ]);
+      parsedVisuals.sort(
+        (left, right) => left.displayOrder.compareTo(right.displayOrder),
+      );
     }
 
     return DiagnosticQuizQuestion(
@@ -129,15 +162,49 @@ class _QuestionJson {
       knowledgeUnitId: knowledgeUnitId is String ? knowledgeUnitId : null,
       prompt: prompt,
       difficulty: difficulty is String ? difficulty : null,
-      choices: choices
-          .map((choice) => _ChoiceJson(choice).toChoice())
-          .toList(growable: false),
+      selectionMode: selectionMode,
+      minSelections: selectionMode == DiagnosticQuizSelectionMode.multiple
+          ? minSelections
+          : 1,
+      maxSelections: selectionMode == DiagnosticQuizSelectionMode.multiple
+          ? maxSelections
+          : 1,
+      choices: parsedChoices,
       sources: sources is List
           ? sources
                 .map((source) => _SourceRefJson(source).toSourceRef())
                 .toList(growable: false)
           : const [],
+      visuals: parsedVisuals,
     );
+  }
+
+  DiagnosticQuizSelectionMode _selectionMode(Object? value) {
+    if (value == null || value == 'single') {
+      return DiagnosticQuizSelectionMode.single;
+    }
+
+    if (value == 'multiple') {
+      return DiagnosticQuizSelectionMode.multiple;
+    }
+
+    throw const FormatException('Invalid question selection response');
+  }
+
+  int _selectionCount(
+    Object? value, {
+    required int fallback,
+    required String fieldName,
+  }) {
+    if (value == null) {
+      return fallback;
+    }
+
+    if (value is int) {
+      return value;
+    }
+
+    throw FormatException('Invalid question selection response: $fieldName');
   }
 }
 
@@ -161,6 +228,226 @@ class _ChoiceJson {
     }
 
     return DiagnosticQuizChoice(id: id, label: label);
+  }
+}
+
+class _VisualJson {
+  const _VisualJson(this.value, this.fallbackIndex);
+
+  final Object? value;
+  final int fallbackIndex;
+
+  DiagnosticQuizVisual toVisual() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      return _unsupported('UNKNOWN');
+    }
+
+    final type = json['type'];
+    if (type is! String) {
+      return _unsupported('UNKNOWN', json: json);
+    }
+
+    return switch (type) {
+      'CHART' => _chart(json),
+      'DIAGRAM' => _diagram(json),
+      _ => _unsupported(type, json: json),
+    };
+  }
+
+  DiagnosticQuizVisual _chart(Map<String, Object?> json) {
+    try {
+      final id = _id(json);
+      final displayOrder = _displayOrder(json);
+      final chartType = _chartType(json['chartType']);
+      final title = json['title'];
+      final description = json['description'];
+      final data = json['data'];
+      final xKey = json['xKey'];
+      final yKeys = json['yKeys'];
+      final sources = json['sources'];
+
+      if (title is! String || data is! List) {
+        return _unsupported('CHART', json: json);
+      }
+
+      return DiagnosticQuizChartVisual(
+        id: id,
+        displayOrder: displayOrder,
+        chartType: chartType,
+        title: title,
+        description: description is String ? description : null,
+        data: data.map(_chartRow).toList(growable: false),
+        xKey: xKey is String ? xKey : null,
+        yKeys: yKeys is List ? _stringList(yKeys) : const [],
+        sources: sources is List ? _sourceRefs(sources) : const [],
+      );
+    } on FormatException {
+      return _unsupported('CHART', json: json);
+    }
+  }
+
+  DiagnosticQuizVisual _diagram(Map<String, Object?> json) {
+    try {
+      final id = _id(json);
+      final displayOrder = _displayOrder(json);
+      final title = json['title'];
+      final description = json['description'];
+      final nodes = json['nodes'];
+      final edges = json['edges'];
+      final sources = json['sources'];
+
+      if (title is! String || nodes is! List) {
+        return _unsupported('DIAGRAM', json: json);
+      }
+
+      return DiagnosticQuizDiagramVisual(
+        id: id,
+        displayOrder: displayOrder,
+        title: title,
+        description: description is String ? description : null,
+        nodes: nodes.map(_diagramNode).toList(growable: false),
+        edges: edges is List
+            ? edges.map(_diagramEdge).toList(growable: false)
+            : const [],
+        sources: sources is List ? _sourceRefs(sources) : const [],
+      );
+    } on FormatException {
+      return _unsupported('DIAGRAM', json: json);
+    }
+  }
+
+  DiagnosticQuizUnsupportedVisual _unsupported(
+    String type, {
+    Map<String, Object?>? json,
+  }) {
+    final sources = json?['sources'];
+
+    return DiagnosticQuizUnsupportedVisual(
+      id: json == null ? 'visual-$fallbackIndex' : _safeId(json),
+      displayOrder: json == null ? fallbackIndex : _safeDisplayOrder(json),
+      type: type,
+      sources: sources is List ? _safeSourceRefs(sources) : const [],
+    );
+  }
+
+  String _id(Map<String, Object?> json) {
+    final id = json['id'];
+    if (id is String && id.trim().isNotEmpty) {
+      return id;
+    }
+
+    throw const FormatException('Invalid visual response');
+  }
+
+  String _safeId(Map<String, Object?> json) {
+    final id = json['id'];
+    return id is String && id.trim().isNotEmpty ? id : 'visual-$fallbackIndex';
+  }
+
+  int _displayOrder(Map<String, Object?> json) {
+    final displayOrder = json['displayOrder'];
+    if (displayOrder == null) {
+      return fallbackIndex;
+    }
+
+    if (displayOrder is int) {
+      return displayOrder;
+    }
+
+    throw const FormatException('Invalid visual response');
+  }
+
+  int _safeDisplayOrder(Map<String, Object?> json) {
+    final displayOrder = json['displayOrder'];
+    return displayOrder is int ? displayOrder : fallbackIndex;
+  }
+
+  DiagnosticQuizChartType _chartType(Object? value) {
+    return switch (value) {
+      'bar' => DiagnosticQuizChartType.bar,
+      'line' => DiagnosticQuizChartType.line,
+      'pie' => DiagnosticQuizChartType.pie,
+      'scatter' => DiagnosticQuizChartType.scatter,
+      _ => throw const FormatException('Invalid chart visual response'),
+    };
+  }
+
+  Map<String, Object?> _chartRow(Object? value) {
+    final json = value;
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid chart visual response');
+    }
+
+    return json.map((key, value) {
+      if (value == null || value is String || value is num) {
+        return MapEntry(key, value);
+      }
+
+      throw const FormatException('Invalid chart visual response');
+    });
+  }
+
+  DiagnosticQuizDiagramNode _diagramNode(Object? value) {
+    final json = value;
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid diagram visual response');
+    }
+
+    final id = json['id'];
+    final label = json['label'];
+    if (id is! String || label is! String) {
+      throw const FormatException('Invalid diagram visual response');
+    }
+
+    return DiagnosticQuizDiagramNode(id: id, label: label);
+  }
+
+  DiagnosticQuizDiagramEdge _diagramEdge(Object? value) {
+    final json = value;
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid diagram visual response');
+    }
+
+    final from = json['from'];
+    final to = json['to'];
+    final label = json['label'];
+    if (from is! String || to is! String) {
+      throw const FormatException('Invalid diagram visual response');
+    }
+
+    return DiagnosticQuizDiagramEdge(
+      from: from,
+      to: to,
+      label: label is String ? label : null,
+    );
+  }
+
+  List<String> _stringList(List<Object?> values) {
+    return values
+        .map((value) {
+          if (value is String) {
+            return value;
+          }
+
+          throw const FormatException('Invalid visual response');
+        })
+        .toList(growable: false);
+  }
+
+  List<DiagnosticQuizSourceRef> _sourceRefs(List<Object?> values) {
+    return values
+        .map((source) => _SourceRefJson(source).toSourceRef())
+        .toList(growable: false);
+  }
+
+  List<DiagnosticQuizSourceRef> _safeSourceRefs(List<Object?> values) {
+    try {
+      return _sourceRefs(values);
+    } on FormatException {
+      return const [];
+    }
   }
 }
 
@@ -189,6 +476,21 @@ class _SourceRefJson {
       pageNumber: pageNumber is int ? pageNumber : null,
       index: index,
     );
+  }
+}
+
+class _AnswerJson {
+  const _AnswerJson(this.answer);
+
+  final DiagnosticQuizAnswer answer;
+
+  Map<String, Object?> toJson() {
+    final choiceId = answer.choiceId;
+    if (choiceId != null) {
+      return {'questionId': answer.questionId, 'choiceId': choiceId};
+    }
+
+    return {'questionId': answer.questionId, 'choiceIds': answer.choiceIds};
   }
 }
 
@@ -243,17 +545,31 @@ class _CorrectionItemJson {
     final prompt = json['prompt'];
     final selectedChoiceId = json['selectedChoiceId'];
     final correctChoiceId = json['correctChoiceId'];
+    final selectedChoiceIds = json['selectedChoiceIds'];
+    final correctChoiceIds = json['correctChoiceIds'];
     final isCorrect = json['isCorrect'];
+    final partialScore = json['partialScore'];
     final explanation = json['explanation'];
     final choiceFeedback = json['choiceFeedback'];
     final sources = json['sources'];
 
     if (questionId is! String ||
         prompt is! String ||
-        selectedChoiceId is! String ||
-        correctChoiceId is! String ||
         isCorrect is! bool ||
         explanation is! String) {
+      throw const FormatException('Invalid correction item response');
+    }
+
+    final parsedSelectedChoiceIds = selectedChoiceIds is List
+        ? _stringList(selectedChoiceIds)
+        : const <String>[];
+    final parsedCorrectChoiceIds = correctChoiceIds is List
+        ? _stringList(correctChoiceIds)
+        : const <String>[];
+
+    if (selectedChoiceId is! String &&
+        correctChoiceId is! String &&
+        (parsedSelectedChoiceIds.isEmpty || parsedCorrectChoiceIds.isEmpty)) {
       throw const FormatException('Invalid correction item response');
     }
 
@@ -261,9 +577,12 @@ class _CorrectionItemJson {
       questionId: questionId,
       knowledgeUnitId: knowledgeUnitId is String ? knowledgeUnitId : null,
       prompt: prompt,
-      selectedChoiceId: selectedChoiceId,
-      correctChoiceId: correctChoiceId,
+      selectedChoiceId: selectedChoiceId is String ? selectedChoiceId : null,
+      correctChoiceId: correctChoiceId is String ? correctChoiceId : null,
+      selectedChoiceIds: parsedSelectedChoiceIds,
+      correctChoiceIds: parsedCorrectChoiceIds,
       isCorrect: isCorrect,
+      partialScore: partialScore is num ? partialScore.toDouble() : null,
       explanation: explanation,
       choiceFeedback: choiceFeedback is List
           ? choiceFeedback
@@ -279,6 +598,18 @@ class _CorrectionItemJson {
                 .toList(growable: false)
           : const [],
     );
+  }
+
+  List<String> _stringList(List<Object?> values) {
+    return values
+        .map((value) {
+          if (value is String) {
+            return value;
+          }
+
+          throw const FormatException('Invalid correction item response');
+        })
+        .toList(growable: false);
   }
 }
 

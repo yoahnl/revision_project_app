@@ -53,7 +53,7 @@ class DiagnosticQuizSessionController {
 
   final DiagnosticQuizActivity activity;
   final DiagnosticQuizSubmitter? submitter;
-  final Map<String, String> _selectedChoiceIdsByQuestion = {};
+  final Map<String, Set<String>> _selectedChoiceIdsByQuestion = {};
 
   DiagnosticQuizResult? _result;
   Object? _submitError;
@@ -63,7 +63,9 @@ class DiagnosticQuizSessionController {
   DiagnosticQuizResult? get result => _result;
   Object? get submitError => _submitError;
   bool get isSubmitting => _isSubmitting;
-  int get answeredCount => _selectedChoiceIdsByQuestion.length;
+  int get answeredCount => activity.questions
+      .where((question) => _isQuestionComplete(question))
+      .length;
   bool get hasCorrection => _result != null;
 
   bool get canSubmit {
@@ -71,11 +73,29 @@ class DiagnosticQuizSessionController {
         !_isSubmitting &&
         _result == null &&
         activity.questions.isNotEmpty &&
-        _selectedChoiceIdsByQuestion.length == activity.questions.length;
+        activity.questions.every(_isQuestionComplete);
   }
 
   String? selectedChoiceIdFor(String questionId) {
-    return _selectedChoiceIdsByQuestion[questionId];
+    final selectedChoiceIds = selectedChoiceIdsFor(questionId);
+    return selectedChoiceIds.isEmpty ? null : selectedChoiceIds.first;
+  }
+
+  List<String> selectedChoiceIdsFor(String questionId) {
+    final selectedChoiceIds = _selectedChoiceIdsByQuestion[questionId];
+    if (selectedChoiceIds == null || selectedChoiceIds.isEmpty) {
+      return const [];
+    }
+
+    final question = _questionById(questionId);
+    if (question == null) {
+      return selectedChoiceIds.toList(growable: false);
+    }
+
+    return question.choices
+        .where((choice) => selectedChoiceIds.contains(choice.id))
+        .map((choice) => choice.id)
+        .toList(growable: false);
   }
 
   void selectChoice({required String questionId, required String choiceId}) {
@@ -92,7 +112,12 @@ class DiagnosticQuizSessionController {
       return;
     }
 
-    _selectedChoiceIdsByQuestion[questionId] = choiceId;
+    if (question.selectionMode == DiagnosticQuizSelectionMode.multiple) {
+      _toggleMultipleChoice(question: question, choiceId: choiceId);
+    } else {
+      _selectedChoiceIdsByQuestion[questionId] = {choiceId};
+    }
+
     _submitError = null;
   }
 
@@ -119,12 +144,7 @@ class DiagnosticQuizSessionController {
     try {
       final result = await submitter!(
         activity.questions
-            .map(
-              (question) => DiagnosticQuizAnswer(
-                questionId: question.id,
-                choiceId: _selectedChoiceIdsByQuestion[question.id]!,
-              ),
-            )
+            .map((question) => _answerForQuestion(question))
             .toList(growable: false),
       );
       _result = result;
@@ -134,6 +154,56 @@ class DiagnosticQuizSessionController {
       _isSubmitting = false;
       _activeSubmit = null;
     }
+  }
+
+  void _toggleMultipleChoice({
+    required DiagnosticQuizQuestion question,
+    required String choiceId,
+  }) {
+    final selectedChoiceIds = {...?_selectedChoiceIdsByQuestion[question.id]};
+
+    if (selectedChoiceIds.contains(choiceId)) {
+      selectedChoiceIds.remove(choiceId);
+    } else if (selectedChoiceIds.length < question.maxSelections) {
+      selectedChoiceIds.add(choiceId);
+    }
+
+    if (selectedChoiceIds.isEmpty) {
+      _selectedChoiceIdsByQuestion.remove(question.id);
+      return;
+    }
+
+    _selectedChoiceIdsByQuestion[question.id] = selectedChoiceIds;
+  }
+
+  bool _isQuestionComplete(DiagnosticQuizQuestion question) {
+    final selectedChoiceIds = _selectedChoiceIdsByQuestion[question.id];
+    if (selectedChoiceIds == null) {
+      return false;
+    }
+
+    if (question.selectionMode == DiagnosticQuizSelectionMode.multiple) {
+      return selectedChoiceIds.length >= question.minSelections &&
+          selectedChoiceIds.length <= question.maxSelections;
+    }
+
+    return selectedChoiceIds.length == 1;
+  }
+
+  DiagnosticQuizAnswer _answerForQuestion(DiagnosticQuizQuestion question) {
+    final selectedChoiceIds = selectedChoiceIdsFor(question.id);
+
+    if (question.selectionMode == DiagnosticQuizSelectionMode.multiple) {
+      return DiagnosticQuizAnswer(
+        questionId: question.id,
+        choiceIds: selectedChoiceIds,
+      );
+    }
+
+    return DiagnosticQuizAnswer(
+      questionId: question.id,
+      choiceId: selectedChoiceIds.first,
+    );
   }
 
   DiagnosticQuizQuestion? _questionById(String questionId) {

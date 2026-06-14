@@ -67,7 +67,7 @@ class _DiagnosticQuizPageState extends State<DiagnosticQuizPage> {
           _QuestionPanel(
             questionNumber: index + 1,
             question: question,
-            selectedChoiceId: _controller.selectedChoiceIdFor(question.id),
+            selectedChoiceIds: _controller.selectedChoiceIdsFor(question.id),
             correction: result?.correctionFor(question.id),
             enabled: !hasResult && !_controller.isSubmitting,
             onChoiceSelected: (choiceId) {
@@ -161,7 +161,7 @@ class _QuestionPanel extends StatelessWidget {
   const _QuestionPanel({
     required this.questionNumber,
     required this.question,
-    required this.selectedChoiceId,
+    required this.selectedChoiceIds,
     required this.correction,
     required this.enabled,
     required this.onChoiceSelected,
@@ -169,7 +169,7 @@ class _QuestionPanel extends StatelessWidget {
 
   final int questionNumber;
   final DiagnosticQuizQuestion question;
-  final String? selectedChoiceId;
+  final List<String> selectedChoiceIds;
   final DiagnosticQuizCorrectionItem? correction;
   final bool enabled;
   final ValueChanged<String> onChoiceSelected;
@@ -196,10 +196,22 @@ class _QuestionPanel extends StatelessWidget {
                   label: question.difficulty!,
                   color: Theme.of(context).colorScheme.tertiary,
                 ),
+              RevisionStatusPill(
+                label:
+                    question.selectionMode ==
+                        DiagnosticQuizSelectionMode.multiple
+                    ? 'Plusieurs réponses possibles'
+                    : 'Une seule réponse',
+                color: Theme.of(context).colorScheme.secondary,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.s),
           Text(question.prompt, style: Theme.of(context).textTheme.titleMedium),
+          if (question.visuals.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.m),
+            _QuestionVisuals(visuals: question.visuals),
+          ],
           if (correction == null && question.sources.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.s),
             Text(
@@ -208,12 +220,20 @@ class _QuestionPanel extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.m),
+          if (question.selectionMode == DiagnosticQuizSelectionMode.multiple)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.s),
+              child: Text(
+                _multipleSelectionHint(question),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           for (final choice in question.choices)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.s),
               child: RevisionChoiceTile(
                 label: choice.label,
-                selected: selectedChoiceId == choice.id,
+                selected: selectedChoiceIds.contains(choice.id),
                 enabled: enabled,
                 onTap: () => onChoiceSelected(choice.id),
               ),
@@ -222,6 +242,301 @@ class _QuestionPanel extends StatelessWidget {
             const SizedBox(height: AppSpacing.m),
             _CorrectionBlock(question: question, correction: correction),
           ],
+        ],
+      ),
+    );
+  }
+
+  String _multipleSelectionHint(DiagnosticQuizQuestion question) {
+    if (question.minSelections == question.maxSelections) {
+      return 'Sélectionne ${question.minSelections} réponses.';
+    }
+
+    return 'Sélectionne entre ${question.minSelections} et ${question.maxSelections} réponses.';
+  }
+}
+
+class _QuestionVisuals extends StatelessWidget {
+  const _QuestionVisuals({required this.visuals});
+
+  final List<DiagnosticQuizVisual> visuals;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      spacing: AppSpacing.s,
+      children: [for (final visual in visuals) _QuestionVisual(visual: visual)],
+    );
+  }
+}
+
+class _QuestionVisual extends StatelessWidget {
+  const _QuestionVisual({required this.visual});
+
+  final DiagnosticQuizVisual visual;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (visual) {
+      DiagnosticQuizChartVisual chart => _ChartVisual(chart: chart),
+      DiagnosticQuizDiagramVisual diagram => _DiagramVisual(diagram: diagram),
+      DiagnosticQuizUnsupportedVisual unsupported => _UnsupportedVisual(
+        visual: unsupported,
+      ),
+    };
+  }
+}
+
+class _VisualFrame extends StatelessWidget {
+  const _VisualFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.m),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outlineVariant),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.44),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ChartVisual extends StatelessWidget {
+  const _ChartVisual({required this.chart});
+
+  final DiagnosticQuizChartVisual chart;
+
+  @override
+  Widget build(BuildContext context) {
+    return _VisualFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(chart.title, style: Theme.of(context).textTheme.titleSmall),
+          if (chart.description != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(chart.description!),
+          ],
+          const SizedBox(height: AppSpacing.s),
+          if (chart.chartType == DiagnosticQuizChartType.bar)
+            _BarChartRows(chart: chart)
+          else
+            _ChartTable(chart: chart),
+        ],
+      ),
+    );
+  }
+}
+
+class _BarChartRows extends StatelessWidget {
+  const _BarChartRows({required this.chart});
+
+  final DiagnosticQuizChartVisual chart;
+
+  @override
+  Widget build(BuildContext context) {
+    final xKey = chart.xKey;
+    final yKey = chart.yKeys.isEmpty ? null : chart.yKeys.first;
+    final maxValue = _maxNumericValue(yKey);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final row in chart.data)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.s),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_rowLabel(row, xKey)),
+                const SizedBox(height: AppSpacing.xs),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: _rowFraction(row, yKey, maxValue),
+                    minHeight: 8,
+                  ),
+                ),
+                if (yKey != null && row[yKey] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xs),
+                    child: Text(
+                      '${row[yKey]}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  double _maxNumericValue(String? key) {
+    if (key == null) {
+      return 1;
+    }
+
+    final values = chart.data
+        .map((row) => row[key])
+        .whereType<num>()
+        .map((value) => value.toDouble())
+        .toList(growable: false);
+
+    if (values.isEmpty) {
+      return 1;
+    }
+
+    return values.reduce((left, right) => left > right ? left : right);
+  }
+
+  double _rowFraction(Map<String, Object?> row, String? key, double maxValue) {
+    if (key == null || maxValue <= 0) {
+      return 0;
+    }
+
+    final value = row[key];
+    if (value is! num) {
+      return 0;
+    }
+
+    return (value.toDouble() / maxValue).clamp(0, 1);
+  }
+}
+
+class _ChartTable extends StatelessWidget {
+  const _ChartTable({required this.chart});
+
+  final DiagnosticQuizChartVisual chart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final row in chart.data)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            child: Text(
+              row.entries
+                  .map((entry) => '${entry.key}: ${entry.value}')
+                  .join(' | '),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _DiagramVisual extends StatelessWidget {
+  const _DiagramVisual({required this.diagram});
+
+  final DiagnosticQuizDiagramVisual diagram;
+
+  @override
+  Widget build(BuildContext context) {
+    return _VisualFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(diagram.title, style: Theme.of(context).textTheme.titleSmall),
+          if (diagram.description != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(diagram.description!),
+          ],
+          const SizedBox(height: AppSpacing.s),
+          Wrap(
+            spacing: AppSpacing.s,
+            runSpacing: AppSpacing.s,
+            children: [
+              for (final node in diagram.nodes)
+                _DiagramNodePill(label: node.label),
+            ],
+          ),
+          if (diagram.edges.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.s),
+            for (final edge in diagram.edges)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                child: Text(_edgeLabel(edge)),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _edgeLabel(DiagnosticQuizDiagramEdge edge) {
+    final from = _nodeLabel(edge.from);
+    final to = _nodeLabel(edge.to);
+    final label = edge.label;
+
+    if (label == null || label.isEmpty) {
+      return '$from -> $to';
+    }
+
+    return '$from -> $to: $label';
+  }
+
+  String _nodeLabel(String id) {
+    for (final node in diagram.nodes) {
+      if (node.id == id) {
+        return node.label;
+      }
+    }
+
+    return id;
+  }
+}
+
+class _DiagramNodePill extends StatelessWidget {
+  const _DiagramNodePill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colorScheme.outlineVariant),
+        color: colorScheme.surface,
+      ),
+      child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+    );
+  }
+}
+
+class _UnsupportedVisual extends StatelessWidget {
+  const _UnsupportedVisual({required this.visual});
+
+  final DiagnosticQuizUnsupportedVisual visual;
+
+  @override
+  Widget build(BuildContext context) {
+    return _VisualFrame(
+      child: Row(
+        children: [
+          Icon(
+            Icons.hide_image_outlined,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppSpacing.s),
+          Expanded(child: Text('Visuel ${visual.type} indisponible')),
         ],
       ),
     );
@@ -274,11 +589,15 @@ class _CorrectionBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedLabel = _choiceLabel(correction.selectedChoiceId);
-    final correctLabel = _choiceLabel(correction.correctChoiceId);
+    final selectedLabels = _choiceLabels(_selectedChoiceIds());
+    final correctLabels = _choiceLabels(_correctChoiceIds());
     final statusColor = correction.isCorrect
         ? Theme.of(context).colorScheme.primary
         : Theme.of(context).colorScheme.error;
+    final isMultiple =
+        question.selectionMode == DiagnosticQuizSelectionMode.multiple ||
+        correction.selectedChoiceIds.isNotEmpty ||
+        correction.correctChoiceIds.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,8 +610,23 @@ class _CorrectionBlock extends StatelessWidget {
               : Icons.cancel_outlined,
         ),
         const SizedBox(height: AppSpacing.s),
-        Text('Réponse sélectionnée: $selectedLabel'),
-        Text('Réponse attendue: $correctLabel'),
+        Text(
+          isMultiple
+              ? 'Réponses sélectionnées: $selectedLabels'
+              : 'Réponse sélectionnée: $selectedLabels',
+        ),
+        Text(
+          isMultiple
+              ? 'Réponses attendues: $correctLabels'
+              : 'Réponse attendue: $correctLabels',
+        ),
+        if (correction.partialScore != null)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
+            child: Text(
+              'Score partiel ${(correction.partialScore! * 100).round()} %',
+            ),
+          ),
         const SizedBox(height: AppSpacing.s),
         Text(correction.explanation),
         if (correction.choiceFeedback.isNotEmpty) ...[
@@ -327,6 +661,32 @@ class _CorrectionBlock extends StatelessWidget {
     );
   }
 
+  List<String> _selectedChoiceIds() {
+    if (correction.selectedChoiceIds.isNotEmpty) {
+      return correction.selectedChoiceIds;
+    }
+
+    final selectedChoiceId = correction.selectedChoiceId;
+    return selectedChoiceId == null ? const [] : [selectedChoiceId];
+  }
+
+  List<String> _correctChoiceIds() {
+    if (correction.correctChoiceIds.isNotEmpty) {
+      return correction.correctChoiceIds;
+    }
+
+    final correctChoiceId = correction.correctChoiceId;
+    return correctChoiceId == null ? const [] : [correctChoiceId];
+  }
+
+  String _choiceLabels(List<String> choiceIds) {
+    if (choiceIds.isEmpty) {
+      return 'Non renseigné';
+    }
+
+    return choiceIds.map(_choiceLabel).join(', ');
+  }
+
   String _choiceLabel(String choiceId) {
     for (final choice in question.choices) {
       if (choice.id == choiceId) {
@@ -336,6 +696,18 @@ class _CorrectionBlock extends StatelessWidget {
 
     return choiceId;
   }
+}
+
+String _rowLabel(Map<String, Object?> row, String? key) {
+  if (key != null && row[key] != null) {
+    return '${row[key]}';
+  }
+
+  if (row.isEmpty) {
+    return 'Donnée';
+  }
+
+  return '${row.values.first}';
 }
 
 extension on DiagnosticQuizResult {
