@@ -42,7 +42,12 @@ void main() {
 
     expect(activity.sessionId, 'session-1');
     expect(adapter.lastOptions?.path, '/activities/next');
-    expect(adapter.lastOptions?.data, {'subjectId': 'subject-1'});
+    expect(adapter.lastOptions?.data, {
+      'subjectId': 'subject-1',
+      'selectionModes': ['single', 'multiple'],
+      'visualsEnabled': true,
+      'visualTypes': ['CHART', 'DIAGRAM'],
+    });
     expect(
       adapter.lastOptions?.headers['Authorization'],
       'Bearer firebase-id-token',

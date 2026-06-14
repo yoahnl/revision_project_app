@@ -19,7 +19,12 @@ class HttpActivitiesApi implements ActivityApi {
     required String subjectId,
     String? knowledgeUnitId,
   }) async {
-    final data = {'subjectId': subjectId};
+    final data = <String, Object>{
+      'subjectId': subjectId,
+      'selectionModes': ['single', 'multiple'],
+      'visualsEnabled': true,
+      'visualTypes': ['CHART', 'DIAGRAM'],
+    };
     if (knowledgeUnitId != null) {
       data['knowledgeUnitId'] = knowledgeUnitId;
     }
