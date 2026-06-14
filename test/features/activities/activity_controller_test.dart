@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
@@ -5,6 +7,9 @@ import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity
 class FakeActivityApi implements ActivityApi {
   String? startedSubjectId;
   List<DiagnosticQuizAnswer>? submittedAnswers;
+  int submitCallCount = 0;
+  Completer<DiagnosticQuizResult>? submitCompleter;
+  Object? submitError;
 
   @override
   Future<DiagnosticQuizActivity> startNextActivity({
@@ -34,7 +39,17 @@ class FakeActivityApi implements ActivityApi {
     required String sessionId,
     required List<DiagnosticQuizAnswer> answers,
   }) async {
+    submitCallCount += 1;
     submittedAnswers = answers;
+
+    if (submitError != null) {
+      throw submitError!;
+    }
+
+    final completer = submitCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
 
     return const DiagnosticQuizResult(correctAnswers: 1, totalQuestions: 1);
   }
@@ -69,4 +84,130 @@ void main() {
     expect(api.submittedAnswers?.single.choiceId, 'a');
     expect(result.correctAnswers, 1);
   });
+
+  test('manages selected answers and enriched correction state', () async {
+    final controller = DiagnosticQuizSessionController(
+      activity: longActivity(questionCount: 2),
+      submitter: (answers) async {
+        return DiagnosticQuizResult(
+          correctAnswers: 1,
+          totalQuestions: 2,
+          score: 0.5,
+          items: [
+            DiagnosticQuizCorrectionItem(
+              questionId: 'question-1',
+              knowledgeUnitId: 'unit-1',
+              prompt: 'Question 1',
+              selectedChoiceId: 'a',
+              correctChoiceId: 'b',
+              isCorrect: false,
+              explanation: 'Explication sourcée.',
+              choiceFeedback: const [
+                DiagnosticQuizChoiceFeedback(
+                  choiceId: 'a',
+                  feedback: 'Distracteur plausible.',
+                ),
+              ],
+              sources: const [
+                DiagnosticQuizCorrectionSource(
+                  chunkId: 'chunk-1',
+                  text: 'Source après submit.',
+                  pageNumber: null,
+                  index: 0,
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+
+    expect(controller.result, isNull);
+    expect(controller.canSubmit, isFalse);
+
+    controller.selectChoice(questionId: 'question-1', choiceId: 'a');
+    controller.selectChoice(questionId: 'question-1', choiceId: 'b');
+    controller.selectChoice(questionId: 'question-2', choiceId: 'a');
+
+    expect(controller.selectedChoiceIdFor('question-1'), 'b');
+    expect(controller.canSubmit, isTrue);
+
+    await controller.submit();
+
+    expect(controller.result?.score, 0.5);
+    expect(controller.result?.items.single.explanation, 'Explication sourcée.');
+  });
+
+  test('prevents duplicate submit while a submission is running', () async {
+    final completer = Completer<DiagnosticQuizResult>();
+    var submitCount = 0;
+    final controller = DiagnosticQuizSessionController(
+      activity: longActivity(questionCount: 1),
+      submitter: (answers) {
+        submitCount += 1;
+        return completer.future;
+      },
+    );
+
+    controller.selectChoice(questionId: 'question-1', choiceId: 'a');
+
+    final firstSubmit = controller.submit();
+    final secondSubmit = controller.submit();
+
+    expect(submitCount, 1);
+
+    completer.complete(
+      const DiagnosticQuizResult(correctAnswers: 1, totalQuestions: 1),
+    );
+    await Future.wait([firstSubmit, secondSubmit]);
+
+    expect(controller.isSubmitting, isFalse);
+    expect(controller.result?.correctAnswers, 1);
+  });
+
+  test('keeps submit errors visible and supports long quizzes', () async {
+    final controller = DiagnosticQuizSessionController(
+      activity: longActivity(questionCount: 15),
+      submitter: (_) async => throw StateError('Activity already completed'),
+    );
+
+    for (var index = 1; index <= 15; index += 1) {
+      controller.selectChoice(questionId: 'question-$index', choiceId: 'a');
+    }
+
+    expect(controller.answeredCount, 15);
+    expect(controller.canSubmit, isTrue);
+
+    await controller.submit();
+
+    expect(controller.result, isNull);
+    expect(controller.submitError, isA<StateError>());
+  });
+}
+
+DiagnosticQuizActivity longActivity({required int questionCount}) {
+  return DiagnosticQuizActivity(
+    sessionId: 'session-long',
+    title: 'Diagnostic long',
+    questions: [
+      for (var index = 1; index <= questionCount; index += 1)
+        DiagnosticQuizQuestion(
+          id: 'question-$index',
+          knowledgeUnitId: 'unit-$index',
+          prompt: 'Question $index',
+          difficulty: 'MEDIUM',
+          choices: const [
+            DiagnosticQuizChoice(id: 'a', label: 'Choix A'),
+            DiagnosticQuizChoice(id: 'b', label: 'Choix B'),
+          ],
+          sources: [
+            DiagnosticQuizSourceRef(
+              chunkId: 'chunk-$index',
+              pageNumber: null,
+              index: index - 1,
+            ),
+          ],
+        ),
+    ],
+  );
 }

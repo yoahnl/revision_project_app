@@ -76,7 +76,11 @@ class _ActivityJson {
     }
 
     final sessionId = json['sessionId'];
+    final type = json['type'];
+    final version = json['version'];
     final title = json['title'];
+    final documentId = json['documentId'];
+    final subjectId = json['subjectId'];
     final questions = json['questions'];
 
     if (sessionId is! String || title is! String || questions is! List) {
@@ -85,7 +89,11 @@ class _ActivityJson {
 
     return DiagnosticQuizActivity(
       sessionId: sessionId,
+      type: type is String ? type : 'diagnostic_quiz',
+      version: version is int ? version : null,
       title: title,
+      documentId: documentId is String ? documentId : null,
+      subjectId: subjectId is String ? subjectId : null,
       questions: questions
           .map((question) => _QuestionJson(question).toQuestion())
           .toList(growable: false),
@@ -106,8 +114,11 @@ class _QuestionJson {
     }
 
     final id = json['id'];
+    final knowledgeUnitId = json['knowledgeUnitId'];
     final prompt = json['prompt'];
+    final difficulty = json['difficulty'];
     final choices = json['choices'];
+    final sources = json['sources'];
 
     if (id is! String || prompt is! String || choices is! List) {
       throw const FormatException('Invalid question response');
@@ -115,10 +126,17 @@ class _QuestionJson {
 
     return DiagnosticQuizQuestion(
       id: id,
+      knowledgeUnitId: knowledgeUnitId is String ? knowledgeUnitId : null,
       prompt: prompt,
+      difficulty: difficulty is String ? difficulty : null,
       choices: choices
           .map((choice) => _ChoiceJson(choice).toChoice())
           .toList(growable: false),
+      sources: sources is List
+          ? sources
+                .map((source) => _SourceRefJson(source).toSourceRef())
+                .toList(growable: false)
+          : const [],
     );
   }
 }
@@ -146,6 +164,34 @@ class _ChoiceJson {
   }
 }
 
+class _SourceRefJson {
+  const _SourceRefJson(this.value);
+
+  final Object? value;
+
+  DiagnosticQuizSourceRef toSourceRef() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid question source response');
+    }
+
+    final chunkId = json['chunkId'];
+    final pageNumber = json['pageNumber'];
+    final index = json['index'];
+
+    if (chunkId is! String || index is! int) {
+      throw const FormatException('Invalid question source response');
+    }
+
+    return DiagnosticQuizSourceRef(
+      chunkId: chunkId,
+      pageNumber: pageNumber is int ? pageNumber : null,
+      index: index,
+    );
+  }
+}
+
 class _ResultJson {
   const _ResultJson(this.value);
 
@@ -160,6 +206,8 @@ class _ResultJson {
 
     final correctAnswers = json['correctAnswers'];
     final totalQuestions = json['totalQuestions'];
+    final score = json['score'];
+    final items = json['items'];
 
     if (correctAnswers is! int || totalQuestions is! int) {
       throw const FormatException('Invalid activity result response');
@@ -168,6 +216,121 @@ class _ResultJson {
     return DiagnosticQuizResult(
       correctAnswers: correctAnswers,
       totalQuestions: totalQuestions,
+      score: score is num ? score.toDouble() : null,
+      items: items is List
+          ? items
+                .map((item) => _CorrectionItemJson(item).toCorrectionItem())
+                .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+class _CorrectionItemJson {
+  const _CorrectionItemJson(this.value);
+
+  final Object? value;
+
+  DiagnosticQuizCorrectionItem toCorrectionItem() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid correction item response');
+    }
+
+    final questionId = json['questionId'];
+    final knowledgeUnitId = json['knowledgeUnitId'];
+    final prompt = json['prompt'];
+    final selectedChoiceId = json['selectedChoiceId'];
+    final correctChoiceId = json['correctChoiceId'];
+    final isCorrect = json['isCorrect'];
+    final explanation = json['explanation'];
+    final choiceFeedback = json['choiceFeedback'];
+    final sources = json['sources'];
+
+    if (questionId is! String ||
+        prompt is! String ||
+        selectedChoiceId is! String ||
+        correctChoiceId is! String ||
+        isCorrect is! bool ||
+        explanation is! String) {
+      throw const FormatException('Invalid correction item response');
+    }
+
+    return DiagnosticQuizCorrectionItem(
+      questionId: questionId,
+      knowledgeUnitId: knowledgeUnitId is String ? knowledgeUnitId : null,
+      prompt: prompt,
+      selectedChoiceId: selectedChoiceId,
+      correctChoiceId: correctChoiceId,
+      isCorrect: isCorrect,
+      explanation: explanation,
+      choiceFeedback: choiceFeedback is List
+          ? choiceFeedback
+                .map(
+                  (feedback) =>
+                      _ChoiceFeedbackJson(feedback).toChoiceFeedback(),
+                )
+                .toList(growable: false)
+          : const [],
+      sources: sources is List
+          ? sources
+                .map((source) => _CorrectionSourceJson(source).toSource())
+                .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+class _ChoiceFeedbackJson {
+  const _ChoiceFeedbackJson(this.value);
+
+  final Object? value;
+
+  DiagnosticQuizChoiceFeedback toChoiceFeedback() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid choice feedback response');
+    }
+
+    final choiceId = json['choiceId'];
+    final feedback = json['feedback'];
+
+    if (choiceId is! String || feedback is! String) {
+      throw const FormatException('Invalid choice feedback response');
+    }
+
+    return DiagnosticQuizChoiceFeedback(choiceId: choiceId, feedback: feedback);
+  }
+}
+
+class _CorrectionSourceJson {
+  const _CorrectionSourceJson(this.value);
+
+  final Object? value;
+
+  DiagnosticQuizCorrectionSource toSource() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid correction source response');
+    }
+
+    final chunkId = json['chunkId'];
+    final text = json['text'];
+    final pageNumber = json['pageNumber'];
+    final index = json['index'];
+
+    if (chunkId is! String || text is! String || index is! int) {
+      throw const FormatException('Invalid correction source response');
+    }
+
+    return DiagnosticQuizCorrectionSource(
+      chunkId: chunkId,
+      text: text,
+      pageNumber: pageNumber is int ? pageNumber : null,
+      index: index,
     );
   }
 }
