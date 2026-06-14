@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../application/activity_controller.dart';
 import '../domain/diagnostic_quiz_activity.dart';
+import '../domain/open_question_activity.dart';
 
 class HttpActivitiesApi implements ActivityApi {
   HttpActivitiesApi({
@@ -52,6 +53,34 @@ class HttpActivitiesApi implements ActivityApi {
     );
 
     return _ResultJson(response.data).toResult();
+  }
+
+  @override
+  Future<OpenQuestionActivity> startOpenQuestion({
+    required String subjectId,
+    required String knowledgeUnitId,
+  }) async {
+    final response = await _dio.post<Object?>(
+      '/activities/open-question',
+      data: {'subjectId': subjectId, 'knowledgeUnitId': knowledgeUnitId},
+      options: await _authorizedOptions(),
+    );
+
+    return _OpenQuestionActivityJson(response.data).toActivity();
+  }
+
+  @override
+  Future<OpenAnswerSubmissionResult> submitOpenAnswer({
+    required String sessionId,
+    required String answerText,
+  }) async {
+    final response = await _dio.post<Object?>(
+      '/activities/$sessionId/open-answer',
+      data: {'answerText': answerText},
+      options: await _authorizedOptions(),
+    );
+
+    return _OpenAnswerSubmissionJson(response.data).toResult();
   }
 
   Future<Options> _authorizedOptions() async {
@@ -669,4 +698,236 @@ class _CorrectionSourceJson {
       index: index,
     );
   }
+}
+
+class _OpenQuestionActivityJson {
+  const _OpenQuestionActivityJson(this.value);
+
+  final Object? value;
+
+  OpenQuestionActivity toActivity() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid open question response');
+    }
+
+    final sessionId = json['sessionId'];
+    final type = json['type'];
+    final version = json['version'];
+    final subjectId = json['subjectId'];
+    final documentId = json['documentId'];
+    final knowledgeUnitId = json['knowledgeUnitId'];
+    final question = json['question'];
+
+    if (sessionId is! String ||
+        type != 'open_question' ||
+        subjectId is! String ||
+        knowledgeUnitId is! String ||
+        question is! Map<String, Object?>) {
+      throw const FormatException('Invalid open question response');
+    }
+
+    return OpenQuestionActivity(
+      sessionId: sessionId,
+      type: type as String,
+      version: version is int ? version : null,
+      subjectId: subjectId,
+      documentId: documentId is String ? documentId : null,
+      knowledgeUnitId: knowledgeUnitId,
+      question: _OpenQuestionJson(question).toQuestion(),
+    );
+  }
+}
+
+class _OpenQuestionJson {
+  const _OpenQuestionJson(this.value);
+
+  final Map<String, Object?> value;
+
+  OpenQuestion toQuestion() {
+    final id = value['id'];
+    final prompt = value['prompt'];
+    final instructions = value['instructions'];
+    final maxAnswerLength = value['maxAnswerLength'];
+    final sources = value['sources'];
+
+    if (id is! String || prompt is! String || maxAnswerLength is! int) {
+      throw const FormatException('Invalid open question response');
+    }
+
+    return OpenQuestion(
+      id: id,
+      prompt: prompt,
+      instructions: instructions is String ? instructions : null,
+      maxAnswerLength: maxAnswerLength,
+      sources: sources is List
+          ? sources
+                .map((source) => _OpenQuestionSourceJson(source).toSource())
+                .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+class _OpenQuestionSourceJson {
+  const _OpenQuestionSourceJson(this.value);
+
+  final Object? value;
+
+  OpenQuestionSource toSource() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid open question source response');
+    }
+
+    final chunkId = json['chunkId'];
+    final pageNumber = json['pageNumber'];
+    final index = json['index'];
+
+    if (chunkId is! String || index is! int) {
+      throw const FormatException('Invalid open question source response');
+    }
+
+    return OpenQuestionSource(
+      chunkId: chunkId,
+      pageNumber: pageNumber is int ? pageNumber : null,
+      index: index,
+    );
+  }
+}
+
+class _OpenAnswerSubmissionJson {
+  const _OpenAnswerSubmissionJson(this.value);
+
+  final Object? value;
+
+  OpenAnswerSubmissionResult toResult() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid open answer response');
+    }
+
+    final sessionId = json['sessionId'];
+    final type = json['type'];
+    final status = json['status'];
+    final evaluation = json['evaluation'];
+
+    if (sessionId is! String ||
+        type != 'open_question' ||
+        status is! String ||
+        evaluation is! Map<String, Object?>) {
+      throw const FormatException('Invalid open answer response');
+    }
+
+    return OpenAnswerSubmissionResult(
+      sessionId: sessionId,
+      type: type as String,
+      status: status,
+      evaluation: _OpenAnswerEvaluationJson(evaluation).toEvaluation(),
+    );
+  }
+}
+
+class _OpenAnswerEvaluationJson {
+  const _OpenAnswerEvaluationJson(this.value);
+
+  final Map<String, Object?> value;
+
+  OpenAnswerEvaluation toEvaluation() {
+    final id = value['id'];
+    final status = value['status'];
+    final score = value['score'];
+    final maxScore = value['maxScore'];
+    final feedback = value['feedback'];
+    final presentPoints = value['presentPoints'];
+    final missingPoints = value['missingPoints'];
+    final errors = value['errors'];
+    final modelAnswer = value['modelAnswer'];
+    final advice = value['advice'];
+    final sources = value['sources'];
+
+    if (id is! String || status is! String) {
+      throw const FormatException('Invalid open answer evaluation response');
+    }
+
+    return OpenAnswerEvaluation(
+      id: id,
+      status: _openAnswerEvaluationStatus(status),
+      score: score is num ? score.toDouble() : null,
+      maxScore: maxScore is num ? maxScore.toDouble() : null,
+      feedback: feedback is String ? feedback : null,
+      presentPoints: presentPoints is List
+          ? _stringList(presentPoints, 'Invalid open answer evaluation response')
+          : const [],
+      missingPoints: missingPoints is List
+          ? _stringList(missingPoints, 'Invalid open answer evaluation response')
+          : const [],
+      errors: errors is List
+          ? _stringList(errors, 'Invalid open answer evaluation response')
+          : const [],
+      modelAnswer: modelAnswer is String ? modelAnswer : null,
+      advice: advice is String ? advice : null,
+      sources: sources is List
+          ? sources
+                .map((source) => _OpenAnswerSourceJson(source).toSource())
+                .toList(growable: false)
+          : const [],
+    );
+  }
+
+  OpenAnswerEvaluationStatus _openAnswerEvaluationStatus(String status) {
+    return switch (status) {
+      'PENDING' => OpenAnswerEvaluationStatus.pending,
+      'READY' => OpenAnswerEvaluationStatus.ready,
+      'FAILED' => OpenAnswerEvaluationStatus.failed,
+      _ => throw const FormatException(
+        'Invalid open answer evaluation response',
+      ),
+    };
+  }
+}
+
+class _OpenAnswerSourceJson {
+  const _OpenAnswerSourceJson(this.value);
+
+  final Object? value;
+
+  OpenAnswerCorrectionSource toSource() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid open answer source response');
+    }
+
+    final chunkId = json['chunkId'];
+    final text = json['text'];
+    final pageNumber = json['pageNumber'];
+    final index = json['index'];
+
+    if (chunkId is! String || text is! String || index is! int) {
+      throw const FormatException('Invalid open answer source response');
+    }
+
+    return OpenAnswerCorrectionSource(
+      chunkId: chunkId,
+      text: text,
+      pageNumber: pageNumber is int ? pageNumber : null,
+      index: index,
+    );
+  }
+}
+
+List<String> _stringList(List<Object?> values, String errorMessage) {
+  return values
+      .map((value) {
+        if (value is String) {
+          return value;
+        }
+
+        throw FormatException(errorMessage);
+      })
+      .toList(growable: false);
 }

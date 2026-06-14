@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:revision_app/features/activities/data/http_activities_api.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:revision_app/features/activities/domain/open_question_activity.dart';
 
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   CapturingHttpClientAdapter(this.response);
@@ -51,6 +52,184 @@ void main() {
     expect(
       adapter.lastOptions?.headers['Authorization'],
       'Bearer firebase-id-token',
+    );
+  });
+
+  test('starts an open question activity with subject and knowledge unit', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(openQuestionStartJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final activity = await api.startOpenQuestion(
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+    );
+
+    expect(activity.sessionId, 'open-session-1');
+    expect(activity.type, 'open_question');
+    expect(activity.version, 1);
+    expect(activity.documentId, 'document-1');
+    expect(activity.subjectId, 'subject-1');
+    expect(activity.knowledgeUnitId, 'unit-1');
+    expect(activity.question.id, 'open-question-1');
+    expect(activity.question.prompt, 'Explique la séparation des pouvoirs.');
+    expect(activity.question.instructions, 'Réponds en quelques phrases.');
+    expect(activity.question.maxAnswerLength, 4000);
+    expect(activity.question.sources.single.chunkId, 'chunk-1');
+    expect(activity.question.sources.single.pageNumber, isNull);
+    expect(activity.question.sources.single.index, 0);
+    expect(adapter.lastOptions?.path, '/activities/open-question');
+    expect(adapter.lastOptions?.data, {
+      'subjectId': 'subject-1',
+      'knowledgeUnitId': 'unit-1',
+    });
+  });
+
+  test('parses an open question activity without document', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(openQuestionStartJson(documentId: null)),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final activity = await api.startOpenQuestion(
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+    );
+
+    expect(activity.documentId, isNull);
+    expect(activity.question.sources.single.chunkId, 'chunk-1');
+  });
+
+  test('ignores source text in open question pre-submit payload', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(openQuestionStartJson(includeSourceText: true)),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final activity = await api.startOpenQuestion(
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+    );
+
+    expect(activity.question.sources.single, isA<OpenQuestionSource>());
+    expect(activity.question.sources.single.chunkId, 'chunk-1');
+  });
+
+  test('submits an open answer and parses a READY evaluation', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(openAnswerReadyJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.submitOpenAnswer(
+      sessionId: 'open-session-1',
+      answerText: 'La séparation des pouvoirs limite chaque autorité.',
+    );
+    final evaluation = result.evaluation;
+
+    expect(result.sessionId, 'open-session-1');
+    expect(result.type, 'open_question');
+    expect(result.status, 'submitted');
+    expect(evaluation.status, OpenAnswerEvaluationStatus.ready);
+    expect(evaluation.score, 16);
+    expect(evaluation.maxScore, 20);
+    expect(evaluation.feedback, 'Réponse solide.');
+    expect(evaluation.presentPoints, ['Définition correcte']);
+    expect(evaluation.missingPoints, ['Exemple jurisprudentiel']);
+    expect(evaluation.errors, isEmpty);
+    expect(evaluation.modelAnswer, 'Modèle de réponse.');
+    expect(evaluation.advice, 'Ajoute un exemple.');
+    expect(evaluation.sources.single.text, 'Extrait source post-submit.');
+    expect(adapter.lastOptions?.path, '/activities/open-session-1/open-answer');
+    expect(adapter.lastOptions?.data, {
+      'answerText': 'La séparation des pouvoirs limite chaque autorité.',
+    });
+  });
+
+  test('submits an open answer and parses a FAILED evaluation', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(openAnswerFailedJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.submitOpenAnswer(
+      sessionId: 'open-session-1',
+      answerText: 'La séparation des pouvoirs limite chaque autorité.',
+    );
+
+    expect(result.evaluation.status, OpenAnswerEvaluationStatus.failed);
+    expect(result.evaluation.score, isNull);
+    expect(result.evaluation.feedback, isNull);
+    expect(result.evaluation.errors, ['OPEN_ANSWER_EVALUATION_FAILED']);
+    expect(result.evaluation.sources, isEmpty);
+  });
+
+  test('maps null open answer lists to empty lists', () async {
+    final readyJson = openAnswerReadyJson()
+      ..['evaluation'] = {
+        'id': 'evaluation-1',
+        'status': 'READY',
+        'score': 12,
+        'maxScore': 20,
+        'feedback': 'Réponse exploitable.',
+        'presentPoints': null,
+        'missingPoints': null,
+        'errors': null,
+        'modelAnswer': null,
+        'advice': null,
+        'sources': null,
+      };
+    final adapter = CapturingHttpClientAdapter(jsonResponse(readyJson));
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.submitOpenAnswer(
+      sessionId: 'open-session-1',
+      answerText: 'La séparation des pouvoirs limite chaque autorité.',
+    );
+
+    expect(result.evaluation.presentPoints, isEmpty);
+    expect(result.evaluation.missingPoints, isEmpty);
+    expect(result.evaluation.errors, isEmpty);
+    expect(result.evaluation.sources, isEmpty);
+  });
+
+  test('rejects unknown open question activity types', () async {
+    final json = openQuestionStartJson()..['type'] = 'diagnostic_quiz';
+    final adapter = CapturingHttpClientAdapter(jsonResponse(json));
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      api.startOpenQuestion(subjectId: 'subject-1', knowledgeUnitId: 'unit-1'),
+      throwsFormatException,
     );
   });
 
@@ -299,6 +478,83 @@ Map<String, Object?> activityJson() {
         ],
       },
     ],
+  };
+}
+
+Map<String, Object?> openQuestionStartJson({
+  Object? documentId = 'document-1',
+  bool includeSourceText = false,
+}) {
+  return {
+    'sessionId': 'open-session-1',
+    'type': 'open_question',
+    'version': 1,
+    'subjectId': 'subject-1',
+    'documentId': documentId,
+    'knowledgeUnitId': 'unit-1',
+    'question': {
+      'id': 'open-question-1',
+      'prompt': 'Explique la séparation des pouvoirs.',
+      'instructions': 'Réponds en quelques phrases.',
+      'maxAnswerLength': 4000,
+      'sources': [
+        {
+          'chunkId': 'chunk-1',
+          'pageNumber': null,
+          'index': 0,
+          if (includeSourceText) 'text': 'Ne doit pas fuiter pré-submit.',
+        },
+      ],
+    },
+  };
+}
+
+Map<String, Object?> openAnswerReadyJson() {
+  return {
+    'sessionId': 'open-session-1',
+    'type': 'open_question',
+    'status': 'submitted',
+    'evaluation': {
+      'id': 'evaluation-1',
+      'status': 'READY',
+      'score': 16,
+      'maxScore': 20,
+      'feedback': 'Réponse solide.',
+      'presentPoints': ['Définition correcte'],
+      'missingPoints': ['Exemple jurisprudentiel'],
+      'errors': [],
+      'modelAnswer': 'Modèle de réponse.',
+      'advice': 'Ajoute un exemple.',
+      'sources': [
+        {
+          'chunkId': 'chunk-1',
+          'text': 'Extrait source post-submit.',
+          'pageNumber': null,
+          'index': 0,
+        },
+      ],
+    },
+  };
+}
+
+Map<String, Object?> openAnswerFailedJson() {
+  return {
+    'sessionId': 'open-session-1',
+    'type': 'open_question',
+    'status': 'submitted',
+    'evaluation': {
+      'id': 'evaluation-1',
+      'status': 'FAILED',
+      'score': null,
+      'maxScore': null,
+      'feedback': null,
+      'presentPoints': [],
+      'missingPoints': [],
+      'errors': ['OPEN_ANSWER_EVALUATION_FAILED'],
+      'modelAnswer': null,
+      'advice': null,
+      'sources': [],
+    },
   };
 }
 

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:revision_app/core/routing/route_paths.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/documents/domain/revision_document.dart';
 import 'package:revision_app/presentation/theme/app_colors.dart';
@@ -156,6 +158,7 @@ class _DocumentKnowledgeSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (detail.state) {
       DocumentDetailLoadState.ready => _ReadyKnowledgeUnits(
+        subjectId: detail.document.subjectId,
         units: detail.knowledgeUnits,
       ),
       DocumentDetailLoadState.notReady => _NotReadyState(
@@ -170,8 +173,12 @@ class _DocumentKnowledgeSection extends StatelessWidget {
 }
 
 class _ReadyKnowledgeUnits extends StatelessWidget {
-  const _ReadyKnowledgeUnits({required this.units});
+  const _ReadyKnowledgeUnits({
+    required this.subjectId,
+    required this.units,
+  });
 
+  final String subjectId;
   final List<DocumentKnowledgeUnit> units;
 
   @override
@@ -188,15 +195,20 @@ class _ReadyKnowledgeUnits extends StatelessWidget {
           'Notions extraites',
           style: Theme.of(context).textTheme.titleLarge,
         ),
-        for (final unit in units) _KnowledgeUnitPanel(unit: unit),
+        for (final unit in units)
+          _KnowledgeUnitPanel(subjectId: subjectId, unit: unit),
       ],
     );
   }
 }
 
 class _KnowledgeUnitPanel extends StatelessWidget {
-  const _KnowledgeUnitPanel({required this.unit});
+  const _KnowledgeUnitPanel({
+    required this.subjectId,
+    required this.unit,
+  });
 
+  final String subjectId;
   final DocumentKnowledgeUnit unit;
 
   @override
@@ -225,6 +237,24 @@ class _KnowledgeUnitPanel extends StatelessWidget {
           Text(unit.title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.s),
           Text(unit.summary, style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: AppSpacing.l),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: RevisionButton(
+              onPressed: () => context.go(
+                Uri(
+                  path: activitiesRoutePath,
+                  queryParameters: {
+                    'subjectId': subjectId,
+                    'knowledgeUnitId': unit.id,
+                  },
+                ).toString(),
+              ),
+              icon: Icons.edit_note,
+              label: 'Question ouverte',
+              style: RevisionButtonStyle.ghost,
+            ),
+          ),
           if (unit.sources.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.l),
             Text('Sources', style: Theme.of(context).textTheme.titleSmall),

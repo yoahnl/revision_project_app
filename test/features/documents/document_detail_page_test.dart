@@ -198,6 +198,7 @@ void main() {
     expect(find.text('Résumé court.'), findsOneWidget);
     expect(find.text('Difficulte moyenne'), findsOneWidget);
     expect(find.text('Confiance 84%'), findsOneWidget);
+    expect(find.text('Question ouverte'), findsOneWidget);
     expect(find.text('Extrait source issu du chunk.'), findsOneWidget);
     expect(find.text('Supports IA'), findsOneWidget);
     expect(find.text('Generer le resume'), findsOneWidget);

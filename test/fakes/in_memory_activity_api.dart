@@ -1,9 +1,13 @@
 import 'package:revision_app/features/activities/application/activity_controller.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:revision_app/features/activities/domain/open_question_activity.dart';
 
 class InMemoryActivityApi implements ActivityApi {
   String? startedSubjectId;
+  String? startedOpenQuestionSubjectId;
+  String? startedOpenQuestionKnowledgeUnitId;
   List<DiagnosticQuizAnswer>? submittedAnswers;
+  String? submittedOpenAnswerText;
 
   @override
   Future<DiagnosticQuizActivity> startNextActivity({
@@ -36,5 +40,56 @@ class InMemoryActivityApi implements ActivityApi {
     submittedAnswers = answers;
 
     return const DiagnosticQuizResult(correctAnswers: 1, totalQuestions: 1);
+  }
+
+  @override
+  Future<OpenQuestionActivity> startOpenQuestion({
+    required String subjectId,
+    required String knowledgeUnitId,
+  }) async {
+    startedOpenQuestionSubjectId = subjectId;
+    startedOpenQuestionKnowledgeUnitId = knowledgeUnitId;
+
+    return const OpenQuestionActivity(
+      sessionId: 'open-session-1',
+      type: 'open_question',
+      version: 1,
+      subjectId: 'subject-1',
+      documentId: null,
+      knowledgeUnitId: 'unit-1',
+      question: OpenQuestion(
+        id: 'open-question-1',
+        prompt: 'Question ouverte test',
+        instructions: 'Réponds en quelques phrases.',
+        maxAnswerLength: 4000,
+      ),
+    );
+  }
+
+  @override
+  Future<OpenAnswerSubmissionResult> submitOpenAnswer({
+    required String sessionId,
+    required String answerText,
+  }) async {
+    submittedOpenAnswerText = answerText;
+
+    return const OpenAnswerSubmissionResult(
+      sessionId: 'open-session-1',
+      type: 'open_question',
+      status: 'submitted',
+      evaluation: OpenAnswerEvaluation(
+        id: 'evaluation-1',
+        status: OpenAnswerEvaluationStatus.ready,
+        score: 16,
+        maxScore: 20,
+        feedback: 'Réponse solide.',
+        presentPoints: ['Point présent'],
+        missingPoints: ['Point manquant'],
+        errors: [],
+        modelAnswer: 'Réponse modèle.',
+        advice: 'Conseil de révision.',
+        sources: [],
+      ),
+    );
   }
 }

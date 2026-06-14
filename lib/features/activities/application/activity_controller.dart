@@ -1,7 +1,12 @@
 import '../domain/diagnostic_quiz_activity.dart';
+import '../domain/open_question_activity.dart';
 
 typedef DiagnosticQuizSubmitter =
     Future<DiagnosticQuizResult> Function(List<DiagnosticQuizAnswer> answers);
+typedef OpenAnswerSubmitter =
+    Future<OpenAnswerSubmissionResult> Function(String answerText);
+
+const openQuestionMinAnswerLength = 12;
 
 abstract interface class ActivityApi {
   Future<DiagnosticQuizActivity> startNextActivity({
@@ -12,6 +17,16 @@ abstract interface class ActivityApi {
   Future<DiagnosticQuizResult> submitResult({
     required String sessionId,
     required List<DiagnosticQuizAnswer> answers,
+  });
+
+  Future<OpenQuestionActivity> startOpenQuestion({
+    required String subjectId,
+    required String knowledgeUnitId,
+  });
+
+  Future<OpenAnswerSubmissionResult> submitOpenAnswer({
+    required String sessionId,
+    required String answerText,
   });
 }
 
@@ -45,6 +60,135 @@ class ActivityController {
     }
 
     return _api.submitResult(sessionId: sessionId, answers: answers);
+  }
+
+  Future<OpenQuestionActivity> startOpenQuestion({
+    required String subjectId,
+    required String knowledgeUnitId,
+  }) {
+    final trimmedSubjectId = subjectId.trim();
+    final trimmedKnowledgeUnitId = knowledgeUnitId.trim();
+
+    if (trimmedSubjectId.isEmpty) {
+      throw ArgumentError('Subject id is required');
+    }
+
+    if (trimmedKnowledgeUnitId.isEmpty) {
+      throw ArgumentError('Knowledge unit id is required');
+    }
+
+    return _api.startOpenQuestion(
+      subjectId: trimmedSubjectId,
+      knowledgeUnitId: trimmedKnowledgeUnitId,
+    );
+  }
+
+  Future<OpenAnswerSubmissionResult> submitOpenAnswer({
+    required String sessionId,
+    required String answerText,
+  }) {
+    final trimmedSessionId = sessionId.trim();
+    final trimmedAnswerText = answerText.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Activity session id is required');
+    }
+
+    if (trimmedAnswerText.isEmpty) {
+      throw ArgumentError('Open answer text is required');
+    }
+
+    return _api.submitOpenAnswer(
+      sessionId: trimmedSessionId,
+      answerText: trimmedAnswerText,
+    );
+  }
+}
+
+class OpenQuestionSessionController {
+  OpenQuestionSessionController({required this.activity, this.submitter});
+
+  final OpenQuestionActivity activity;
+  final OpenAnswerSubmitter? submitter;
+
+  String _answerText = '';
+  OpenAnswerSubmissionResult? _result;
+  Object? _submitError;
+  bool _isSubmitting = false;
+  Future<void>? _activeSubmit;
+
+  String get answerText => _answerText;
+  OpenAnswerSubmissionResult? get result => _result;
+  Object? get submitError => _submitError;
+  bool get isSubmitting => _isSubmitting;
+  bool get hasCorrection => _result != null;
+
+  bool get canSubmit {
+    return submitter != null &&
+        !_isSubmitting &&
+        _result == null &&
+        validationMessage == null;
+  }
+
+  String? get validationMessage {
+    final trimmedAnswer = _answerText.trim();
+
+    if (trimmedAnswer.length < openQuestionMinAnswerLength) {
+      return 'Réponse trop courte';
+    }
+
+    if (trimmedAnswer.length > activity.question.maxAnswerLength) {
+      return 'Réponse trop longue';
+    }
+
+    return null;
+  }
+
+  String? get submitErrorMessage {
+    if (_submitError == null) {
+      return null;
+    }
+
+    return 'Impossible de récupérer la correction. La correction a peut-être été enregistrée. Réessaie dans un instant.';
+  }
+
+  void updateAnswer(String answerText) {
+    if (_result != null || _isSubmitting) {
+      return;
+    }
+
+    _answerText = answerText;
+    _submitError = null;
+  }
+
+  Future<void> submit() {
+    final activeSubmit = _activeSubmit;
+    if (activeSubmit != null) {
+      return activeSubmit;
+    }
+
+    if (!canSubmit) {
+      return Future.value();
+    }
+
+    _isSubmitting = true;
+    _submitError = null;
+
+    final future = _submitAnswer();
+    _activeSubmit = future;
+
+    return future;
+  }
+
+  Future<void> _submitAnswer() async {
+    try {
+      _result = await submitter!(_answerText.trim());
+    } catch (error) {
+      _submitError = error;
+    } finally {
+      _isSubmitting = false;
+      _activeSubmit = null;
+    }
   }
 }
 

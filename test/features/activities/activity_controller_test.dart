@@ -3,13 +3,20 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:revision_app/features/activities/domain/open_question_activity.dart';
 
 class FakeActivityApi implements ActivityApi {
   String? startedSubjectId;
   List<DiagnosticQuizAnswer>? submittedAnswers;
+  String? startedOpenQuestionSubjectId;
+  String? startedOpenQuestionKnowledgeUnitId;
+  String? submittedOpenAnswerText;
   int submitCallCount = 0;
+  int openAnswerSubmitCallCount = 0;
   Completer<DiagnosticQuizResult>? submitCompleter;
+  Completer<OpenAnswerSubmissionResult>? openAnswerSubmitCompleter;
   Object? submitError;
+  Object? openAnswerSubmitError;
 
   @override
   Future<DiagnosticQuizActivity> startNextActivity({
@@ -53,6 +60,37 @@ class FakeActivityApi implements ActivityApi {
 
     return const DiagnosticQuizResult(correctAnswers: 1, totalQuestions: 1);
   }
+
+  @override
+  Future<OpenQuestionActivity> startOpenQuestion({
+    required String subjectId,
+    required String knowledgeUnitId,
+  }) async {
+    startedOpenQuestionSubjectId = subjectId;
+    startedOpenQuestionKnowledgeUnitId = knowledgeUnitId;
+
+    return openQuestionActivity();
+  }
+
+  @override
+  Future<OpenAnswerSubmissionResult> submitOpenAnswer({
+    required String sessionId,
+    required String answerText,
+  }) async {
+    openAnswerSubmitCallCount += 1;
+    submittedOpenAnswerText = answerText;
+
+    if (openAnswerSubmitError != null) {
+      throw openAnswerSubmitError!;
+    }
+
+    final completer = openAnswerSubmitCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
+
+    return openAnswerReadyResult();
+  }
 }
 
 void main() {
@@ -83,6 +121,34 @@ void main() {
     expect(api.submittedAnswers, hasLength(1));
     expect(api.submittedAnswers?.single.choiceId, 'a');
     expect(result.correctAnswers, 1);
+  });
+
+  test('loads an open question activity', () async {
+    final api = FakeActivityApi();
+    final controller = ActivityController(api);
+
+    final activity = await controller.startOpenQuestion(
+      subjectId: ' subject-1 ',
+      knowledgeUnitId: ' unit-1 ',
+    );
+
+    expect(activity.sessionId, 'open-session-1');
+    expect(activity.question.prompt, 'Explique la séparation des pouvoirs.');
+    expect(api.startedOpenQuestionSubjectId, 'subject-1');
+    expect(api.startedOpenQuestionKnowledgeUnitId, 'unit-1');
+  });
+
+  test('submits an open answer through the activity api', () async {
+    final api = FakeActivityApi();
+    final controller = ActivityController(api);
+
+    final result = await controller.submitOpenAnswer(
+      sessionId: 'open-session-1',
+      answerText: ' La séparation des pouvoirs limite chaque autorité. ',
+    );
+
+    expect(api.submittedOpenAnswerText, 'La séparation des pouvoirs limite chaque autorité.');
+    expect(result.evaluation.status, OpenAnswerEvaluationStatus.ready);
   });
 
   test('manages selected answers and enriched correction state', () async {
@@ -232,6 +298,94 @@ void main() {
     expect(controller.result, isNull);
     expect(controller.submitError, isA<StateError>());
   });
+
+  test('manages open answer validation and READY correction state', () async {
+    final controller = OpenQuestionSessionController(
+      activity: openQuestionActivity(),
+      submitter: (answerText) async => openAnswerReadyResult(),
+    );
+
+    expect(controller.canSubmit, isFalse);
+    expect(controller.validationMessage, 'Réponse trop courte');
+
+    controller.updateAnswer('Réponse assez longue.');
+
+    expect(controller.canSubmit, isTrue);
+    expect(controller.answerText, 'Réponse assez longue.');
+
+    await controller.submit();
+
+    expect(controller.result?.evaluation.status, OpenAnswerEvaluationStatus.ready);
+    expect(controller.result?.evaluation.feedback, 'Réponse solide.');
+    expect(controller.canSubmit, isFalse);
+  });
+
+  test('blocks open answers that exceed max length', () {
+    final controller = OpenQuestionSessionController(
+      activity: openQuestionActivity(maxAnswerLength: 20),
+      submitter: (answerText) async => openAnswerReadyResult(),
+    );
+
+    controller.updateAnswer('Une réponse beaucoup trop longue pour la limite.');
+
+    expect(controller.canSubmit, isFalse);
+    expect(controller.validationMessage, 'Réponse trop longue');
+  });
+
+  test('stores FAILED open answer evaluations', () async {
+    final controller = OpenQuestionSessionController(
+      activity: openQuestionActivity(),
+      submitter: (answerText) async => openAnswerFailedResult(),
+    );
+
+    controller.updateAnswer('Réponse assez longue.');
+
+    await controller.submit();
+
+    expect(controller.result?.evaluation.status, OpenAnswerEvaluationStatus.failed);
+    expect(controller.submitError, isNull);
+  });
+
+  test('keeps the open answer text when submit fails', () async {
+    final controller = OpenQuestionSessionController(
+      activity: openQuestionActivity(),
+      submitter: (_) async => throw StateError('network failed'),
+    );
+
+    controller.updateAnswer('Réponse assez longue.');
+
+    await controller.submit();
+
+    expect(controller.result, isNull);
+    expect(controller.answerText, 'Réponse assez longue.');
+    expect(controller.submitError, isA<StateError>());
+    expect(controller.submitErrorMessage, contains('peut-être été enregistrée'));
+  });
+
+  test('prevents duplicate open answer submit while running', () async {
+    final completer = Completer<OpenAnswerSubmissionResult>();
+    var submitCount = 0;
+    final controller = OpenQuestionSessionController(
+      activity: openQuestionActivity(),
+      submitter: (_) {
+        submitCount += 1;
+        return completer.future;
+      },
+    );
+
+    controller.updateAnswer('Réponse assez longue.');
+
+    final firstSubmit = controller.submit();
+    final secondSubmit = controller.submit();
+
+    expect(submitCount, 1);
+
+    completer.complete(openAnswerReadyResult());
+    await Future.wait([firstSubmit, secondSubmit]);
+
+    expect(controller.isSubmitting, isFalse);
+    expect(controller.result?.evaluation.status, OpenAnswerEvaluationStatus.ready);
+  });
 }
 
 DiagnosticQuizActivity multipleActivity({
@@ -282,5 +436,74 @@ DiagnosticQuizActivity longActivity({required int questionCount}) {
           ],
         ),
     ],
+  );
+}
+
+OpenQuestionActivity openQuestionActivity({int maxAnswerLength = 4000}) {
+  return OpenQuestionActivity(
+    sessionId: 'open-session-1',
+    type: 'open_question',
+    version: 1,
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-1',
+    question: OpenQuestion(
+      id: 'open-question-1',
+      prompt: 'Explique la séparation des pouvoirs.',
+      instructions: 'Réponds en quelques phrases.',
+      maxAnswerLength: maxAnswerLength,
+      sources: const [
+        OpenQuestionSource(chunkId: 'chunk-1', pageNumber: null, index: 0),
+      ],
+    ),
+  );
+}
+
+OpenAnswerSubmissionResult openAnswerReadyResult() {
+  return const OpenAnswerSubmissionResult(
+    sessionId: 'open-session-1',
+    type: 'open_question',
+    status: 'submitted',
+    evaluation: OpenAnswerEvaluation(
+      id: 'evaluation-1',
+      status: OpenAnswerEvaluationStatus.ready,
+      score: 16,
+      maxScore: 20,
+      feedback: 'Réponse solide.',
+      presentPoints: ['Définition correcte'],
+      missingPoints: ['Exemple attendu'],
+      errors: [],
+      modelAnswer: 'Réponse modèle.',
+      advice: 'Ajoute un exemple.',
+      sources: [
+        OpenAnswerCorrectionSource(
+          chunkId: 'chunk-1',
+          text: 'Source post-submit.',
+          pageNumber: null,
+          index: 0,
+        ),
+      ],
+    ),
+  );
+}
+
+OpenAnswerSubmissionResult openAnswerFailedResult() {
+  return const OpenAnswerSubmissionResult(
+    sessionId: 'open-session-1',
+    type: 'open_question',
+    status: 'submitted',
+    evaluation: OpenAnswerEvaluation(
+      id: 'evaluation-1',
+      status: OpenAnswerEvaluationStatus.failed,
+      score: null,
+      maxScore: null,
+      feedback: null,
+      presentPoints: [],
+      missingPoints: [],
+      errors: ['OPEN_ANSWER_EVALUATION_FAILED'],
+      modelAnswer: null,
+      advice: null,
+      sources: [],
+    ),
   );
 }

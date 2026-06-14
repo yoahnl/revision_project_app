@@ -115,6 +115,7 @@ GoRouter createAppRouter({
                 builder: (context, state) => ActivitiesPage(
                   controller: activityController,
                   subjectId: state.uri.queryParameters['subjectId'],
+                  knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
                 ),
               ),
             ],
