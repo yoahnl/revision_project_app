@@ -197,7 +197,7 @@ Ce tableau doit être mis à jour à chaque lot réalisé. Cette règle est éga
 | LOT-021 | UI résumé et fiche | Réalisé | `docs/ROADMAP_EXECUTION_LOT_021_029.md` |
 | LOT-022 | Contrat QCM v2 | Réalisé | `docs/ROADMAP_EXECUTION_LOT_022.md` |
 | LOT-023 | Genkit QCM enrichi | Réalisé | `docs/ROADMAP_EXECUTION_LOT_023.md` |
-| LOT-024 | Persistance et soumission QCM enrichies | À faire | À créer |
+| LOT-024 | Persistance et soumission QCM enrichies | Réalisé | `docs/ROADMAP_EXECUTION_LOT_024.md` |
 | LOT-025 | UI QCM enrichi | À faire | À créer |
 | LOT-026 | Contrat question ouverte | À faire | À créer |
 | LOT-027 | Genkit question ouverte et correction | À faire | À créer |
