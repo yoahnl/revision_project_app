@@ -165,6 +165,54 @@ Ce bloc ajoute seed, scénario, validations manuelles, runbooks et checks critiq
 
 ## 5. Lots d'exécution ordonnés
 
+### Suivi d'exécution des lots
+
+Ce tableau doit être mis à jour à chaque lot réalisé. Cette règle est également inscrite dans `revision_app/AGENTS.md`.
+
+| Lot | Titre | Statut | Rapport |
+| --- | --- | --- | --- |
+| LOT-001 | Audit des contrats actuels | Réalisé | `docs/ROADMAP_EXECUTION_LOT_001_001B.md` |
+| LOT-001B | Décision stratégie upload et lecture document | Réalisé | `docs/ROADMAP_EXECUTION_LOT_001_001B.md` |
+| LOT-002 | Décisions fondations IA et documentaire | Réalisé | `docs/ROADMAP_EXECUTION_LOT_002_002B_003.md` |
+| LOT-002B | Revue de schéma avant migrations | Réalisé | `docs/ROADMAP_EXECUTION_LOT_002_002B_003.md` |
+| LOT-003 | Golden demo baseline | Réalisé | `docs/ROADMAP_EXECUTION_LOT_002_002B_003.md` |
+| LOT-004 | Port d'observabilité Genkit | Réalisé | `docs/ROADMAP_EXECUTION_LOT_004_005.md` |
+| LOT-005 | Instrumentation des flows Genkit existants | Réalisé | `docs/ROADMAP_EXECUTION_LOT_004_005.md` |
+| LOT-006 | Inventaire design system et surfaces prioritaires | À faire | À créer |
+| LOT-007 | Primitives UI minimales pour la démo | À faire | À créer |
+| LOT-008 | Application UI ciblée aux pages existantes | À faire | À créer |
+| LOT-009 | Modèle documentaire cible détaillé | Réalisé | `docs/ROADMAP_EXECUTION_LOT_009_010_011.md` |
+| LOT-010 | Persistance minimale des chunks et sources | Réalisé | `docs/ROADMAP_EXECUTION_LOT_009_010_011.md` |
+| LOT-010B | Réparation migration Prisma DocumentChunk / KnowledgeUnitSource | Réalisé | `docs/ROADMAP_EXECUTION_LOT_010B.md` |
+| LOT-011 | Chunking PDF dans le worker | Réalisé | `docs/ROADMAP_EXECUTION_LOT_009_010_011.md` |
+| LOT-012 | Extraction Genkit v2 basée sur chunks | À faire | À créer |
+| LOT-013 | Persistance KnowledgeUnit enrichie | À faire | À créer |
+| LOT-014 | API détail document et notions sourcées | À faire | À créer |
+| LOT-015 | Data layer Flutter pour détail document | À faire | À créer |
+| LOT-016 | Page détail document et notions | À faire | À créer |
+| LOT-017 | Contrat artefacts générés | À faire | À créer |
+| LOT-018 | Persistance Summary et RevisionSheet | À faire | À créer |
+| LOT-019 | Flow Genkit résumé et fiche | À faire | À créer |
+| LOT-020 | API résumés et fiches | À faire | À créer |
+| LOT-021 | UI résumé et fiche | À faire | À créer |
+| LOT-022 | Contrat QCM v2 | À faire | À créer |
+| LOT-023 | Genkit QCM enrichi | À faire | À créer |
+| LOT-024 | Persistance et soumission QCM enrichies | À faire | À créer |
+| LOT-025 | UI QCM enrichi | À faire | À créer |
+| LOT-026 | Contrat question ouverte | À faire | À créer |
+| LOT-027 | Genkit question ouverte et correction | À faire | À créer |
+| LOT-028 | UI question ouverte corrigée | À faire | À créer |
+| LOT-029 | GenUI composants lecture sourcée | À faire | À créer |
+| LOT-030 | GenUI composants activité et correction | À faire | À créer |
+| LOT-031 | Session de révision IA minimale | À faire | À créer |
+| LOT-032 | Écran Révision IA minimal | À faire | À créer |
+| LOT-033 | Orchestration coach Genkit | À faire | À créer |
+| LOT-034 | TodayPlan multi-actions backend | À faire | À créer |
+| LOT-035 | TodayPage v2 frontend | À faire | À créer |
+| LOT-036 | Seed et fixtures de démo | À faire | À créer |
+| LOT-037 | Tests e2e critiques et smoke checks | À faire | À créer |
+| LOT-038 | Runbook démo et déploiement | À faire | À créer |
+
 ### LOT-001 — Audit des contrats actuels
 
 **Bloc :**
