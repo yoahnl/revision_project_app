@@ -196,5 +196,6 @@ Required report shape:
 - For modified files, include the exact changed zones or a diff-style excerpt.
 - Include tests created or modified, exact commands run, and exact results.
 - Include analysis commands, build commands, exact results, preserved scope limits, remaining risks, next steps, and final self-critique.
+- Update `docs/ROADMAP_EXECUTION_PLAN.md` after every completed roadmap lot, especially the execution tracking table.
 
 For code lots, useful comments are expected where they protect an invariant, explain a lot boundary, or prevent a future false behavior. Comments should clarify why the code exists; they must not decorate obvious statements.
