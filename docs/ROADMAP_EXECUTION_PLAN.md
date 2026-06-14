@@ -191,7 +191,7 @@ Ce tableau doit être mis à jour à chaque lot réalisé. Cette règle est éga
 | LOT-015 | Data layer Flutter pour détail document | Réalisé | `docs/ROADMAP_EXECUTION_LOT_014_015_016.md` |
 | LOT-016 | Page détail document et notions | Réalisé | `docs/ROADMAP_EXECUTION_LOT_014_015_016.md` |
 | LOT-017 | Contrat artefacts générés | Réalisé | `docs/ROADMAP_EXECUTION_LOT_017.md` |
-| LOT-018 | Persistance Summary et RevisionSheet | À faire | À créer |
+| LOT-018 | Persistance Summary et RevisionSheet | Réalisé | `docs/ROADMAP_EXECUTION_LOT_018.md` |
 | LOT-019 | Flow Genkit résumé et fiche | À faire | À créer |
 | LOT-020 | API résumés et fiches | À faire | À créer |
 | LOT-021 | UI résumé et fiche | À faire | À créer |
