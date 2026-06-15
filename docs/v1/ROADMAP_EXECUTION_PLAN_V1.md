@@ -22,10 +22,10 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | Lot | Titre | Statut | Rapport |
 | --- | --- | --- | --- |
 | V1-001 | Roadmap et catalogue questions riches fermées | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_001_RICH_QUESTIONS_ROADMAP.md |
-| V1-002 | ADR contrat rich closed questions | À faire | À créer |
-| V1-003 | Audit Prisma/DTO et décision versioning | À faire | À créer |
-| V1-004 | Contrat backend rich question kinds | À faire | À créer |
-| V1-005 | Quality gates pédagogiques backend | À faire | À créer |
+| V1-002 | ADR contrat rich closed questions | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_002_RICH_CLOSED_QUESTIONS_ADR.md |
+| V1-003 | Audit Prisma/DTO et décision versioning | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_003_PRISMA_DTO_VERSIONING_AUDIT.md |
+| V1-004 | Contrat backend rich question kinds | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_004_BACKEND_RICH_QUESTION_KINDS.md |
+| V1-005 | Quality gates pédagogiques backend | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_005_PEDAGOGICAL_QUALITY_GATES.md |
 | V1-006 | Génération Genkit rich closed questions V1-A | À faire | À créer |
 | V1-007 | Persistance minimale V1-A | À faire | À créer |
 | V1-008 | API publique pré-submit/post-submit V1-A | À faire | À créer |
