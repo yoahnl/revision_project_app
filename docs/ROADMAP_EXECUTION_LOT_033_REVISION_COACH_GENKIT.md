@@ -1,3 +1,3025 @@
+# LOT-033 — Orchestration coach Genkit
+
+## 1. Résultat
+
+LOT-033 ajoute une orchestration coach backend contrôlée pour demander la prochaine action d’une session de révision existante. Le coach Genkit produit uniquement une intention bornée (`DIAGNOSTIC_QUIZ` ou `OPEN_QUESTION`) avec `reasonCode` enum, puis le backend valide, transforme et exécute cette intention via les use cases existants. Un fallback déterministe pur prend le relais si Genkit échoue ou renvoie une sortie invalide.
+
+## 2. Sources inspectées
+
+- `revision_app/docs/ROADMAP.md`
+- `revision_app/docs/ROADMAP_EXECUTION_PLAN.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_031_REVISION_SESSION_MINIMAL.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_032_REVISION_SESSION_SCREEN.md`
+- `revision_app/docs/ROADMAP_EXECUTION_HOTFIX_032B_REVISION_SESSION_ROUTE_ISOLATION.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_030_GENUI_ACTIVITY_CORRECTION.md`
+- `revision_app/AGENTS.md`
+- `revision_app/codex_rule.md`
+- `api/package.json`
+- `api/src/app.module.ts`
+- `api/src/modules/ai/ai.module.ts`
+- `api/src/modules/ai/application/ai-generation-observer.ts`
+- `api/src/modules/ai/infrastructure/document-artifact-genkit-config.ts`
+- `api/src/modules/activities/activities.module.ts`
+- `api/src/modules/activities/application/activities.repository.ts`
+- `api/src/modules/activities/application/start-next-activity.use-case.ts`
+- `api/src/modules/activities/application/start-open-question-activity.use-case.ts`
+- `api/src/modules/activities/infrastructure/genkit-diagnostic-quiz.generator.ts`
+- `api/src/modules/activities/infrastructure/genkit-open-question.generator.ts`
+- `api/src/modules/revision-sessions/**`
+- `api/prisma/schema.prisma` en lecture de contexte uniquement
+- `revision_app/lib/features/revision_sessions/**` en lecture seule
+- `revision_app/lib/presentation/pages/revision_sessions/revision_session_page.dart` en lecture seule
+- `revision_app/lib/app/router/app_router.dart` en lecture seule
+
+## 3. Préflight Git
+
+API initiale :
+
+```text
+/Users/karim/Project/app-révision/api
+/Users/karim/Project/app-révision/api
+main
+## main...origin/main
+5e71dde #31-1: ajoute module revision-sessions avec structure minimale
+0f25fed #27-3: finalise corrections de l'évaluateur de réponses ouvertes
+0cf3f17 #27-2: corrige évaluation des réponses ouvertes et soumission
+ba5daba #27-1: ajoute évaluation des réponses ouvertes et génération de questions
+93dad71 #26-1: ajoute gestion des questions ouvertes et soumissions d'activités
+```
+
+Frontend initial :
+
+```text
+/Users/karim/Project/app-révision/revision_app
+/Users/karim/Project/app-révision/revision_app
+main
+## main...origin/main
+368d91f HOTFIX_032B_REVISION_SESSION_ROUTE_ISOLATION - Mise à jour router et tests, ajout rapport hotfix 032B (Revision Session Route Isolation)
+a4a76f4 LOT_032_REVISION_SESSION_SCREEN - Ajout écran session de révision, contrôleur, API, routes et tests, ajout rapport LOT_032
+6d33db0 LOT_031_REVISION_SESSION_MINIMAL - Mise à jour plan d'exécution et ajout rapport LOT_031 (Revision Session Minimal)
+710941b HOTFIX_028B_OPEN_QUESTION_ENTRY - Mise à jour page activités, API fake et tests, ajout rapport hotfix 028B
+2c8b57d LOT_028_OPEN_QUESTION_UI - Ajout UI question ouverte, contrôleur, API demo, routes et tests, ajout rapport LOT_028
+```
+
+Les deux worktrees étaient propres au démarrage du lot.
+
+## 4. Périmètre réalisé
+
+- Port applicatif `RevisionCoachNextActionGenerator`.
+- Adapter `GenkitRevisionCoachNextActionGenerator`.
+- Fallback déterministe pur `selectDeterministicRevisionSessionAction`.
+- Use case `RequestNextRevisionSessionActionUseCase`.
+- Endpoint `POST /revision-sessions/:sessionId/next-action`.
+- Extension du repository `RevisionSessionsRepository` avec contexte de planification et append transactionnel.
+- Tests domain, adapter, use case, repository et controller.
+- Rapport LOT-033 et mise à jour de la ligne LOT-033 du plan.
+
+## 5. Décisions d’architecture
+
+L’orchestration reste backend-only et déterministe côté exécution. Genkit ne crée aucune activité, ne choisit aucune UI et ne renvoie aucun texte conversationnel. Il propose seulement une intention parmi des enums fermées. Le use case valide cette intention, applique un fallback en cas d’erreur, puis crée l’activité réelle via `StartNextActivityUseCase` ou `StartOpenQuestionActivityUseCase`.
+
+## 6. Contrat endpoint next-action
+
+Endpoint ajouté :
+
+```http
+POST /revision-sessions/:sessionId/next-action
+```
+
+Contraintes :
+
+- protégé par `FirebaseAuthGuard` ;
+- utilise `CurrentStudent` ;
+- aucun body requis ;
+- aucun message utilisateur libre consommé ;
+- retourne `RevisionSessionResponseDto` avec `currentAction.payload` public de l’activité créée ;
+- `404` si session introuvable pour l’étudiant ;
+- `422` si aucune action possible ;
+- `409` si session dans un état incompatible.
+
+## 7. Port applicatif coach
+
+Le port `REVISION_COACH_NEXT_ACTION_GENERATOR` expose `generate(input): Promise<RevisionCoachNextActionDecision>`. L’input ne contient que des IDs, l’historique résumé, les actions disponibles et les notions autorisées.
+
+## 8. Adapter Genkit
+
+`GenkitRevisionCoachNextActionGenerator` utilise la configuration Genkit existante, `AI_GENERATION_OBSERVER`, un prompt borné et un schéma Zod strict. Il ne transmet ni chunks, ni texte de cours, ni réponse étudiant, ni correction.
+
+## 9. Schéma de sortie Genkit
+
+Sortie strictement bornée :
+
+```ts
+{
+  actionKind: "DIAGNOSTIC_QUIZ" | "OPEN_QUESTION";
+  knowledgeUnitId: string | null;
+  reasonCode: "ALTERNATE_ACTIVITY_TYPE" | "REINFORCE_CURRENT_KNOWLEDGE_UNIT" | "CHECK_UNDERSTANDING" | "CONTINUE_SESSION_DEFAULT";
+}
+```
+
+Validation supplémentaire : `actionKind` doit être autorisé, `knowledgeUnitId` doit appartenir à l’allowlist, et `OPEN_QUESTION` exige une notion valide.
+
+## 10. Fallback déterministe
+
+Règles :
+
+1. Dernière action QCM + notion fiable : `OPEN_QUESTION`.
+2. Dernière action question ouverte : `DIAGNOSTIC_QUIZ`.
+3. Historique vide + notion fiable : `OPEN_QUESTION`.
+4. Aucune notion fiable : `DIAGNOSTIC_QUIZ`.
+
+Le fallback ne mute pas l’input et fonctionne sans provider IA.
+
+## 11. Use case next action
+
+`RequestNextRevisionSessionActionUseCase` charge le contexte, construit l’input coach, tente Genkit, bascule sur fallback en cas d’erreur, crée l’activité réelle avec les use cases existants, persiste l’action et retourne la session mise à jour avec payload public.
+
+## 12. Repository et persistance
+
+Le repository charge un contexte de planification borné et persiste la nouvelle action via transaction. `displayOrder` est calculé dans la transaction avec `_max.displayOrder + 1`. Aucune migration n’a été créée.
+
+## 13. Controller
+
+Le controller reste mince : validation du `sessionId`, appel du use case, mapping des erreurs existantes et nouvelles. Le body de `next-action` est ignoré ; aucun message libre n’est accepté.
+
+## 14. Ownership et sécurité
+
+Le chargement du contexte et l’append se font par `sessionId + studentId`. Les notions candidates viennent des `KnowledgeUnit` du sujet possédé par l’étudiant. Les activités sont créées via les use cases existants, qui conservent leurs validations.
+
+## 15. Anti-fuite
+
+Le next-action ne renvoie aucune correction pré-submit : pas de `correctChoiceId`, `correctChoiceIds`, `isCorrect`, `explanation`, feedback de correction, `choiceFeedback`, `answerText`, `modelAnswer`, `score`, `presentPoints`, `missingPoints`, `advice`, texte source complet, prompt complet, completion complète, message coach libre ou JSON widget.
+
+## 16. Observabilité IA
+
+L’observer reçoit seulement les métadonnées : flow, provider, modèle, versions prompt/schéma, taille input, durée, statut, code erreur et IDs utiles. Les erreurs provider sont observées sous `REVISION_COACH_FAILED` sans message brut.
+
+## 17. GenUI : ce qui est explicitement non fait
+
+Aucun GenUI modifié, aucun composant créé, aucun payload UI, aucun widget arbitraire, aucun `componentName` stocké ou renvoyé.
+
+## 18. Frontend : ce qui est explicitement non fait
+
+Aucun fichier `revision_app/lib/**` ou `revision_app/test/**` modifié. LOT-032 ne consomme pas encore le next-action.
+
+## 19. Prisma / migration : créé ou non créé
+
+Aucune migration créée. `RevisionSessionAction` possédait déjà `kind`, `status`, `displayOrder`, `activitySessionId`, `documentId` et `knowledgeUnitId`, suffisants pour LOT-033.
+
+## 20. Tests créés ou modifiés
+
+- `deterministic-revision-session-action-selector.spec.ts`
+- `request-next-revision-session-action.use-case.spec.ts`
+- `genkit-revision-coach-next-action.generator.spec.ts`
+- `prisma-revision-sessions.repository.spec.ts`
+- `revision-sessions.controller.spec.ts`
+- ajustement du mock dans `start-revision-session.use-case.spec.ts`
+
+## 21. Validations lancées avec résultats
+
+```bash
+npx prisma validate
+```
+Résultat : schéma valide.
+
+```bash
+npm run prisma:generate
+```
+Résultat : Prisma Client généré.
+
+```bash
+npm test -- revision-sessions --runInBand
+```
+Résultat : 6 suites passées, 31 tests passés.
+
+```bash
+npm test -- ai --runInBand
+```
+Résultat : 12 suites passées, 58 tests passés. Note : le test Genkit coach est couvert par `revision-sessions`, car l’adapter vit dans ce module.
+
+```bash
+npm test -- activities --runInBand
+```
+Résultat : 9 suites passées, 1 suite skipped existante, 87 tests passés, 1 test skipped.
+
+```bash
+npm run lint:check
+```
+Résultat : OK.
+
+```bash
+npm run build
+```
+Résultat : OK.
+
+```bash
+git diff --check
+```
+Résultat : OK depuis `api` et OK depuis `revision_app`.
+
+## 22. Validations non lancées avec justification
+
+- `npm run lint` non lancé car applique `--fix`.
+- `npm run format` non lancé.
+- `npm run test:cov` non lancé.
+- `npx prisma db push`, `npx prisma migrate reset`, `npx prisma migrate deploy` non lancés.
+- Tests Flutter non lancés : aucun code Flutter applicatif ou test Flutter modifié.
+- Provider IA réel non lancé : tests avec mocks Genkit.
+
+## 23. Risques restants
+
+- Si deux next-action sont demandées exactement en parallèle, le calcul `displayOrder` peut rencontrer la contrainte unique ; le calcul est transactionnel mais sans lock applicatif complexe.
+- Si l’activité est créée puis que l’append de l’action échoue, une activité orpheline peut exister, risque déjà documenté dans LOT-031.
+- LOT-032 ne consomme pas encore l’endpoint next-action côté UI.
+- Le comportement réel dépendra de la qualité du modèle, mais le fallback permet de réussir sans provider.
+
+## 24. Recommandation prochain lot
+
+Recommandation : `LOT-034 — TodayPlan multi-actions backend`, ou un mini-hotfix UI si l’on veut d’abord exposer le bouton “action suivante” dans l’écran session existant.
+
+## 25. Passes de review
+
+- Vérification du périmètre : backend `revision-sessions` seulement, plus documentation/plan frontend.
+- Vérification anti-fuite : input coach et observer metadata-only, pas de contenu de cours.
+- Vérification architecture : controller mince, use case applicatif, port applicatif, adapter Genkit, repository Prisma.
+- Vérification TDD : tests rouges observés avant implémentation (`Cannot find module`, méthodes repository absentes), puis tests verts.
+
+## 26. Code complet créé/modifié/supprimé pour review
+
+### Fichiers créés/modifiés API
+
+#### `src/modules/revision-sessions/application/revision-sessions.repository.ts`
+
+```ts
+import type {
+  RevisionSessionActionKindValue,
+  RevisionSessionActionStatusValue,
+  RevisionSessionResponseDto,
+  RevisionSessionStatusValue,
+} from '../domain/revision-session.entity';
+
+export const REVISION_SESSIONS_REPOSITORY = Symbol(
+  'REVISION_SESSIONS_REPOSITORY',
+);
+
+export interface RevisionSessionStartContext {
+  subjectId: string;
+  documentId: string | null;
+  knowledgeUnitId: string | null;
+}
+
+export interface RevisionSessionPlanningContext {
+  session: {
+    id: string;
+    status: RevisionSessionStatusValue;
+    subjectId: string;
+    documentId: string | null;
+    knowledgeUnitId: string | null;
+  };
+  actions: Array<{
+    kind: RevisionSessionActionKindValue;
+    status: RevisionSessionActionStatusValue;
+    displayOrder: number;
+    activitySessionId: string | null;
+    knowledgeUnitId: string | null;
+  }>;
+  allowedKnowledgeUnitIds: string[];
+}
+
+export interface RevisionSessionsRepository {
+  ensureStartContext(input: {
+    studentId: string;
+    subjectId: string;
+    documentId?: string;
+    knowledgeUnitId?: string;
+  }): Promise<RevisionSessionStartContext>;
+
+  createWithInitialAction(input: {
+    studentId: string;
+    subjectId: string;
+    documentId: string | null;
+    knowledgeUnitId: string | null;
+    action: {
+      kind: RevisionSessionActionKindValue;
+      status: RevisionSessionActionStatusValue;
+      displayOrder: number;
+      activitySessionId: string | null;
+      documentId: string | null;
+      knowledgeUnitId: string | null;
+    };
+  }): Promise<RevisionSessionResponseDto>;
+
+  findByIdForStudent(input: {
+    studentId: string;
+    sessionId: string;
+  }): Promise<RevisionSessionResponseDto>;
+
+  findPlanningContextByIdForStudent(input: {
+    studentId: string;
+    sessionId: string;
+  }): Promise<RevisionSessionPlanningContext>;
+
+  appendAction(input: {
+    studentId: string;
+    sessionId: string;
+    action: {
+      kind: RevisionSessionActionKindValue;
+      status: RevisionSessionActionStatusValue;
+      activitySessionId: string | null;
+      documentId: string | null;
+      knowledgeUnitId: string | null;
+    };
+  }): Promise<RevisionSessionResponseDto>;
+}
+
+```
+
+#### `src/modules/revision-sessions/application/start-revision-session.use-case.spec.ts`
+
+```ts
+import { StartRevisionSessionUseCase } from './start-revision-session.use-case';
+import { GetRevisionSessionUseCase } from './get-revision-session.use-case';
+import type { RevisionSessionsRepository } from './revision-sessions.repository';
+import type { StartNextActivityUseCase } from '../../activities/application/start-next-activity.use-case';
+import type { StartOpenQuestionActivityUseCase } from '../../activities/application/start-open-question-activity.use-case';
+
+type EnsureStartContextInput = Parameters<
+  RevisionSessionsRepository['ensureStartContext']
+>[0];
+type CreateWithInitialActionInput = Parameters<
+  RevisionSessionsRepository['createWithInitialAction']
+>[0];
+
+describe('StartRevisionSessionUseCase', () => {
+  it('creates a diagnostic quiz session by default with a subject only', async () => {
+    const repository = createRevisionSessionsRepository();
+    const startNextActivity = createStartNextActivityUseCase();
+    const startOpenQuestionActivity = createStartOpenQuestionActivityUseCase();
+    const useCase = new StartRevisionSessionUseCase(
+      repository,
+      startNextActivity,
+      startOpenQuestionActivity,
+    );
+
+    const result = await useCase.execute({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+    });
+
+    expect(repository.ensureStartContext.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          documentId: undefined,
+          knowledgeUnitId: undefined,
+        },
+      ],
+    ]);
+    expect(startNextActivity.execute.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          knowledgeUnitId: undefined,
+        },
+      ],
+    ]);
+    expect(startOpenQuestionActivity.execute.mock.calls).toHaveLength(0);
+    expect(repository.createWithInitialAction.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          documentId: null,
+          knowledgeUnitId: null,
+          action: {
+            kind: 'DIAGNOSTIC_QUIZ',
+            status: 'READY',
+            displayOrder: 0,
+            activitySessionId: 'quiz-session-1',
+            documentId: null,
+            knowledgeUnitId: null,
+          },
+        },
+      ],
+    ]);
+    expect(result.currentAction.kind).toBe('DIAGNOSTIC_QUIZ');
+    expect(result.currentAction.payload).toEqual(diagnosticQuizActivity());
+    expect(JSON.stringify(result)).not.toContain('correctChoiceId');
+    expect(JSON.stringify(result)).not.toContain('feedback');
+  });
+
+  it('creates an open question session by default when a knowledge unit is provided', async () => {
+    const repository = createRevisionSessionsRepository();
+    const startNextActivity = createStartNextActivityUseCase();
+    const startOpenQuestionActivity = createStartOpenQuestionActivityUseCase();
+    const useCase = new StartRevisionSessionUseCase(
+      repository,
+      startNextActivity,
+      startOpenQuestionActivity,
+    );
+
+    const result = await useCase.execute({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+    });
+
+    expect(startOpenQuestionActivity.execute.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        },
+      ],
+    ]);
+    expect(startNextActivity.execute.mock.calls).toHaveLength(0);
+    expect(repository.createWithInitialAction.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          knowledgeUnitId: 'unit-1',
+          action: {
+            kind: 'OPEN_QUESTION',
+            status: 'READY',
+            displayOrder: 0,
+            activitySessionId: 'open-session-1',
+            documentId: 'document-1',
+            knowledgeUnitId: 'unit-1',
+          },
+        },
+      ],
+    ]);
+    expect(result.currentAction.kind).toBe('OPEN_QUESTION');
+    expect(result.currentAction.payload).toEqual(openQuestionActivity());
+    expect(JSON.stringify(result)).not.toContain('modelAnswer');
+    expect(JSON.stringify(result)).not.toContain('score');
+  });
+
+  it('honors diagnostic quiz as an explicit preferred action', async () => {
+    const repository = createRevisionSessionsRepository();
+    const startNextActivity = createStartNextActivityUseCase();
+    const useCase = new StartRevisionSessionUseCase(
+      repository,
+      startNextActivity,
+      createStartOpenQuestionActivityUseCase(),
+    );
+
+    const result = await useCase.execute({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+      preferredAction: 'diagnostic_quiz',
+    });
+
+    expect(startNextActivity.execute.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        },
+      ],
+    ]);
+    expect(result.currentAction.kind).toBe('DIAGNOSTIC_QUIZ');
+  });
+
+  it('rejects open question preferred action without a knowledge unit', async () => {
+    const useCase = new StartRevisionSessionUseCase(
+      createRevisionSessionsRepository(),
+      createStartNextActivityUseCase(),
+      createStartOpenQuestionActivityUseCase(),
+    );
+
+    await expect(
+      useCase.execute({
+        studentId: 'student-1',
+        subjectId: 'subject-1',
+        preferredAction: 'open_question',
+      }),
+    ).rejects.toThrow(
+      'Open question revision session requires a knowledge unit',
+    );
+  });
+});
+
+describe('GetRevisionSessionUseCase', () => {
+  it('returns an owned revision session without creating a new action', async () => {
+    const repository = createRevisionSessionsRepository();
+
+    const result = await new GetRevisionSessionUseCase(repository).execute({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+
+    expect(repository.findByIdForStudent.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          sessionId: 'revision-session-1',
+        },
+      ],
+    ]);
+    expect(repository.createWithInitialAction.mock.calls).toHaveLength(0);
+    expect(result.currentAction?.payload).toEqual({
+      type: 'open_question',
+      sessionId: 'open-session-1',
+    });
+  });
+});
+
+function createRevisionSessionsRepository(): jest.Mocked<RevisionSessionsRepository> {
+  return {
+    ensureStartContext: jest
+      .fn()
+      .mockImplementation((input: EnsureStartContextInput) =>
+        Promise.resolve({
+          subjectId: input.subjectId,
+          documentId: input.knowledgeUnitId ? 'document-1' : null,
+          knowledgeUnitId: input.knowledgeUnitId ?? null,
+        }),
+      ),
+    createWithInitialAction: jest
+      .fn()
+      .mockImplementation((input: CreateWithInitialActionInput) =>
+        Promise.resolve(
+          revisionSessionResponse(
+            input.action.kind,
+            input.action.activitySessionId ?? 'activity-session-1',
+          ),
+        ),
+      ),
+    findByIdForStudent: jest
+      .fn()
+      .mockResolvedValue(
+        revisionSessionResponse('OPEN_QUESTION', 'open-session-1'),
+      ),
+    findPlanningContextByIdForStudent: jest.fn(),
+    appendAction: jest.fn(),
+  };
+}
+
+function createStartNextActivityUseCase(): jest.Mocked<StartNextActivityUseCase> {
+  return {
+    execute: jest.fn().mockResolvedValue(diagnosticQuizActivity()),
+  } as unknown as jest.Mocked<StartNextActivityUseCase>;
+}
+
+function createStartOpenQuestionActivityUseCase(): jest.Mocked<StartOpenQuestionActivityUseCase> {
+  return {
+    execute: jest.fn().mockResolvedValue(openQuestionActivity()),
+  } as unknown as jest.Mocked<StartOpenQuestionActivityUseCase>;
+}
+
+function revisionSessionResponse(
+  kind: 'DIAGNOSTIC_QUIZ' | 'OPEN_QUESTION',
+  activitySessionId: string,
+) {
+  return {
+    session: {
+      id: 'revision-session-1',
+      status: 'STARTED' as const,
+      subjectId: 'subject-1',
+      documentId: kind === 'OPEN_QUESTION' ? 'document-1' : null,
+      knowledgeUnitId: kind === 'OPEN_QUESTION' ? 'unit-1' : null,
+      createdAt: new Date('2026-06-15T10:00:00.000Z'),
+      completedAt: null,
+    },
+    currentAction: {
+      id: 'action-1',
+      kind,
+      status: 'READY' as const,
+      displayOrder: 0,
+      activitySessionId,
+      documentId: kind === 'OPEN_QUESTION' ? 'document-1' : null,
+      knowledgeUnitId: kind === 'OPEN_QUESTION' ? 'unit-1' : null,
+      payload:
+        kind === 'OPEN_QUESTION'
+          ? { type: 'open_question', sessionId: activitySessionId }
+          : { type: 'diagnostic_quiz', sessionId: activitySessionId },
+    },
+    history: [
+      {
+        id: 'action-1',
+        kind,
+        status: 'READY' as const,
+        displayOrder: 0,
+        activitySessionId,
+        documentId: kind === 'OPEN_QUESTION' ? 'document-1' : null,
+        knowledgeUnitId: kind === 'OPEN_QUESTION' ? 'unit-1' : null,
+      },
+    ],
+  };
+}
+
+function diagnosticQuizActivity() {
+  return {
+    sessionId: 'quiz-session-1',
+    type: 'diagnostic_quiz' as const,
+    title: 'Diagnostic constitutionnel',
+    subjectId: 'subject-1',
+    documentId: null,
+    questions: [
+      {
+        id: 'question-1',
+        prompt: 'Quel principe protège contre la concentration du pouvoir ?',
+        choices: [
+          { id: 'a', label: 'La séparation des pouvoirs' },
+          { id: 'b', label: 'La confusion des pouvoirs' },
+        ],
+      },
+    ],
+  };
+}
+
+function openQuestionActivity() {
+  return {
+    sessionId: 'open-session-1',
+    type: 'open_question' as const,
+    version: 1,
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-1',
+    question: {
+      id: 'open-question-1',
+      prompt: 'Explique la séparation des pouvoirs.',
+      instructions: 'Réponds avec le cours.',
+      maxAnswerLength: 4000,
+      sources: [{ chunkId: 'chunk-1', pageNumber: null, index: 0 }],
+    },
+  };
+}
+
+```
+
+#### `src/modules/revision-sessions/application/request-next-revision-session-action.use-case.spec.ts`
+
+```ts
+import type { StartNextActivityUseCase } from '../../activities/application/start-next-activity.use-case';
+import type { StartOpenQuestionActivityUseCase } from '../../activities/application/start-open-question-activity.use-case';
+import type { RevisionCoachNextActionGenerator } from './revision-coach-next-action.generator';
+import { RequestNextRevisionSessionActionUseCase } from './request-next-revision-session-action.use-case';
+import type { RevisionSessionsRepository } from './revision-sessions.repository';
+
+type AppendActionInput = Parameters<
+  RevisionSessionsRepository['appendAction']
+>[0];
+
+describe('RequestNextRevisionSessionActionUseCase', () => {
+  it('creates a diagnostic quiz from a coach decision', async () => {
+    const repository = createRepository();
+    const generator = createGenerator({
+      actionKind: 'DIAGNOSTIC_QUIZ',
+      knowledgeUnitId: null,
+      reasonCode: 'CHECK_UNDERSTANDING',
+    });
+    const startNextActivity = createStartNextActivityUseCase();
+    const startOpenQuestionActivity = createStartOpenQuestionActivityUseCase();
+    const useCase = new RequestNextRevisionSessionActionUseCase(
+      repository,
+      generator,
+      startNextActivity,
+      startOpenQuestionActivity,
+    );
+
+    const result = await useCase.execute({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+
+    expect(generator.generate.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          sessionId: 'revision-session-1',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          sessionKnowledgeUnitId: 'unit-1',
+          history: [
+            {
+              kind: 'OPEN_QUESTION',
+              status: 'READY',
+              displayOrder: 0,
+              activitySessionId: 'open-session-1',
+              knowledgeUnitId: 'unit-1',
+            },
+          ],
+          availableActions: ['DIAGNOSTIC_QUIZ', 'OPEN_QUESTION'],
+          allowedKnowledgeUnitIds: ['unit-1', 'unit-2'],
+        },
+      ],
+    ]);
+    expect(startNextActivity.execute.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          knowledgeUnitId: undefined,
+        },
+      ],
+    ]);
+    expect(startOpenQuestionActivity.execute.mock.calls).toHaveLength(0);
+    expect(repository.appendAction.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          sessionId: 'revision-session-1',
+          action: {
+            kind: 'DIAGNOSTIC_QUIZ',
+            status: 'READY',
+            activitySessionId: 'quiz-session-2',
+            documentId: 'document-1',
+            knowledgeUnitId: null,
+          },
+        },
+      ],
+    ]);
+    expect(result.currentAction?.payload).toEqual(diagnosticQuizActivity());
+    expect(JSON.stringify(result)).not.toContain('correctChoiceId');
+  });
+
+  it('creates an open question from a coach decision', async () => {
+    const repository = createRepository();
+    const generator = createGenerator({
+      actionKind: 'OPEN_QUESTION',
+      knowledgeUnitId: 'unit-2',
+      reasonCode: 'REINFORCE_CURRENT_KNOWLEDGE_UNIT',
+    });
+    const startNextActivity = createStartNextActivityUseCase();
+    const startOpenQuestionActivity = createStartOpenQuestionActivityUseCase();
+
+    const result = await new RequestNextRevisionSessionActionUseCase(
+      repository,
+      generator,
+      startNextActivity,
+      startOpenQuestionActivity,
+    ).execute({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+
+    expect(startOpenQuestionActivity.execute.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-2',
+        },
+      ],
+    ]);
+    expect(startNextActivity.execute.mock.calls).toHaveLength(0);
+    expect(repository.appendAction.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          sessionId: 'revision-session-1',
+          action: {
+            kind: 'OPEN_QUESTION',
+            status: 'READY',
+            activitySessionId: 'open-session-2',
+            documentId: 'document-1',
+            knowledgeUnitId: 'unit-2',
+          },
+        },
+      ],
+    ]);
+    expect(result.currentAction?.payload).toEqual(openQuestionActivity());
+    expect(JSON.stringify(result)).not.toContain('modelAnswer');
+    expect(JSON.stringify(result)).not.toContain('score');
+  });
+
+  it('uses deterministic fallback when the coach generator fails', async () => {
+    const repository = createRepository();
+    const generator = createGenerator(new Error('provider exploded'));
+    const startNextActivity = createStartNextActivityUseCase();
+    const startOpenQuestionActivity = createStartOpenQuestionActivityUseCase();
+
+    await new RequestNextRevisionSessionActionUseCase(
+      repository,
+      generator,
+      startNextActivity,
+      startOpenQuestionActivity,
+    ).execute({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+
+    expect(startNextActivity.execute.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          knowledgeUnitId: undefined,
+        },
+      ],
+    ]);
+    expect(repository.appendAction.mock.calls).toHaveLength(1);
+  });
+
+  it('does not persist an action when activity creation fails', async () => {
+    const repository = createRepository();
+    const generator = createGenerator({
+      actionKind: 'DIAGNOSTIC_QUIZ',
+      knowledgeUnitId: null,
+      reasonCode: 'CHECK_UNDERSTANDING',
+    });
+    const startNextActivity = createStartNextActivityUseCase();
+    startNextActivity.execute.mockRejectedValue(new Error('activity failed'));
+
+    await expect(
+      new RequestNextRevisionSessionActionUseCase(
+        repository,
+        generator,
+        startNextActivity,
+        createStartOpenQuestionActivityUseCase(),
+      ).execute({
+        studentId: 'student-1',
+        sessionId: 'revision-session-1',
+      }),
+    ).rejects.toThrow('activity failed');
+
+    expect(repository.appendAction.mock.calls).toHaveLength(0);
+  });
+});
+
+function createRepository(): jest.Mocked<RevisionSessionsRepository> {
+  return {
+    ensureStartContext: jest.fn(),
+    createWithInitialAction: jest.fn(),
+    findByIdForStudent: jest.fn(),
+    findPlanningContextByIdForStudent: jest.fn().mockResolvedValue({
+      session: {
+        id: 'revision-session-1',
+        status: 'STARTED',
+        subjectId: 'subject-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      },
+      actions: [
+        {
+          kind: 'OPEN_QUESTION',
+          status: 'READY',
+          displayOrder: 0,
+          activitySessionId: 'open-session-1',
+          knowledgeUnitId: 'unit-1',
+        },
+      ],
+      allowedKnowledgeUnitIds: ['unit-1', 'unit-2'],
+    }),
+    appendAction: jest
+      .fn()
+      .mockImplementation((input: AppendActionInput) =>
+        Promise.resolve(revisionSessionResponse(input)),
+      ),
+  };
+}
+
+function createGenerator(
+  decisionOrError:
+    | Awaited<ReturnType<RevisionCoachNextActionGenerator['generate']>>
+    | Error,
+): jest.Mocked<RevisionCoachNextActionGenerator> {
+  return {
+    generate:
+      decisionOrError instanceof Error
+        ? jest.fn().mockRejectedValue(decisionOrError)
+        : jest.fn().mockResolvedValue(decisionOrError),
+  };
+}
+
+function createStartNextActivityUseCase(): jest.Mocked<StartNextActivityUseCase> {
+  return {
+    execute: jest.fn().mockResolvedValue(diagnosticQuizActivity()),
+  } as unknown as jest.Mocked<StartNextActivityUseCase>;
+}
+
+function createStartOpenQuestionActivityUseCase(): jest.Mocked<StartOpenQuestionActivityUseCase> {
+  return {
+    execute: jest.fn().mockResolvedValue(openQuestionActivity()),
+  } as unknown as jest.Mocked<StartOpenQuestionActivityUseCase>;
+}
+
+function diagnosticQuizActivity() {
+  return {
+    sessionId: 'quiz-session-2',
+    type: 'diagnostic_quiz' as const,
+    title: 'QCM suivant',
+    subjectId: 'subject-1',
+    documentId: null,
+    questions: [
+      {
+        id: 'question-1',
+        prompt: 'Quel mécanisme permet de vérifier la compréhension ?',
+        choices: [
+          { id: 'a', label: 'Un contrôle' },
+          { id: 'b', label: 'Une intuition' },
+        ],
+      },
+    ],
+  };
+}
+
+function openQuestionActivity() {
+  return {
+    sessionId: 'open-session-2',
+    type: 'open_question' as const,
+    version: 1,
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-2',
+    question: {
+      id: 'open-question-2',
+      prompt: 'Explique la notion avec le cours.',
+      instructions: 'Structure ta réponse.',
+      maxAnswerLength: 4000,
+      sources: [{ chunkId: 'chunk-1', pageNumber: null, index: 0 }],
+    },
+  };
+}
+
+function revisionSessionResponse(input: AppendActionInput) {
+  return {
+    session: {
+      id: 'revision-session-1',
+      status: 'STARTED' as const,
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      createdAt: new Date('2026-06-15T10:00:00.000Z'),
+      completedAt: null,
+    },
+    currentAction: {
+      id: 'action-2',
+      kind: input.action.kind,
+      status: 'READY' as const,
+      displayOrder: 1,
+      activitySessionId: input.action.activitySessionId,
+      documentId: input.action.documentId,
+      knowledgeUnitId: input.action.knowledgeUnitId,
+      payload: {
+        type:
+          input.action.kind === 'OPEN_QUESTION'
+            ? ('open_question' as const)
+            : ('diagnostic_quiz' as const),
+        sessionId: input.action.activitySessionId,
+      },
+    },
+    history: [
+      {
+        id: 'action-1',
+        kind: 'OPEN_QUESTION' as const,
+        status: 'READY' as const,
+        displayOrder: 0,
+        activitySessionId: 'open-session-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      },
+      {
+        id: 'action-2',
+        kind: input.action.kind,
+        status: 'READY' as const,
+        displayOrder: 1,
+        activitySessionId: input.action.activitySessionId,
+        documentId: input.action.documentId,
+        knowledgeUnitId: input.action.knowledgeUnitId,
+      },
+    ],
+  };
+}
+
+```
+
+#### `src/modules/revision-sessions/application/request-next-revision-session-action.use-case.ts`
+
+```ts
+import { Inject, Injectable } from '@nestjs/common';
+import { StartNextActivityUseCase } from '../../activities/application/start-next-activity.use-case';
+import { StartOpenQuestionActivityUseCase } from '../../activities/application/start-open-question-activity.use-case';
+import type {
+  DiagnosticQuizActivity,
+  OpenQuestionActivity,
+} from '../../activities/application/activities.repository';
+import { selectDeterministicRevisionSessionAction } from '../domain/deterministic-revision-session-action-selector';
+import type {
+  RevisionCoachNextActionDecision,
+  RevisionCoachNextActionInput,
+} from '../domain/revision-coach-next-action.entity';
+import type { RevisionSessionResponseDto } from '../domain/revision-session.entity';
+import {
+  REVISION_COACH_NEXT_ACTION_GENERATOR,
+  type RevisionCoachNextActionGenerator,
+} from './revision-coach-next-action.generator';
+import {
+  REVISION_SESSIONS_REPOSITORY,
+  type RevisionSessionPlanningContext,
+  type RevisionSessionsRepository,
+} from './revision-sessions.repository';
+
+@Injectable()
+export class RequestNextRevisionSessionActionUseCase {
+  constructor(
+    @Inject(REVISION_SESSIONS_REPOSITORY)
+    private readonly revisionSessionsRepository: RevisionSessionsRepository,
+    @Inject(REVISION_COACH_NEXT_ACTION_GENERATOR)
+    private readonly revisionCoachNextActionGenerator: RevisionCoachNextActionGenerator,
+    private readonly startNextActivity: StartNextActivityUseCase,
+    private readonly startOpenQuestionActivity: StartOpenQuestionActivityUseCase,
+  ) {}
+
+  async execute(input: {
+    studentId: string;
+    sessionId: string;
+  }): Promise<RevisionSessionResponseDto> {
+    const context =
+      await this.revisionSessionsRepository.findPlanningContextByIdForStudent(
+        input,
+      );
+
+    if (context.session.status !== 'STARTED') {
+      throw new Error('Revision session is not started');
+    }
+
+    const coachInput = toCoachInput(input.studentId, context);
+    const decision = await this.resolveDecision(coachInput);
+    const activity = await this.createActivity({
+      studentId: input.studentId,
+      subjectId: context.session.subjectId,
+      decision,
+    });
+    const response = await this.revisionSessionsRepository.appendAction({
+      studentId: input.studentId,
+      sessionId: input.sessionId,
+      action: {
+        kind: decision.actionKind,
+        status: 'READY',
+        activitySessionId: activity.sessionId,
+        documentId: activity.documentId ?? context.session.documentId,
+        knowledgeUnitId:
+          decision.actionKind === 'OPEN_QUESTION'
+            ? decision.knowledgeUnitId
+            : decision.knowledgeUnitId,
+      },
+    });
+
+    return {
+      ...response,
+      currentAction: response.currentAction
+        ? {
+            ...response.currentAction,
+            payload: activity,
+          }
+        : null,
+    };
+  }
+
+  private async resolveDecision(
+    input: RevisionCoachNextActionInput,
+  ): Promise<RevisionCoachNextActionDecision> {
+    try {
+      return normalizeDecision(
+        await this.revisionCoachNextActionGenerator.generate(input),
+        input,
+      );
+    } catch {
+      return selectDeterministicRevisionSessionAction(input);
+    }
+  }
+
+  private async createActivity(input: {
+    studentId: string;
+    subjectId: string;
+    decision: RevisionCoachNextActionDecision;
+  }): Promise<DiagnosticQuizActivity | OpenQuestionActivity> {
+    if (input.decision.actionKind === 'OPEN_QUESTION') {
+      if (!input.decision.knowledgeUnitId) {
+        throw new Error('Revision coach no action available');
+      }
+
+      return this.startOpenQuestionActivity.execute({
+        studentId: input.studentId,
+        subjectId: input.subjectId,
+        knowledgeUnitId: input.decision.knowledgeUnitId,
+      });
+    }
+
+    return this.startNextActivity.execute({
+      studentId: input.studentId,
+      subjectId: input.subjectId,
+      knowledgeUnitId: input.decision.knowledgeUnitId ?? undefined,
+    });
+  }
+}
+
+function toCoachInput(
+  studentId: string,
+  context: RevisionSessionPlanningContext,
+): RevisionCoachNextActionInput {
+  const sessionKnowledgeUnitId =
+    context.session.knowledgeUnitId &&
+    context.allowedKnowledgeUnitIds.includes(context.session.knowledgeUnitId)
+      ? context.session.knowledgeUnitId
+      : null;
+  const availableActions =
+    context.allowedKnowledgeUnitIds.length > 0
+      ? (['DIAGNOSTIC_QUIZ', 'OPEN_QUESTION'] as const)
+      : (['DIAGNOSTIC_QUIZ'] as const);
+
+  return {
+    studentId,
+    sessionId: context.session.id,
+    subjectId: context.session.subjectId,
+    documentId: context.session.documentId,
+    sessionKnowledgeUnitId,
+    history: context.actions.map((action) => ({
+      kind: action.kind,
+      status: action.status,
+      displayOrder: action.displayOrder,
+      activitySessionId: action.activitySessionId,
+      knowledgeUnitId:
+        action.knowledgeUnitId &&
+        context.allowedKnowledgeUnitIds.includes(action.knowledgeUnitId)
+          ? action.knowledgeUnitId
+          : null,
+    })),
+    availableActions: [...availableActions],
+    allowedKnowledgeUnitIds: [...context.allowedKnowledgeUnitIds],
+  };
+}
+
+function normalizeDecision(
+  decision: RevisionCoachNextActionDecision,
+  input: RevisionCoachNextActionInput,
+): RevisionCoachNextActionDecision {
+  if (!input.availableActions.includes(decision.actionKind)) {
+    throw new Error('REVISION_COACH_ACTION_NOT_ALLOWED');
+  }
+
+  if (
+    decision.knowledgeUnitId !== null &&
+    !input.allowedKnowledgeUnitIds.includes(decision.knowledgeUnitId)
+  ) {
+    throw new Error('REVISION_COACH_KNOWLEDGE_UNIT_NOT_ALLOWED');
+  }
+
+  if (
+    decision.actionKind === 'OPEN_QUESTION' &&
+    (decision.knowledgeUnitId === null ||
+      !input.allowedKnowledgeUnitIds.includes(decision.knowledgeUnitId))
+  ) {
+    throw new Error('REVISION_COACH_KNOWLEDGE_UNIT_NOT_ALLOWED');
+  }
+
+  return decision;
+}
+
+```
+
+#### `src/modules/revision-sessions/application/revision-coach-next-action.generator.ts`
+
+```ts
+import type {
+  RevisionCoachNextActionDecision,
+  RevisionCoachNextActionInput,
+} from '../domain/revision-coach-next-action.entity';
+
+export const REVISION_COACH_NEXT_ACTION_GENERATOR = Symbol(
+  'REVISION_COACH_NEXT_ACTION_GENERATOR',
+);
+
+export interface RevisionCoachNextActionGenerator {
+  generate(
+    input: RevisionCoachNextActionInput,
+  ): Promise<RevisionCoachNextActionDecision>;
+}
+
+```
+
+#### `src/modules/revision-sessions/domain/deterministic-revision-session-action-selector.spec.ts`
+
+```ts
+import { selectDeterministicRevisionSessionAction } from './deterministic-revision-session-action-selector';
+import type { RevisionCoachNextActionInput } from './revision-coach-next-action.entity';
+
+describe('selectDeterministicRevisionSessionAction', () => {
+  it('selects an open question after a diagnostic quiz when a reliable knowledge unit exists', () => {
+    expect(
+      selectDeterministicRevisionSessionAction({
+        ...baseInput(),
+        sessionKnowledgeUnitId: 'unit-1',
+        history: [
+          {
+            kind: 'DIAGNOSTIC_QUIZ',
+            status: 'READY',
+            displayOrder: 0,
+            activitySessionId: 'quiz-session-1',
+            knowledgeUnitId: null,
+          },
+        ],
+      }),
+    ).toEqual({
+      actionKind: 'OPEN_QUESTION',
+      knowledgeUnitId: 'unit-1',
+      reasonCode: 'ALTERNATE_ACTIVITY_TYPE',
+    });
+  });
+
+  it('selects a diagnostic quiz after an open question', () => {
+    expect(
+      selectDeterministicRevisionSessionAction({
+        ...baseInput(),
+        sessionKnowledgeUnitId: 'unit-1',
+        history: [
+          {
+            kind: 'OPEN_QUESTION',
+            status: 'READY',
+            displayOrder: 0,
+            activitySessionId: 'open-session-1',
+            knowledgeUnitId: 'unit-1',
+          },
+        ],
+      }),
+    ).toEqual({
+      actionKind: 'DIAGNOSTIC_QUIZ',
+      knowledgeUnitId: null,
+      reasonCode: 'ALTERNATE_ACTIVITY_TYPE',
+    });
+  });
+
+  it('falls back to a diagnostic quiz when no reliable knowledge unit exists', () => {
+    expect(
+      selectDeterministicRevisionSessionAction({
+        ...baseInput(),
+        sessionKnowledgeUnitId: null,
+        allowedKnowledgeUnitIds: [],
+        availableActions: ['DIAGNOSTIC_QUIZ'],
+      }),
+    ).toEqual({
+      actionKind: 'DIAGNOSTIC_QUIZ',
+      knowledgeUnitId: null,
+      reasonCode: 'CONTINUE_SESSION_DEFAULT',
+    });
+  });
+
+  it('keeps a stable choice with empty history and does not mutate input', () => {
+    const input = {
+      ...baseInput(),
+      sessionKnowledgeUnitId: null,
+      allowedKnowledgeUnitIds: ['unit-2'],
+      history: [],
+    };
+    const snapshot = JSON.stringify(input);
+
+    expect(selectDeterministicRevisionSessionAction(input)).toEqual({
+      actionKind: 'OPEN_QUESTION',
+      knowledgeUnitId: 'unit-2',
+      reasonCode: 'REINFORCE_CURRENT_KNOWLEDGE_UNIT',
+    });
+    expect(JSON.stringify(input)).toBe(snapshot);
+  });
+});
+
+function baseInput(): RevisionCoachNextActionInput {
+  return {
+    studentId: 'student-1',
+    sessionId: 'revision-session-1',
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    sessionKnowledgeUnitId: 'unit-1',
+    history: [],
+    availableActions: ['DIAGNOSTIC_QUIZ', 'OPEN_QUESTION'],
+    allowedKnowledgeUnitIds: ['unit-1', 'unit-2'],
+  };
+}
+
+```
+
+#### `src/modules/revision-sessions/domain/deterministic-revision-session-action-selector.ts`
+
+```ts
+import type {
+  RevisionCoachNextActionDecision,
+  RevisionCoachNextActionInput,
+} from './revision-coach-next-action.entity';
+
+export function selectDeterministicRevisionSessionAction(
+  input: RevisionCoachNextActionInput,
+): RevisionCoachNextActionDecision {
+  const allowedKnowledgeUnitIds = [...input.allowedKnowledgeUnitIds];
+  const availableActions = new Set(input.availableActions);
+  const history = [...input.history].sort(
+    (left, right) => left.displayOrder - right.displayOrder,
+  );
+  const lastAction = history.at(-1);
+  const reliableKnowledgeUnitId = findReliableKnowledgeUnitId({
+    sessionKnowledgeUnitId: input.sessionKnowledgeUnitId,
+    lastActionKnowledgeUnitId: lastAction?.knowledgeUnitId ?? null,
+    allowedKnowledgeUnitIds,
+  });
+  const canOpenQuestion =
+    availableActions.has('OPEN_QUESTION') && reliableKnowledgeUnitId !== null;
+  const canDiagnosticQuiz = availableActions.has('DIAGNOSTIC_QUIZ');
+
+  if (lastAction?.kind === 'DIAGNOSTIC_QUIZ' && canOpenQuestion) {
+    return {
+      actionKind: 'OPEN_QUESTION',
+      knowledgeUnitId: reliableKnowledgeUnitId,
+      reasonCode: 'ALTERNATE_ACTIVITY_TYPE',
+    };
+  }
+
+  if (lastAction?.kind === 'OPEN_QUESTION' && canDiagnosticQuiz) {
+    return {
+      actionKind: 'DIAGNOSTIC_QUIZ',
+      knowledgeUnitId: null,
+      reasonCode: 'ALTERNATE_ACTIVITY_TYPE',
+    };
+  }
+
+  if (canOpenQuestion) {
+    return {
+      actionKind: 'OPEN_QUESTION',
+      knowledgeUnitId: reliableKnowledgeUnitId,
+      reasonCode: 'REINFORCE_CURRENT_KNOWLEDGE_UNIT',
+    };
+  }
+
+  if (canDiagnosticQuiz) {
+    return {
+      actionKind: 'DIAGNOSTIC_QUIZ',
+      knowledgeUnitId: null,
+      reasonCode: 'CONTINUE_SESSION_DEFAULT',
+    };
+  }
+
+  throw new Error('Revision coach no action available');
+}
+
+function findReliableKnowledgeUnitId(input: {
+  sessionKnowledgeUnitId: string | null;
+  lastActionKnowledgeUnitId: string | null;
+  allowedKnowledgeUnitIds: string[];
+}): string | null {
+  const allowed = new Set(input.allowedKnowledgeUnitIds);
+  const candidates = [
+    input.sessionKnowledgeUnitId,
+    input.lastActionKnowledgeUnitId,
+    input.allowedKnowledgeUnitIds[0] ?? null,
+  ];
+
+  return (
+    candidates.find(
+      (candidate): candidate is string =>
+        typeof candidate === 'string' && allowed.has(candidate),
+    ) ?? null
+  );
+}
+
+```
+
+#### `src/modules/revision-sessions/domain/revision-coach-next-action.entity.ts`
+
+```ts
+import type {
+  RevisionSessionActionKindValue,
+  RevisionSessionActionStatusValue,
+} from './revision-session.entity';
+
+export type RevisionCoachNextActionKind = RevisionSessionActionKindValue;
+
+export type RevisionCoachNextActionReasonCode =
+  | 'ALTERNATE_ACTIVITY_TYPE'
+  | 'REINFORCE_CURRENT_KNOWLEDGE_UNIT'
+  | 'CHECK_UNDERSTANDING'
+  | 'CONTINUE_SESSION_DEFAULT';
+
+export interface RevisionCoachNextActionHistoryItem {
+  kind: RevisionSessionActionKindValue;
+  status: RevisionSessionActionStatusValue;
+  displayOrder: number;
+  activitySessionId: string | null;
+  knowledgeUnitId: string | null;
+}
+
+export interface RevisionCoachNextActionInput {
+  studentId: string;
+  sessionId: string;
+  subjectId: string;
+  documentId: string | null;
+  sessionKnowledgeUnitId: string | null;
+  history: RevisionCoachNextActionHistoryItem[];
+  availableActions: RevisionCoachNextActionKind[];
+  allowedKnowledgeUnitIds: string[];
+}
+
+export interface RevisionCoachNextActionDecision {
+  actionKind: RevisionCoachNextActionKind;
+  knowledgeUnitId: string | null;
+  reasonCode: RevisionCoachNextActionReasonCode;
+}
+
+```
+
+#### `src/modules/revision-sessions/infrastructure/genkit-revision-coach-next-action.generator.spec.ts`
+
+```ts
+type GenerateInput = {
+  prompt: string;
+  output: {
+    schema: unknown;
+  };
+};
+
+type GenerateResult = {
+  output?: {
+    actionKind?: string;
+    knowledgeUnitId?: string | null;
+    reasonCode?: string;
+    message?: string;
+  };
+};
+
+type GenkitInput = {
+  plugins: unknown[];
+  model: string;
+};
+
+const mockGooglePlugin = { name: 'google-plugin' };
+const mockGenerate = jest.fn<Promise<GenerateResult>, [GenerateInput]>();
+const mockGenkit = jest.fn<{ generate: typeof mockGenerate }, [GenkitInput]>(
+  () => ({ generate: mockGenerate }),
+);
+const mockGoogleAI = jest.fn<unknown, []>(() => mockGooglePlugin);
+
+jest.mock('genkit', () => ({
+  ...jest.requireActual<typeof import('genkit')>('genkit'),
+  genkit: mockGenkit,
+}));
+
+jest.mock('@genkit-ai/google-genai', () => ({
+  googleAI: mockGoogleAI,
+}));
+
+import type {
+  AiGenerationObservation,
+  AiGenerationObserver,
+} from '../../ai/application/ai-generation-observer';
+import { GenkitRevisionCoachNextActionGenerator } from './genkit-revision-coach-next-action.generator';
+
+describe('GenkitRevisionCoachNextActionGenerator', () => {
+  const originalAiProvider = process.env.AI_PROVIDER;
+  const originalGenkitModel = process.env.GENKIT_MODEL;
+
+  afterEach(() => {
+    restoreEnv('AI_PROVIDER', originalAiProvider);
+    restoreEnv('GENKIT_MODEL', originalGenkitModel);
+    mockGoogleAI.mockClear();
+    mockGenkit.mockClear();
+    mockGenerate.mockReset();
+  });
+
+  it('returns a valid bounded decision and observes metadata only', async () => {
+    process.env.AI_PROVIDER = 'google';
+    mockGenerate.mockResolvedValue({
+      output: {
+        actionKind: 'OPEN_QUESTION',
+        knowledgeUnitId: 'unit-1',
+        reasonCode: 'ALTERNATE_ACTIVITY_TYPE',
+      },
+    });
+    const observer = createObserver();
+
+    const decision = await new GenkitRevisionCoachNextActionGenerator(
+      observer,
+    ).generate(baseInput());
+
+    expect(decision).toEqual({
+      actionKind: 'OPEN_QUESTION',
+      knowledgeUnitId: 'unit-1',
+      reasonCode: 'ALTERNATE_ACTIVITY_TYPE',
+    });
+    const [generateInput] = mockGenerate.mock.calls[0] ?? [];
+    expect(generateInput?.prompt).toContain('revision-session-1');
+    expect(generateInput?.prompt).not.toContain('SENTINEL_FULL_COURSE_TEXT');
+    expect(generateInput?.output.schema).toBeDefined();
+    const observation = getObservedObservation(observer);
+    expect(observation).toMatchObject({
+      flowName: 'revisionCoachNextAction',
+      provider: 'google-genai',
+      model: 'googleai/gemini-2.5-flash',
+      promptVersion: 'revision-coach-next-action-v1',
+      schemaVersion: 'revision-coach-next-action-v1',
+      status: 'success',
+      documentId: 'document-1',
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+      studentId: 'student-1',
+    });
+    expect(JSON.stringify(observer.observe.mock.calls)).not.toContain(
+      'SENTINEL_FULL_COURSE_TEXT',
+    );
+    expect(JSON.stringify(observer.observe.mock.calls)).not.toContain(
+      'ALTERNATE_ACTIVITY_TYPE',
+    );
+  });
+
+  it('rejects empty output with a controlled error', async () => {
+    process.env.AI_PROVIDER = 'google';
+    mockGenerate.mockResolvedValue({});
+    const observer = createObserver();
+
+    await expect(
+      new GenkitRevisionCoachNextActionGenerator(observer).generate(
+        baseInput(),
+      ),
+    ).rejects.toThrow('REVISION_COACH_EMPTY_OUTPUT');
+
+    expect(getObservedObservation(observer)).toMatchObject({
+      status: 'error',
+      errorCode: 'REVISION_COACH_EMPTY_OUTPUT',
+    });
+  });
+
+  it('rejects actions that are not allowed', async () => {
+    process.env.AI_PROVIDER = 'google';
+    mockGenerate.mockResolvedValue({
+      output: {
+        actionKind: 'OPEN_QUESTION',
+        knowledgeUnitId: 'unit-1',
+        reasonCode: 'CHECK_UNDERSTANDING',
+      },
+    });
+
+    await expect(
+      new GenkitRevisionCoachNextActionGenerator().generate({
+        ...baseInput(),
+        availableActions: ['DIAGNOSTIC_QUIZ'],
+      }),
+    ).rejects.toThrow('REVISION_COACH_ACTION_NOT_ALLOWED');
+  });
+
+  it('rejects open question decisions without an allowed knowledge unit', async () => {
+    process.env.AI_PROVIDER = 'google';
+    mockGenerate.mockResolvedValue({
+      output: {
+        actionKind: 'OPEN_QUESTION',
+        knowledgeUnitId: null,
+        reasonCode: 'CHECK_UNDERSTANDING',
+      },
+    });
+
+    await expect(
+      new GenkitRevisionCoachNextActionGenerator().generate(baseInput()),
+    ).rejects.toThrow('REVISION_COACH_KNOWLEDGE_UNIT_NOT_ALLOWED');
+
+    mockGenerate.mockResolvedValue({
+      output: {
+        actionKind: 'OPEN_QUESTION',
+        knowledgeUnitId: 'unit-unknown',
+        reasonCode: 'CHECK_UNDERSTANDING',
+      },
+    });
+
+    await expect(
+      new GenkitRevisionCoachNextActionGenerator().generate(baseInput()),
+    ).rejects.toThrow('REVISION_COACH_KNOWLEDGE_UNIT_NOT_ALLOWED');
+  });
+
+  it('observes provider errors with a controlled failure code', async () => {
+    process.env.AI_PROVIDER = 'google';
+    mockGenerate.mockRejectedValue(new Error('raw provider stack'));
+    const observer = createObserver();
+
+    await expect(
+      new GenkitRevisionCoachNextActionGenerator(observer).generate(
+        baseInput(),
+      ),
+    ).rejects.toThrow('raw provider stack');
+
+    expect(getObservedObservation(observer)).toMatchObject({
+      status: 'error',
+      errorCode: 'REVISION_COACH_FAILED',
+    });
+    expect(JSON.stringify(observer.observe.mock.calls)).not.toContain(
+      'raw provider stack',
+    );
+  });
+});
+
+function baseInput() {
+  return {
+    studentId: 'student-1',
+    sessionId: 'revision-session-1',
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    sessionKnowledgeUnitId: 'unit-1',
+    history: [
+      {
+        kind: 'DIAGNOSTIC_QUIZ' as const,
+        status: 'READY' as const,
+        displayOrder: 0,
+        activitySessionId: 'quiz-session-1',
+        knowledgeUnitId: 'unit-1',
+      },
+    ],
+    availableActions: ['DIAGNOSTIC_QUIZ', 'OPEN_QUESTION'] as const,
+    allowedKnowledgeUnitIds: ['unit-1', 'unit-2'],
+  };
+}
+
+function createObserver(): jest.Mocked<AiGenerationObserver> {
+  return {
+    observe: jest.fn(),
+  };
+}
+
+function getObservedObservation(
+  observer: jest.Mocked<AiGenerationObserver>,
+): AiGenerationObservation {
+  const [[observation]] = observer.observe.mock.calls;
+
+  if (!observation) {
+    throw new Error('Expected observation');
+  }
+
+  return observation;
+}
+
+function restoreEnv(key: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = value;
+}
+
+```
+
+#### `src/modules/revision-sessions/infrastructure/genkit-revision-coach-next-action.generator.ts`
+
+```ts
+import { Inject, Injectable } from '@nestjs/common';
+import { genkit, z } from 'genkit';
+import {
+  AI_GENERATION_OBSERVER,
+  type AiGenerationObserver,
+  noopAiGenerationObserver,
+} from '../../ai/application/ai-generation-observer';
+import {
+  resolveArtifactGenkitConfig,
+  resolveArtifactGenkitMetadata,
+  type ResolvedArtifactGenkitMetadata,
+} from '../../ai/infrastructure/document-artifact-genkit-config';
+import type {
+  RevisionCoachNextActionDecision,
+  RevisionCoachNextActionInput,
+} from '../domain/revision-coach-next-action.entity';
+import type { RevisionCoachNextActionGenerator } from '../application/revision-coach-next-action.generator';
+
+const FLOW_NAME = 'revisionCoachNextAction';
+const PROMPT_VERSION = 'revision-coach-next-action-v1';
+const SCHEMA_VERSION = 'revision-coach-next-action-v1';
+const EMPTY_OUTPUT_ERROR_CODE = 'REVISION_COACH_EMPTY_OUTPUT';
+const INVALID_OUTPUT_ERROR_CODE = 'REVISION_COACH_INVALID_OUTPUT';
+const ACTION_NOT_ALLOWED_ERROR_CODE = 'REVISION_COACH_ACTION_NOT_ALLOWED';
+const KNOWLEDGE_UNIT_NOT_ALLOWED_ERROR_CODE =
+  'REVISION_COACH_KNOWLEDGE_UNIT_NOT_ALLOWED';
+const FAILED_ERROR_CODE = 'REVISION_COACH_FAILED';
+
+const RevisionCoachNextActionSchema = z
+  .object({
+    actionKind: z.enum(['DIAGNOSTIC_QUIZ', 'OPEN_QUESTION']),
+    knowledgeUnitId: z.string().trim().min(1).nullable(),
+    reasonCode: z.enum([
+      'ALTERNATE_ACTIVITY_TYPE',
+      'REINFORCE_CURRENT_KNOWLEDGE_UNIT',
+      'CHECK_UNDERSTANDING',
+      'CONTINUE_SESSION_DEFAULT',
+    ]),
+  })
+  .strict();
+
+@Injectable()
+export class GenkitRevisionCoachNextActionGenerator implements RevisionCoachNextActionGenerator {
+  private readonly aiByModel = new Map<string, ReturnType<typeof genkit>>();
+  private resolvedMetadata?: ResolvedArtifactGenkitMetadata;
+
+  constructor(
+    @Inject(AI_GENERATION_OBSERVER)
+    private readonly observer: AiGenerationObserver = noopAiGenerationObserver,
+  ) {}
+
+  async generate(
+    input: RevisionCoachNextActionInput,
+  ): Promise<RevisionCoachNextActionDecision> {
+    const metadata = this.resolveMetadata();
+    const prompt = buildRevisionCoachPrompt(input);
+    const inputSize = prompt.length;
+    const startedAt = Date.now();
+
+    try {
+      const { output } = await this.getAi(metadata).generate({
+        prompt,
+        output: {
+          schema: RevisionCoachNextActionSchema,
+        },
+      });
+
+      if (!output) {
+        throw new Error(EMPTY_OUTPUT_ERROR_CODE);
+      }
+
+      const parsed = RevisionCoachNextActionSchema.parse(output);
+      const decision = normalizeDecision(parsed, input);
+
+      this.observer.observe({
+        flowName: FLOW_NAME,
+        provider: metadata.provider,
+        model: metadata.model,
+        promptVersion: PROMPT_VERSION,
+        schemaVersion: SCHEMA_VERSION,
+        inputSize,
+        durationMs: Date.now() - startedAt,
+        status: 'success',
+        documentId: input.documentId ?? undefined,
+        subjectId: input.subjectId,
+        knowledgeUnitId: decision.knowledgeUnitId ?? undefined,
+        studentId: input.studentId,
+      });
+
+      return decision;
+    } catch (error) {
+      this.observer.observe({
+        flowName: FLOW_NAME,
+        provider: metadata.provider,
+        model: metadata.model,
+        promptVersion: PROMPT_VERSION,
+        schemaVersion: SCHEMA_VERSION,
+        inputSize,
+        durationMs: Date.now() - startedAt,
+        status: 'error',
+        errorCode: resolveRevisionCoachErrorCode(error),
+        documentId: input.documentId ?? undefined,
+        subjectId: input.subjectId,
+        knowledgeUnitId: input.sessionKnowledgeUnitId ?? undefined,
+        studentId: input.studentId,
+      });
+
+      throw error;
+    }
+  }
+
+  private getAi(
+    metadata: ResolvedArtifactGenkitMetadata,
+  ): ReturnType<typeof genkit> {
+    const cacheKey = `${metadata.provider}:${metadata.model}`;
+    const existingAi = this.aiByModel.get(cacheKey);
+
+    if (existingAi) {
+      return existingAi;
+    }
+
+    const ai = genkit(resolveArtifactGenkitConfig(metadata).config);
+    this.aiByModel.set(cacheKey, ai);
+
+    return ai;
+  }
+
+  private resolveMetadata(): ResolvedArtifactGenkitMetadata {
+    this.resolvedMetadata ??= resolveArtifactGenkitMetadata();
+    return this.resolvedMetadata;
+  }
+}
+
+function buildRevisionCoachPrompt(input: RevisionCoachNextActionInput): string {
+  const payload = {
+    sessionId: input.sessionId,
+    subjectId: input.subjectId,
+    documentId: input.documentId,
+    sessionKnowledgeUnitId: input.sessionKnowledgeUnitId,
+    history: input.history.map((action) => ({
+      kind: action.kind,
+      status: action.status,
+      displayOrder: action.displayOrder,
+      activitySessionId: action.activitySessionId,
+      knowledgeUnitId: action.knowledgeUnitId,
+    })),
+    availableActions: input.availableActions,
+    allowedKnowledgeUnitIds: input.allowedKnowledgeUnitIds,
+  };
+
+  return [
+    'Tu es un coach de révision qui choisit uniquement la prochaine intention d’activité.',
+    'Tu dois choisir une action strictement parmi availableActions.',
+    'Tu ne proposes jamais d’UI, de widget, de composant, de route ou de texte conversationnel.',
+    'Tu ne produis jamais de contenu pédagogique, de correction ou de message libre.',
+    'Réponds uniquement en JSON strict avec actionKind, knowledgeUnitId et reasonCode.',
+    'Si la dernière action était un QCM et qu’une notion autorisée existe, privilégie OPEN_QUESTION.',
+    'Si aucune notion fiable n’est disponible, privilégie DIAGNOSTIC_QUIZ.',
+    'N’utilise que les IDs fournis dans allowedKnowledgeUnitIds.',
+    JSON.stringify(payload),
+  ].join('\n\n');
+}
+
+function normalizeDecision(
+  decision: z.infer<typeof RevisionCoachNextActionSchema>,
+  input: RevisionCoachNextActionInput,
+): RevisionCoachNextActionDecision {
+  if (!input.availableActions.includes(decision.actionKind)) {
+    throw new Error(ACTION_NOT_ALLOWED_ERROR_CODE);
+  }
+
+  if (
+    decision.knowledgeUnitId !== null &&
+    !input.allowedKnowledgeUnitIds.includes(decision.knowledgeUnitId)
+  ) {
+    throw new Error(KNOWLEDGE_UNIT_NOT_ALLOWED_ERROR_CODE);
+  }
+
+  if (
+    decision.actionKind === 'OPEN_QUESTION' &&
+    (decision.knowledgeUnitId === null ||
+      !input.allowedKnowledgeUnitIds.includes(decision.knowledgeUnitId))
+  ) {
+    throw new Error(KNOWLEDGE_UNIT_NOT_ALLOWED_ERROR_CODE);
+  }
+
+  return decision;
+}
+
+function resolveRevisionCoachErrorCode(error: unknown): string {
+  if (error instanceof Error) {
+    if (
+      error.message === EMPTY_OUTPUT_ERROR_CODE ||
+      error.message === ACTION_NOT_ALLOWED_ERROR_CODE ||
+      error.message === KNOWLEDGE_UNIT_NOT_ALLOWED_ERROR_CODE
+    ) {
+      return error.message;
+    }
+
+    if (error.name === 'ZodError') {
+      return INVALID_OUTPUT_ERROR_CODE;
+    }
+  }
+
+  return FAILED_ERROR_CODE;
+}
+
+```
+
+#### `src/modules/revision-sessions/infrastructure/prisma-revision-sessions.repository.spec.ts`
+
+```ts
+import { PrismaRevisionSessionsRepository } from './prisma-revision-sessions.repository';
+
+describe('PrismaRevisionSessionsRepository', () => {
+  it('validates subject, document and knowledge unit ownership', async () => {
+    const { prisma, repository } = createRepository();
+    prisma.subject.findFirst.mockResolvedValue({ id: 'subject-1' });
+    prisma.document.findFirst.mockResolvedValue({ id: 'document-1' });
+    prisma.knowledgeUnit.findFirst.mockResolvedValue({
+      id: 'unit-1',
+      documentId: 'document-1',
+    });
+
+    await expect(
+      repository.ensureStartContext({
+        studentId: 'student-1',
+        subjectId: 'subject-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      }),
+    ).resolves.toEqual({
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+    });
+    expect(prisma.subject.findFirst).toHaveBeenCalledWith({
+      where: { id: 'subject-1', studentId: 'student-1' },
+      select: { id: true },
+    });
+  });
+
+  it('rejects cross-student context as not found', async () => {
+    const { repository } = createRepository();
+
+    await expect(
+      repository.ensureStartContext({
+        studentId: 'student-2',
+        subjectId: 'subject-1',
+      }),
+    ).rejects.toThrow('Revision subject not found');
+  });
+
+  it('persists a session and initial action in one transaction', async () => {
+    const { prisma, repository } = createRepository();
+    prisma.$transaction.mockImplementation((callback: TransactionCallback) =>
+      callback(prisma),
+    );
+    prisma.revisionSession.create.mockResolvedValue(revisionSessionRecord());
+    prisma.revisionSessionAction.create.mockResolvedValue(actionRecord());
+
+    const result = await repository.createWithInitialAction({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      action: {
+        kind: 'OPEN_QUESTION',
+        status: 'READY',
+        displayOrder: 0,
+        activitySessionId: 'activity-session-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      },
+    });
+
+    expect(prisma.revisionSession.create).toHaveBeenCalledWith({
+      data: {
+        studentId: 'student-1',
+        subjectId: 'subject-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+        status: 'STARTED',
+      },
+    });
+    expect(prisma.revisionSessionAction.create).toHaveBeenCalledWith({
+      data: {
+        sessionId: 'revision-session-1',
+        studentId: 'student-1',
+        subjectId: 'subject-1',
+        kind: 'OPEN_QUESTION',
+        status: 'READY',
+        displayOrder: 0,
+        activitySessionId: 'activity-session-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      },
+    });
+    expect(result.history).toHaveLength(1);
+    expect(result.currentAction?.kind).toBe('OPEN_QUESTION');
+  });
+
+  it('loads an owned session with sorted action history', async () => {
+    const { prisma, repository } = createRepository();
+    prisma.revisionSession.findFirst.mockResolvedValue({
+      ...revisionSessionRecord(),
+      actions: [actionRecord()],
+    });
+
+    const result = await repository.findByIdForStudent({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+
+    expect(prisma.revisionSession.findFirst).toHaveBeenCalledWith({
+      where: { id: 'revision-session-1', studentId: 'student-1' },
+      include: {
+        actions: {
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+        },
+      },
+    });
+    expect(result.currentAction?.payload).toEqual({
+      type: 'open_question',
+      sessionId: 'activity-session-1',
+    });
+  });
+
+  it('loads a planning context with action activity knowledge units and candidates', async () => {
+    const { prisma, repository } = createRepository();
+    prisma.revisionSession.findFirst.mockResolvedValue({
+      ...revisionSessionRecord(),
+      actions: [
+        {
+          ...actionRecord(),
+          knowledgeUnitId: null,
+          activitySession: { knowledgeUnitId: 'unit-from-activity' },
+        },
+      ],
+    });
+    prisma.knowledgeUnit.findMany.mockResolvedValue([
+      { id: 'unit-1' },
+      { id: 'unit-from-activity' },
+    ]);
+
+    const result = await repository.findPlanningContextByIdForStudent({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+
+    expect(prisma.revisionSession.findFirst).toHaveBeenCalledWith({
+      where: { id: 'revision-session-1', studentId: 'student-1' },
+      include: {
+        actions: {
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+          include: {
+            activitySession: {
+              select: { knowledgeUnitId: true },
+            },
+          },
+        },
+      },
+    });
+    expect(prisma.knowledgeUnit.findMany).toHaveBeenCalledWith({
+      where: {
+        subjectId: 'subject-1',
+        subject: { studentId: 'student-1' },
+      },
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+      take: 20,
+      select: { id: true },
+    });
+    expect(result.actions[0]?.knowledgeUnitId).toBe('unit-from-activity');
+    expect(result.allowedKnowledgeUnitIds).toEqual([
+      'unit-1',
+      'unit-from-activity',
+    ]);
+  });
+
+  it('appends an action with the next display order inside a transaction', async () => {
+    const { prisma, repository } = createRepository();
+    prisma.$transaction.mockImplementation((callback: TransactionCallback) =>
+      callback(prisma),
+    );
+    prisma.revisionSession.findFirst
+      .mockResolvedValueOnce(revisionSessionRecord())
+      .mockResolvedValueOnce({
+        ...revisionSessionRecord(),
+        actions: [
+          actionRecord(),
+          { ...actionRecord(), id: 'action-2', displayOrder: 1 },
+        ],
+      });
+    prisma.revisionSessionAction.aggregate.mockResolvedValue({
+      _max: { displayOrder: 0 },
+    });
+    prisma.revisionSessionAction.create.mockResolvedValue({
+      ...actionRecord(),
+      id: 'action-2',
+      displayOrder: 1,
+      activitySessionId: 'quiz-session-2',
+      kind: 'DIAGNOSTIC_QUIZ',
+      documentId: null,
+      knowledgeUnitId: null,
+    });
+
+    const result = await repository.appendAction({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+      action: {
+        kind: 'DIAGNOSTIC_QUIZ',
+        status: 'READY',
+        activitySessionId: 'quiz-session-2',
+        documentId: null,
+        knowledgeUnitId: null,
+      },
+    });
+
+    expect(prisma.revisionSessionAction.aggregate).toHaveBeenCalledWith({
+      where: { sessionId: 'revision-session-1' },
+      _max: { displayOrder: true },
+    });
+    expect(prisma.revisionSessionAction.create).toHaveBeenCalledWith({
+      data: {
+        sessionId: 'revision-session-1',
+        studentId: 'student-1',
+        subjectId: 'subject-1',
+        kind: 'DIAGNOSTIC_QUIZ',
+        status: 'READY',
+        displayOrder: 1,
+        activitySessionId: 'quiz-session-2',
+        documentId: null,
+        knowledgeUnitId: null,
+      },
+    });
+    expect(result.history).toHaveLength(2);
+    expect(result.currentAction?.displayOrder).toBe(1);
+  });
+});
+
+type PrismaRevisionSessionsMock = ReturnType<typeof createPrismaMock>;
+type TransactionCallback = (tx: PrismaRevisionSessionsMock) => Promise<unknown>;
+
+function createRepository() {
+  const prisma = createPrismaMock();
+
+  return {
+    prisma,
+    repository: new PrismaRevisionSessionsRepository(prisma as never),
+  };
+}
+
+function createPrismaMock() {
+  const prisma = {
+    subject: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    document: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    knowledgeUnit: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn(),
+    },
+    revisionSession: {
+      create: jest.fn(),
+      findFirst: jest.fn(),
+    },
+    revisionSessionAction: {
+      create: jest.fn(),
+      aggregate: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  };
+
+  return prisma;
+}
+
+function revisionSessionRecord() {
+  return {
+    id: 'revision-session-1',
+    studentId: 'student-1',
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-1',
+    status: 'STARTED',
+    createdAt: new Date('2026-06-15T10:00:00.000Z'),
+    updatedAt: new Date('2026-06-15T10:00:00.000Z'),
+    completedAt: null,
+  };
+}
+
+function actionRecord() {
+  return {
+    id: 'action-1',
+    sessionId: 'revision-session-1',
+    studentId: 'student-1',
+    subjectId: 'subject-1',
+    kind: 'OPEN_QUESTION',
+    status: 'READY',
+    displayOrder: 0,
+    activitySessionId: 'activity-session-1',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-1',
+    createdAt: new Date('2026-06-15T10:00:00.000Z'),
+    completedAt: null,
+  };
+}
+
+```
+
+#### `src/modules/revision-sessions/infrastructure/prisma-revision-sessions.repository.ts`
+
+```ts
+import { Injectable } from '@nestjs/common';
+import {
+  RevisionSessionActionKind,
+  RevisionSessionActionStatus,
+  RevisionSessionStatus,
+} from '../../../generated/prisma/enums';
+import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
+import type {
+  RevisionSessionActionKindValue,
+  RevisionSessionActionStatusValue,
+  RevisionSessionResponseDto,
+  RevisionSessionStatusValue,
+} from '../domain/revision-session.entity';
+import type {
+  RevisionSessionsRepository,
+  RevisionSessionPlanningContext,
+  RevisionSessionStartContext,
+} from '../application/revision-sessions.repository';
+
+type RevisionSessionRecord = {
+  id: string;
+  studentId: string;
+  subjectId: string;
+  documentId: string | null;
+  knowledgeUnitId: string | null;
+  status: RevisionSessionStatusValue;
+  createdAt: Date;
+  completedAt: Date | null;
+  actions?: RevisionSessionActionRecord[];
+};
+
+type RevisionSessionActionRecord = {
+  id: string;
+  sessionId: string;
+  studentId: string;
+  subjectId: string;
+  kind: RevisionSessionActionKindValue;
+  status: RevisionSessionActionStatusValue;
+  displayOrder: number;
+  activitySessionId: string | null;
+  documentId: string | null;
+  knowledgeUnitId: string | null;
+  createdAt: Date;
+  completedAt: Date | null;
+  activitySession?: {
+    knowledgeUnitId: string;
+  } | null;
+};
+
+@Injectable()
+export class PrismaRevisionSessionsRepository implements RevisionSessionsRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async ensureStartContext(input: {
+    studentId: string;
+    subjectId: string;
+    documentId?: string;
+    knowledgeUnitId?: string;
+  }): Promise<RevisionSessionStartContext> {
+    const subject = await this.prisma.subject.findFirst({
+      where: {
+        id: input.subjectId,
+        studentId: input.studentId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!subject) {
+      throw new Error('Revision subject not found');
+    }
+
+    let documentId: string | null = null;
+
+    if (input.documentId) {
+      const document = await this.prisma.document.findFirst({
+        where: {
+          id: input.documentId,
+          subjectId: input.subjectId,
+          studentId: input.studentId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!document) {
+        throw new Error('Revision document not found');
+      }
+
+      documentId = document.id;
+    }
+
+    let knowledgeUnitId: string | null = null;
+
+    if (input.knowledgeUnitId) {
+      const knowledgeUnit = await this.prisma.knowledgeUnit.findFirst({
+        where: {
+          id: input.knowledgeUnitId,
+          subjectId: input.subjectId,
+          ...(documentId ? { documentId } : {}),
+          subject: {
+            studentId: input.studentId,
+          },
+        },
+        select: {
+          id: true,
+          documentId: true,
+        },
+      });
+
+      if (!knowledgeUnit) {
+        throw new Error('Revision knowledge unit not found');
+      }
+
+      knowledgeUnitId = knowledgeUnit.id;
+      documentId = documentId ?? knowledgeUnit.documentId;
+    }
+
+    return {
+      subjectId: input.subjectId,
+      documentId,
+      knowledgeUnitId,
+    };
+  }
+
+  async createWithInitialAction(input: {
+    studentId: string;
+    subjectId: string;
+    documentId: string | null;
+    knowledgeUnitId: string | null;
+    action: {
+      kind: RevisionSessionActionKindValue;
+      status: RevisionSessionActionStatusValue;
+      displayOrder: number;
+      activitySessionId: string | null;
+      documentId: string | null;
+      knowledgeUnitId: string | null;
+    };
+  }): Promise<RevisionSessionResponseDto> {
+    return this.prisma.$transaction(async (tx) => {
+      const session = await tx.revisionSession.create({
+        data: {
+          studentId: input.studentId,
+          subjectId: input.subjectId,
+          documentId: input.documentId,
+          knowledgeUnitId: input.knowledgeUnitId,
+          status: RevisionSessionStatus.STARTED,
+        },
+      });
+      const action = await tx.revisionSessionAction.create({
+        data: {
+          sessionId: session.id,
+          studentId: input.studentId,
+          subjectId: input.subjectId,
+          kind: toPrismaActionKind(input.action.kind),
+          status: toPrismaActionStatus(input.action.status),
+          displayOrder: input.action.displayOrder,
+          activitySessionId: input.action.activitySessionId,
+          documentId: input.action.documentId,
+          knowledgeUnitId: input.action.knowledgeUnitId,
+        },
+      });
+
+      return toRevisionSessionResponse(session, [action]);
+    });
+  }
+
+  async findByIdForStudent(input: {
+    studentId: string;
+    sessionId: string;
+  }): Promise<RevisionSessionResponseDto> {
+    const session = (await this.prisma.revisionSession.findFirst({
+      where: {
+        id: input.sessionId,
+        studentId: input.studentId,
+      },
+      include: {
+        actions: {
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+        },
+      },
+    })) as RevisionSessionRecord | null;
+
+    if (!session) {
+      throw new Error('Revision session not found');
+    }
+
+    return toRevisionSessionResponse(session, session.actions ?? []);
+  }
+
+  async findPlanningContextByIdForStudent(input: {
+    studentId: string;
+    sessionId: string;
+  }): Promise<RevisionSessionPlanningContext> {
+    const session = (await this.prisma.revisionSession.findFirst({
+      where: {
+        id: input.sessionId,
+        studentId: input.studentId,
+      },
+      include: {
+        actions: {
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+          include: {
+            activitySession: {
+              select: { knowledgeUnitId: true },
+            },
+          },
+        },
+      },
+    })) as RevisionSessionRecord | null;
+
+    if (!session) {
+      throw new Error('Revision session not found');
+    }
+
+    const knowledgeUnits = await this.prisma.knowledgeUnit.findMany({
+      where: {
+        subjectId: session.subjectId,
+        subject: { studentId: input.studentId },
+      },
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+      take: 20,
+      select: { id: true },
+    });
+
+    return {
+      session: {
+        id: session.id,
+        status: session.status,
+        subjectId: session.subjectId,
+        documentId: session.documentId,
+        knowledgeUnitId: session.knowledgeUnitId,
+      },
+      actions: (session.actions ?? []).map((action) => ({
+        kind: action.kind,
+        status: action.status,
+        displayOrder: action.displayOrder,
+        activitySessionId: action.activitySessionId,
+        knowledgeUnitId:
+          action.knowledgeUnitId ??
+          action.activitySession?.knowledgeUnitId ??
+          null,
+      })),
+      allowedKnowledgeUnitIds: knowledgeUnits.map((unit) => unit.id),
+    };
+  }
+
+  async appendAction(input: {
+    studentId: string;
+    sessionId: string;
+    action: {
+      kind: RevisionSessionActionKindValue;
+      status: RevisionSessionActionStatusValue;
+      activitySessionId: string | null;
+      documentId: string | null;
+      knowledgeUnitId: string | null;
+    };
+  }): Promise<RevisionSessionResponseDto> {
+    return this.prisma.$transaction(async (tx) => {
+      const session = await tx.revisionSession.findFirst({
+        where: {
+          id: input.sessionId,
+          studentId: input.studentId,
+        },
+      });
+
+      if (!session) {
+        throw new Error('Revision session not found');
+      }
+
+      const maxOrder = await tx.revisionSessionAction.aggregate({
+        where: { sessionId: input.sessionId },
+        _max: { displayOrder: true },
+      });
+      const displayOrder = (maxOrder._max.displayOrder ?? -1) + 1;
+
+      await tx.revisionSessionAction.create({
+        data: {
+          sessionId: session.id,
+          studentId: input.studentId,
+          subjectId: session.subjectId,
+          kind: toPrismaActionKind(input.action.kind),
+          status: toPrismaActionStatus(input.action.status),
+          displayOrder,
+          activitySessionId: input.action.activitySessionId,
+          documentId: input.action.documentId,
+          knowledgeUnitId: input.action.knowledgeUnitId,
+        },
+      });
+
+      const updatedSession = (await tx.revisionSession.findFirst({
+        where: {
+          id: input.sessionId,
+          studentId: input.studentId,
+        },
+        include: {
+          actions: {
+            orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+          },
+        },
+      })) as RevisionSessionRecord | null;
+
+      if (!updatedSession) {
+        throw new Error('Revision session not found');
+      }
+
+      return toRevisionSessionResponse(
+        updatedSession,
+        updatedSession.actions ?? [],
+      );
+    });
+  }
+}
+
+function toRevisionSessionResponse(
+  session: RevisionSessionRecord,
+  actions: RevisionSessionActionRecord[],
+): RevisionSessionResponseDto {
+  const history = actions.map((action) => ({
+    id: action.id,
+    kind: action.kind,
+    status: action.status,
+    displayOrder: action.displayOrder,
+    activitySessionId: action.activitySessionId,
+    documentId: action.documentId,
+    knowledgeUnitId: action.knowledgeUnitId,
+  }));
+  const currentActionRecord = actions.length
+    ? actions[actions.length - 1]
+    : undefined;
+  const currentAction = currentActionRecord
+    ? {
+        id: currentActionRecord.id,
+        kind: currentActionRecord.kind,
+        status: currentActionRecord.status,
+        displayOrder: currentActionRecord.displayOrder,
+        activitySessionId: currentActionRecord.activitySessionId,
+        documentId: currentActionRecord.documentId,
+        knowledgeUnitId: currentActionRecord.knowledgeUnitId,
+        payload: toMinimalActionPayload(currentActionRecord),
+      }
+    : null;
+
+  return {
+    session: {
+      id: session.id,
+      status: session.status,
+      subjectId: session.subjectId,
+      documentId: session.documentId,
+      knowledgeUnitId: session.knowledgeUnitId,
+      createdAt: session.createdAt,
+      completedAt: session.completedAt,
+    },
+    currentAction,
+    history,
+  };
+}
+
+function toMinimalActionPayload(action: RevisionSessionActionRecord) {
+  return {
+    type:
+      action.kind === 'OPEN_QUESTION'
+        ? ('open_question' as const)
+        : ('diagnostic_quiz' as const),
+    sessionId: action.activitySessionId,
+  };
+}
+
+function toPrismaActionKind(kind: RevisionSessionActionKindValue) {
+  return kind === 'OPEN_QUESTION'
+    ? RevisionSessionActionKind.OPEN_QUESTION
+    : RevisionSessionActionKind.DIAGNOSTIC_QUIZ;
+}
+
+function toPrismaActionStatus(status: RevisionSessionActionStatusValue) {
+  if (status === 'COMPLETED') {
+    return RevisionSessionActionStatus.COMPLETED;
+  }
+
+  if (status === 'FAILED') {
+    return RevisionSessionActionStatus.FAILED;
+  }
+
+  return RevisionSessionActionStatus.READY;
+}
+
+```
+
+#### `src/modules/revision-sessions/interfaces/revision-sessions.controller.spec.ts`
+
+```ts
+import { INestApplication } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import request from 'supertest';
+import { App } from 'supertest/types';
+import { AppModule } from '../../../app.module';
+import { TOKEN_VERIFIER } from '../../auth/application/token-verifier';
+import { FirebaseAuthGuard } from '../../auth/interfaces/firebase-auth.guard';
+import { GetRevisionSessionUseCase } from '../application/get-revision-session.use-case';
+import { RequestNextRevisionSessionActionUseCase } from '../application/request-next-revision-session-action.use-case';
+import { StartRevisionSessionUseCase } from '../application/start-revision-session.use-case';
+import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
+import type { RevisionSessionResponseDto } from '../domain/revision-session.entity';
+
+jest.mock('firebase-admin/app', () => ({
+  getApps: jest.fn(() => []),
+  initializeApp: jest.fn(),
+}));
+
+jest.mock('firebase-admin/auth', () => ({
+  getAuth: jest.fn(() => ({
+    verifyIdToken: jest.fn(),
+  })),
+}));
+
+describe('RevisionSessionsController', () => {
+  let app: INestApplication<App>;
+  let startRevisionSession: { execute: jest.Mock };
+  let getRevisionSession: { execute: jest.Mock };
+  let requestNextAction: { execute: jest.Mock };
+
+  beforeEach(async () => {
+    startRevisionSession = {
+      execute: jest.fn().mockResolvedValue(revisionSessionResponse()),
+    };
+    getRevisionSession = {
+      execute: jest.fn().mockResolvedValue(revisionSessionResponse()),
+    };
+    requestNextAction = {
+      execute: jest.fn().mockResolvedValue(revisionSessionResponse()),
+    };
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideGuard(FirebaseAuthGuard)
+      .useValue({
+        canActivate: (context: ExecutionContext) => {
+          const request = context
+            .switchToHttp()
+            .getRequest<{ student?: { id: string } }>();
+          request.student = { id: 'student-1' };
+          return true;
+        },
+      })
+      .overrideProvider(TOKEN_VERIFIER)
+      .useValue({ verify: jest.fn() })
+      .overrideProvider(StartRevisionSessionUseCase)
+      .useValue(startRevisionSession)
+      .overrideProvider(GetRevisionSessionUseCase)
+      .useValue(getRevisionSession)
+      .overrideProvider(RequestNextRevisionSessionActionUseCase)
+      .useValue(requestNextAction)
+      .overrideProvider(PrismaService)
+      .useValue({})
+      .compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+  });
+
+  afterEach(async () => {
+    await app?.close();
+  });
+
+  it('creates a deterministic revision session for the current student', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/revision-sessions')
+      .send({
+        subjectId: 'subject-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+        preferredAction: 'open_question',
+      })
+      .expect(201);
+
+    expect(startRevisionSession.execute).toHaveBeenCalledWith({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      preferredAction: 'open_question',
+    });
+    const body = response.body as RevisionSessionResponseDto;
+    expect(body.currentAction?.kind).toBe('OPEN_QUESTION');
+    expect(JSON.stringify(response.body)).not.toContain('correctChoiceId');
+    expect(JSON.stringify(response.body)).not.toContain('modelAnswer');
+  });
+
+  it('rejects malformed create payloads before calling the use case', async () => {
+    await request(app.getHttpServer())
+      .post('/revision-sessions')
+      .send({ subjectId: '', preferredAction: 'open_question' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/revision-sessions')
+      .send({ subjectId: 'subject-1', preferredAction: 'chat' })
+      .expect(400);
+
+    expect(startRevisionSession.execute).not.toHaveBeenCalled();
+  });
+
+  it('maps impossible open question actions to 422', async () => {
+    startRevisionSession.execute.mockRejectedValue(
+      new Error('Open question revision session requires a knowledge unit'),
+    );
+
+    await request(app.getHttpServer())
+      .post('/revision-sessions')
+      .send({ subjectId: 'subject-1', preferredAction: 'open_question' })
+      .expect(422);
+  });
+
+  it('loads an owned revision session without creating a new action', async () => {
+    await request(app.getHttpServer())
+      .get('/revision-sessions/revision-session-1')
+      .expect(200);
+
+    expect(getRevisionSession.execute).toHaveBeenCalledWith({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+    expect(startRevisionSession.execute).not.toHaveBeenCalled();
+  });
+
+  it('maps unknown sessions to 404', async () => {
+    getRevisionSession.execute.mockRejectedValue(
+      new Error('Revision session not found'),
+    );
+
+    await request(app.getHttpServer())
+      .get('/revision-sessions/missing-session')
+      .expect(404);
+  });
+
+  it('requests a bounded next action for the current student', async () => {
+    await request(app.getHttpServer())
+      .post('/revision-sessions/revision-session-1/next-action')
+      .send({ message: 'ignore me' })
+      .expect(201);
+
+    expect(requestNextAction.execute).toHaveBeenCalledWith({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+    expect(JSON.stringify(requestNextAction.execute.mock.calls)).not.toContain(
+      'ignore me',
+    );
+  });
+
+  it('maps next action session and planning errors', async () => {
+    requestNextAction.execute.mockRejectedValueOnce(
+      new Error('Revision session not found'),
+    );
+
+    await request(app.getHttpServer())
+      .post('/revision-sessions/missing-session/next-action')
+      .expect(404);
+
+    requestNextAction.execute.mockRejectedValueOnce(
+      new Error('Revision coach no action available'),
+    );
+
+    await request(app.getHttpServer())
+      .post('/revision-sessions/revision-session-1/next-action')
+      .expect(422);
+  });
+});
+
+function revisionSessionResponse() {
+  return {
+    session: {
+      id: 'revision-session-1',
+      status: 'STARTED',
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      createdAt: new Date('2026-06-15T10:00:00.000Z'),
+      completedAt: null,
+    },
+    currentAction: {
+      id: 'action-1',
+      kind: 'OPEN_QUESTION',
+      status: 'READY',
+      displayOrder: 0,
+      activitySessionId: 'open-session-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      payload: {
+        type: 'open_question',
+        sessionId: 'open-session-1',
+      },
+    },
+    history: [
+      {
+        id: 'action-1',
+        kind: 'OPEN_QUESTION',
+        status: 'READY',
+        displayOrder: 0,
+        activitySessionId: 'open-session-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      },
+    ],
+  };
+}
+
+```
+
+#### `src/modules/revision-sessions/interfaces/revision-sessions.controller.ts`
+
+```ts
+import {
+  BadRequestException,
+  Body,
+  ConflictException,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  UnprocessableEntityException,
+  UseGuards,
+} from '@nestjs/common';
+import { CurrentStudent } from '../../auth/interfaces/current-student.decorator';
+import { FirebaseAuthGuard } from '../../auth/interfaces/firebase-auth.guard';
+import type { RevisionSessionPreferredAction } from '../domain/revision-session.entity';
+import { GetRevisionSessionUseCase } from '../application/get-revision-session.use-case';
+import { RequestNextRevisionSessionActionUseCase } from '../application/request-next-revision-session-action.use-case';
+import { StartRevisionSessionUseCase } from '../application/start-revision-session.use-case';
+
+class StartRevisionSessionDto {
+  subjectId!: string;
+  documentId?: string;
+  knowledgeUnitId?: string;
+  preferredAction?: string;
+}
+
+interface ValidatedStartRevisionSessionBody {
+  subjectId: string;
+  documentId?: string;
+  knowledgeUnitId?: string;
+  preferredAction?: RevisionSessionPreferredAction;
+}
+
+@Controller('revision-sessions')
+@UseGuards(FirebaseAuthGuard)
+export class RevisionSessionsController {
+  constructor(
+    private readonly startRevisionSession: StartRevisionSessionUseCase,
+    private readonly getRevisionSession: GetRevisionSessionUseCase,
+    private readonly requestNextAction: RequestNextRevisionSessionActionUseCase,
+  ) {}
+
+  @Post()
+  start(
+    @CurrentStudent() student: { id: string },
+    @Body() body: StartRevisionSessionDto,
+  ) {
+    const validatedBody = validateStartRevisionSessionBody(body);
+
+    return this.startRevisionSession
+      .execute({
+        studentId: student.id,
+        subjectId: validatedBody.subjectId,
+        documentId: validatedBody.documentId,
+        knowledgeUnitId: validatedBody.knowledgeUnitId,
+        preferredAction: validatedBody.preferredAction,
+      })
+      .catch((error: unknown) => {
+        normalizeRevisionSessionError(error);
+      });
+  }
+
+  @Get(':sessionId')
+  get(
+    @CurrentStudent() student: { id: string },
+    @Param('sessionId') sessionId: string,
+  ) {
+    const validatedSessionId = validateRequiredId(
+      sessionId,
+      'Revision session id',
+    );
+
+    return this.getRevisionSession
+      .execute({
+        studentId: student.id,
+        sessionId: validatedSessionId,
+      })
+      .catch((error: unknown) => {
+        normalizeRevisionSessionError(error);
+      });
+  }
+
+  @Post(':sessionId/next-action')
+  nextAction(
+    @CurrentStudent() student: { id: string },
+    @Param('sessionId') sessionId: string,
+  ) {
+    const validatedSessionId = validateRequiredId(
+      sessionId,
+      'Revision session id',
+    );
+
+    return this.requestNextAction
+      .execute({
+        studentId: student.id,
+        sessionId: validatedSessionId,
+      })
+      .catch((error: unknown) => {
+        normalizeRevisionSessionError(error);
+      });
+  }
+}
+
+function validateStartRevisionSessionBody(
+  input: StartRevisionSessionDto,
+): ValidatedStartRevisionSessionBody {
+  return {
+    subjectId: validateRequiredId(input?.subjectId, 'Subject id'),
+    documentId: validateOptionalId(input?.documentId, 'Document id'),
+    knowledgeUnitId: validateOptionalId(
+      input?.knowledgeUnitId,
+      'Knowledge unit id',
+    ),
+    preferredAction: validatePreferredAction(input?.preferredAction),
+  };
+}
+
+function validateRequiredId(input: unknown, label: string): string {
+  if (typeof input !== 'string' || input.trim().length === 0) {
+    throw new BadRequestException(`${label} is required`);
+  }
+
+  return input.trim();
+}
+
+function validateOptionalId(input: unknown, label: string): string | undefined {
+  if (input === undefined) {
+    return undefined;
+  }
+
+  return validateRequiredId(input, label);
+}
+
+function validatePreferredAction(
+  input: unknown,
+): RevisionSessionPreferredAction | undefined {
+  if (input === undefined) {
+    return undefined;
+  }
+
+  if (typeof input !== 'string') {
+    throw new BadRequestException('Revision session preferred action invalid');
+  }
+
+  const normalized = input.trim();
+
+  if (normalized !== 'diagnostic_quiz' && normalized !== 'open_question') {
+    throw new BadRequestException('Revision session preferred action invalid');
+  }
+
+  return normalized;
+}
+
+function normalizeRevisionSessionError(error: unknown): never {
+  if (error instanceof Error) {
+    if (
+      error.message === 'Revision subject not found' ||
+      error.message === 'Revision document not found' ||
+      error.message === 'Revision knowledge unit not found' ||
+      error.message === 'Revision session not found'
+    ) {
+      throw new NotFoundException(error.message);
+    }
+
+    if (
+      error.message ===
+      'Open question revision session requires a knowledge unit'
+    ) {
+      throw new UnprocessableEntityException(error.message);
+    }
+
+    if (error.message === 'Revision coach no action available') {
+      throw new UnprocessableEntityException(error.message);
+    }
+
+    if (error.message === 'Revision session is not started') {
+      throw new ConflictException(error.message);
+    }
+  }
+
+  throw error;
+}
+
+```
+
+#### `src/modules/revision-sessions/revision-sessions.module.ts`
+
+```ts
+import { Module } from '@nestjs/common';
+import { ActivitiesModule } from '../activities/activities.module';
+import { AuthModule } from '../auth/auth.module';
+import { AiModule } from '../ai/ai.module';
+import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
+import { GetRevisionSessionUseCase } from './application/get-revision-session.use-case';
+import { RequestNextRevisionSessionActionUseCase } from './application/request-next-revision-session-action.use-case';
+import { REVISION_COACH_NEXT_ACTION_GENERATOR } from './application/revision-coach-next-action.generator';
+import { REVISION_SESSIONS_REPOSITORY } from './application/revision-sessions.repository';
+import { StartRevisionSessionUseCase } from './application/start-revision-session.use-case';
+import { GenkitRevisionCoachNextActionGenerator } from './infrastructure/genkit-revision-coach-next-action.generator';
+import { PrismaRevisionSessionsRepository } from './infrastructure/prisma-revision-sessions.repository';
+import { RevisionSessionsController } from './interfaces/revision-sessions.controller';
+
+@Module({
+  imports: [ActivitiesModule, AiModule, AuthModule, PrismaModule],
+  controllers: [RevisionSessionsController],
+  providers: [
+    StartRevisionSessionUseCase,
+    GetRevisionSessionUseCase,
+    RequestNextRevisionSessionActionUseCase,
+    {
+      provide: REVISION_COACH_NEXT_ACTION_GENERATOR,
+      useClass: GenkitRevisionCoachNextActionGenerator,
+    },
+    {
+      provide: REVISION_SESSIONS_REPOSITORY,
+      useClass: PrismaRevisionSessionsRepository,
+    },
+  ],
+})
+export class RevisionSessionsModule {}
+
+```
+
+### Fichiers créés/modifiés frontend documentation
+
+#### `docs/ROADMAP_EXECUTION_PLAN.md`
+
+```md
 # Roadmap Execution Plan — Revision App
 
 ## 1. But du document
@@ -3561,3 +6583,13 @@ Livrable attendu :
 - Aucun commit.
 
 Le deuxième lot à lancer immédiatement après devrait être LOT-001B. Il doit trancher si le MVP utilise officiellement l'upload direct backend via `POST /documents/course-pdf`, Firebase Storage avec reader backend, ou une coexistence temporaire documentée. Sans cette décision, il ne faut pas toucher au worker, aux chunks ou aux migrations documentaires.
+
+```
+
+#### `docs/ROADMAP_EXECUTION_LOT_033_REVISION_COACH_GENKIT.md`
+
+Le contenu complet de ce fichier est le présent rapport. Le recopier intégralement dans lui-même créerait une récursion infinie ; tous les autres fichiers créés ou modifiés sont inclus ci-dessus en entier pour review.
+
+### Fichiers supprimés
+
+Aucun fichier supprimé.
