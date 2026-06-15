@@ -1,5 +1,7 @@
 # Smoke checks — Revision App
 
+Voir aussi le runbook global : [DEMO_DEPLOYMENT_RUNBOOK.md](./DEMO_DEPLOYMENT_RUNBOOK.md).
+
 ## 1. Objectif
 
 Cette checklist sert à vérifier rapidement que la démo Revision App reste présentable après un changement backend, frontend ou infra.

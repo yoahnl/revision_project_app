@@ -1,3 +1,1382 @@
+# LOT-038 — Runbook démo et déploiement
+
+## 1. Résultat
+
+LOT-038 est réalisé côté documentation. Un runbook global de démo et déploiement local/staging a été créé pour rendre la démo Revision App rejouable, prudente et vérifiable. Les runbooks seed et smoke pointent maintenant vers ce document central. Le plan d’exécution marque `LOT-038` comme réalisé.
+
+Aucun runtime applicatif n’a été modifié. Aucun backend, Prisma, Genkit, Flutter applicatif, test ou script runtime n’a été changé.
+
+## 2. Sources inspectées
+
+Côté API :
+
+- `api/package.json`
+- `api/README.md`
+- `api/.env.example`
+- `api/Dockerfile`
+- `api/prisma.config.ts`
+- `api/prisma/schema.prisma`
+- `api/prisma/demo-seed.ts`
+- `api/src/main.ts`
+- `api/src/app.module.ts`
+- `api/src/cors.ts`
+- `api/src/shared/infrastructure/prisma/database-url.ts`
+- `api/src/shared/infrastructure/prisma/prisma.service.ts`
+- `api/src/shared/infrastructure/firebase/firebase-admin-app.ts`
+- `api/src/modules/jobs/**`
+- `api/src/modules/ai/**`
+- `api/src/modules/auth/**`
+- `api/src/modules/students/**`
+- `api/src/modules/documents/**`
+- `api/src/modules/activities/**`
+- `api/src/modules/revision/**`
+- `api/src/modules/revision-sessions/**`
+- `api/src/modules/demo-seed/**`
+- `api/test/jest-e2e.json`
+- `api/test/app.e2e-spec.ts`
+- `api/test/critical-paths.e2e-spec.ts`
+
+Côté Flutter/docs :
+
+- `revision_app/pubspec.yaml`
+- `revision_app/README.md`
+- `revision_app/Dockerfile`
+- `revision_app/lib/core/config/app_config.dart`
+- `revision_app/lib/app/di/revision_providers.dart`
+- `revision_app/lib/firebase_options.dart` inspecté pour confirmer les `--dart-define`, sans recopier de valeurs sensibles
+- `revision_app/lib/features/activities/genui/revision_activity_catalog.dart` en lecture seule pour confirmer catalogue et fallback
+- `revision_app/lib/features/activities/genui/activity_correction_component_validator.dart` en lecture seule
+- `revision_app/lib/features/activities/genui/sourced_reading_component_validator.dart` en lecture seule
+- `revision_app/docs/ROADMAP_EXECUTION_PLAN.md`
+- `revision_app/docs/demo/DEMO_SEED_RUNBOOK.md`
+- `revision_app/docs/demo/DEMO_SMOKE_CHECKS.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_036_DEMO_SEED_FIXTURES.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_037_E2E_SMOKE_CHECKS.md`
+
+Éléments cherchés : scripts disponibles, variables d’environnement, fallback Prisma, ports locaux, stratégie Redis/BullMQ, configuration Firebase, configuration IA, configuration Flutter API, catalogue GenUI, runbooks existants et docs de smoke.
+
+## 3. Préflight Git
+
+API initial :
+
+```text
+/Users/karim/Project/app-révision/api
+/Users/karim/Project/app-révision/api
+main
+## main...origin/main
+e552c75 #36-1: ajoute tests e2e pour les chemins critiques
+b1d2318 #35-1: ajoute script de démo et données de seed
+a08fd4e #34-1: améliore planification adaptative et plan du jour
+783a728 #33-1: ajoute coach de révision et sélection d'actions
+5e71dde #31-1: ajoute module revision-sessions avec structure minimale
+```
+
+Frontend/docs initial :
+
+```text
+/Users/karim/Project/app-révision/revision_app
+/Users/karim/Project/app-révision/revision_app
+main
+## main...origin/main
+b31b17c LOT_037_E2E_SMOKE_CHECKS - Mise à jour plan d'exécution, ajout rapport LOT_037 et checks smoke démo
+10fd329 LOT_036_DEMO_SEED_FIXTURES - Mise à jour plan d'exécution, ajout rapport LOT_036 et runbook de seed démo
+f321d04 LOT_035_TODAY_PAGE_V2_FRONTEND - Mise à jour repository Today, domaine, page et tests, ajout rapport LOT_035
+c814759 LOT_034_TODAY_PLAN_MULTI_ACTIONS_BACKEND - Mise à jour plan d'exécution et ajout rapport LOT_034 (Today Plan Multi-Actions Backend)
+b8fc557 LOT_033_REVISION_COACH_GENKIT - Mise à jour plan d'exécution et ajout rapport LOT_033 (Revision Coach Genkit)
+```
+
+Les deux repos étaient propres avant LOT-038. LOT-037 était déjà réalisé dans l’historique local et dans le plan.
+
+## 4. Périmètre réalisé
+
+Créé :
+
+- `revision_app/docs/demo/DEMO_DEPLOYMENT_RUNBOOK.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_038_DEMO_DEPLOYMENT_RUNBOOK.md`
+
+Modifié :
+
+- `revision_app/docs/demo/DEMO_SEED_RUNBOOK.md`
+- `revision_app/docs/demo/DEMO_SMOKE_CHECKS.md`
+- `revision_app/docs/ROADMAP_EXECUTION_PLAN.md`
+
+Non modifié :
+
+- API runtime ;
+- Prisma schema et migrations ;
+- flows Genkit ;
+- Flutter applicatif ;
+- tests ;
+- README principaux.
+
+## 5. Décisions documentaires
+
+Un runbook principal a été créé dans `docs/demo` pour centraliser le déroulé opérationnel complet : préparation environnement, DB, Redis, API, worker, Flutter, seed, smoke checks, scénario de présentation, GenUI/fallback et troubleshooting.
+
+Les documents LOT-036 et LOT-037 restent spécialisés :
+
+- `DEMO_SEED_RUNBOOK.md` garde le détail du seed ;
+- `DEMO_SMOKE_CHECKS.md` garde la checklist de smoke ;
+- `DEMO_DEPLOYMENT_RUNBOOK.md` les relie dans une procédure de démo complète.
+
+Les README principaux n’ont pas été modifiés pour éviter un bruit documentaire hors périmètre. Ils contiennent déjà les commandes locales essentielles. Les petites incohérences README relevées en review sont notées dans les risques restants.
+
+## 6. Variables et commandes confirmées
+
+Commandes API confirmées par `api/package.json` :
+
+- `npm run build`
+- `npm run start`
+- `npm run start:dev`
+- `npm run start:prod`
+- `npm run lint:check`
+- `npm run prisma:generate`
+- `npm run prisma:migrate:deploy`
+- `npm run demo:seed`
+- `npm run test:e2e`
+
+Commandes Flutter confirmées par `revision_app/README.md` et `pubspec.yaml` :
+
+- `flutter pub get`
+- `flutter run -d macos`
+- `dart analyze lib test`
+- `flutter test`
+- `flutter build macos --debug`
+- `flutter build web` via le Dockerfile front et l’outil Flutter standard
+
+Configuration confirmée :
+
+- API locale par défaut sur `PORT=3000` si `PORT` absent ;
+- conteneur API sur `PORT=8080` ;
+- Dockerfile API avec `RUN_PRISMA_MIGRATIONS=true` déclenchant `prisma migrate deploy` ;
+- fallback Prisma local/test : `postgresql://revision:revision@localhost:5432/revision?schema=public` ;
+- Redis via `REDIS_URL` ou `REDIS_HOST`/`REDIS_PORT` ;
+- worker documentaire activé par `DOCUMENT_PROCESSING_WORKER_ENABLED=true` dans le module Jobs ;
+- queue désactivable par `DOCUMENT_PROCESSING_QUEUE_DISABLED=true` ;
+- Firebase Admin via `FIREBASE_PROJECT_ID` ou `FIREBASE_SERVICE_ACCOUNT_JSON` ;
+- Flutter API via `--dart-define=API_BASE_URL=...` ;
+- seed demo via `DEMO_SEED_CONFIRM`, `DEMO_FIREBASE_UID` ou `DEMO_STUDENT_FIREBASE_UID` ;
+- catalogue GenUI `com.revision.activity_catalog`, avec composants bornés et validators.
+
+## 7. Variables et commandes à confirmer
+
+À confirmer selon l’environnement :
+
+- commande exacte de lancement PostgreSQL local, car aucun `docker-compose.yml` n’est présent ;
+- commande exacte de lancement Redis local, car aucun `docker-compose.yml` n’est présent ;
+- stratégie split API/worker en staging, car aucun script npm `worker` séparé n’existe ;
+- versions locales Node/npm/Flutter au-delà des indices Dockerfile et `pubspec.yaml` ;
+- valeurs finales des clés IA et Firebase par environnement ;
+- timeouts IA côté infra, car aucun env de timeout provider n’a été trouvé dans le code audité ;
+- politique d’application automatique des migrations en staging ;
+- URL finale du front staging/démo.
+
+Le runbook marque ces points comme dépendants de l’environnement plutôt que de les inventer.
+
+## 8. Seed réel lancé ou non lancé
+
+Seed réel non lancé. Aucune base locale/staging explicitement désignée par l’utilisateur n’a été fournie pour LOT-038.
+
+Dry-run lancé et validé :
+
+```text
+DEMO_SEED_CONFIRM=revision-demo DEMO_FIREBASE_UID=demo-local-uid npm run demo:seed -- --dry-run
+```
+
+Résultat : succès, aucune écriture DB, URL DB masquée, UID masqué, 6 chunks, 6 notions, 4 mastery states, résumé et fiche de démo.
+
+## 9. Validations lancées avec résultats
+
+```text
+cd api && npm run lint:check
+Résultat : succès.
+```
+
+```text
+cd api && npm run test:e2e -- --runInBand
+Résultat : succès, 2 suites, 16 tests.
+```
+
+```text
+cd api && npm run build
+Résultat : succès.
+```
+
+```text
+cd api && DEMO_SEED_CONFIRM=revision-demo DEMO_FIREBASE_UID=demo-local-uid npm run demo:seed -- --dry-run
+Résultat : succès, sortie JSON dry-run, aucune écriture DB.
+```
+
+```text
+cd api && git diff --check
+Résultat : succès.
+```
+
+```text
+cd revision_app && git diff --check
+Résultat : succès.
+```
+
+## 10. Validations non lancées avec justification
+
+Non lancé :
+
+- `npm run lint` : interdit, applique `--fix`.
+- `npm run format` : interdit.
+- `npm run test:cov` : hors lot.
+- `npx prisma db push` : interdit.
+- `npx prisma migrate reset` : interdit.
+- `npx prisma migrate deploy` : documenté seulement, non exécuté sans cible DB explicite.
+- Seed réel : non lancé sans DB locale/staging explicitement désignée.
+- `dart analyze lib test` : non lancé, aucun fichier Dart/Flutter applicatif modifié.
+- `flutter test` : non lancé, aucun fichier Dart/Flutter applicatif modifié.
+- `flutter build web --release --dart-define=API_BASE_URL=<api-base-url-demo>` : documenté comme validation recommandée avant présentation externe, non lancé car LOT-038 ne modifie pas le front et aucune cible démo externe n’a été désignée.
+- Déploiement Docker/Dokploy : hors lot documentaire.
+
+## 11. Risques restants
+
+- Le runbook n’a pas encore été rejoué sur une vraie staging.
+- La stratégie split API/worker dépendra de l’environnement de déploiement réel.
+- Les commandes PostgreSQL/Redis locales restent à confirmer selon machine, car le repo ne fournit pas de compose.
+- Les clés IA et Firebase doivent être vérifiées hors Git avant une démo réelle.
+- Le seed réel reste à exécuter uniquement sur une base locale/staging explicitement désignée.
+- `api/README.md` ne liste pas encore `MISTRAL_OPEN_ANSWER_EVALUATION_FALLBACK_MODEL`, alors que le runbook global et `.env.example` le couvrent.
+- `revision_app/README.md` ne liste pas encore `FIREBASE_IOS_BUNDLE_ID`, alors que le runbook global le couvre.
+- Les captures ou supports de présentation ne sont pas créés dans ce lot.
+
+## 12. Recommandation prochain lot
+
+Suite logique recommandée : un lot optionnel `LOT-039 — Rejeu staging réel et captures de démonstration`, limité à une base staging explicitement désignée, avec seed réel contrôlé, smoke complet, build web, captures écran et checklist signée.
+
+Si la roadmap démo est considérée suffisante, la suite peut revenir aux lots UI/visuels pour améliorer la présentation produit.
+
+## 13. Passes de review
+
+- Audit doc manuel : le runbook couvre API, DB, Redis/worker, Firebase, Genkit, Flutter, seed, smoke, scénario, GenUI/fallback et troubleshooting.
+- Sécurité secrets par sub-agent : aucun token, UID réel, service account, clé IA ou URL privée ajouté.
+- Cohérence commandes par sub-agent : commandes npm confirmées, caveat worker/HTTP ajouté, caveat Docker Flutter/Firebase ajouté, port seed 3000/8080 clarifié.
+- Cohérence runbook/smoke/seed : les documents seed et smoke pointent vers le runbook global sans dupliquer leur contenu complet.
+- Corrections après review : GenUI/fallback documenté, timeouts IA clarifiés, validation web documentée, stop criterion “runbook rejoué” ajouté.
+- Scope : aucune modification runtime, Prisma, Genkit, Flutter applicatif ou test.
+- Plan : ligne LOT-038 mise à jour uniquement dans le tableau de suivi.
+- Git : aucun commit effectué.
+
+## 14. Critique honnête du prompt initial
+
+Le prompt était clair sur l’objectif documentaire, les interdits de production et la nécessité de ne pas inventer de commandes. La demande était volontairement large, mais pertinente pour sécuriser une démo transversale.
+
+Les points les plus ambigus :
+
+- le niveau de détail attendu sur les commandes PostgreSQL/Redis alors que le repo ne fournit pas de compose ;
+- la frontière entre runbook local et staging réel ;
+- la mention “déploiement” sans outil infra exécutable à valider dans ce lot ;
+- le statut des README principaux : utiles à harmoniser, mais le prompt demandait de ne pas les modifier sauf point d’entrée doc nécessaire.
+
+Choix retenu : documenter seulement ce qui est confirmé, marquer le reste “à confirmer selon environnement”, et ne lancer aucune action staging/production.
+
+## 15. Code complet créé/modifié/supprimé pour review
+
+Fichiers supprimés : aucun.
+
+### revision_app/docs/demo/DEMO_DEPLOYMENT_RUNBOOK.md
+
+``````markdown
+# Runbook — Démo et déploiement Revision App
+
+## 1. Objectif
+
+Ce document explique comment préparer, lancer, vérifier et présenter une démo Revision App en local ou sur un environnement staging/démo explicitement prévu pour cet usage.
+
+Il sert de point d’entrée opérationnel pour rejouer une démo sans dépendre d’un document réel, sans stocker de secret dans Git et sans confondre dry-run, seed réel, staging et production.
+
+## 2. Périmètre
+
+Ce runbook couvre :
+
+- environnement local ;
+- environnement staging ou démo ;
+- API NestJS ;
+- worker documentaire si activé ;
+- PostgreSQL ;
+- Redis et BullMQ ;
+- Firebase Auth ;
+- Genkit et provider IA ;
+- Flutter ;
+- seed de démo ;
+- smoke checks.
+
+Ce runbook exclut explicitement :
+
+- lancement production ;
+- reset destructif ;
+- déploiement infra complet non documenté dans le repo ;
+- création réelle de compte Firebase ;
+- stockage de secrets ;
+- migration destructive ;
+- seed sur une base non dédiée à la démo.
+
+## 3. Architecture de démo
+
+Flux technique attendu :
+
+```text
+Flutter -> Firebase Auth -> API NestJS -> Prisma/PostgreSQL -> BullMQ/Redis -> Genkit/provider IA -> artefacts de révision
+```
+
+Le front Flutter récupère un token Firebase, appelle l’API NestJS, puis l’API vérifie le token via Firebase Admin et charge le profil étudiant. Les données persistantes passent par Prisma/PostgreSQL. Les traitements documentaires peuvent utiliser BullMQ/Redis et le worker documentaire. Les générations réelles de notions, QCM, questions ouvertes, corrections, résumés et fiches passent par Genkit/provider IA selon les variables d’environnement.
+
+Parcours produit de démo :
+
+```text
+Connexion -> Today -> Matière -> Document READY -> Notions -> Résumé/Fiche -> QCM -> Question ouverte -> Session IA
+```
+
+Le seed LOT-036 prépare un document logique READY, des chunks, des notions, un objectif actif, des mastery states, un résumé READY et une fiche READY. Il ne seed pas directement les QCM, questions ouvertes ou sessions IA : ces actions sont lancées par les endpoints existants.
+
+### GenUI, catalogue borné et fallback
+
+GenUI n’est pas un interpréteur libre dans Revision App. Le catalogue Flutter audité est `com.revision.activity_catalog`, construit par `buildRevisionActivityCatalog`.
+
+Composants catalogués confirmés :
+
+- `QuestionCard`
+- `SummaryCard`
+- `KeyPointsList`
+- `SourceExcerptCard`
+- `McqQuestionCard`
+- `McqCorrectionPanel`
+- `ActivityResultCard`
+- `QuestionChartCard`
+- `QuestionDiagramCard`
+
+Frontière de validation :
+
+- les composants QCM/correction passent par `activity_correction_component_validator.dart` ;
+- les composants de lecture sourcée passent par `sourced_reading_component_validator.dart` ;
+- les schémas refusent les propriétés inconnues quand le composant le permet ;
+- les payloads invalides basculent vers un fallback sûr qui n’affiche pas le JSON brut ;
+- le rendu produit principal reste le fallback natif Flutter pour QCM et question ouverte.
+
+Interdits à vérifier pendant la démo :
+
+- pas de widget arbitraire ;
+- pas de HTML, SVG, Mermaid ou JavaScript rendu depuis un payload ;
+- pas de correction QCM avant submit ;
+- pas de `modelAnswer` question ouverte avant submit.
+
+## 4. Prérequis locaux
+
+Prérequis confirmés ou déduits du repo :
+
+- Node.js : le Dockerfile API utilise `node:22-alpine`; la version locale exacte est à confirmer avec `node --version`.
+- npm : version locale à confirmer avec `npm --version`.
+- Flutter/Dart : `pubspec.yaml` déclare `environment.sdk: ^3.12.0`; la version Flutter locale est à confirmer avec `flutter --version`.
+- PostgreSQL : attendu par défaut sur `localhost:5432` en local.
+- Redis : attendu par défaut sur `localhost:6379` en local si la queue documentaire n’est pas désactivée.
+- Compte Firebase de démo déjà créé côté Firebase Auth.
+- UID Firebase du compte de démo connu par l’opérateur, mais jamais commité.
+- Clé IA uniquement si la démo lance des générations réelles.
+- Repos API et app disponibles localement.
+- Migrations appliquées sur la base locale/staging avant seed réel.
+
+Commandes de vérification utiles :
+
+```bash
+node --version
+npm --version
+flutter --version
+psql --version
+redis-server --version
+```
+
+Aucun `docker-compose.yml` n’a été trouvé dans le workspace audité. Le lancement exact de PostgreSQL et Redis dépend donc de l’environnement local ou staging.
+
+## 5. Variables d’environnement API
+
+### Obligatoires en local selon usage
+
+- `DATABASE_URL` : URL PostgreSQL. Si absente en `development` ou `test`, le code Prisma utilise le fallback local `postgresql://revision:revision@localhost:5432/revision?schema=public`. Ce fallback est local uniquement et ne doit pas être traité comme une valeur staging/prod.
+- `PORT` : port API. `src/main.ts` utilise `3000` par défaut ; le Dockerfile définit `8080` dans le conteneur.
+- `DOCUMENT_STORAGE_ROOT` : racine de stockage documentaire. `.env.example` utilise `storage/revision-documents`.
+- `CORS_ORIGINS` : liste optionnelle d’origins autorisées séparées par virgules. Le code autorise aussi `localhost` et `127.0.0.1`.
+
+### Obligatoires pour Genkit/provider IA
+
+Selon provider réel choisi :
+
+- `AI_PROVIDER` : `genkit`, `google`, ou `mistral` selon le chemin configuré. Le code bascule vers Mistral si seule la clé Mistral est disponible.
+- `GOOGLE_GENAI_API_KEY` : requis pour Google GenAI.
+- `GENKIT_MODEL` : modèle Google GenAI, optionnel avec défaut côté code.
+- `MISTRAL_API_KEY` : requis pour Mistral.
+- `MISTRAL_MODEL` : modèle Mistral, optionnel avec défaut côté code.
+- `MISTRAL_FALLBACK_MODEL` : fallback global Mistral.
+- `MISTRAL_SUMMARY_FALLBACK_MODEL` : fallback résumé.
+- `MISTRAL_REVISION_SHEET_FALLBACK_MODEL` : fallback fiche.
+- `MISTRAL_DIAGNOSTIC_QUIZ_FALLBACK_MODEL` : fallback QCM.
+- `MISTRAL_OPEN_ANSWER_EVALUATION_FALLBACK_MODEL` : fallback correction question ouverte.
+
+Bornes IA confirmées ou visibles dans le code/tests :
+
+- `DOCUMENT_KNOWLEDGE_MAX_CHUNKS`
+- `DOCUMENT_KNOWLEDGE_MAX_CHARS`
+- `SUMMARY_GENERATION_MAX_CHUNKS`
+- `SUMMARY_GENERATION_MAX_CHARS`
+- `REVISION_SHEET_GENERATION_MAX_CHUNKS`
+- `REVISION_SHEET_GENERATION_MAX_CHARS`
+- `DIAGNOSTIC_QUIZ_GENERATION_MAX_CHUNKS`
+- `DIAGNOSTIC_QUIZ_GENERATION_MAX_CHARS`
+- `DIAGNOSTIC_QUIZ_DEFAULT_QUESTION_COUNT`
+- `DIAGNOSTIC_QUIZ_MAX_QUESTION_COUNT`
+- `OPEN_QUESTION_GENERATION_MAX_CHUNKS`
+- `OPEN_QUESTION_GENERATION_MAX_CHARS`
+- `OPEN_ANSWER_EVALUATION_MAX_CHUNKS`
+- `OPEN_ANSWER_EVALUATION_MAX_CHARS`
+
+Timeouts IA :
+
+- aucun paramètre d’environnement de timeout Genkit/provider n’a été trouvé dans le code audité ;
+- les logs structurés exposent `durationMs`, ce qui permet de détecter les lenteurs ;
+- la mitigation démo est de limiter les inputs par les variables `*_MAX_CHUNKS` et `*_MAX_CHARS`, de lancer les smoke checks avant présentation, et de définir tout timeout infra côté reverse proxy/plateforme si l’environnement l’exige.
+
+### Obligatoires pour Firebase Auth
+
+- `FIREBASE_PROJECT_ID` : projet Firebase cible.
+- `FIREBASE_SERVICE_ACCOUNT_JSON` : JSON de service account si l’environnement ne peut pas utiliser les identifiants Firebase Admin par défaut.
+
+Le code initialise Firebase Admin avec `FIREBASE_SERVICE_ACCOUNT_JSON` si fourni, sinon avec `FIREBASE_PROJECT_ID`. Ne jamais stocker le JSON de service account dans Git.
+
+### Obligatoires pour Redis/BullMQ
+
+- `REDIS_URL` : URL Redis complète si disponible.
+- ou `REDIS_HOST` et `REDIS_PORT` : fallback local par défaut `127.0.0.1:6379` côté code.
+- `DOCUMENT_PROCESSING_QUEUE_DISABLED=true` : désactive la queue documentaire, notamment utile pour certains contextes de test/local.
+- `DOCUMENT_PROCESSING_WORKER_ENABLED=true` : active le consumer documentaire dans le module Jobs.
+
+### Optionnelles
+
+- `RUN_PRISMA_MIGRATIONS=true` : le Dockerfile API exécute `prisma migrate deploy` au démarrage si cette variable vaut `true`. À réserver aux environnements où cette stratégie est explicitement validée.
+- `NODE_ENV` : `production`, `development`, `test`. Le fallback local `DATABASE_URL` est refusé hors local/test.
+
+### Démo/seed
+
+- `DEMO_SEED_CONFIRM=revision-demo`
+- `DEMO_FIREBASE_UID=<uid-firebase-demo>`
+- `DEMO_STUDENT_FIREBASE_UID=<uid-firebase-demo>` : alias accepté.
+- `DEMO_STUDENT_EMAIL=demo-revision@example.test`
+- `DEMO_STUDENT_DISPLAY_NAME="Demo Revision"`
+- `DEMO_SEED_DRY_RUN=1`
+
+Ne jamais remplacer ces exemples par de vraies valeurs dans Git.
+
+## 6. Variables d’environnement Flutter
+
+Configuration API confirmée :
+
+- `API_BASE_URL` : `--dart-define` lu par `AppConfig.apiBaseUrl`.
+- Valeur par défaut actuelle côté app : URL API déployée indiquée dans le README Flutter.
+- Pour une API locale : `--dart-define=API_BASE_URL=http://localhost:3000`.
+
+Configuration Firebase confirmée par le README et `firebase_options.dart` :
+
+- `FIREBASE_API_KEY`
+- `FIREBASE_APP_ID`
+- `FIREBASE_ANDROID_API_KEY`
+- `FIREBASE_ANDROID_APP_ID`
+- `FIREBASE_WEB_API_KEY`
+- `FIREBASE_WEB_APP_ID`
+- `FIREBASE_MESSAGING_SENDER_ID`
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_AUTH_DOMAIN`
+- `FIREBASE_MEASUREMENT_ID`
+- `FIREBASE_IOS_BUNDLE_ID`
+
+Exemple local avec placeholders :
+
+```bash
+cd revision_app
+flutter run -d macos \
+  --dart-define=API_BASE_URL=http://localhost:3000 \
+  --dart-define=FIREBASE_PROJECT_ID=<firebase-project-id>
+```
+
+Ne pas ajouter de valeur Firebase réelle dans la documentation ou les scripts.
+
+## 7. Préparation base de données
+
+Commandes non destructives confirmées :
+
+```bash
+cd api
+npx prisma validate
+npm run prisma:generate
+```
+
+Script de migration confirmé dans `package.json` :
+
+```bash
+cd api
+DATABASE_URL=<database-url-local-ou-staging> npm run prisma:migrate:deploy
+```
+
+Cette commande est documentée mais ne doit être exécutée que sur une base locale/staging explicitement choisie. Ne jamais la lancer sans vérifier la cible.
+
+À ne jamais utiliser dans ce runbook de démo :
+
+```bash
+npx prisma db push
+npx prisma migrate reset
+```
+
+En conteneur, le Dockerfile API lance automatiquement `prisma migrate deploy` au démarrage si `RUN_PRISMA_MIGRATIONS=true`. Cette stratégie doit être validée par l’exploitation de l’environnement cible.
+
+## 8. Lancement services locaux
+
+### PostgreSQL
+
+Aucun script PostgreSQL dédié ni `docker-compose.yml` n’a été trouvé dans le repo. La commande exacte dépend donc de la machine ou de l’environnement staging.
+
+Attendu local confirmé par README/code :
+
+```text
+host: localhost
+port: 5432
+database: revision
+schema: public
+```
+
+### Redis
+
+Aucun script Redis dédié ni `docker-compose.yml` n’a été trouvé dans le repo.
+
+Attendu local confirmé par README/code :
+
+```text
+host: localhost ou 127.0.0.1
+port: 6379
+```
+
+Si Redis n’est pas disponible et que le worker documentaire n’est pas testé, utiliser un environnement où la queue est explicitement désactivée avec `DOCUMENT_PROCESSING_QUEUE_DISABLED=true`.
+
+### API NestJS
+
+Commandes confirmées dans `api/package.json` :
+
+```bash
+cd api
+npm install
+npm run prisma:generate
+npm run start:dev
+```
+
+API production build local :
+
+```bash
+cd api
+npm run build
+npm run start:prod
+```
+
+Port local par défaut : `3000`. Port conteneur par défaut : `8080`.
+
+### Worker documentaire
+
+Aucun script npm séparé `worker` n’a été trouvé. Le module Jobs active le consumer documentaire dans le même runtime NestJS quand :
+
+```bash
+DOCUMENT_PROCESSING_WORKER_ENABLED=true
+```
+
+Lancement local possible avec le script confirmé :
+
+```bash
+cd api
+DOCUMENT_PROCESSING_WORKER_ENABLED=true npm run start:dev
+```
+
+Attention : cette commande démarre aussi le serveur HTTP NestJS. Elle peut donc entrer en conflit avec une API déjà lancée sur le même `PORT` local. Pour un test local split, choisir un `PORT` différent ou ne pas lancer deux processus HTTP simultanément. Il ne s’agit pas d’un binaire worker-only.
+
+Pour un déploiement split API/worker, utiliser la même application buildée avec la même base, le même Redis et le même volume documentaire, mais activer `DOCUMENT_PROCESSING_WORKER_ENABLED=true` sur le process worker. La commande exacte de split est à confirmer selon l’environnement de déploiement.
+
+### Flutter
+
+Commandes confirmées dans le README Flutter :
+
+```bash
+cd revision_app
+flutter pub get
+flutter run -d macos --dart-define=API_BASE_URL=http://localhost:3000
+```
+
+Build web Docker confirmé par `revision_app/Dockerfile` :
+
+```bash
+cd revision_app
+docker build \
+  --build-arg API_BASE_URL=<api-base-url-demo> \
+  -t revision-app:demo .
+```
+
+Le Dockerfile front sert le build web via nginx et expose le port `80`. Le Dockerfile audité ne transmet que `API_BASE_URL` à `flutter build web`. Les `--dart-define` Firebase listés plus haut ne sont pas configurables par cette commande Docker tant que le Dockerfile n’est pas étendu.
+
+## 9. Seed de démonstration
+
+Le seed LOT-036 prépare les données synthétiques de démo. Il ne crée pas de compte Firebase, ne lit pas de PDF physique, n’appelle pas Genkit, ne lance pas BullMQ et ne seed pas les QCM/questions ouvertes/sessions.
+
+Dry-run non destructif :
+
+```bash
+cd api
+DEMO_SEED_CONFIRM=revision-demo DEMO_FIREBASE_UID=demo-local-uid npm run demo:seed -- --dry-run
+```
+
+Seed réel, uniquement sur DB locale/staging explicitement prévue :
+
+```bash
+cd api
+DEMO_SEED_CONFIRM=revision-demo \
+DEMO_FIREBASE_UID=<uid-firebase-demo> \
+DEMO_STUDENT_EMAIL=demo-revision@example.test \
+DEMO_STUDENT_DISPLAY_NAME="Demo Revision" \
+npm run demo:seed
+```
+
+Garde-fous confirmés :
+
+- refus si `NODE_ENV=production` ;
+- refus sans `DEMO_SEED_CONFIRM=revision-demo` ;
+- refus sans UID Firebase ;
+- résumé de sortie avec URL DB et UID masqués ;
+- aucune suppression hors namespace démo.
+
+Le compte Firebase doit exister avant la démo. Le seed crée seulement les lignes DB reliées à l’UID fourni.
+
+## 10. Vérifications automatisées avant démo
+
+Côté API :
+
+```bash
+cd api
+npm run lint:check
+npm test -- demo-seed --runInBand
+npm test -- activities --runInBand
+npm test -- revision --runInBand
+npm test -- documents --runInBand
+npm run test:e2e -- --runInBand
+npm run build
+git diff --check
+```
+
+Côté app/docs :
+
+```bash
+cd revision_app
+git diff --check
+```
+
+Validation web recommandée avant une présentation externe :
+
+```bash
+cd revision_app
+flutter build web --release --dart-define=API_BASE_URL=<api-base-url-demo>
+```
+
+Si la démo web doit viser un projet Firebase différent des valeurs par défaut de l’app, passer aussi les `--dart-define=FIREBASE_*` nécessaires ou étendre le Dockerfile front pour les recevoir en `ARG`.
+
+Si du code Flutter est modifié dans un futur lot :
+
+```bash
+cd revision_app
+dart analyze lib test
+flutter test
+```
+
+Ne pas lancer `npm run lint`, `npm run format`, `npm run test:cov`, `dart fix --apply` ou `dart format .` dans ce runbook.
+
+## 11. Smoke checks API
+
+Checklist complète : [DEMO_SMOKE_CHECKS.md](./DEMO_SMOKE_CHECKS.md).
+
+Résumé minimal :
+
+- `GET /health` ;
+- `GET /today` avec `<token-firebase-demo>` ;
+- documents et notions ;
+- résumé et fiche ;
+- QCM ;
+- question ouverte ;
+- session IA.
+
+Exemple sans vrai token :
+
+```bash
+API_URL=http://localhost:3000
+TOKEN=<token-firebase-demo>
+curl -sS "$API_URL/health"
+curl -sS -H "Authorization: Bearer $TOKEN" "$API_URL/today"
+```
+
+Ne jamais coller un token Firebase réel dans Git, dans une capture publique ou dans une issue.
+
+## 12. Scénario de présentation
+
+### Démo courte 3 minutes
+
+1. Présenter Revision App : “on transforme un cours en parcours de révision”.
+2. Se connecter avec le compte Firebase de démo.
+3. Ouvrir Today et montrer les actions recommandées.
+4. Lancer une action de révision IA ou une question ouverte depuis Today.
+5. Montrer une correction sourcée ou une action suivante.
+6. Conclure : les données viennent des fichiers de cours et le plan s’adapte aux notions faibles.
+
+### Démo complète 8-10 minutes
+
+1. Présenter Revision App : “Duolingo, mais avec ses propres fichiers de cours”.
+2. Se connecter avec le compte Firebase de démo.
+3. Ouvrir Today.
+4. Montrer les actions recommandées : QCM, question ouverte, session IA.
+5. Ouvrir la matière de démo.
+6. Ouvrir le document READY.
+7. Montrer les notions sourcées.
+8. Ouvrir résumé et fiche.
+9. Lancer un QCM.
+10. Montrer que la correction n’est pas visible avant submit.
+11. Soumettre le QCM et montrer correction/sources.
+12. Lancer une question ouverte depuis une notion.
+13. Soumettre une réponse.
+14. Montrer correction IA, points présents, points manquants, conseil et sources.
+15. Lancer une session de révision IA.
+16. Montrer que la session orchestre des actions existantes et ne rend pas de widget arbitraire.
+17. Conclure sur Genkit borné, TodayPlan déterministe et fallback natif Flutter.
+
+## 13. Données de démonstration attendues
+
+Selon le seed LOT-036, la base de démo doit contenir :
+
+- matière `Droit constitutionnel — Ve République` ;
+- document logique READY `demo-droit-constitutionnel-veme-republique.pdf` ;
+- six chunks synthétiques ;
+- six notions sourcées ;
+- quatre mastery states ;
+- un objectif actif à `now + 30 jours` ;
+- un résumé READY ;
+- une fiche READY.
+
+Le document est logique : son `storagePath` est en namespace `demo://...` et ne correspond pas à un PDF physique uploadé.
+
+## 14. Troubleshooting
+
+### API ne démarre pas
+
+- Vérifier `npm install`.
+- Vérifier `npm run prisma:generate`.
+- Vérifier `DATABASE_URL` ou le fallback local.
+- Vérifier que le port `3000` ou `PORT` est libre.
+- Lancer `npm run build` pour isoler les erreurs TypeScript.
+
+### Prisma / DB
+
+- `DATABASE_URL` absent hors local/test : le code refuse le démarrage.
+- DB inaccessible : vérifier host, port, database et credentials.
+- Migrations non appliquées : appliquer uniquement sur DB locale/staging confirmée.
+- Fallback local : utilisable seulement en local/test.
+
+### Redis / BullMQ / worker
+
+- Redis absent : vérifier `REDIS_URL` ou `REDIS_HOST`/`REDIS_PORT`.
+- Queue non nécessaire : désactiver explicitement avec `DOCUMENT_PROCESSING_QUEUE_DISABLED=true`.
+- Worker non lancé : vérifier `DOCUMENT_PROCESSING_WORKER_ENABLED=true`.
+- Job bloqué : vérifier que le process worker partage DB, Redis et volume documentaire avec l’API.
+
+### Firebase Auth
+
+- Token absent : les routes protégées renvoient 401.
+- UID seedé différent du compte connecté : Today peut être vide.
+- Compte Firebase absent : créer le compte dans Firebase, hors seed.
+- `FIREBASE_SERVICE_ACCOUNT_JSON` invalide : le code lève `FIREBASE_SERVICE_ACCOUNT_JSON must be valid JSON`.
+
+### Seed
+
+- Confirmation absente : définir `DEMO_SEED_CONFIRM=revision-demo`.
+- UID absent : définir `DEMO_FIREBASE_UID` ou `DEMO_STUDENT_FIREBASE_UID`.
+- Production refusée : comportement attendu.
+- Namespace déjà utilisé par un autre étudiant : choisir une base de démo propre ou nettoyer uniquement les objets démo après validation.
+
+### Genkit / IA
+
+- Clé provider absente : les générations réelles échouent.
+- Provider indisponible : retenter plus tard ou vérifier le provider choisi.
+- Timeout : vérifier logs structurés `ai.generation` et limites de chunks.
+- Output invalide : vérifier fallbacks Mistral configurés et prompts/schema versions.
+- Coûts : limiter les tests réels avant présentation.
+
+### Frontend Flutter
+
+- Mauvaise API : vérifier `--dart-define=API_BASE_URL=...`.
+- CORS : vérifier `CORS_ORIGINS` si l’origine n’est ni default ni localhost.
+- Auth : vérifier que l’utilisateur est bien connecté au compte Firebase de démo.
+- Today sans actions : vérifier seed réel, UID, objectif actif et mastery states.
+- Route vide : vérifier que l’app pointe vers la bonne API et que le token est accepté.
+
+## 15. Signaux rouges
+
+Arrêter immédiatement la démo si :
+
+- le seed est lancé sur la mauvaise base ;
+- un token, secret, UID réel ou `DATABASE_URL` réel apparaît dans Git ;
+- `/today` renvoie 500 ;
+- Today est vide malgré seed réel ;
+- une correction QCM est visible avant submit ;
+- `modelAnswer` est visible avant submit ;
+- `storagePath` est exposé dans une réponse publique ;
+- une stack trace provider est exposée au frontend ;
+- GenUI rend un widget non catalogué ou arbitraire.
+
+## 16. Production safety
+
+Ce document ne sert pas à lancer la production.
+
+Interdits :
+
+- seed production ;
+- reset DB ;
+- secrets dans Git ;
+- migration destructive ;
+- dry-run confondu avec seed réel ;
+- appel IA massif sans limites ;
+- `prisma db push` ;
+- `prisma migrate reset` ;
+- copie de token Firebase réel dans une doc ou un rapport.
+
+Avant toute action staging, vérifier explicitement la cible DB, l’UID Firebase de démo et les variables IA.
+
+## 17. Checklist finale avant présentation
+
+- [ ] API démarrée.
+- [ ] DB locale/staging confirmée.
+- [ ] Migrations appliquées sur la bonne cible.
+- [ ] Redis disponible ou queue désactivée explicitement.
+- [ ] Worker disponible si le parcours documentaire réel est montré.
+- [ ] Compte Firebase démo existant.
+- [ ] UID seedé correspond au compte connecté.
+- [ ] Seed réel lancé uniquement sur local/staging.
+- [ ] `GET /health` OK.
+- [ ] `GET /today` OK avec token de démo.
+- [ ] Flutter pointe vers la bonne API.
+- [ ] Runbook rejoué intégralement sur l’environnement cible avant toute présentation externe.
+- [ ] Parcours court testé.
+- [ ] Parcours complet testé si nécessaire.
+- [ ] `git diff --check` OK côté API et docs.
+- [ ] Aucun secret dans `git diff`.
+``````
+
+### revision_app/docs/demo/DEMO_SEED_RUNBOOK.md
+
+``````markdown
+# Runbook — Seed démo Revision App
+
+Voir aussi le runbook global : [DEMO_DEPLOYMENT_RUNBOOK.md](./DEMO_DEPLOYMENT_RUNBOOK.md).
+
+## 1. Objectif
+
+Ce runbook explique comment préparer une base locale ou de démonstration avec un scénario reproductible pour Revision App.
+
+Le seed permet de tester :
+
+* une matière réaliste ;
+* un document logique `READY` ;
+* des chunks sourcés ;
+* des notions extraites ;
+* un objectif de révision actif ;
+* des mastery states variés ;
+* un résumé et une fiche prêts ;
+* un TodayPlan multi-actions exploitable.
+
+## 2. Ce que le seed crée
+
+Le seed crée un scénario synthétique autour de :
+
+```text
+Droit constitutionnel — Ve République
+```
+
+Il crée :
+
+* un `StudentProfile` lié au Firebase UID fourni ;
+* une matière de démo ;
+* un document logique `READY` ;
+* six chunks courts et synthétiques ;
+* six notions sourcées ;
+* un objectif de révision à `now + 30 jours` ;
+* quatre mastery states réalistes ;
+* un résumé `READY` ;
+* une fiche `READY`.
+
+## 3. Ce que le seed ne fait pas
+
+Le seed ne fait pas :
+
+* création de compte Firebase ;
+* bypass Firebase Auth ;
+* upload réel de PDF ;
+* lecture de fichier PDF ;
+* appel Genkit ;
+* appel provider IA ;
+* lancement worker PDF ;
+* lancement BullMQ ;
+* création de QCM ;
+* création de question ouverte ;
+* création de session de révision.
+
+## 4. Prérequis
+
+* Avoir une base PostgreSQL locale ou de démonstration prévue pour cet usage.
+* Avoir appliqué les migrations avant d’exécuter le seed.
+* Avoir un compte Firebase de démonstration existant.
+* Récupérer l’UID Firebase de ce compte.
+
+Ne jamais utiliser ce seed sur production.
+
+## 5. Firebase UID de démo
+
+Le seed ne crée pas de compte Firebase.
+
+L’utilisateur devra se connecter dans l’app avec un compte Firebase dont l’UID correspond à la variable fournie au seed.
+
+Ne jamais commiter un UID Firebase réel dans Git.
+
+## 6. Variables d’environnement
+
+Variables obligatoires :
+
+```bash
+DEMO_SEED_CONFIRM=revision-demo
+DEMO_FIREBASE_UID=<firebase uid du compte demo>
+```
+
+Alias accepté :
+
+```bash
+DEMO_STUDENT_FIREBASE_UID=<firebase uid du compte demo>
+```
+
+Variables optionnelles :
+
+```bash
+DEMO_STUDENT_EMAIL=demo-revision@example.test
+DEMO_STUDENT_DISPLAY_NAME="Demo Revision"
+DEMO_SEED_DRY_RUN=1
+```
+
+## 7. Dry-run
+
+Depuis `api` :
+
+```bash
+DEMO_SEED_CONFIRM=revision-demo DEMO_FIREBASE_UID=demo-local-uid npm run demo:seed -- --dry-run
+```
+
+Le dry-run :
+
+* valide les garde-fous ;
+* construit les fixtures ;
+* affiche les IDs prévus ;
+* masque l’URL DB et l’UID ;
+* n’écrit rien en base.
+
+## 8. Seed réel
+
+Depuis `api`, uniquement sur une DB locale ou une DB de démonstration explicitement prévue :
+
+```bash
+DEMO_SEED_CONFIRM=revision-demo \
+DEMO_FIREBASE_UID=<firebase uid du compte demo> \
+DEMO_STUDENT_EMAIL=demo-revision@example.test \
+DEMO_STUDENT_DISPLAY_NAME="Demo Revision" \
+npm run demo:seed
+```
+
+Si `DATABASE_URL` est absent en environnement local, le backend utilise son fallback local documenté :
+
+```text
+postgresql://revision:revision@localhost:5432/revision?schema=public
+```
+
+## 9. Vérifier dans l’app
+
+1. Se connecter avec le compte Firebase correspondant à l’UID seedé.
+2. Ouvrir `Tes matières`.
+3. Vérifier la matière `Droit constitutionnel — Ve République`.
+4. Ouvrir le document de démo.
+5. Vérifier les notions, le résumé et la fiche.
+6. Ouvrir `Aujourd’hui`.
+7. Vérifier que plusieurs actions sont proposées.
+
+## 10. Vérifier via API
+
+Avec un token Firebase valide du compte de démo :
+
+```bash
+API_URL=http://localhost:3000
+curl -H "Authorization: Bearer <firebase id token>" "$API_URL/today"
+```
+
+Le plan doit contenir des actions `diagnostic_quiz`, `open_question` et `revision_session` si les données sont intactes.
+
+Si l’API tourne dans le conteneur Docker exposé en local, adapter `API_URL` vers le port publié, par exemple `http://localhost:8080`.
+
+## 11. Relancer le seed
+
+Le seed est idempotent.
+
+Il peut être relancé avec les mêmes variables. Les données de démo connues sont mises à jour sans créer de doublons.
+
+## 12. Nettoyage
+
+Le script ne propose pas de commande globale de nettoyage.
+
+Il ne supprime pas les données utilisateur hors namespace démo. Les seules suppressions automatiques concernent des liens ou sections identifiés par des IDs `demo-*` pendant la remise en place des fixtures.
+
+Pour nettoyer manuellement, cibler uniquement les IDs `demo-*` listés dans la sortie dry-run.
+
+## 13. Limites connues
+
+* Le document est logique : aucun PDF physique n’est stocké.
+* Les chunks sont synthétiques.
+* Les QCM et questions ouvertes ne sont pas seedés.
+* Le seed réel n’a pas vocation à tourner en production.
+
+## 14. Troubleshooting
+
+### `DEMO_SEED_CONFIRM=revision-demo is required`
+
+Ajouter la variable de confirmation explicite.
+
+### `DEMO_FIREBASE_UID or DEMO_STUDENT_FIREBASE_UID is required`
+
+Fournir l’UID Firebase du compte de démo.
+
+### `Demo seed is not allowed with NODE_ENV=production`
+
+Ne pas exécuter ce seed en production.
+
+### `Demo namespace already belongs to another student profile`
+
+Le namespace `demo-*` existe déjà pour un autre `StudentProfile`. Utiliser le même UID de démo ou nettoyer explicitement les données de démo concernées sur une base non production.
+``````
+
+### revision_app/docs/demo/DEMO_SMOKE_CHECKS.md
+
+``````markdown
+# Smoke checks — Revision App
+
+Voir aussi le runbook global : [DEMO_DEPLOYMENT_RUNBOOK.md](./DEMO_DEPLOYMENT_RUNBOOK.md).
+
+## 1. Objectif
+
+Cette checklist sert à vérifier rapidement que la démo Revision App reste présentable après un changement backend, frontend ou infra.
+
+Elle cible uniquement les chemins critiques :
+
+- disponibilité API ;
+- seed de démo ;
+- plan du jour ;
+- documents et notions ;
+- résumé et fiche ;
+- QCM ;
+- question ouverte ;
+- session de révision IA ;
+- écran Flutter principal.
+
+Elle ne remplace pas les tests automatisés ni une recette complète.
+
+## 2. Prérequis
+
+- API démarrée sur l’environnement à tester.
+- Application Flutter pointée vers cette API.
+- Un compte Firebase de démonstration existe déjà.
+- L’UID Firebase de ce compte est connu par la personne qui exécute le smoke.
+- Les migrations nécessaires ont déjà été appliquées sur la base cible.
+- Ne jamais utiliser une base de production pour le seed.
+
+Valeurs factices utilisées dans les exemples :
+
+```bash
+DEMO_FIREBASE_UID=demo-local-uid
+DEMO_STUDENT_EMAIL=demo-revision@example.test
+```
+
+Ne pas remplacer ces exemples par un vrai UID ou un vrai token dans Git.
+
+## 3. Commandes API non destructives
+
+Depuis le dossier API :
+
+```bash
+npx prisma validate
+npm run prisma:generate
+npm run lint:check
+npm test -- demo-seed --runInBand
+npm run test:e2e -- --runInBand
+```
+
+Ne pas lancer :
+
+```bash
+npm run lint
+npm run format
+npm run test:cov
+npx prisma db push
+npx prisma migrate reset
+```
+
+## 4. Validation du seed dry-run
+
+Le dry-run valide les garde-fous et affiche les objets prévus sans écrire en base.
+
+```bash
+cd api
+DEMO_SEED_CONFIRM=revision-demo DEMO_FIREBASE_UID=demo-local-uid npm run demo:seed -- --dry-run
+```
+
+Attendu :
+
+- sortie JSON ;
+- `mode` vaut `dry-run` ;
+- l’URL DB est masquée ;
+- l’UID Firebase est masqué ;
+- 1 matière ;
+- 1 document ;
+- plusieurs chunks ;
+- plusieurs notions ;
+- plusieurs mastery states ;
+- aucun appel Genkit ;
+- aucune écriture DB.
+
+## 5. Validation optionnelle du seed réel sur DB locale/staging
+
+Le seed réel est autorisé uniquement sur une base locale ou staging explicitement prévue pour la démo.
+
+Exemple :
+
+```bash
+cd api
+DEMO_SEED_CONFIRM=revision-demo \
+DEMO_FIREBASE_UID=<uid-firebase-demo> \
+DEMO_STUDENT_EMAIL=demo-revision@example.test \
+DEMO_STUDENT_DISPLAY_NAME="Demo Revision" \
+npm run demo:seed
+```
+
+Attendu :
+
+- refus si `NODE_ENV=production` ;
+- refus sans confirmation ;
+- refus sans UID Firebase ;
+- résumé des données créées ;
+- aucune donnée hors namespace démo supprimée.
+
+Le seed ne crée pas de compte Firebase. Il crée uniquement les lignes DB associées à l’UID fourni.
+
+## 6. Smoke API `/health`
+
+```bash
+curl -sS "$API_URL/health"
+```
+
+Attendu :
+
+```json
+{"status":"ok"}
+```
+
+## 7. Smoke API `/today` avec token Firebase de démo
+
+Récupérer un token Firebase depuis l’app ou un outil local sécurisé, sans le coller dans Git.
+
+```bash
+curl -sS "$API_URL/today" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+```
+
+Attendu :
+
+- `generatedAt` présent ;
+- `items` est une liste ;
+- actions possibles : `diagnostic_quiz`, `open_question`, `revision_session` ;
+- pas de contenu source complet inattendu ;
+- pas de secret.
+
+## 8. Smoke documents et notions
+
+```bash
+curl -sS "$API_URL/subjects/<subject-id>/documents" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+
+curl -sS "$API_URL/documents/<document-id>" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+
+curl -sS "$API_URL/documents/<document-id>/knowledge-units" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+```
+
+Attendu :
+
+- document READY visible ;
+- notions visibles ;
+- sources visibles sous forme bornée ;
+- pas de `storagePath` dans les réponses publiques.
+
+Le document seedé est un document logique READY. Il ne correspond pas à un PDF physique importé.
+
+## 9. Smoke résumé / fiche
+
+```bash
+curl -sS "$API_URL/documents/<document-id>/summary" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+
+curl -sS "$API_URL/documents/<document-id>/revision-sheet" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+```
+
+Attendu :
+
+- résumé READY ;
+- fiche READY ;
+- sources bornées ;
+- pas de `promptVersion`, `provider`, `model`, `storagePath` dans la réponse publique.
+
+## 10. Smoke QCM
+
+```bash
+curl -sS "$API_URL/activities/next" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -H "Content-Type: application/json" \
+  -d '{"subjectId":"<subject-id>","knowledgeUnitId":"<knowledge-unit-id>","questionCount":10}'
+```
+
+Attendu pré-submit :
+
+- type `diagnostic_quiz` ;
+- questions visibles ;
+- choix visibles ;
+- pas de `correctChoiceId` ;
+- pas de `correctChoiceIds` ;
+- pas de feedback/correction.
+
+Les QCM ne sont pas seedés directement. Ils sont générés ou lancés par les use cases existants.
+
+## 11. Smoke question ouverte
+
+```bash
+curl -sS "$API_URL/activities/open-question" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -H "Content-Type: application/json" \
+  -d '{"subjectId":"<subject-id>","knowledgeUnitId":"<knowledge-unit-id>"}'
+```
+
+Attendu pré-submit :
+
+- type `open_question` ;
+- prompt visible ;
+- sources sans texte complet ;
+- pas de `modelAnswer` ;
+- pas de score ;
+- pas de feedback.
+
+Soumission :
+
+```bash
+curl -sS "$API_URL/activities/<session-id>/open-answer" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -H "Content-Type: application/json" \
+  -d '{"answerText":"Réponse de démonstration structurée, sans donnée personnelle."}'
+```
+
+Attendu post-submit :
+
+- évaluation `READY` ou `FAILED` contrôlé ;
+- pas de stack trace ;
+- pas de message provider brut.
+
+## 12. Smoke session de révision IA
+
+```bash
+curl -sS "$API_URL/revision-sessions" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -H "Content-Type: application/json" \
+  -d '{"subjectId":"<subject-id>","knowledgeUnitId":"<knowledge-unit-id>"}'
+```
+
+Attendu :
+
+- session STARTED ;
+- action initiale déterministe ;
+- payload métier public ;
+- pas de widget arbitraire ;
+- pas de correction pré-submit.
+
+Action suivante :
+
+```bash
+curl -sS "$API_URL/revision-sessions/<session-id>/next-action" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -X POST
+```
+
+Attendu :
+
+- action bornée ;
+- pas de chatbot libre ;
+- pas de payload arbitraire.
+
+## 13. Smoke frontend manuel
+
+Dans l’app Flutter :
+
+1. Se connecter avec le compte Firebase de démonstration.
+2. Ouvrir `Aujourd'hui`.
+3. Vérifier plusieurs actions dans le plan du jour.
+4. Lancer un QCM depuis Today.
+5. Lancer une question ouverte depuis Today.
+6. Lancer une session de révision IA depuis Today.
+7. Ouvrir la matière de démo.
+8. Ouvrir le document de démo.
+9. Vérifier les notions sourcées.
+10. Vérifier le résumé et la fiche si l’UI les expose.
+
+Attendu :
+
+- pas d’écran vide inattendu ;
+- pas de correction QCM avant submit ;
+- pas de source complète pré-submit ;
+- messages d’erreur propres en cas d’échec IA.
+
+## 14. Signaux rouges / rollback
+
+Arrêter la démo et investiguer si :
+
+- `/health` échoue ;
+- `/today` retourne une erreur 500 ;
+- le seed réel a été lancé sur une mauvaise base ;
+- la page Today affiche zéro action malgré le seed ;
+- un payload pré-submit contient `correctChoiceId`, `correctChoiceIds` ou `modelAnswer` ;
+- un endpoint renvoie une stack trace ;
+- un token réel, UID réel ou secret a été copié dans un fichier du repo.
+
+## 15. Ce qui ne doit jamais être fait en production
+
+- Ne jamais lancer le seed réel en production.
+- Ne jamais lancer `prisma migrate reset`.
+- Ne jamais lancer `prisma db push --force-reset`.
+- Ne jamais écrire un token Firebase réel dans Git.
+- Ne jamais écrire un UID personnel dans Git.
+- Ne jamais exposer `DATABASE_URL`, clés IA ou secrets Redis dans une doc.
+- Ne jamais utiliser le dry-run comme preuve que les données ont été écrites.
+``````
+
+### revision_app/docs/ROADMAP_EXECUTION_PLAN.md
+
+``````markdown
 # Roadmap Execution Plan — Revision App
 
 ## 1. But du document
@@ -3561,3 +4940,8 @@ Livrable attendu :
 - Aucun commit.
 
 Le deuxième lot à lancer immédiatement après devrait être LOT-001B. Il doit trancher si le MVP utilise officiellement l'upload direct backend via `POST /documents/course-pdf`, Firebase Storage avec reader backend, ou une coexistence temporaire documentée. Sans cette décision, il ne faut pas toucher au worker, aux chunks ou aux migrations documentaires.
+``````
+
+### revision_app/docs/ROADMAP_EXECUTION_LOT_038_DEMO_DEPLOYMENT_RUNBOOK.md
+
+Le présent fichier est le rapport de lot. Son contenu complet est directement consultable dans ce document.

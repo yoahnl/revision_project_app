@@ -1,5 +1,7 @@
 # Runbook — Seed démo Revision App
 
+Voir aussi le runbook global : [DEMO_DEPLOYMENT_RUNBOOK.md](./DEMO_DEPLOYMENT_RUNBOOK.md).
+
 ## 1. Objectif
 
 Ce runbook explique comment préparer une base locale ou de démonstration avec un scénario reproductible pour Revision App.
@@ -140,10 +142,13 @@ postgresql://revision:revision@localhost:5432/revision?schema=public
 Avec un token Firebase valide du compte de démo :
 
 ```bash
-curl -H "Authorization: Bearer <firebase id token>" http://localhost:8080/today
+API_URL=http://localhost:3000
+curl -H "Authorization: Bearer <firebase id token>" "$API_URL/today"
 ```
 
 Le plan doit contenir des actions `diagnostic_quiz`, `open_question` et `revision_session` si les données sont intactes.
+
+Si l’API tourne dans le conteneur Docker exposé en local, adapter `API_URL` vers le port publié, par exemple `http://localhost:8080`.
 
 ## 11. Relancer le seed
 
