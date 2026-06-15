@@ -214,7 +214,7 @@ Ce tableau doit être mis à jour à chaque lot réalisé. Cette règle est éga
 | LOT-033 | Orchestration coach Genkit | Réalisé | `docs/ROADMAP_EXECUTION_LOT_033_REVISION_COACH_GENKIT.md` |
 | LOT-034 | TodayPlan multi-actions backend | Réalisé | `docs/ROADMAP_EXECUTION_LOT_034_TODAY_PLAN_MULTI_ACTIONS_BACKEND.md` |
 | LOT-035 | TodayPage v2 frontend | Réalisé | `docs/ROADMAP_EXECUTION_LOT_035_TODAY_PAGE_V2_FRONTEND.md` |
-| LOT-036 | Seed et fixtures de démo | À faire | À créer |
+| LOT-036 | Seed et fixtures de démo | Réalisé | `docs/ROADMAP_EXECUTION_LOT_036_DEMO_SEED_FIXTURES.md` |
 | LOT-037 | Tests e2e critiques et smoke checks | À faire | À créer |
 | LOT-038 | Runbook démo et déploiement | À faire | À créer |
 
