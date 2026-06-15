@@ -1,3 +1,1394 @@
+# LOT-034 — TodayPlan multi-actions backend
+
+## 1. Résultat
+
+`GET /today` retourne désormais un plan déterministe multi-actions. Le backend propose jusqu'à quatre recommandations exploitables par LOT-035 : QCM, question ouverte et session de révision IA. Le ranking reste pur, stable et sans IA : il s'appuie sur la priorité matière, le score de maîtrise, l'ancienneté de pratique et un mélange contrôlé des types d'activité.
+
+Aucun frontend applicatif, aucun GenUI, aucun Genkit, aucun Prisma schema et aucune migration n'ont été modifiés.
+
+## 2. Sources inspectées
+
+- `revision_app/docs/ROADMAP.md`
+- `revision_app/docs/ROADMAP_EXECUTION_PLAN.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_031_REVISION_SESSION_MINIMAL.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_032_REVISION_SESSION_SCREEN.md`
+- `revision_app/docs/ROADMAP_EXECUTION_HOTFIX_032B_REVISION_SESSION_ROUTE_ISOLATION.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_033_REVISION_COACH_GENKIT.md`
+- `revision_app/AGENTS.md`
+- `revision_app/codex_rule.md`
+- `api/package.json`
+- `api/src/app.module.ts`
+- `api/src/modules/revision/revision.module.ts`
+- `api/src/modules/revision/domain/adaptive-plan.service.ts`
+- `api/src/modules/revision/domain/knowledge-unit.entity.ts`
+- `api/src/modules/revision/domain/mastery-state.entity.ts`
+- `api/src/modules/revision/domain/revision-goal.entity.ts`
+- `api/src/modules/revision/application/get-today-plan.use-case.ts`
+- `api/src/modules/revision/application/revision.repository.ts`
+- `api/src/modules/revision/infrastructure/prisma-revision.repository.ts`
+- `api/src/modules/revision/interfaces/today.controller.ts`
+- `api/src/modules/revision/**/*.spec.ts`
+- `api/src/modules/subjects/domain/subject.entity.ts`
+- `api/src/modules/subjects/application/subjects.repository.ts`
+- `api/src/modules/subjects/infrastructure/**`
+- `api/src/modules/revision-sessions/domain/revision-session.entity.ts`
+- `api/src/modules/revision-sessions/application/revision-sessions.repository.ts`
+- `api/src/modules/revision-sessions/application/request-next-revision-session-action.use-case.ts`
+- `api/src/modules/activities/application/activities.repository.ts`
+- `api/src/modules/activities/application/start-next-activity.use-case.ts`
+- `api/src/modules/activities/application/start-open-question-activity.use-case.ts`
+- `revision_app/lib/features/today/**` en lecture seule
+- `revision_app/lib/presentation/pages/today/today_page.dart` en lecture seule
+- `revision_app/lib/features/revision_sessions/**` en lecture seule
+- `revision_app/lib/app/router/app_routes.dart` en lecture seule
+
+## 3. Préflight Git
+
+API initiale :
+
+```text
+/Users/karim/Project/app-révision/api
+/Users/karim/Project/app-révision/api
+main
+## main...origin/main
+783a728 #33-1: ajoute coach de révision et sélection d'actions
+5e71dde #31-1: ajoute module revision-sessions avec structure minimale
+0f25fed #27-3: finalise corrections de l'évaluateur de réponses ouvertes
+0cf3f17 #27-2: corrige évaluation des réponses ouvertes et soumission
+ba5daba #27-1: ajoute évaluation des réponses ouvertes et génération de questions
+```
+
+Frontend initial :
+
+```text
+/Users/karim/Project/app-révision/revision_app
+/Users/karim/Project/app-révision/revision_app
+main
+## main...origin/main
+b8fc557 LOT_033_REVISION_COACH_GENKIT - Mise à jour plan d'exécution et ajout rapport LOT_033 (Revision Coach Genkit)
+368d91f HOTFIX_032B_REVISION_SESSION_ROUTE_ISOLATION - Mise à jour router et tests, ajout rapport hotfix 032B (Revision Session Route Isolation)
+a4a76f4 LOT_032_REVISION_SESSION_SCREEN - Ajout écran session de révision, contrôleur, API, routes et tests, ajout rapport LOT_032
+6d33db0 LOT_031_REVISION_SESSION_MINIMAL - Mise à jour plan d'exécution et ajout rapport LOT_031 (Revision Session Minimal)
+710941b HOTFIX_028B_OPEN_QUESTION_ENTRY - Mise à jour page activités, API fake et tests, ajout rapport hotfix 028B
+```
+
+Décision sur fichiers existants : aucun fichier modifié ou non suivi n'était visible au préflight dans les deux repos. Le dossier `/Users/karim/Documents/Révision` ne contenait pas les worktrees applicatifs ; les vrais repos ont été localisés sous `/Users/karim/Project/app-révision` avant modification.
+
+## 4. Périmètre réalisé
+
+- Extension du domaine `AdaptivePlanService` vers un plan multi-actions.
+- Ajout des action types bornés `diagnostic_quiz`, `open_question`, `revision_session`.
+- Ajout des reason codes bornés.
+- Ajout d'un ranking déterministe stable.
+- Enrichissement DTO public dans `GetTodayPlanUseCase`.
+- Ajout de tests domain, use case et controller.
+- Mise à jour de la ligne LOT-034 du tableau de suivi.
+
+## 5. Décisions d'architecture
+
+La logique de ranking reste dans le domaine `AdaptivePlanService`, qui ne lit aucune DB et ne dépend d'aucun service externe. Le use case conserve son rôle d'orchestration : charger goal, matières, notions et maîtrises, appeler le service domain, puis enrichir le DTO public avec les noms, titres, scores et raisons lisibles.
+
+Le plan ne crée aucune activité et aucune session. Il retourne seulement des recommandations et des `startPayload` exploitables plus tard par LOT-035.
+
+Le fichier `revision_app/codex_rule.md` demande beaucoup de commentaires, mais le prompt LOT-034 et les règles actives interdisent les commentaires dans le code. La règle stricte de ce lot a donc été conservée : aucun commentaire n'a été ajouté au code TypeScript.
+
+## 6. Contrat API `GET /today`
+
+Top-level inchangé :
+
+```ts
+interface TodayPlanDto {
+  generatedAt: Date;
+  items: TodayPlanItemDto[];
+}
+```
+
+Item enrichi :
+
+```ts
+interface TodayPlanItemDto {
+  id: string;
+  subjectId: string;
+  subjectName: string;
+  knowledgeUnitId: string | null;
+  knowledgeUnitTitle: string | null;
+  masteryScore: number | null;
+  action: 'diagnostic_quiz' | 'open_question' | 'revision_session';
+  estimatedMinutes: number;
+  priority: number;
+  reasonCode: TodayPlanReasonCode;
+  reason: string;
+  startPayload: {
+    subjectId: string;
+    knowledgeUnitId?: string;
+    preferredAction?: 'diagnostic_quiz' | 'open_question';
+  };
+}
+```
+
+Choix de compatibilité : les items générés par LOT-034 restent liés à une notion, donc `knowledgeUnitId` et `knowledgeUnitTitle` sont actuellement renseignés. Le type DTO accepte `null` pour préparer LOT-035 et de futures sessions sujet-only. `masteryScore` vaut `null` si aucune maîtrise n'existe encore, pour distinguer absence de donnée et maîtrise réelle à `0`.
+
+## 7. Action types ajoutés
+
+- `diagnostic_quiz` : QCM ciblé sur une notion.
+- `open_question` : question ouverte ciblée sur une notion.
+- `revision_session` : session guidée ciblée sur une matière et, quand disponible, une notion.
+
+Aucune action `summary`, `revision_sheet`, `flashcards`, chat, coach libre ou widget arbitraire n'a été ajoutée.
+
+## 8. Reason codes ajoutés
+
+- `LOW_MASTERY`
+- `STALE_PRACTICE`
+- `HIGH_PRIORITY_SUBJECT`
+- `MIX_ACTIVITY_TYPE`
+- `START_REVISION_SESSION`
+- `CONTINUE_PROGRESS`
+
+Les textes `reason` sont générés côté backend à partir de ces codes fermés, en français.
+
+## 9. Ranking déterministe
+
+Le ranking de base d'une notion est :
+
+```text
+subject.priority * 100 + (1 - masteryScore) * 100 + staleBoost
+```
+
+Détails :
+
+- `masteryScore` absent est traité comme `0` pour le ranking ;
+- `staleBoost = 30` si la notion n'a jamais été pratiquée ;
+- sinon `staleBoost = min(30, jours depuis la dernière pratique)` ;
+- les actions reçoivent un boost fixe : QCM `+30`, question ouverte `+20`, session `+10` ;
+- tie-break stable : priorité matière, nom matière, id matière, titre notion, id notion, ordre d'action.
+
+Sélection :
+
+- maximum 4 items ;
+- premier QCM prioritaire ;
+- un QCM supplémentaire sur une autre notion si possible ;
+- une question ouverte ;
+- une session de révision ;
+- remplissage déterministe par les meilleurs candidats restants.
+
+## 10. Gestion priority / mastery / lastPracticedAt / objectif
+
+- L'objectif actif reste le prérequis : sans goal actif, `items` reste vide.
+- La priorité matière pèse fortement dans le score.
+- La maîtrise basse augmente la priorité.
+- L'absence de pratique ou une pratique ancienne augmente la priorité.
+- Les données sont filtrées par `studentId` via les repositories existants et re-filtrées dans le domaine pour préserver l'isolation.
+
+## 11. Domain `AdaptivePlanService`
+
+Le service retourne maintenant un `RevisionPlan` enrichi, mais reste pur : pas de DB, pas de Genkit, pas de date globale, pas de randomness, pas de mutation des inputs. Les tests couvrent l'ordre stable, le max items, la non-mutation, la priorité, la maîtrise basse et l'ancienneté de pratique.
+
+## 12. Use case `GetTodayPlanUseCase`
+
+Le use case enrichit les items domain avec :
+
+- `subjectName` ;
+- `knowledgeUnitTitle` ;
+- `masteryScore` réel ou `null` ;
+- `reason` lisible ;
+- `startPayload`.
+
+Il ne crée pas d'activité, ne crée pas de session et n'appelle aucun coach.
+
+## 13. Controller `TodayController`
+
+Le controller reste inchangé fonctionnellement : `GET /today`, protégé par `FirebaseAuthGuard`, utilise `CurrentStudent` et délègue au use case. Un test controller a été ajouté pour confirmer l'utilisation du student courant et le retour multi-actions.
+
+## 14. Ownership et sécurité
+
+Le plan utilise uniquement :
+
+- les matières retournées par `SubjectsRepository.findByStudent(studentId)` ;
+- les notions retournées par `RevisionRepository.findKnowledgeUnits(studentId)` ;
+- les maîtrises retournées par `RevisionRepository.findMasteryStates(studentId)`.
+
+Le domaine re-filtre aussi les subjects par `goal.studentId`, puis ignore les notions dont la matière n'est pas éligible. Aucune donnée cross-student n'est utilisée dans le ranking.
+
+## 15. Genkit / IA : ce qui est explicitement non fait
+
+Aucun flow Genkit n'a été créé ou modifié. Aucun provider IA n'est appelé. Aucun ranking IA, aucune orchestration coach et aucun prompt ne participent au TodayPlan.
+
+## 16. GenUI : ce qui est explicitement non fait
+
+Aucun fichier GenUI n'a été modifié. Aucun composant, payload widget ou rendu arbitraire n'a été ajouté.
+
+## 17. Frontend : ce qui est explicitement non fait
+
+Aucun fichier `revision_app/lib/**` ou `revision_app/test/**` n'a été modifié. Le frontend Today actuel n'est pas adapté au DTO enrichi ; LOT-035 doit consommer `reasonCode`, `startPayload`, `action`, `masteryScore: null` et les nouvelles actions.
+
+## 18. Prisma / migration : créé ou non créé
+
+Aucune migration Prisma n'a été créée. `schema.prisma` n'a pas été modifié. Les données nécessaires existent déjà : subjects, knowledge units et mastery states.
+
+## 19. Tests créés ou modifiés
+
+- Modifié : `api/src/modules/revision/domain/adaptive-plan.service.spec.ts`.
+- Modifié : `api/src/modules/revision/application/get-today-plan.use-case.spec.ts`.
+- Créé : `api/src/modules/revision/interfaces/today.controller.spec.ts`.
+
+Couverture ajoutée : multi-actions, action types, reason codes, ranking stable, max 4 items, absence de mastery, payloads de démarrage, erreur contrôlée si le plan référence une donnée absente, controller avec current student.
+
+## 20. Validations lancées avec résultats
+
+```bash
+cd api
+npm test -- revision --runInBand
+```
+
+Résultat RED initial : échec attendu avant implémentation, 2 suites échouées, 9 tests échoués. Les échecs confirmaient le mono-item, l'absence des champs v2 du plan et `masteryScore` forcé à `0`.
+
+```bash
+cd api
+npm test -- revision --runInBand
+```
+
+Résultat après implémentation : 15 suites passées, 74 tests passés.
+
+```bash
+cd api
+npm run lint:check
+```
+
+Résultat intermédiaire : échec sur formatage Prettier et `@typescript-eslint/unbound-method`, corrigé manuellement sans `--fix`.
+
+```bash
+cd api
+npx prisma validate
+```
+
+Résultat : schema Prisma valide.
+
+```bash
+cd api
+npm run prisma:generate
+```
+
+Résultat : Prisma Client généré vers `./src/generated/prisma`.
+
+```bash
+cd api
+npm test -- revision --runInBand
+```
+
+Résultat : 15 suites passées, 74 tests passés.
+
+```bash
+cd api
+npm test -- activities --runInBand
+```
+
+Résultat : 9 suites passées, 1 suite skipped, 87 tests passés, 1 test skipped.
+
+```bash
+cd api
+npm run lint:check
+```
+
+Résultat : succès.
+
+```bash
+cd api
+npm run build
+```
+
+Résultat : succès, `nest build` terminé.
+
+```bash
+cd api
+git diff --check
+```
+
+Résultat : succès, aucune erreur de whitespace.
+
+```bash
+cd revision_app
+git diff --check
+```
+
+Résultat : succès, aucune erreur de whitespace.
+
+## 21. Validations non lancées avec justification
+
+- Tests Flutter non lancés : aucun code Flutter applicatif ou test Flutter n'a été modifié dans ce lot.
+- Migrations Prisma non lancées : aucune migration créée, `prisma migrate deploy` explicitement interdit.
+- Provider IA réel non lancé : TodayPlan est déterministe et n'utilise pas Genkit.
+- `npm run lint`, `npm run format`, `npm run test:cov`, `prisma db push`, `prisma migrate reset` non lancés conformément aux interdictions.
+
+## 22. Risques restants
+
+- LOT-035 doit adapter le frontend Today au DTO enrichi, notamment `masteryScore: null`, `action`, `reasonCode` et `startPayload`.
+- Le ranking est volontairement simple ; il ne tient pas encore compte d'un historique d'actions Today persistant ni d'événements fins de pratique.
+- Si beaucoup de notions ont exactement les mêmes scores, l'ordre stable dépend des noms et IDs, ce qui est déterministe mais pas nécessairement optimal pédagogiquement.
+- Le plan ne crée pas d'actions persistées Today ; c'est une recommandation volatile.
+
+## 23. Recommandation prochain lot
+
+Recommandation : `LOT-035 — TodayPage v2 frontend`, pour afficher les cartes multi-actions et router chaque action avec son `startPayload`.
+
+## 24. Passes de review
+
+- Sub-agent Audit / Architecture : TodayPlan actuel mono-action confirmé, données nécessaires déjà disponibles, aucune migration nécessaire.
+- Sub-agent Implémentation : changement limité à domain/use case/tests controller + documentation.
+- Sub-agent Tests : tests RED ajoutés avant implémentation, puis suites `revision` et `activities` vertes.
+- Sub-agent Build / Validation : Prisma validate/generate, lint check et build API verts.
+- Sub-agent Critique finale : aucun frontend, Genkit, GenUI ou Prisma modifié ; le principal risque est l'adaptation frontend LOT-035.
+
+## 25. Code complet créé/modifié/supprimé pour review
+
+Fichiers supprimés : aucun.
+
+Fichier créé : `revision_app/docs/ROADMAP_EXECUTION_LOT_034_TODAY_PLAN_MULTI_ACTIONS_BACKEND.md`. Son contenu complet est le présent document.
+
+### `api/src/modules/revision/domain/adaptive-plan.service.ts`
+
+````````typescript
+import { Subject } from '../../subjects/domain/subject.entity';
+import { KnowledgeUnit } from './knowledge-unit.entity';
+import { MasteryState } from './mastery-state.entity';
+import { RevisionGoal } from './revision-goal.entity';
+
+export const TODAY_PLAN_MAX_ITEMS = 4;
+
+export type TodayPlanActionType =
+  | 'diagnostic_quiz'
+  | 'open_question'
+  | 'revision_session';
+
+export type TodayPlanPreferredAction = 'diagnostic_quiz' | 'open_question';
+
+export type TodayPlanReasonCode =
+  | 'LOW_MASTERY'
+  | 'STALE_PRACTICE'
+  | 'HIGH_PRIORITY_SUBJECT'
+  | 'MIX_ACTIVITY_TYPE'
+  | 'START_REVISION_SESSION'
+  | 'CONTINUE_PROGRESS';
+
+export interface RevisionPlanStartPayload {
+  subjectId: string;
+  knowledgeUnitId?: string;
+  preferredAction?: TodayPlanPreferredAction;
+}
+
+export interface RevisionPlanItem {
+  id: string;
+  subjectId: string;
+  knowledgeUnitId: string;
+  action: TodayPlanActionType;
+  estimatedMinutes: number;
+  priority: number;
+  reasonCode: TodayPlanReasonCode;
+  startPayload: RevisionPlanStartPayload;
+}
+
+export interface RevisionPlan {
+  generatedAt: Date;
+  items: RevisionPlanItem[];
+}
+
+type RankedUnit = {
+  unit: KnowledgeUnit;
+  subject: Subject;
+  mastery: MasteryState | undefined;
+  rank: number;
+  baseReasonCode: TodayPlanReasonCode;
+};
+
+type CandidateItem = RevisionPlanItem & {
+  unitRank: number;
+  subjectPriority: number;
+  subjectName: string;
+  unitTitle: string;
+  actionOrder: number;
+};
+
+export class AdaptivePlanService {
+  buildTodayPlan(input: {
+    now: Date;
+    goal: RevisionGoal;
+    subjects: Subject[];
+    knowledgeUnits: KnowledgeUnit[];
+    masteryStates: MasteryState[];
+  }): RevisionPlan {
+    const rankedUnits = this.rankKnowledgeUnits(input);
+
+    return {
+      generatedAt: input.now,
+      items: selectTodayItems(rankedUnits).map(toRevisionPlanItem),
+    };
+  }
+
+  private rankKnowledgeUnits(input: {
+    now: Date;
+    goal: RevisionGoal;
+    subjects: Subject[];
+    knowledgeUnits: KnowledgeUnit[];
+    masteryStates: MasteryState[];
+  }): RankedUnit[] {
+    const eligibleSubjects = input.subjects.filter(
+      (subject) => subject.studentId === input.goal.studentId,
+    );
+    const subjectById = new Map(
+      eligibleSubjects.map((subject) => [subject.id, subject]),
+    );
+    const masteryByUnit = new Map(
+      input.masteryStates
+        .filter((state) => state.studentId === input.goal.studentId)
+        .map((state) => [state.knowledgeUnitId, state]),
+    );
+
+    return input.knowledgeUnits
+      .map((unit) => {
+        const subject = subjectById.get(unit.subjectId);
+
+        if (!subject) {
+          return null;
+        }
+
+        const mastery = masteryByUnit.get(unit.id);
+        const masteryScore = mastery?.score ?? 0;
+        const lowMasteryBoost = (1 - masteryScore) * 100;
+        const staleBoost = resolveStaleBoost({
+          now: input.now,
+          lastPracticedAt: mastery?.lastPracticedAt ?? null,
+        });
+        const rank = subject.priority * 100 + lowMasteryBoost + staleBoost;
+
+        return {
+          unit,
+          subject,
+          mastery,
+          rank,
+          baseReasonCode: resolveBaseReasonCode({
+            subject,
+            mastery,
+            staleBoost,
+          }),
+        };
+      })
+      .filter((item): item is RankedUnit => item !== null)
+      .sort(compareRankedUnits);
+  }
+}
+
+function selectTodayItems(rankedUnits: RankedUnit[]): CandidateItem[] {
+  const candidates = rankedUnits.flatMap(toCandidates).sort(compareCandidates);
+  const selected: CandidateItem[] = [];
+  const selectedIds = new Set<string>();
+
+  addFirstCandidateOfAction(
+    'diagnostic_quiz',
+    candidates,
+    selected,
+    selectedIds,
+  );
+  addSpreadDiagnosticQuiz(candidates, selected, selectedIds);
+  addFirstCandidateOfAction('open_question', candidates, selected, selectedIds);
+  addFirstCandidateOfAction(
+    'revision_session',
+    candidates,
+    selected,
+    selectedIds,
+  );
+
+  for (const candidate of candidates) {
+    if (selected.length >= TODAY_PLAN_MAX_ITEMS) {
+      break;
+    }
+
+    addCandidate(candidate, selected, selectedIds);
+  }
+
+  return selected.sort(compareCandidates).slice(0, TODAY_PLAN_MAX_ITEMS);
+}
+
+function addFirstCandidateOfAction(
+  action: TodayPlanActionType,
+  candidates: CandidateItem[],
+  selected: CandidateItem[],
+  selectedIds: Set<string>,
+) {
+  const candidate = candidates.find((item) => item.action === action);
+
+  if (candidate) {
+    addCandidate(candidate, selected, selectedIds);
+  }
+}
+
+function addSpreadDiagnosticQuiz(
+  candidates: CandidateItem[],
+  selected: CandidateItem[],
+  selectedIds: Set<string>,
+) {
+  const firstSelectedUnitId = selected[0]?.knowledgeUnitId;
+  const candidate = candidates.find(
+    (item) =>
+      item.action === 'diagnostic_quiz' &&
+      item.knowledgeUnitId !== firstSelectedUnitId,
+  );
+
+  if (candidate) {
+    addCandidate(candidate, selected, selectedIds);
+  }
+}
+
+function addCandidate(
+  candidate: CandidateItem,
+  selected: CandidateItem[],
+  selectedIds: Set<string>,
+) {
+  if (
+    selected.length >= TODAY_PLAN_MAX_ITEMS ||
+    selectedIds.has(candidate.id)
+  ) {
+    return;
+  }
+
+  selected.push(candidate);
+  selectedIds.add(candidate.id);
+}
+
+function toCandidates(rankedUnit: RankedUnit): CandidateItem[] {
+  return [
+    toCandidate({
+      rankedUnit,
+      action: 'diagnostic_quiz',
+      estimatedMinutes: 12,
+      actionBoost: 30,
+      actionOrder: 0,
+      reasonCode: rankedUnit.baseReasonCode,
+      startPayload: {
+        subjectId: rankedUnit.subject.id,
+        knowledgeUnitId: rankedUnit.unit.id,
+        preferredAction: 'diagnostic_quiz',
+      },
+    }),
+    toCandidate({
+      rankedUnit,
+      action: 'open_question',
+      estimatedMinutes: 18,
+      actionBoost: 20,
+      actionOrder: 1,
+      reasonCode: 'MIX_ACTIVITY_TYPE',
+      startPayload: {
+        subjectId: rankedUnit.subject.id,
+        knowledgeUnitId: rankedUnit.unit.id,
+        preferredAction: 'open_question',
+      },
+    }),
+    toCandidate({
+      rankedUnit,
+      action: 'revision_session',
+      estimatedMinutes: 25,
+      actionBoost: 10,
+      actionOrder: 2,
+      reasonCode: 'START_REVISION_SESSION',
+      startPayload: {
+        subjectId: rankedUnit.subject.id,
+        knowledgeUnitId: rankedUnit.unit.id,
+      },
+    }),
+  ];
+}
+
+function toCandidate(input: {
+  rankedUnit: RankedUnit;
+  action: TodayPlanActionType;
+  estimatedMinutes: number;
+  actionBoost: number;
+  actionOrder: number;
+  reasonCode: TodayPlanReasonCode;
+  startPayload: RevisionPlanStartPayload;
+}): CandidateItem {
+  const priority = Math.round(input.rankedUnit.rank + input.actionBoost);
+
+  return {
+    id: `${input.rankedUnit.subject.id}:${input.rankedUnit.unit.id}:${input.action}`,
+    subjectId: input.rankedUnit.subject.id,
+    knowledgeUnitId: input.rankedUnit.unit.id,
+    action: input.action,
+    estimatedMinutes: input.estimatedMinutes,
+    priority,
+    reasonCode: input.reasonCode,
+    startPayload: input.startPayload,
+    unitRank: input.rankedUnit.rank,
+    subjectPriority: input.rankedUnit.subject.priority,
+    subjectName: input.rankedUnit.subject.name,
+    unitTitle: input.rankedUnit.unit.title,
+    actionOrder: input.actionOrder,
+  };
+}
+
+function toRevisionPlanItem(candidate: CandidateItem): RevisionPlanItem {
+  return {
+    id: candidate.id,
+    subjectId: candidate.subjectId,
+    knowledgeUnitId: candidate.knowledgeUnitId,
+    action: candidate.action,
+    estimatedMinutes: candidate.estimatedMinutes,
+    priority: candidate.priority,
+    reasonCode: candidate.reasonCode,
+    startPayload: candidate.startPayload,
+  };
+}
+
+function resolveBaseReasonCode(input: {
+  subject: Subject;
+  mastery: MasteryState | undefined;
+  staleBoost: number;
+}): TodayPlanReasonCode {
+  if (!input.mastery || input.mastery.score < 0.4) {
+    return 'LOW_MASTERY';
+  }
+
+  if (!input.mastery.lastPracticedAt || input.staleBoost >= 20) {
+    return 'STALE_PRACTICE';
+  }
+
+  if (input.subject.priority >= 4) {
+    return 'HIGH_PRIORITY_SUBJECT';
+  }
+
+  return 'CONTINUE_PROGRESS';
+}
+
+function resolveStaleBoost(input: {
+  now: Date;
+  lastPracticedAt: Date | null;
+}): number {
+  if (!input.lastPracticedAt) {
+    return 30;
+  }
+
+  const daysSincePractice = Math.max(
+    0,
+    (input.now.getTime() - input.lastPracticedAt.getTime()) /
+      (1000 * 60 * 60 * 24),
+  );
+
+  return Math.min(30, daysSincePractice);
+}
+
+function compareRankedUnits(a: RankedUnit, b: RankedUnit): number {
+  return (
+    b.rank - a.rank ||
+    b.subject.priority - a.subject.priority ||
+    a.subject.name.localeCompare(b.subject.name) ||
+    a.subject.id.localeCompare(b.subject.id) ||
+    a.unit.title.localeCompare(b.unit.title) ||
+    a.unit.id.localeCompare(b.unit.id)
+  );
+}
+
+function compareCandidates(a: CandidateItem, b: CandidateItem): number {
+  return (
+    b.priority - a.priority ||
+    b.unitRank - a.unitRank ||
+    b.subjectPriority - a.subjectPriority ||
+    a.subjectName.localeCompare(b.subjectName) ||
+    a.subjectId.localeCompare(b.subjectId) ||
+    a.unitTitle.localeCompare(b.unitTitle) ||
+    a.knowledgeUnitId.localeCompare(b.knowledgeUnitId) ||
+    a.actionOrder - b.actionOrder
+  );
+}
+
+````````
+
+### `api/src/modules/revision/application/get-today-plan.use-case.ts`
+
+````````typescript
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  SUBJECTS_REPOSITORY,
+  type SubjectsRepository,
+} from '../../subjects/application/subjects.repository';
+import {
+  AdaptivePlanService,
+  type RevisionPlanStartPayload,
+  type TodayPlanActionType,
+  type TodayPlanReasonCode,
+} from '../domain/adaptive-plan.service';
+import {
+  REVISION_REPOSITORY,
+  type RevisionRepository,
+} from './revision.repository';
+
+export interface TodayPlanDto {
+  generatedAt: Date;
+  items: TodayPlanItemDto[];
+}
+
+export interface TodayPlanItemDto {
+  id: string;
+  subjectId: string;
+  subjectName: string;
+  knowledgeUnitId: string | null;
+  knowledgeUnitTitle: string | null;
+  masteryScore: number | null;
+  action: TodayPlanActionType;
+  estimatedMinutes: number;
+  priority: number;
+  reasonCode: TodayPlanReasonCode;
+  reason: string;
+  startPayload: RevisionPlanStartPayload;
+}
+
+@Injectable()
+export class GetTodayPlanUseCase {
+  constructor(
+    private readonly adaptivePlanService: AdaptivePlanService,
+    @Inject(REVISION_REPOSITORY)
+    private readonly revisionRepository: RevisionRepository,
+    @Inject(SUBJECTS_REPOSITORY)
+    private readonly subjectsRepository: SubjectsRepository,
+  ) {}
+
+  async execute(input: {
+    studentId: string;
+    now?: Date;
+  }): Promise<TodayPlanDto> {
+    const now = input.now ?? new Date();
+    const goal = await this.revisionRepository.getActiveGoal(input.studentId);
+
+    if (!goal) {
+      return { generatedAt: now, items: [] };
+    }
+
+    const [subjects, knowledgeUnits, masteryStates] = await Promise.all([
+      this.subjectsRepository.findByStudent(input.studentId),
+      this.revisionRepository.findKnowledgeUnits(input.studentId),
+      this.revisionRepository.findMasteryStates(input.studentId),
+    ]);
+    const subjectById = new Map(
+      subjects.map((subject) => [subject.id, subject]),
+    );
+    const unitById = new Map(knowledgeUnits.map((unit) => [unit.id, unit]));
+    const masteryByUnitId = new Map(
+      masteryStates.map((mastery) => [mastery.knowledgeUnitId, mastery]),
+    );
+    const plan = this.adaptivePlanService.buildTodayPlan({
+      now,
+      goal,
+      subjects,
+      knowledgeUnits,
+      masteryStates,
+    });
+
+    return {
+      generatedAt: plan.generatedAt,
+      items: plan.items.map((item) => {
+        const subject = subjectById.get(item.subjectId);
+        const unit = unitById.get(item.knowledgeUnitId);
+
+        if (!subject || !unit) {
+          throw new Error('Today plan references missing data');
+        }
+
+        return {
+          id: item.id,
+          subjectId: item.subjectId,
+          subjectName: subject.name,
+          knowledgeUnitId: item.knowledgeUnitId,
+          knowledgeUnitTitle: unit.title,
+          masteryScore:
+            masteryByUnitId.get(item.knowledgeUnitId)?.score ?? null,
+          action: item.action,
+          estimatedMinutes: item.estimatedMinutes,
+          priority: item.priority,
+          reasonCode: item.reasonCode,
+          reason: toReason(item.reasonCode),
+          startPayload: item.startPayload,
+        };
+      }),
+    };
+  }
+}
+
+function toReason(reasonCode: TodayPlanReasonCode): string {
+  const reasons: Record<TodayPlanReasonCode, string> = {
+    LOW_MASTERY: 'À revoir en priorité : cette notion est encore fragile.',
+    STALE_PRACTICE:
+      'À entretenir : cette notion n’a pas été pratiquée récemment.',
+    HIGH_PRIORITY_SUBJECT: 'Matière prioritaire dans ton objectif de révision.',
+    MIX_ACTIVITY_TYPE: 'Change de format pour renforcer la mémorisation.',
+    START_REVISION_SESSION:
+      'Lance une session guidée pour enchaîner plusieurs exercices.',
+    CONTINUE_PROGRESS: 'Continue ta progression sur cette notion.',
+  };
+
+  return reasons[reasonCode];
+}
+
+````````
+
+### `api/src/modules/revision/domain/adaptive-plan.service.spec.ts`
+
+````````typescript
+import { Subject } from '../../subjects/domain/subject.entity';
+import { AdaptivePlanService } from './adaptive-plan.service';
+import { KnowledgeUnit } from './knowledge-unit.entity';
+import { MasteryState } from './mastery-state.entity';
+import { RevisionGoal } from './revision-goal.entity';
+
+describe('AdaptivePlanService', () => {
+  const now = new Date('2026-06-15T10:00:00.000Z');
+
+  it('returns an empty plan when no owned knowledge unit is eligible', () => {
+    const plan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [
+        subject({ id: 'subject-other', studentId: 'student-2', priority: 5 }),
+      ],
+      knowledgeUnits: [unit({ id: 'unit-other', subjectId: 'subject-other' })],
+      masteryStates: [
+        mastery({
+          studentId: 'student-2',
+          knowledgeUnitId: 'unit-other',
+          score: 0.1,
+        }),
+      ],
+    });
+
+    expect(plan.items).toEqual([]);
+  });
+
+  it('returns several launchable action types for eligible knowledge units', () => {
+    const plan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [subject({ id: 'subject-1', priority: 5 })],
+      knowledgeUnits: [
+        unit({ id: 'unit-1', subjectId: 'subject-1', title: 'Contrats' }),
+        unit({ id: 'unit-2', subjectId: 'subject-1', title: 'Responsabilite' }),
+      ],
+      masteryStates: [
+        mastery({ knowledgeUnitId: 'unit-1', score: 0.2 }),
+        mastery({ knowledgeUnitId: 'unit-2', score: 0.45 }),
+      ],
+    });
+
+    expect(plan.items).toHaveLength(4);
+    expect(plan.items.map((item) => item.action)).toEqual(
+      expect.arrayContaining([
+        'diagnostic_quiz',
+        'open_question',
+        'revision_session',
+      ]),
+    );
+    expect(plan.items[0]).toMatchObject({
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+      action: 'diagnostic_quiz',
+      reasonCode: 'LOW_MASTERY',
+    });
+  });
+
+  it('prioritizes low mastery before stronger knowledge units', () => {
+    const plan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [subject({ id: 'subject-1', priority: 3 })],
+      knowledgeUnits: [
+        unit({ id: 'unit-strong', subjectId: 'subject-1' }),
+        unit({ id: 'unit-weak', subjectId: 'subject-1' }),
+      ],
+      masteryStates: [
+        mastery({ knowledgeUnitId: 'unit-strong', score: 0.9 }),
+        mastery({ knowledgeUnitId: 'unit-weak', score: 0.1 }),
+      ],
+    });
+
+    expect(plan.items[0]).toMatchObject({
+      knowledgeUnitId: 'unit-weak',
+      action: 'diagnostic_quiz',
+      reasonCode: 'LOW_MASTERY',
+    });
+  });
+
+  it('boosts knowledge units that have never been practiced', () => {
+    const plan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [subject({ id: 'subject-1', priority: 3 })],
+      knowledgeUnits: [
+        unit({ id: 'unit-practiced', subjectId: 'subject-1' }),
+        unit({ id: 'unit-never', subjectId: 'subject-1' }),
+      ],
+      masteryStates: [
+        mastery({
+          knowledgeUnitId: 'unit-practiced',
+          score: 0.5,
+          lastPracticedAt: new Date('2026-06-14T10:00:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(plan.items[0]).toMatchObject({
+      knowledgeUnitId: 'unit-never',
+      reasonCode: 'LOW_MASTERY',
+    });
+  });
+
+  it('takes subject priority into account', () => {
+    const plan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [
+        subject({ id: 'subject-low', name: 'Basse priorite', priority: 1 }),
+        subject({ id: 'subject-high', name: 'Haute priorite', priority: 5 }),
+      ],
+      knowledgeUnits: [
+        unit({ id: 'unit-low', subjectId: 'subject-low', title: 'Low' }),
+        unit({ id: 'unit-high', subjectId: 'subject-high', title: 'High' }),
+      ],
+      masteryStates: [
+        mastery({ knowledgeUnitId: 'unit-low', score: 0.4 }),
+        mastery({ knowledgeUnitId: 'unit-high', score: 0.4 }),
+      ],
+    });
+
+    expect(plan.items[0]).toMatchObject({
+      subjectId: 'subject-high',
+      knowledgeUnitId: 'unit-high',
+    });
+  });
+
+  it('keeps a stable order when scores are tied', () => {
+    const plan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [
+        subject({ id: 'subject-b', name: 'Biologie', priority: 3 }),
+        subject({ id: 'subject-a', name: 'Anatomie', priority: 3 }),
+      ],
+      knowledgeUnits: [
+        unit({ id: 'unit-b', subjectId: 'subject-b', title: 'Beta' }),
+        unit({ id: 'unit-a', subjectId: 'subject-a', title: 'Alpha' }),
+      ],
+      masteryStates: [
+        mastery({ knowledgeUnitId: 'unit-b', score: 0.5 }),
+        mastery({ knowledgeUnitId: 'unit-a', score: 0.5 }),
+      ],
+    });
+
+    expect(plan.items[0]).toMatchObject({
+      subjectId: 'subject-a',
+      knowledgeUnitId: 'unit-a',
+      action: 'diagnostic_quiz',
+    });
+  });
+
+  it('does not exceed the maximum number of today items', () => {
+    const plan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [subject({ id: 'subject-1', priority: 5 })],
+      knowledgeUnits: [
+        unit({ id: 'unit-1', subjectId: 'subject-1' }),
+        unit({ id: 'unit-2', subjectId: 'subject-1' }),
+        unit({ id: 'unit-3', subjectId: 'subject-1' }),
+        unit({ id: 'unit-4', subjectId: 'subject-1' }),
+      ],
+      masteryStates: [],
+    });
+
+    expect(plan.items).toHaveLength(4);
+  });
+
+  it('proposes open questions only when a knowledge unit is available', () => {
+    const emptyPlan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [subject({ id: 'subject-1', priority: 5 })],
+      knowledgeUnits: [],
+      masteryStates: [],
+    });
+    const plan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [subject({ id: 'subject-1', priority: 5 })],
+      knowledgeUnits: [unit({ id: 'unit-1', subjectId: 'subject-1' })],
+      masteryStates: [],
+    });
+
+    expect(
+      emptyPlan.items.some((item) => item.action === 'open_question'),
+    ).toBe(false);
+    expect(plan.items.some((item) => item.action === 'open_question')).toBe(
+      true,
+    );
+  });
+
+  it('returns revision session actions with explicit start payload', () => {
+    const plan = new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects: [subject({ id: 'subject-1', priority: 5 })],
+      knowledgeUnits: [unit({ id: 'unit-1', subjectId: 'subject-1' })],
+      masteryStates: [],
+    });
+
+    expect(plan.items).toContainEqual(
+      expect.objectContaining({
+        action: 'revision_session',
+        startPayload: {
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        },
+      }),
+    );
+  });
+
+  it('does not mutate inputs', () => {
+    const subjects = [subject({ id: 'subject-1', priority: 5 })];
+    const units = [unit({ id: 'unit-1', subjectId: 'subject-1' })];
+    const masteryStates = [mastery({ knowledgeUnitId: 'unit-1', score: 0.4 })];
+    const before = JSON.stringify({
+      subjects,
+      units,
+      masteryStates,
+    });
+
+    new AdaptivePlanService().buildTodayPlan({
+      now,
+      goal: goal(),
+      subjects,
+      knowledgeUnits: units,
+      masteryStates,
+    });
+
+    expect(JSON.stringify({ subjects, units, masteryStates })).toBe(before);
+  });
+});
+
+function goal(
+  input: Partial<ConstructorParameters<typeof RevisionGoal>[0]> = {},
+) {
+  return new RevisionGoal({
+    id: 'goal-1',
+    studentId: 'student-1',
+    targetDate: new Date('2026-07-01T00:00:00.000Z'),
+    weeklyMinutes: 240,
+    createdAt: new Date('2026-06-01T10:00:00.000Z'),
+    ...input,
+  });
+}
+
+function subject(
+  input: Partial<ConstructorParameters<typeof Subject>[0]> = {},
+) {
+  return new Subject({
+    id: 'subject-1',
+    studentId: 'student-1',
+    name: 'Droit',
+    priority: 3,
+    createdAt: new Date('2026-06-01T10:00:00.000Z'),
+    ...input,
+  });
+}
+
+function unit(
+  input: Partial<ConstructorParameters<typeof KnowledgeUnit>[0]> = {},
+) {
+  return new KnowledgeUnit({
+    id: 'unit-1',
+    subjectId: 'subject-1',
+    title: 'Notion',
+    summary: 'Résumé',
+    ...input,
+  });
+}
+
+function mastery(
+  input: Partial<ConstructorParameters<typeof MasteryState>[0]> = {},
+) {
+  return new MasteryState({
+    studentId: 'student-1',
+    knowledgeUnitId: 'unit-1',
+    score: 0.5,
+    lastPracticedAt: new Date('2026-06-10T10:00:00.000Z'),
+    ...input,
+  });
+}
+
+````````
+
+### `api/src/modules/revision/application/get-today-plan.use-case.spec.ts`
+
+````````typescript
+import type { SubjectsRepository } from '../../subjects/application/subjects.repository';
+import { Subject } from '../../subjects/domain/subject.entity';
+import {
+  AdaptivePlanService,
+  type RevisionPlan,
+} from '../domain/adaptive-plan.service';
+import { KnowledgeUnit } from '../domain/knowledge-unit.entity';
+import { MasteryState } from '../domain/mastery-state.entity';
+import { RevisionGoal } from '../domain/revision-goal.entity';
+import { GetTodayPlanUseCase } from './get-today-plan.use-case';
+import type { RevisionRepository } from './revision.repository';
+
+describe('GetTodayPlanUseCase', () => {
+  const now = new Date('2026-06-15T10:00:00.000Z');
+
+  it('returns an empty plan when no active goal exists', async () => {
+    const revisionRepository = createRevisionRepository();
+    const subjectsRepository = createSubjectsRepository();
+    revisionRepository.getActiveGoal.mockResolvedValue(null);
+
+    const plan = await new GetTodayPlanUseCase(
+      new AdaptivePlanService(),
+      revisionRepository,
+      subjectsRepository,
+    ).execute({ studentId: 'student-1', now });
+
+    expect(plan).toEqual({ generatedAt: now, items: [] });
+    expect(subjectsRepository.findByStudent.mock.calls).toHaveLength(0);
+    expect(revisionRepository.findKnowledgeUnits.mock.calls).toHaveLength(0);
+    expect(revisionRepository.findMasteryStates.mock.calls).toHaveLength(0);
+  });
+
+  it('returns enriched multi-action DTO items', async () => {
+    const revisionRepository = createRevisionRepository();
+    const subjectsRepository = createSubjectsRepository();
+    revisionRepository.getActiveGoal.mockResolvedValue(goal());
+    subjectsRepository.findByStudent.mockResolvedValue([
+      subject({ id: 'subject-1', name: 'Droit constitutionnel', priority: 5 }),
+    ]);
+    revisionRepository.findKnowledgeUnits.mockResolvedValue([
+      unit({ id: 'unit-1', subjectId: 'subject-1', title: 'Séparation' }),
+      unit({ id: 'unit-2', subjectId: 'subject-1', title: 'Régimes' }),
+    ]);
+    revisionRepository.findMasteryStates.mockResolvedValue([
+      mastery({ knowledgeUnitId: 'unit-1', score: 0.2 }),
+      mastery({ knowledgeUnitId: 'unit-2', score: 0.6 }),
+    ]);
+
+    const plan = await new GetTodayPlanUseCase(
+      new AdaptivePlanService(),
+      revisionRepository,
+      subjectsRepository,
+    ).execute({ studentId: 'student-1', now });
+
+    expect(plan.items).toHaveLength(4);
+    expect(plan.items[0]).toEqual(
+      expect.objectContaining({
+        id: 'subject-1:unit-1:diagnostic_quiz',
+        subjectId: 'subject-1',
+        subjectName: 'Droit constitutionnel',
+        knowledgeUnitId: 'unit-1',
+        knowledgeUnitTitle: 'Séparation',
+        masteryScore: 0.2,
+        action: 'diagnostic_quiz',
+        estimatedMinutes: 12,
+        reasonCode: 'LOW_MASTERY',
+        reason: 'À revoir en priorité : cette notion est encore fragile.',
+        startPayload: {
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+          preferredAction: 'diagnostic_quiz',
+        },
+      }),
+    );
+    expect(plan.items.map((item) => item.action)).toEqual(
+      expect.arrayContaining([
+        'diagnostic_quiz',
+        'open_question',
+        'revision_session',
+      ]),
+    );
+  });
+
+  it('uses null mastery score when no mastery state exists', async () => {
+    const revisionRepository = createRevisionRepository();
+    const subjectsRepository = createSubjectsRepository();
+    revisionRepository.getActiveGoal.mockResolvedValue(goal());
+    subjectsRepository.findByStudent.mockResolvedValue([subject()]);
+    revisionRepository.findKnowledgeUnits.mockResolvedValue([unit()]);
+    revisionRepository.findMasteryStates.mockResolvedValue([]);
+
+    const plan = await new GetTodayPlanUseCase(
+      new AdaptivePlanService(),
+      revisionRepository,
+      subjectsRepository,
+    ).execute({ studentId: 'student-1', now });
+
+    expect(plan.items[0]).toMatchObject({
+      masteryScore: null,
+      action: 'diagnostic_quiz',
+    });
+  });
+
+  it('throws a controlled error when the domain plan references missing data', async () => {
+    const revisionRepository = createRevisionRepository();
+    const subjectsRepository = createSubjectsRepository();
+    const adaptivePlanService = {
+      buildTodayPlan: jest.fn<
+        RevisionPlan,
+        Parameters<AdaptivePlanService['buildTodayPlan']>
+      >(() => ({
+        generatedAt: now,
+        items: [
+          {
+            id: 'subject-missing:unit-1:diagnostic_quiz',
+            subjectId: 'subject-missing',
+            knowledgeUnitId: 'unit-1',
+            action: 'diagnostic_quiz',
+            estimatedMinutes: 12,
+            priority: 100,
+            reasonCode: 'LOW_MASTERY',
+            startPayload: {
+              subjectId: 'subject-missing',
+              knowledgeUnitId: 'unit-1',
+              preferredAction: 'diagnostic_quiz',
+            },
+          },
+        ],
+      })),
+    };
+    revisionRepository.getActiveGoal.mockResolvedValue(goal());
+    subjectsRepository.findByStudent.mockResolvedValue([subject()]);
+    revisionRepository.findKnowledgeUnits.mockResolvedValue([unit()]);
+    revisionRepository.findMasteryStates.mockResolvedValue([]);
+
+    await expect(
+      new GetTodayPlanUseCase(
+        adaptivePlanService as unknown as AdaptivePlanService,
+        revisionRepository,
+        subjectsRepository,
+      ).execute({ studentId: 'student-1', now }),
+    ).rejects.toThrow('Today plan references missing data');
+  });
+});
+
+function createRevisionRepository(): jest.Mocked<RevisionRepository> {
+  return {
+    getActiveGoal: jest.fn(),
+    saveGoal: jest.fn(),
+    findKnowledgeUnits: jest.fn(),
+    findMasteryStates: jest.fn(),
+    upsertMastery: jest.fn(),
+  };
+}
+
+function createSubjectsRepository(): jest.Mocked<SubjectsRepository> {
+  return {
+    create: jest.fn(),
+    findByStudent: jest.fn(),
+    findByIdForStudent: jest.fn(),
+    deleteForStudent: jest.fn(),
+  };
+}
+
+function goal(
+  input: Partial<ConstructorParameters<typeof RevisionGoal>[0]> = {},
+) {
+  return new RevisionGoal({
+    id: 'goal-1',
+    studentId: 'student-1',
+    targetDate: new Date('2026-07-01T00:00:00.000Z'),
+    weeklyMinutes: 240,
+    createdAt: new Date('2026-06-01T10:00:00.000Z'),
+    ...input,
+  });
+}
+
+function subject(
+  input: Partial<ConstructorParameters<typeof Subject>[0]> = {},
+) {
+  return new Subject({
+    id: 'subject-1',
+    studentId: 'student-1',
+    name: 'Droit',
+    priority: 3,
+    createdAt: new Date('2026-06-01T10:00:00.000Z'),
+    ...input,
+  });
+}
+
+function unit(
+  input: Partial<ConstructorParameters<typeof KnowledgeUnit>[0]> = {},
+) {
+  return new KnowledgeUnit({
+    id: 'unit-1',
+    subjectId: 'subject-1',
+    title: 'Notion',
+    summary: 'Résumé',
+    ...input,
+  });
+}
+
+function mastery(
+  input: Partial<ConstructorParameters<typeof MasteryState>[0]> = {},
+) {
+  return new MasteryState({
+    studentId: 'student-1',
+    knowledgeUnitId: 'unit-1',
+    score: 0.5,
+    lastPracticedAt: new Date('2026-06-10T10:00:00.000Z'),
+    ...input,
+  });
+}
+
+````````
+
+### `api/src/modules/revision/interfaces/today.controller.spec.ts`
+
+````````typescript
+import { GetTodayPlanUseCase } from '../application/get-today-plan.use-case';
+import { TodayController } from './today.controller';
+
+describe('TodayController', () => {
+  it('loads today plan for the current student', async () => {
+    const execute = jest.fn().mockResolvedValue({
+      generatedAt: new Date('2026-06-15T10:00:00.000Z'),
+      items: [
+        {
+          id: 'subject-1:unit-1:diagnostic_quiz',
+          subjectId: 'subject-1',
+          subjectName: 'Droit',
+          knowledgeUnitId: 'unit-1',
+          knowledgeUnitTitle: 'Séparation',
+          masteryScore: 0.2,
+          action: 'diagnostic_quiz',
+          estimatedMinutes: 12,
+          priority: 560,
+          reasonCode: 'LOW_MASTERY',
+          reason: 'À revoir en priorité : cette notion est encore fragile.',
+          startPayload: {
+            subjectId: 'subject-1',
+            knowledgeUnitId: 'unit-1',
+            preferredAction: 'diagnostic_quiz',
+          },
+        },
+      ],
+    });
+    const controller = new TodayController({
+      execute,
+    } as unknown as GetTodayPlanUseCase);
+
+    await expect(controller.get({ id: 'student-1' })).resolves.toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ action: 'diagnostic_quiz' })],
+      }),
+    );
+    expect(execute).toHaveBeenCalledWith({ studentId: 'student-1' });
+  });
+});
+
+````````
+
+### `revision_app/docs/ROADMAP_EXECUTION_PLAN.md`
+
+````````markdown
 # Roadmap Execution Plan — Revision App
 
 ## 1. But du document
@@ -3561,3 +4952,5 @@ Livrable attendu :
 - Aucun commit.
 
 Le deuxième lot à lancer immédiatement après devrait être LOT-001B. Il doit trancher si le MVP utilise officiellement l'upload direct backend via `POST /documents/course-pdf`, Firebase Storage avec reader backend, ou une coexistence temporaire documentée. Sans cette décision, il ne faut pas toucher au worker, aux chunks ou aux migrations documentaires.
+
+````````
