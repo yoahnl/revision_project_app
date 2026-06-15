@@ -6,11 +6,16 @@ class InMemoryTodayRepository implements TodayRepository {
     generatedAt: DateTime.utc(2026, 6, 13),
     items: const [],
   );
+  Object? error;
   int getTodayPlanCalls = 0;
 
   @override
   Future<TodayPlan> getTodayPlan() async {
     getTodayPlanCalls += 1;
+    final currentError = error;
+    if (currentError != null) {
+      throw currentError;
+    }
 
     return plan;
   }

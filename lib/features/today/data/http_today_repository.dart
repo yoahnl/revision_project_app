@@ -54,8 +54,13 @@ class _TodayPlanJson {
       throw const FormatException('Invalid today response');
     }
 
+    final parsedGeneratedAt = DateTime.tryParse(generatedAt);
+    if (parsedGeneratedAt == null) {
+      throw const FormatException('Invalid today response');
+    }
+
     return TodayPlan(
-      generatedAt: DateTime.parse(generatedAt),
+      generatedAt: parsedGeneratedAt,
       items: items
           .map((item) => _TodayPlanItemJson(item).toItem())
           .toList(growable: false),
@@ -75,6 +80,7 @@ class _TodayPlanItemJson {
       throw const FormatException('Invalid today item response');
     }
 
+    final id = json['id'];
     final subjectId = json['subjectId'];
     final subjectName = json['subjectName'];
     final knowledgeUnitId = json['knowledgeUnitId'];
@@ -82,25 +88,111 @@ class _TodayPlanItemJson {
     final masteryScore = json['masteryScore'];
     final action = json['action'];
     final estimatedMinutes = json['estimatedMinutes'];
+    final priority = json['priority'];
+    final reasonCode = json['reasonCode'];
+    final reason = json['reason'];
+    final startPayload = json['startPayload'];
 
-    if (subjectId is! String ||
+    if (id is! String ||
+        subjectId is! String ||
         subjectName is! String ||
-        knowledgeUnitId is! String ||
-        knowledgeUnitTitle is! String ||
-        masteryScore is! num ||
+        (knowledgeUnitId != null && knowledgeUnitId is! String) ||
+        (knowledgeUnitTitle != null && knowledgeUnitTitle is! String) ||
+        (masteryScore != null && masteryScore is! num) ||
         action is! String ||
-        estimatedMinutes is! int) {
+        estimatedMinutes is! int ||
+        priority is! int ||
+        reasonCode is! String ||
+        reason is! String) {
       throw const FormatException('Invalid today item response');
     }
 
+    final parsedKnowledgeUnitId = knowledgeUnitId as String?;
+    final parsedKnowledgeUnitTitle = knowledgeUnitTitle as String?;
+    final parsedMasteryScore = masteryScore as num?;
+
     return TodayPlanItem(
+      id: id,
       subjectId: subjectId,
       subjectName: subjectName,
-      knowledgeUnitId: knowledgeUnitId,
-      knowledgeUnitTitle: knowledgeUnitTitle,
-      masteryScore: masteryScore.toDouble(),
-      action: action,
+      knowledgeUnitId: parsedKnowledgeUnitId,
+      knowledgeUnitTitle: parsedKnowledgeUnitTitle,
+      masteryScore: parsedMasteryScore?.toDouble(),
+      action: _parseAction(action),
       estimatedMinutes: estimatedMinutes,
+      priority: priority,
+      reasonCode: _parseReasonCode(reasonCode),
+      reason: reason,
+      startPayload: _TodayPlanStartPayloadJson(startPayload).toPayload(),
     );
+  }
+
+  TodayPlanActionType _parseAction(String value) {
+    return switch (value) {
+      'diagnostic_quiz' => TodayPlanActionType.diagnosticQuiz,
+      'open_question' => TodayPlanActionType.openQuestion,
+      'revision_session' => TodayPlanActionType.revisionSession,
+      _ => throw const FormatException('Invalid today action'),
+    };
+  }
+
+  TodayPlanReasonCode _parseReasonCode(String value) {
+    return switch (value) {
+      'LOW_MASTERY' => TodayPlanReasonCode.lowMastery,
+      'STALE_PRACTICE' => TodayPlanReasonCode.stalePractice,
+      'HIGH_PRIORITY_SUBJECT' => TodayPlanReasonCode.highPrioritySubject,
+      'MIX_ACTIVITY_TYPE' => TodayPlanReasonCode.mixActivityType,
+      'START_REVISION_SESSION' => TodayPlanReasonCode.startRevisionSession,
+      'CONTINUE_PROGRESS' => TodayPlanReasonCode.continueProgress,
+      _ => throw const FormatException('Invalid today reason code'),
+    };
+  }
+}
+
+class _TodayPlanStartPayloadJson {
+  const _TodayPlanStartPayloadJson(this.value);
+
+  final Object? value;
+
+  TodayPlanStartPayload toPayload() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid today start payload');
+    }
+
+    final subjectId = json['subjectId'];
+    final knowledgeUnitId = json['knowledgeUnitId'];
+    final preferredAction = json['preferredAction'];
+
+    if (subjectId is! String ||
+        subjectId.trim().isEmpty ||
+        (knowledgeUnitId != null && knowledgeUnitId is! String) ||
+        (preferredAction != null && preferredAction is! String)) {
+      throw const FormatException('Invalid today start payload');
+    }
+
+    final parsedKnowledgeUnitId = knowledgeUnitId as String?;
+    final parsedPreferredAction = preferredAction as String?;
+    final trimmedKnowledgeUnitId = parsedKnowledgeUnitId?.trim();
+
+    return TodayPlanStartPayload(
+      subjectId: subjectId.trim(),
+      knowledgeUnitId: trimmedKnowledgeUnitId == null ||
+              trimmedKnowledgeUnitId.isEmpty
+          ? null
+          : trimmedKnowledgeUnitId,
+      preferredAction: parsedPreferredAction == null
+          ? null
+          : _parsePreferredAction(parsedPreferredAction),
+    );
+  }
+
+  TodayPlanPreferredAction _parsePreferredAction(String value) {
+    return switch (value) {
+      'diagnostic_quiz' => TodayPlanPreferredAction.diagnosticQuiz,
+      'open_question' => TodayPlanPreferredAction.openQuestion,
+      _ => throw const FormatException('Invalid today preferred action'),
+    };
   }
 }
