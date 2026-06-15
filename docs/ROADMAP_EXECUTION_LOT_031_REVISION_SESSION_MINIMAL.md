@@ -1,3 +1,2626 @@
+# LOT-031 — Session de révision IA minimale
+
+## 1. Résultat
+
+`LOT-031` ajoute une session de révision backend minimale et déterministe. Le backend expose maintenant :
+
+* `POST /revision-sessions` ;
+* `GET /revision-sessions/:sessionId`.
+
+Une session est rattachée à l'étudiant courant, à une matière, et optionnellement à un document ou une notion. La première action est créée de façon déterministe en réutilisant les use cases existants : QCM via `StartNextActivityUseCase`, question ouverte via `StartOpenQuestionActivityUseCase`.
+
+Aucun chatbot, aucun flow Genkit coach, aucun payload GenUI arbitraire et aucun frontend applicatif n'ont été créés.
+
+## 2. Sources inspectées
+
+Documentation :
+
+* `revision_app/docs/ROADMAP.md` ;
+* `revision_app/docs/ROADMAP_EXECUTION_PLAN.md` ;
+* `revision_app/docs/ROADMAP_EXECUTION_LOT_025F_QCM_V3_DB_RUNTIME_VALIDATION.md` ;
+* `revision_app/docs/ROADMAP_EXECUTION_LOT_026_OPEN_QUESTION_CONTRACT.md` ;
+* `revision_app/docs/ROADMAP_EXECUTION_LOT_027_OPEN_QUESTION_GENKIT_CORRECTION.md` ;
+* `revision_app/docs/ROADMAP_EXECUTION_HOTFIX_027B_OPEN_ANSWER_ERROR_PATH.md` ;
+* `revision_app/docs/ROADMAP_EXECUTION_LOT_028_OPEN_QUESTION_UI.md` ;
+* `revision_app/docs/ROADMAP_EXECUTION_HOTFIX_028B_OPEN_QUESTION_ENTRY.md` ;
+* `revision_app/docs/ROADMAP_EXECUTION_LOT_030_GENUI_ACTIVITY_CORRECTION.md` ;
+* `revision_app/AGENTS.md` ;
+* `revision_app/codex_rule.md`.
+
+Backend :
+
+* `api/package.json` ;
+* `api/prisma/schema.prisma` ;
+* `api/src/app.module.ts` ;
+* `api/src/modules/auth/**` ;
+* `api/src/modules/revision/**` ;
+* `api/src/modules/activities/**` ;
+* `api/src/modules/documents/**` ;
+* `api/src/modules/ai/application/ai-generation-observer.ts` ;
+* `api/src/modules/ai/ai.module.ts`.
+
+Frontend en lecture seule :
+
+* `revision_app/lib/features/activities/domain/diagnostic_quiz_activity.dart` ;
+* `revision_app/lib/features/activities/domain/open_question_activity.dart` ;
+* `revision_app/lib/features/activities/genui/revision_activity_catalog.dart` ;
+* `revision_app/lib/features/activities/genui/activity_correction_component_validator.dart` ;
+* `revision_app/lib/presentation/pages/activities/activities_page.dart`.
+
+## 3. Préflight Git
+
+API :
+
+```text
+pwd: /Users/karim/Project/app-révision/api
+root: /Users/karim/Project/app-révision/api
+branch: main
+status initial: ## main...origin/main
+derniers commits:
+0f25fed #27-3: finalise corrections de l'évaluateur de réponses ouvertes
+0cf3f17 #27-2: corrige évaluation des réponses ouvertes et soumission
+ba5daba #27-1: ajoute évaluation des réponses ouvertes et génération de questions
+93dad71 #26-1: ajoute gestion des questions ouvertes et soumissions d'activités
+02d3e57 #135: finalise corrections du générateur de quiz diagnostique
+```
+
+Frontend :
+
+```text
+pwd: /Users/karim/Project/app-révision/revision_app
+root: /Users/karim/Project/app-révision/revision_app
+branch: main
+status initial: ## main...origin/main
+derniers commits:
+710941b HOTFIX_028B_OPEN_QUESTION_ENTRY - Mise à jour page activités, API fake et tests, ajout rapport hotfix 028B
+2c8b57d LOT_028_OPEN_QUESTION_UI - Ajout UI question ouverte, contrôleur, API demo, routes et tests, ajout rapport LOT_028
+513b4f0 HOTFIX_027B_OPEN_ANSWER_ERROR_PATH - Ajout rapport hotfix 027B (Open Answer Error Path)
+5304d61 LOT_027_OPEN_QUESTION_GENKIT_CORRECTION - Mise à jour plan d'exécution et ajout rapport LOT_027 (Open Question Genkit Correction)
+a208a72 LOT_026_OPEN_QUESTION_CONTRACT - Mise à jour plan d'exécution et ajout rapport LOT_026 (Open Question Contract)
+```
+
+Décision : les deux worktrees étaient propres au préflight. Aucun fichier utilisateur hors scope n'a été écrasé.
+
+## 4. Périmètre réalisé
+
+Inclus :
+
+* modèles Prisma `RevisionSession` et `RevisionSessionAction` ;
+* enums `RevisionSessionStatus`, `RevisionSessionActionKind`, `RevisionSessionActionStatus` ;
+* repository Prisma de session ;
+* use case de création de session ;
+* use case de lecture de session ;
+* controller `revision-sessions` ;
+* module Nest dédié `RevisionSessionsModule` ;
+* wiring dans `AppModule` ;
+* export des use cases activités nécessaires depuis `ActivitiesModule` ;
+* tests use case, repository et controller ;
+* validation migration sur PostgreSQL Docker jetable ;
+* rapport et plan d'exécution.
+
+Exclus :
+
+* aucun nouveau flow Genkit ;
+* aucun chatbot ;
+* aucun endpoint message ;
+* aucun payload GenUI arbitraire ;
+* aucune UI Flutter ;
+* aucun TodayPlan ;
+* aucun scoring supplémentaire.
+
+## 5. Décisions d'architecture
+
+Un nouveau module backend `revision-sessions` a été créé plutôt que d'ajouter cette responsabilité directement dans `revision` ou `activities`.
+
+Raison : `ActivitiesModule` dépend déjà de `RevisionModule`. Importer `ActivitiesModule` dans `RevisionModule` créerait un cycle. Le module dédié importe `ActivitiesModule`, `AuthModule` et `PrismaModule`, ce qui garde une frontière claire : la session orchestre des use cases existants sans devenir propriétaire des activités.
+
+Le stockage ne duplique pas le QCM ou la question ouverte. `RevisionSessionAction.activitySessionId` référence l'`ActivitySession` créée par les use cases existants.
+
+## 6. Modèle Prisma / migration
+
+Migration créée :
+
+```text
+api/prisma/migrations/20260615120000_revision_session_minimal/migration.sql
+```
+
+La migration est additive : création de trois enums, deux tables, index et clés étrangères. Aucun `DROP` ni reset n'est présent.
+
+Modèles ajoutés :
+
+* `RevisionSession` ;
+* `RevisionSessionAction`.
+
+Relations principales :
+
+* session → `StudentProfile` ;
+* session → `Subject` ;
+* session → `Document?` ;
+* session → `KnowledgeUnit?` ;
+* action → session ;
+* action → `ActivitySession?` ;
+* action → `Document?` ;
+* action → `KnowledgeUnit?`.
+
+## 7. Contrat API
+
+### `POST /revision-sessions`
+
+Request :
+
+```json
+{
+  "subjectId": "subject-1",
+  "documentId": "document-1",
+  "knowledgeUnitId": "unit-1",
+  "preferredAction": "open_question"
+}
+```
+
+`subjectId` est obligatoire. `documentId`, `knowledgeUnitId` et `preferredAction` sont optionnels. `preferredAction` accepte uniquement :
+
+* `diagnostic_quiz` ;
+* `open_question`.
+
+Response :
+
+* `session` ;
+* `currentAction` ;
+* `history`.
+
+`currentAction.payload` contient le DTO public existant du QCM ou de la question ouverte lors de la création.
+
+### `GET /revision-sessions/:sessionId`
+
+Retourne la session et l'historique d'actions sans relancer d'activité et sans appeler Genkit. Le payload est minimal : type d'activité et `activitySessionId`.
+
+## 8. Stratégie d'action déterministe
+
+Règle retenue :
+
+* `preferredAction = diagnostic_quiz` → QCM ;
+* `preferredAction = open_question` + `knowledgeUnitId` → question ouverte ;
+* `preferredAction = open_question` sans `knowledgeUnitId` → erreur `422` ;
+* `preferredAction` absent + `knowledgeUnitId` présent → question ouverte ;
+* `preferredAction` absent + `knowledgeUnitId` absent → QCM.
+
+Aucune IA ne choisit l'action dans ce lot.
+
+## 9. Repository et persistance
+
+Le port `RevisionSessionsRepository` expose :
+
+* `ensureStartContext` ;
+* `createWithInitialAction` ;
+* `findByIdForStudent`.
+
+`ensureStartContext` vérifie l'ownership : sujet, document optionnel, notion optionnelle.
+
+`createWithInitialAction` persiste session et action dans une transaction Prisma.
+
+`findByIdForStudent` relit uniquement les sessions appartenant à l'étudiant courant et trie l'historique par `displayOrder`, puis `createdAt`.
+
+## 10. Use cases
+
+`StartRevisionSessionUseCase` orchestre :
+
+* validation du contexte via repository ;
+* résolution déterministe de l'action ;
+* appel de `StartNextActivityUseCase` ou `StartOpenQuestionActivityUseCase` ;
+* persistance de la session et de l'action ;
+* retour du DTO public existant comme payload de création.
+
+`GetRevisionSessionUseCase` relit une session existante sans créer d'action.
+
+## 11. Controller
+
+`RevisionSessionsController` est protégé par `FirebaseAuthGuard` et utilise `CurrentStudent`.
+
+Mappings d'erreurs :
+
+* `400` : body invalide, id vide, preferredAction inconnue ;
+* `404` : subject/document/knowledgeUnit/session introuvable pour l'étudiant ;
+* `422` : `open_question` demandé sans notion.
+
+## 12. Ownership et sécurité
+
+Vérifications :
+
+* `subjectId` appartient au `studentId` ;
+* `documentId` appartient au même étudiant et au même sujet ;
+* `knowledgeUnitId` appartient au même étudiant et au même sujet ;
+* si `documentId + knowledgeUnitId` sont fournis, la notion doit appartenir au document ;
+* `sessionId` du GET appartient au `studentId`.
+
+Aucune erreur Prisma brute n'est volontairement mappée vers le client.
+
+## 13. Anti-fuite
+
+La session retourne seulement des DTO publics existants :
+
+* QCM pré-submit sans `correctChoiceId`, `correctChoiceIds`, `isCorrect`, `explanation`, `feedback` ou `choiceFeedback` ;
+* question ouverte pré-submit sans `answerText`, `modelAnswer`, `score`, `feedback`, `presentPoints`, `missingPoints` ou `advice` ;
+* sources pré-submit sans texte complet.
+
+Les tests use case et controller vérifient l'absence de champs sensibles dans le payload sérialisé.
+
+## 14. GenUI : ce qui est explicitement non fait
+
+Aucun payload GenUI n'est stocké ou renvoyé. Aucune `componentName`, aucun widget dynamique, aucun JSON de rendu libre.
+
+## 15. Genkit : ce qui est explicitement non fait
+
+Aucun nouveau flow Genkit n'est créé. LOT-031 peut déclencher les flows existants de QCM ou question ouverte parce qu'il réutilise les use cases existants, mais il ne crée pas de coach LLM ni de `generateCoachNextActionFlow`.
+
+## 16. Tests créés ou modifiés
+
+Créés :
+
+* `api/src/modules/revision-sessions/application/start-revision-session.use-case.spec.ts` ;
+* `api/src/modules/revision-sessions/infrastructure/prisma-revision-sessions.repository.spec.ts` ;
+* `api/src/modules/revision-sessions/interfaces/revision-sessions.controller.spec.ts`.
+
+Couverts :
+
+* QCM par défaut avec `subjectId` seul ;
+* question ouverte par défaut avec `subjectId + knowledgeUnitId` ;
+* `preferredAction` QCM ;
+* `preferredAction` open question sans notion refusé ;
+* GET sans création d'action ;
+* ownership sujet/document/notion ;
+* persistance transactionnelle session + action ;
+* controller auth/current student ;
+* payload invalide ;
+* mapping `404` / `422` ;
+* anti-fuite pré-submit.
+
+## 17. Validations lancées avec résultats
+
+RED :
+
+* `npm test -- revision-sessions --runInBand` : échec attendu sur fichiers non implémentés.
+
+GREEN / finales API :
+
+* `npx prisma validate` : succès ;
+* `npm run prisma:generate` : succès ;
+* `npm test -- revision-sessions --runInBand` : 3 suites, 14 tests, succès ;
+* `npm test -- revision --runInBand` : 11 suites, 49 tests, succès ;
+* `npm test -- activities --runInBand` : 9 suites passées, 1 skipped existant, 87 tests passés ;
+* `npm run lint:check` : succès ;
+* `npm run build` : succès ;
+* `git diff --check` depuis `api` : succès.
+
+DB jetable :
+
+* Docker disponible : `Docker version 29.4.0` ;
+* conteneur créé : `revision-lot031-postgres` ;
+* `DATABASE_URL='postgresql://revision:revision@localhost:55434/revision_lot031_validation?schema=public' npx prisma migrate deploy` : succès, 7 migrations appliquées ;
+* premier `migrate status` lancé en parallèle avant la fin du deploy : a lu un état non appliqué ;
+* `DATABASE_URL='postgresql://revision:revision@localhost:55434/revision_lot031_validation?schema=public' npx prisma migrate status` relancé après deploy : `Database schema is up to date!` ;
+* conteneur supprimé : `docker rm -f revision-lot031-postgres`.
+
+Frontend :
+
+* `git diff --check` depuis `revision_app` : lancé après écriture du rapport final.
+
+## 18. Validations non lancées avec justification
+
+* Aucun test Flutter : aucun fichier `revision_app/lib/**` ou `revision_app/test/**` n'a été modifié.
+* Aucun provider IA réel : interdit et inutile pour ce lot.
+* Aucun `npm run test:cov`, `npm run format`, `npm run lint` avec fix : interdits.
+* Aucun `prisma db push`, `prisma migrate reset` : interdits.
+* Aucun déploiement.
+
+## 19. Risques restants
+
+* `GET /revision-sessions/:sessionId` retourne un payload minimal et ne reconstruit pas le DTO complet de l'activité ; LOT-032 devra soit consommer le payload de création, soit ajouter un endpoint de détail d'action si nécessaire.
+* Une session est persistée après création de l'activité, pour éviter une session vide si l'activité échoue. En cas d'échec DB après création d'activité, une activité orpheline pourrait exister ; ce cas reste rare et devra être surveillé si les sessions deviennent critiques.
+* Le QCM avec `documentId` sans `knowledgeUnitId` vérifie le document mais le use case QCM existant choisit encore une notion au niveau matière. Ce comportement est conservé pour ne pas refactorer `StartNextActivityUseCase` hors scope.
+* LOT-032 devra décider comment afficher une session relue si le payload complet n'est pas inclus dans GET.
+
+## 20. Recommandation prochain lot
+
+Prochain lot recommandé : `LOT-032 — Écran Révision IA minimal`, en consommant `POST /revision-sessions` et le fallback natif des activités existantes, sans créer de chatbot libre.
+
+## 21. Passes de review
+
+* Sub-agent Audit / Architecture : le module dédié `revision-sessions` évite un cycle `RevisionModule` ↔ `ActivitiesModule` et garde l'orchestration séparée des activités.
+* Sub-agent Implémentation : les actions sont déterministes et référencent `ActivitySession`, sans dupliquer les payloads métier en base.
+* Sub-agent Tests : les tests couvrent use case, repository, controller, ownership, anti-fuite et non-régression activities/revision.
+* Sub-agent Build / Validation : Prisma validate/generate, migrations sur DB jetable, lint, build, tests revision/activities sont verts.
+* Sub-agent Critique finale : aucun frontend, GenUI, TodayPlan ou flow Genkit nouveau n'a été modifié ; le risque principal restant est le payload minimal du GET.
+
+## 22. Code complet créé/modifié/supprimé pour review
+
+Aucun fichier supprimé.
+
+### `api/prisma/schema.prisma`
+
+`````prisma
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model StudentProfile {
+  id          String   @id @default(cuid())
+  firebaseUid String   @unique
+  email       String?
+  displayName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  goals    RevisionGoal[]
+  subjects Subject[]
+  mastery  MasteryState[]
+  sessions ActivitySession[]
+  revisionSessions RevisionSession[]
+  revisionSessionActions RevisionSessionAction[]
+  summaries Summary[]
+  revisionSheets RevisionSheet[]
+  openQuestions OpenQuestion[]
+  openAnswerEvaluations OpenAnswerEvaluation[]
+}
+
+model RevisionGoal {
+  id            String   @id @default(cuid())
+  studentId     String
+  targetDate    DateTime
+  weeklyMinutes Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, createdAt])
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  studentId String
+  name      String
+  priority  Int      @default(3)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student        StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  documents      Document[]
+  knowledgeUnits KnowledgeUnit[]
+  mastery        MasteryState[]
+  sessions       ActivitySession[]
+  revisionSessions RevisionSession[]
+  revisionSessionActions RevisionSessionAction[]
+  summaries      Summary[]
+  revisionSheets RevisionSheet[]
+  openQuestions  OpenQuestion[]
+  openAnswerEvaluations OpenAnswerEvaluation[]
+
+  @@index([studentId])
+  @@unique([id, studentId])
+}
+
+model Document {
+  id          String         @id @default(cuid())
+  studentId   String
+  subjectId   String
+  kind        DocumentKind
+  fileName    String
+  storagePath String
+  mimeType    String
+  status      DocumentStatus @default(UPLOADED)
+  errorCode   String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  subject        Subject                 @relation(fields: [subjectId, studentId], references: [id, studentId], onDelete: Cascade)
+  chunks         DocumentChunk[]
+  knowledgeUnits KnowledgeUnit[]
+  jobs           DocumentProcessingJob[]
+  summaries      Summary[]
+  revisionSheets RevisionSheet[]
+  openQuestions  OpenQuestion[]
+  revisionSessions RevisionSession[]
+  revisionSessionActions RevisionSessionAction[]
+
+  @@index([studentId])
+  @@index([subjectId])
+  @@unique([id, subjectId])
+}
+
+model DocumentProcessingJob {
+  id         String    @id @default(cuid())
+  documentId String
+  status     JobStatus @default(PENDING)
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeUnit {
+  id                       String                   @id @default(cuid())
+  subjectId                String
+  documentId               String?
+  title                    String
+  summary                  String
+  difficulty               KnowledgeUnitDifficulty?
+  displayOrder             Int?
+  confidence               Float?
+  extractionPromptVersion  String?
+  extractionSchemaVersion  String?
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+
+  subject  Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  document Document?      @relation(fields: [documentId, subjectId], references: [id, subjectId], onDelete: NoAction)
+  mastery  MasteryState[]
+  questions Question[]
+  sessions ActivitySession[]
+  revisionSessions RevisionSession[]
+  revisionSessionActions RevisionSessionAction[]
+  sources  KnowledgeUnitSource[]
+  openQuestions OpenQuestion[]
+
+  @@index([subjectId])
+  @@index([documentId])
+  @@unique([id, subjectId])
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  subjectId  String
+  index      Int
+  text       String
+  charStart  Int?
+  charEnd    Int?
+  pageNumber Int?
+  createdAt  DateTime @default(now())
+
+  document Document              @relation(fields: [documentId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  sources  KnowledgeUnitSource[]
+  summarySources SummarySource[]
+  revisionSheetSectionSources RevisionSheetSectionSource[]
+  questionSources QuestionSource[]
+  questionVisualSources QuestionVisualSource[]
+  openQuestionSources OpenQuestionSource[]
+
+  @@index([documentId])
+  @@index([subjectId])
+  @@unique([documentId, index])
+  @@unique([id, subjectId])
+}
+
+model KnowledgeUnitSource {
+  knowledgeUnitId String
+  subjectId       String
+  chunkId         String
+  relevanceScore  Float?
+  createdAt       DateTime @default(now())
+
+  knowledgeUnit KnowledgeUnit @relation(fields: [knowledgeUnitId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  chunk         DocumentChunk @relation(fields: [chunkId, subjectId], references: [id, subjectId], onDelete: Cascade)
+
+  @@id([knowledgeUnitId, chunkId])
+  @@index([chunkId])
+  @@index([subjectId])
+}
+
+model Summary {
+  id              String                      @id @default(cuid())
+  documentId      String
+  subjectId       String
+  studentId       String
+  status          StudyArtifactStatus
+  title           String?
+  content         String?
+  keyPoints       Json?
+  limits          String?
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+  generatedAt     DateTime
+  flowName        String
+  provider        String
+  model           String
+  promptVersion   String
+  schemaVersion   String
+  inputSize       Int?
+  sourceStrategy  StudyArtifactSourceStrategy
+  errorCode       String?
+
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject Subject        @relation(fields: [subjectId, studentId], references: [id, studentId], onDelete: Cascade)
+  document Document      @relation(fields: [documentId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  sources SummarySource[]
+
+  @@index([studentId])
+  @@index([subjectId])
+  @@unique([documentId])
+  @@unique([id, subjectId])
+}
+
+model SummarySource {
+  summaryId      String
+  subjectId      String
+  chunkId        String
+  relevanceScore Float?
+  createdAt      DateTime @default(now())
+
+  summary Summary       @relation(fields: [summaryId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  chunk   DocumentChunk @relation(fields: [chunkId, subjectId], references: [id, subjectId], onDelete: Cascade)
+
+  @@id([summaryId, chunkId])
+  @@index([chunkId])
+  @@index([subjectId])
+}
+
+model RevisionSheet {
+  id                  String                      @id @default(cuid())
+  documentId          String
+  subjectId           String
+  studentId           String
+  status              StudyArtifactStatus
+  title               String?
+  introduction        String?
+  keyPoints           Json?
+  commonMistakes      Json?
+  mustKnow            Json?
+  practiceSuggestions Json?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  generatedAt         DateTime
+  flowName            String
+  provider            String
+  model               String
+  promptVersion       String
+  schemaVersion       String
+  inputSize           Int?
+  sourceStrategy      StudyArtifactSourceStrategy
+  errorCode           String?
+
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject Subject        @relation(fields: [subjectId, studentId], references: [id, studentId], onDelete: Cascade)
+  document Document      @relation(fields: [documentId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  sections RevisionSheetSection[]
+
+  @@index([studentId])
+  @@index([subjectId])
+  @@unique([documentId])
+  @@unique([id, subjectId])
+}
+
+model RevisionSheetSection {
+  id              String   @id @default(cuid())
+  revisionSheetId String
+  subjectId       String
+  displayOrder    Int
+  title           String
+  content         String
+  createdAt       DateTime @default(now())
+
+  revisionSheet RevisionSheet @relation(fields: [revisionSheetId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  sources RevisionSheetSectionSource[]
+
+  @@index([subjectId])
+  @@unique([revisionSheetId, displayOrder])
+  @@unique([id, subjectId])
+}
+
+model RevisionSheetSectionSource {
+  sectionId      String
+  subjectId      String
+  chunkId        String
+  relevanceScore Float?
+  createdAt      DateTime @default(now())
+
+  section RevisionSheetSection @relation(fields: [sectionId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  chunk   DocumentChunk        @relation(fields: [chunkId, subjectId], references: [id, subjectId], onDelete: Cascade)
+
+  @@id([sectionId, chunkId])
+  @@index([chunkId])
+  @@index([subjectId])
+}
+
+model MasteryState {
+  studentId       String
+  subjectId       String
+  knowledgeUnitId String
+  score           Float
+  lastPracticedAt DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject       Subject        @relation(fields: [subjectId, studentId], references: [id, studentId], onDelete: Cascade)
+  knowledgeUnit KnowledgeUnit   @relation(fields: [knowledgeUnitId, subjectId], references: [id, subjectId], onDelete: Cascade)
+
+  @@id([studentId, knowledgeUnitId])
+  @@index([subjectId, studentId])
+  @@index([knowledgeUnitId, subjectId])
+}
+
+model ActivitySession {
+  id              String         @id @default(cuid())
+  studentId       String
+  subjectId       String
+  knowledgeUnitId String
+  version         Int            @default(1)
+  documentId      String?
+  generationFlowName      String?
+  generationProvider      String?
+  generationModel         String?
+  generationPromptVersion String?
+  generationSchemaVersion String?
+  generationInputSize     Int?
+  type            ActivityType
+  status          ActivityStatus @default(STARTED)
+  createdAt       DateTime       @default(now())
+  completedAt     DateTime?
+
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject       Subject        @relation(fields: [subjectId, studentId], references: [id, studentId], onDelete: Cascade)
+  knowledgeUnit KnowledgeUnit  @relation(fields: [knowledgeUnitId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  questions     Question[]
+  result        ActivityResult?
+  answers       QuestionAnswer[]
+  openQuestion  OpenQuestion?
+  openAnswerEvaluation OpenAnswerEvaluation?
+  revisionSessionActions RevisionSessionAction[]
+
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([documentId])
+  @@index([knowledgeUnitId])
+  @@unique([id, knowledgeUnitId])
+}
+
+model Question {
+  id              String @id @default(cuid())
+  sessionId       String
+  subjectId       String?
+  documentId      String?
+  knowledgeUnitId String
+  prompt          String
+  difficulty      KnowledgeUnitDifficulty?
+  displayOrder    Int    @default(0)
+  choices         Json
+  selectionMode   QuestionSelectionMode @default(SINGLE)
+  minSelections   Int?
+  maxSelections   Int?
+  correctChoiceId String?
+  correctChoiceIds Json?
+  explanation     String
+
+  session       ActivitySession @relation(fields: [sessionId, knowledgeUnitId], references: [id, knowledgeUnitId], onDelete: Cascade)
+  knowledgeUnit KnowledgeUnit   @relation(fields: [knowledgeUnitId], references: [id], onDelete: Cascade)
+  sources       QuestionSource[]
+  answers       QuestionAnswer[]
+  visuals       QuestionVisual[]
+
+  @@index([sessionId])
+  @@index([subjectId])
+  @@index([documentId])
+  @@unique([id, subjectId])
+}
+
+model QuestionSource {
+  questionId     String
+  subjectId      String
+  chunkId        String
+  relevanceScore Float?
+  createdAt      DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  chunk    DocumentChunk @relation(fields: [chunkId, subjectId], references: [id, subjectId], onDelete: Cascade)
+
+  @@id([questionId, chunkId])
+  @@index([chunkId])
+  @@index([subjectId])
+}
+
+model QuestionVisual {
+  id           String             @id @default(cuid())
+  questionId   String
+  type         QuestionVisualType
+  displayOrder Int                @default(0)
+  payload      Json
+  createdAt    DateTime           @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  sources  QuestionVisualSource[]
+
+  @@index([questionId])
+  @@unique([questionId, displayOrder])
+}
+
+model QuestionVisualSource {
+  visualId       String
+  subjectId      String
+  chunkId        String
+  relevanceScore Float?
+  createdAt      DateTime @default(now())
+
+  visual QuestionVisual @relation(fields: [visualId], references: [id], onDelete: Cascade)
+  chunk  DocumentChunk   @relation(fields: [chunkId, subjectId], references: [id, subjectId], onDelete: Cascade)
+
+  @@id([visualId, chunkId])
+  @@index([chunkId])
+  @@index([subjectId])
+}
+
+model QuestionAnswer {
+  id               String   @id @default(cuid())
+  sessionId        String
+  questionId       String
+  selectedChoiceId String?
+  isCorrect        Boolean
+  createdAt        DateTime @default(now())
+
+  session  ActivitySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedChoices QuestionAnswerChoice[]
+
+  @@unique([sessionId, questionId])
+  @@index([questionId])
+}
+
+model QuestionAnswerChoice {
+  answerId String
+  choiceId String
+
+  answer QuestionAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@id([answerId, choiceId])
+}
+
+model ActivityResult {
+  id             String   @id @default(cuid())
+  sessionId      String   @unique
+  correctAnswers Int
+  totalQuestions Int
+  score          Float?
+  createdAt      DateTime @default(now())
+
+  session ActivitySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model OpenQuestion {
+  id              String   @id @default(cuid())
+  sessionId       String   @unique
+  studentId       String
+  subjectId       String
+  documentId      String?
+  knowledgeUnitId String
+  prompt          String
+  instructions    String?
+  maxAnswerLength Int      @default(4000)
+  version         Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  session       ActivitySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student       StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject       Subject         @relation(fields: [subjectId, studentId], references: [id, studentId], onDelete: Cascade)
+  document      Document?       @relation(fields: [documentId, subjectId], references: [id, subjectId], onDelete: NoAction)
+  knowledgeUnit KnowledgeUnit   @relation(fields: [knowledgeUnitId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  sources       OpenQuestionSource[]
+  evaluations   OpenAnswerEvaluation[]
+
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([documentId])
+  @@index([knowledgeUnitId])
+  @@unique([id, subjectId])
+}
+
+model OpenQuestionSource {
+  questionId     String
+  subjectId      String
+  chunkId        String
+  relevanceScore Float?
+  createdAt      DateTime @default(now())
+
+  question OpenQuestion  @relation(fields: [questionId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  chunk    DocumentChunk @relation(fields: [chunkId, subjectId], references: [id, subjectId], onDelete: Cascade)
+
+  @@id([questionId, chunkId])
+  @@index([chunkId])
+  @@index([subjectId])
+}
+
+model OpenAnswerEvaluation {
+  id                      String                     @id @default(cuid())
+  sessionId               String                     @unique
+  openQuestionId          String
+  studentId               String
+  subjectId               String
+  answerText              String
+  status                  OpenAnswerEvaluationStatus @default(PENDING)
+  score                   Float?
+  maxScore                Float?
+  feedback                String?
+  presentPoints           Json?
+  missingPoints           Json?
+  errors                  Json?
+  modelAnswer             String?
+  advice                  String?
+  generationFlowName      String?
+  generationProvider      String?
+  generationModel         String?
+  generationPromptVersion String?
+  generationSchemaVersion String?
+  generationInputSize     Int?
+  errorCode               String?
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  session      ActivitySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  openQuestion OpenQuestion    @relation(fields: [openQuestionId, subjectId], references: [id, subjectId], onDelete: Cascade)
+  student      StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject      Subject         @relation(fields: [subjectId, studentId], references: [id, studentId], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([openQuestionId])
+}
+
+model RevisionSession {
+  id              String                @id @default(cuid())
+  studentId       String
+  subjectId       String
+  documentId      String?
+  knowledgeUnitId String?
+  status          RevisionSessionStatus @default(STARTED)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  completedAt     DateTime?
+
+  student       StudentProfile          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject       Subject                 @relation(fields: [subjectId, studentId], references: [id, studentId], onDelete: Cascade)
+  document      Document?               @relation(fields: [documentId, subjectId], references: [id, subjectId], onDelete: NoAction)
+  knowledgeUnit KnowledgeUnit?          @relation(fields: [knowledgeUnitId, subjectId], references: [id, subjectId], onDelete: NoAction)
+  actions       RevisionSessionAction[]
+
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([documentId])
+  @@index([knowledgeUnitId])
+  @@unique([id, studentId])
+}
+
+model RevisionSessionAction {
+  id                String                      @id @default(cuid())
+  sessionId         String
+  studentId         String
+  subjectId         String
+  kind              RevisionSessionActionKind
+  status            RevisionSessionActionStatus @default(READY)
+  displayOrder      Int                         @default(0)
+  activitySessionId String?
+  documentId        String?
+  knowledgeUnitId   String?
+  createdAt         DateTime                    @default(now())
+  completedAt       DateTime?
+
+  session         RevisionSession  @relation(fields: [sessionId, studentId], references: [id, studentId], onDelete: Cascade)
+  student         StudentProfile   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject         Subject          @relation(fields: [subjectId, studentId], references: [id, studentId], onDelete: Cascade)
+  activitySession ActivitySession? @relation(fields: [activitySessionId], references: [id], onDelete: NoAction)
+  document        Document?        @relation(fields: [documentId, subjectId], references: [id, subjectId], onDelete: NoAction)
+  knowledgeUnit   KnowledgeUnit?   @relation(fields: [knowledgeUnitId, subjectId], references: [id, subjectId], onDelete: NoAction)
+
+  @@unique([sessionId, displayOrder])
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([activitySessionId])
+  @@index([documentId])
+  @@index([knowledgeUnitId])
+}
+
+enum DocumentKind {
+  COURSE_PDF
+  EXAM_PDF
+  EXAM_IMAGE
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum KnowledgeUnitDifficulty {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum StudyArtifactStatus {
+  READY
+  FAILED
+}
+
+enum StudyArtifactSourceStrategy {
+  DOCUMENT_CHUNKS
+  DOCUMENT_CHUNKS_AND_KNOWLEDGE_UNITS
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ActivityType {
+  DIAGNOSTIC_QUIZ
+  OPEN_QUESTION
+}
+
+enum ActivityStatus {
+  STARTED
+  SUBMITTED
+  COMPLETED
+}
+
+enum RevisionSessionStatus {
+  STARTED
+  COMPLETED
+  ABANDONED
+}
+
+enum RevisionSessionActionKind {
+  DIAGNOSTIC_QUIZ
+  OPEN_QUESTION
+}
+
+enum RevisionSessionActionStatus {
+  READY
+  COMPLETED
+  FAILED
+}
+
+enum OpenAnswerEvaluationStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+enum QuestionSelectionMode {
+  SINGLE
+  MULTIPLE
+}
+
+enum QuestionVisualType {
+  IMAGE
+  CHART
+  DIAGRAM
+}
+`````
+
+### `api/prisma/migrations/20260615120000_revision_session_minimal/migration.sql`
+
+`````sql
+-- CreateEnum
+CREATE TYPE "RevisionSessionStatus" AS ENUM ('STARTED', 'COMPLETED', 'ABANDONED');
+
+-- CreateEnum
+CREATE TYPE "RevisionSessionActionKind" AS ENUM ('DIAGNOSTIC_QUIZ', 'OPEN_QUESTION');
+
+-- CreateEnum
+CREATE TYPE "RevisionSessionActionStatus" AS ENUM ('READY', 'COMPLETED', 'FAILED');
+
+-- CreateTable
+CREATE TABLE "RevisionSession" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "subjectId" TEXT NOT NULL,
+    "documentId" TEXT,
+    "knowledgeUnitId" TEXT,
+    "status" "RevisionSessionStatus" NOT NULL DEFAULT 'STARTED',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "completedAt" TIMESTAMP(3),
+
+    CONSTRAINT "RevisionSession_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RevisionSessionAction" (
+    "id" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "subjectId" TEXT NOT NULL,
+    "kind" "RevisionSessionActionKind" NOT NULL,
+    "status" "RevisionSessionActionStatus" NOT NULL DEFAULT 'READY',
+    "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "activitySessionId" TEXT,
+    "documentId" TEXT,
+    "knowledgeUnitId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "completedAt" TIMESTAMP(3),
+
+    CONSTRAINT "RevisionSessionAction_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "RevisionSession_studentId_idx" ON "RevisionSession"("studentId");
+
+-- CreateIndex
+CREATE INDEX "RevisionSession_subjectId_idx" ON "RevisionSession"("subjectId");
+
+-- CreateIndex
+CREATE INDEX "RevisionSession_documentId_idx" ON "RevisionSession"("documentId");
+
+-- CreateIndex
+CREATE INDEX "RevisionSession_knowledgeUnitId_idx" ON "RevisionSession"("knowledgeUnitId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RevisionSession_id_studentId_key" ON "RevisionSession"("id", "studentId");
+
+-- CreateIndex
+CREATE INDEX "RevisionSessionAction_studentId_idx" ON "RevisionSessionAction"("studentId");
+
+-- CreateIndex
+CREATE INDEX "RevisionSessionAction_subjectId_idx" ON "RevisionSessionAction"("subjectId");
+
+-- CreateIndex
+CREATE INDEX "RevisionSessionAction_activitySessionId_idx" ON "RevisionSessionAction"("activitySessionId");
+
+-- CreateIndex
+CREATE INDEX "RevisionSessionAction_documentId_idx" ON "RevisionSessionAction"("documentId");
+
+-- CreateIndex
+CREATE INDEX "RevisionSessionAction_knowledgeUnitId_idx" ON "RevisionSessionAction"("knowledgeUnitId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RevisionSessionAction_sessionId_displayOrder_key" ON "RevisionSessionAction"("sessionId", "displayOrder");
+
+-- AddForeignKey
+ALTER TABLE "RevisionSession" ADD CONSTRAINT "RevisionSession_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "StudentProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevisionSession" ADD CONSTRAINT "RevisionSession_subjectId_studentId_fkey" FOREIGN KEY ("subjectId", "studentId") REFERENCES "Subject"("id", "studentId") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevisionSession" ADD CONSTRAINT "RevisionSession_documentId_subjectId_fkey" FOREIGN KEY ("documentId", "subjectId") REFERENCES "Document"("id", "subjectId") ON DELETE NO ACTION ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevisionSession" ADD CONSTRAINT "RevisionSession_knowledgeUnitId_subjectId_fkey" FOREIGN KEY ("knowledgeUnitId", "subjectId") REFERENCES "KnowledgeUnit"("id", "subjectId") ON DELETE NO ACTION ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevisionSessionAction" ADD CONSTRAINT "RevisionSessionAction_sessionId_studentId_fkey" FOREIGN KEY ("sessionId", "studentId") REFERENCES "RevisionSession"("id", "studentId") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevisionSessionAction" ADD CONSTRAINT "RevisionSessionAction_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "StudentProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevisionSessionAction" ADD CONSTRAINT "RevisionSessionAction_subjectId_studentId_fkey" FOREIGN KEY ("subjectId", "studentId") REFERENCES "Subject"("id", "studentId") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevisionSessionAction" ADD CONSTRAINT "RevisionSessionAction_activitySessionId_fkey" FOREIGN KEY ("activitySessionId") REFERENCES "ActivitySession"("id") ON DELETE NO ACTION ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevisionSessionAction" ADD CONSTRAINT "RevisionSessionAction_documentId_subjectId_fkey" FOREIGN KEY ("documentId", "subjectId") REFERENCES "Document"("id", "subjectId") ON DELETE NO ACTION ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevisionSessionAction" ADD CONSTRAINT "RevisionSessionAction_knowledgeUnitId_subjectId_fkey" FOREIGN KEY ("knowledgeUnitId", "subjectId") REFERENCES "KnowledgeUnit"("id", "subjectId") ON DELETE NO ACTION ON UPDATE CASCADE;
+`````
+
+### `api/src/app.module.ts`
+
+`````ts
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { HealthController } from './health.controller';
+import { ActivitiesModule } from './modules/activities/activities.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { RevisionModule } from './modules/revision/revision.module';
+import { RevisionSessionsModule } from './modules/revision-sessions/revision-sessions.module';
+import { StudyArtifactsModule } from './modules/study-artifacts/study-artifacts.module';
+import { SubjectsModule } from './modules/subjects/subjects.module';
+
+@Module({
+  imports: [
+    AuthModule,
+    SubjectsModule,
+    RevisionModule,
+    DocumentsModule,
+    ActivitiesModule,
+    RevisionSessionsModule,
+    StudyArtifactsModule,
+  ],
+  controllers: [AppController, HealthController],
+  providers: [AppService],
+})
+export class AppModule {}
+`````
+
+### `api/src/modules/activities/activities.module.ts`
+
+`````ts
+import { Module } from '@nestjs/common';
+import { AiModule } from '../ai/ai.module';
+import { AuthModule } from '../auth/auth.module';
+import { AdaptivePlanService } from '../revision/domain/adaptive-plan.service';
+import { RevisionModule } from '../revision/revision.module';
+import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
+import { ACTIVITIES_REPOSITORY } from './application/activities.repository';
+import { DIAGNOSTIC_QUIZ_GENERATOR } from './application/diagnostic-quiz-generator';
+import { OPEN_ANSWER_EVALUATOR } from './application/open-answer-evaluator';
+import { OPEN_QUESTION_GENERATOR } from './application/open-question-generator';
+import { StartOpenQuestionActivityUseCase } from './application/start-open-question-activity.use-case';
+import { StartNextActivityUseCase } from './application/start-next-activity.use-case';
+import { SubmitOpenAnswerUseCase } from './application/submit-open-answer.use-case';
+import { SubmitActivityResultUseCase } from './application/submit-activity-result.use-case';
+import { GenkitDiagnosticQuizGenerator } from './infrastructure/genkit-diagnostic-quiz.generator';
+import { GenkitOpenAnswerEvaluator } from './infrastructure/genkit-open-answer.evaluator';
+import { GenkitOpenQuestionGenerator } from './infrastructure/genkit-open-question.generator';
+import { PrismaActivitiesRepository } from './infrastructure/prisma-activities.repository';
+import { ActivitiesController } from './interfaces/activities.controller';
+
+@Module({
+  imports: [AiModule, AuthModule, PrismaModule, RevisionModule],
+  controllers: [ActivitiesController],
+  providers: [
+    AdaptivePlanService,
+    StartNextActivityUseCase,
+    StartOpenQuestionActivityUseCase,
+    SubmitActivityResultUseCase,
+    SubmitOpenAnswerUseCase,
+    {
+      provide: ACTIVITIES_REPOSITORY,
+      useClass: PrismaActivitiesRepository,
+    },
+    {
+      provide: DIAGNOSTIC_QUIZ_GENERATOR,
+      useClass: GenkitDiagnosticQuizGenerator,
+    },
+    {
+      provide: OPEN_QUESTION_GENERATOR,
+      useClass: GenkitOpenQuestionGenerator,
+    },
+    {
+      provide: OPEN_ANSWER_EVALUATOR,
+      useClass: GenkitOpenAnswerEvaluator,
+    },
+  ],
+  exports: [StartNextActivityUseCase, StartOpenQuestionActivityUseCase],
+})
+export class ActivitiesModule {}
+`````
+
+### `api/src/modules/revision-sessions/domain/revision-session.entity.ts`
+
+`````ts
+import type {
+  DiagnosticQuizActivity,
+  OpenQuestionActivity,
+} from '../../activities/application/activities.repository';
+
+export type RevisionSessionStatusValue = 'STARTED' | 'COMPLETED' | 'ABANDONED';
+
+export type RevisionSessionActionKindValue =
+  | 'DIAGNOSTIC_QUIZ'
+  | 'OPEN_QUESTION';
+
+export type RevisionSessionActionStatusValue = 'READY' | 'COMPLETED' | 'FAILED';
+
+export type RevisionSessionPreferredAction =
+  | 'diagnostic_quiz'
+  | 'open_question';
+
+export type RevisionSessionActionPayload =
+  | DiagnosticQuizActivity
+  | OpenQuestionActivity
+  | {
+      type: 'diagnostic_quiz' | 'open_question';
+      sessionId: string | null;
+    }
+  | null;
+
+export interface RevisionSessionDto {
+  id: string;
+  status: RevisionSessionStatusValue;
+  subjectId: string;
+  documentId: string | null;
+  knowledgeUnitId: string | null;
+  createdAt: Date;
+  completedAt: Date | null;
+}
+
+export interface RevisionSessionActionDto {
+  id: string;
+  kind: RevisionSessionActionKindValue;
+  status: RevisionSessionActionStatusValue;
+  displayOrder: number;
+  activitySessionId: string | null;
+  documentId: string | null;
+  knowledgeUnitId: string | null;
+}
+
+export interface RevisionSessionCurrentActionDto extends RevisionSessionActionDto {
+  payload: RevisionSessionActionPayload;
+}
+
+export interface RevisionSessionResponseDto {
+  session: RevisionSessionDto;
+  currentAction: RevisionSessionCurrentActionDto | null;
+  history: RevisionSessionActionDto[];
+}
+`````
+
+### `api/src/modules/revision-sessions/application/revision-sessions.repository.ts`
+
+`````ts
+import type {
+  RevisionSessionActionKindValue,
+  RevisionSessionActionStatusValue,
+  RevisionSessionResponseDto,
+} from '../domain/revision-session.entity';
+
+export const REVISION_SESSIONS_REPOSITORY = Symbol(
+  'REVISION_SESSIONS_REPOSITORY',
+);
+
+export interface RevisionSessionStartContext {
+  subjectId: string;
+  documentId: string | null;
+  knowledgeUnitId: string | null;
+}
+
+export interface RevisionSessionsRepository {
+  ensureStartContext(input: {
+    studentId: string;
+    subjectId: string;
+    documentId?: string;
+    knowledgeUnitId?: string;
+  }): Promise<RevisionSessionStartContext>;
+
+  createWithInitialAction(input: {
+    studentId: string;
+    subjectId: string;
+    documentId: string | null;
+    knowledgeUnitId: string | null;
+    action: {
+      kind: RevisionSessionActionKindValue;
+      status: RevisionSessionActionStatusValue;
+      displayOrder: number;
+      activitySessionId: string | null;
+      documentId: string | null;
+      knowledgeUnitId: string | null;
+    };
+  }): Promise<RevisionSessionResponseDto>;
+
+  findByIdForStudent(input: {
+    studentId: string;
+    sessionId: string;
+  }): Promise<RevisionSessionResponseDto>;
+}
+`````
+
+### `api/src/modules/revision-sessions/application/start-revision-session.use-case.ts`
+
+`````ts
+import { Inject, Injectable } from '@nestjs/common';
+import { StartNextActivityUseCase } from '../../activities/application/start-next-activity.use-case';
+import { StartOpenQuestionActivityUseCase } from '../../activities/application/start-open-question-activity.use-case';
+import type {
+  DiagnosticQuizActivity,
+  OpenQuestionActivity,
+} from '../../activities/application/activities.repository';
+import type {
+  RevisionSessionActionKindValue,
+  RevisionSessionPreferredAction,
+  RevisionSessionResponseDto,
+} from '../domain/revision-session.entity';
+import {
+  REVISION_SESSIONS_REPOSITORY,
+  type RevisionSessionsRepository,
+} from './revision-sessions.repository';
+
+@Injectable()
+export class StartRevisionSessionUseCase {
+  constructor(
+    @Inject(REVISION_SESSIONS_REPOSITORY)
+    private readonly revisionSessionsRepository: RevisionSessionsRepository,
+    private readonly startNextActivity: StartNextActivityUseCase,
+    private readonly startOpenQuestionActivity: StartOpenQuestionActivityUseCase,
+  ) {}
+
+  async execute(input: {
+    studentId: string;
+    subjectId: string;
+    documentId?: string;
+    knowledgeUnitId?: string;
+    preferredAction?: RevisionSessionPreferredAction;
+  }): Promise<RevisionSessionResponseDto> {
+    const actionKind = resolveInitialActionKind(input);
+
+    if (actionKind === 'OPEN_QUESTION' && !input.knowledgeUnitId) {
+      throw new Error(
+        'Open question revision session requires a knowledge unit',
+      );
+    }
+
+    const context = await this.revisionSessionsRepository.ensureStartContext({
+      studentId: input.studentId,
+      subjectId: input.subjectId,
+      documentId: input.documentId,
+      knowledgeUnitId: input.knowledgeUnitId,
+    });
+
+    if (actionKind === 'OPEN_QUESTION') {
+      const activity = await this.startOpenQuestionActivity.execute({
+        studentId: input.studentId,
+        subjectId: context.subjectId,
+        knowledgeUnitId: input.knowledgeUnitId ?? context.knowledgeUnitId ?? '',
+      });
+
+      return this.createSessionWithPayload({
+        input,
+        context,
+        actionKind,
+        activity,
+        activitySessionId: activity.sessionId,
+        documentId: activity.documentId ?? context.documentId,
+        knowledgeUnitId: activity.knowledgeUnitId,
+      });
+    }
+
+    const activity = await this.startNextActivity.execute({
+      studentId: input.studentId,
+      subjectId: context.subjectId,
+      knowledgeUnitId: context.knowledgeUnitId ?? undefined,
+    });
+
+    return this.createSessionWithPayload({
+      input,
+      context,
+      actionKind,
+      activity,
+      activitySessionId: activity.sessionId,
+      documentId: activity.documentId ?? context.documentId,
+      knowledgeUnitId: context.knowledgeUnitId,
+    });
+  }
+
+  private async createSessionWithPayload(input: {
+    input: {
+      studentId: string;
+      subjectId: string;
+    };
+    context: {
+      subjectId: string;
+      documentId: string | null;
+      knowledgeUnitId: string | null;
+    };
+    actionKind: RevisionSessionActionKindValue;
+    activity: DiagnosticQuizActivity | OpenQuestionActivity;
+    activitySessionId: string;
+    documentId: string | null;
+    knowledgeUnitId: string | null;
+  }): Promise<RevisionSessionResponseDto> {
+    const response =
+      await this.revisionSessionsRepository.createWithInitialAction({
+        studentId: input.input.studentId,
+        subjectId: input.context.subjectId,
+        documentId: input.documentId,
+        knowledgeUnitId: input.knowledgeUnitId,
+        action: {
+          kind: input.actionKind,
+          status: 'READY',
+          displayOrder: 0,
+          activitySessionId: input.activitySessionId,
+          documentId: input.documentId,
+          knowledgeUnitId: input.knowledgeUnitId,
+        },
+      });
+
+    return {
+      ...response,
+      currentAction: response.currentAction
+        ? {
+            ...response.currentAction,
+            payload: input.activity,
+          }
+        : null,
+    };
+  }
+}
+
+function resolveInitialActionKind(input: {
+  knowledgeUnitId?: string;
+  preferredAction?: RevisionSessionPreferredAction;
+}): RevisionSessionActionKindValue {
+  if (input.preferredAction === 'diagnostic_quiz') {
+    return 'DIAGNOSTIC_QUIZ';
+  }
+
+  if (input.preferredAction === 'open_question') {
+    return 'OPEN_QUESTION';
+  }
+
+  return input.knowledgeUnitId ? 'OPEN_QUESTION' : 'DIAGNOSTIC_QUIZ';
+}
+`````
+
+### `api/src/modules/revision-sessions/application/get-revision-session.use-case.ts`
+
+`````ts
+import { Inject, Injectable } from '@nestjs/common';
+import type { RevisionSessionResponseDto } from '../domain/revision-session.entity';
+import {
+  REVISION_SESSIONS_REPOSITORY,
+  type RevisionSessionsRepository,
+} from './revision-sessions.repository';
+
+@Injectable()
+export class GetRevisionSessionUseCase {
+  constructor(
+    @Inject(REVISION_SESSIONS_REPOSITORY)
+    private readonly revisionSessionsRepository: RevisionSessionsRepository,
+  ) {}
+
+  execute(input: {
+    studentId: string;
+    sessionId: string;
+  }): Promise<RevisionSessionResponseDto> {
+    return this.revisionSessionsRepository.findByIdForStudent(input);
+  }
+}
+`````
+
+### `api/src/modules/revision-sessions/infrastructure/prisma-revision-sessions.repository.ts`
+
+`````ts
+import { Injectable } from '@nestjs/common';
+import {
+  RevisionSessionActionKind,
+  RevisionSessionActionStatus,
+  RevisionSessionStatus,
+} from '../../../generated/prisma/enums';
+import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
+import type {
+  RevisionSessionActionKindValue,
+  RevisionSessionActionStatusValue,
+  RevisionSessionResponseDto,
+  RevisionSessionStatusValue,
+} from '../domain/revision-session.entity';
+import type {
+  RevisionSessionsRepository,
+  RevisionSessionStartContext,
+} from '../application/revision-sessions.repository';
+
+type RevisionSessionRecord = {
+  id: string;
+  studentId: string;
+  subjectId: string;
+  documentId: string | null;
+  knowledgeUnitId: string | null;
+  status: RevisionSessionStatusValue;
+  createdAt: Date;
+  completedAt: Date | null;
+  actions?: RevisionSessionActionRecord[];
+};
+
+type RevisionSessionActionRecord = {
+  id: string;
+  sessionId: string;
+  studentId: string;
+  subjectId: string;
+  kind: RevisionSessionActionKindValue;
+  status: RevisionSessionActionStatusValue;
+  displayOrder: number;
+  activitySessionId: string | null;
+  documentId: string | null;
+  knowledgeUnitId: string | null;
+  createdAt: Date;
+  completedAt: Date | null;
+};
+
+@Injectable()
+export class PrismaRevisionSessionsRepository implements RevisionSessionsRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async ensureStartContext(input: {
+    studentId: string;
+    subjectId: string;
+    documentId?: string;
+    knowledgeUnitId?: string;
+  }): Promise<RevisionSessionStartContext> {
+    const subject = await this.prisma.subject.findFirst({
+      where: {
+        id: input.subjectId,
+        studentId: input.studentId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!subject) {
+      throw new Error('Revision subject not found');
+    }
+
+    let documentId: string | null = null;
+
+    if (input.documentId) {
+      const document = await this.prisma.document.findFirst({
+        where: {
+          id: input.documentId,
+          subjectId: input.subjectId,
+          studentId: input.studentId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!document) {
+        throw new Error('Revision document not found');
+      }
+
+      documentId = document.id;
+    }
+
+    let knowledgeUnitId: string | null = null;
+
+    if (input.knowledgeUnitId) {
+      const knowledgeUnit = await this.prisma.knowledgeUnit.findFirst({
+        where: {
+          id: input.knowledgeUnitId,
+          subjectId: input.subjectId,
+          ...(documentId ? { documentId } : {}),
+          subject: {
+            studentId: input.studentId,
+          },
+        },
+        select: {
+          id: true,
+          documentId: true,
+        },
+      });
+
+      if (!knowledgeUnit) {
+        throw new Error('Revision knowledge unit not found');
+      }
+
+      knowledgeUnitId = knowledgeUnit.id;
+      documentId = documentId ?? knowledgeUnit.documentId;
+    }
+
+    return {
+      subjectId: input.subjectId,
+      documentId,
+      knowledgeUnitId,
+    };
+  }
+
+  async createWithInitialAction(input: {
+    studentId: string;
+    subjectId: string;
+    documentId: string | null;
+    knowledgeUnitId: string | null;
+    action: {
+      kind: RevisionSessionActionKindValue;
+      status: RevisionSessionActionStatusValue;
+      displayOrder: number;
+      activitySessionId: string | null;
+      documentId: string | null;
+      knowledgeUnitId: string | null;
+    };
+  }): Promise<RevisionSessionResponseDto> {
+    return this.prisma.$transaction(async (tx) => {
+      const session = await tx.revisionSession.create({
+        data: {
+          studentId: input.studentId,
+          subjectId: input.subjectId,
+          documentId: input.documentId,
+          knowledgeUnitId: input.knowledgeUnitId,
+          status: RevisionSessionStatus.STARTED,
+        },
+      });
+      const action = await tx.revisionSessionAction.create({
+        data: {
+          sessionId: session.id,
+          studentId: input.studentId,
+          subjectId: input.subjectId,
+          kind: toPrismaActionKind(input.action.kind),
+          status: toPrismaActionStatus(input.action.status),
+          displayOrder: input.action.displayOrder,
+          activitySessionId: input.action.activitySessionId,
+          documentId: input.action.documentId,
+          knowledgeUnitId: input.action.knowledgeUnitId,
+        },
+      });
+
+      return toRevisionSessionResponse(session, [action]);
+    });
+  }
+
+  async findByIdForStudent(input: {
+    studentId: string;
+    sessionId: string;
+  }): Promise<RevisionSessionResponseDto> {
+    const session = (await this.prisma.revisionSession.findFirst({
+      where: {
+        id: input.sessionId,
+        studentId: input.studentId,
+      },
+      include: {
+        actions: {
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+        },
+      },
+    })) as RevisionSessionRecord | null;
+
+    if (!session) {
+      throw new Error('Revision session not found');
+    }
+
+    return toRevisionSessionResponse(session, session.actions ?? []);
+  }
+}
+
+function toRevisionSessionResponse(
+  session: RevisionSessionRecord,
+  actions: RevisionSessionActionRecord[],
+): RevisionSessionResponseDto {
+  const history = actions.map((action) => ({
+    id: action.id,
+    kind: action.kind,
+    status: action.status,
+    displayOrder: action.displayOrder,
+    activitySessionId: action.activitySessionId,
+    documentId: action.documentId,
+    knowledgeUnitId: action.knowledgeUnitId,
+  }));
+  const currentActionRecord = actions.length
+    ? actions[actions.length - 1]
+    : undefined;
+  const currentAction = currentActionRecord
+    ? {
+        id: currentActionRecord.id,
+        kind: currentActionRecord.kind,
+        status: currentActionRecord.status,
+        displayOrder: currentActionRecord.displayOrder,
+        activitySessionId: currentActionRecord.activitySessionId,
+        documentId: currentActionRecord.documentId,
+        knowledgeUnitId: currentActionRecord.knowledgeUnitId,
+        payload: toMinimalActionPayload(currentActionRecord),
+      }
+    : null;
+
+  return {
+    session: {
+      id: session.id,
+      status: session.status,
+      subjectId: session.subjectId,
+      documentId: session.documentId,
+      knowledgeUnitId: session.knowledgeUnitId,
+      createdAt: session.createdAt,
+      completedAt: session.completedAt,
+    },
+    currentAction,
+    history,
+  };
+}
+
+function toMinimalActionPayload(action: RevisionSessionActionRecord) {
+  return {
+    type:
+      action.kind === 'OPEN_QUESTION'
+        ? ('open_question' as const)
+        : ('diagnostic_quiz' as const),
+    sessionId: action.activitySessionId,
+  };
+}
+
+function toPrismaActionKind(kind: RevisionSessionActionKindValue) {
+  return kind === 'OPEN_QUESTION'
+    ? RevisionSessionActionKind.OPEN_QUESTION
+    : RevisionSessionActionKind.DIAGNOSTIC_QUIZ;
+}
+
+function toPrismaActionStatus(status: RevisionSessionActionStatusValue) {
+  if (status === 'COMPLETED') {
+    return RevisionSessionActionStatus.COMPLETED;
+  }
+
+  if (status === 'FAILED') {
+    return RevisionSessionActionStatus.FAILED;
+  }
+
+  return RevisionSessionActionStatus.READY;
+}
+`````
+
+### `api/src/modules/revision-sessions/interfaces/revision-sessions.controller.ts`
+
+`````ts
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  UnprocessableEntityException,
+  UseGuards,
+} from '@nestjs/common';
+import { CurrentStudent } from '../../auth/interfaces/current-student.decorator';
+import { FirebaseAuthGuard } from '../../auth/interfaces/firebase-auth.guard';
+import type { RevisionSessionPreferredAction } from '../domain/revision-session.entity';
+import { GetRevisionSessionUseCase } from '../application/get-revision-session.use-case';
+import { StartRevisionSessionUseCase } from '../application/start-revision-session.use-case';
+
+class StartRevisionSessionDto {
+  subjectId!: string;
+  documentId?: string;
+  knowledgeUnitId?: string;
+  preferredAction?: string;
+}
+
+interface ValidatedStartRevisionSessionBody {
+  subjectId: string;
+  documentId?: string;
+  knowledgeUnitId?: string;
+  preferredAction?: RevisionSessionPreferredAction;
+}
+
+@Controller('revision-sessions')
+@UseGuards(FirebaseAuthGuard)
+export class RevisionSessionsController {
+  constructor(
+    private readonly startRevisionSession: StartRevisionSessionUseCase,
+    private readonly getRevisionSession: GetRevisionSessionUseCase,
+  ) {}
+
+  @Post()
+  start(
+    @CurrentStudent() student: { id: string },
+    @Body() body: StartRevisionSessionDto,
+  ) {
+    const validatedBody = validateStartRevisionSessionBody(body);
+
+    return this.startRevisionSession
+      .execute({
+        studentId: student.id,
+        subjectId: validatedBody.subjectId,
+        documentId: validatedBody.documentId,
+        knowledgeUnitId: validatedBody.knowledgeUnitId,
+        preferredAction: validatedBody.preferredAction,
+      })
+      .catch((error: unknown) => {
+        normalizeRevisionSessionError(error);
+      });
+  }
+
+  @Get(':sessionId')
+  get(
+    @CurrentStudent() student: { id: string },
+    @Param('sessionId') sessionId: string,
+  ) {
+    const validatedSessionId = validateRequiredId(
+      sessionId,
+      'Revision session id',
+    );
+
+    return this.getRevisionSession
+      .execute({
+        studentId: student.id,
+        sessionId: validatedSessionId,
+      })
+      .catch((error: unknown) => {
+        normalizeRevisionSessionError(error);
+      });
+  }
+}
+
+function validateStartRevisionSessionBody(
+  input: StartRevisionSessionDto,
+): ValidatedStartRevisionSessionBody {
+  return {
+    subjectId: validateRequiredId(input?.subjectId, 'Subject id'),
+    documentId: validateOptionalId(input?.documentId, 'Document id'),
+    knowledgeUnitId: validateOptionalId(
+      input?.knowledgeUnitId,
+      'Knowledge unit id',
+    ),
+    preferredAction: validatePreferredAction(input?.preferredAction),
+  };
+}
+
+function validateRequiredId(input: unknown, label: string): string {
+  if (typeof input !== 'string' || input.trim().length === 0) {
+    throw new BadRequestException(`${label} is required`);
+  }
+
+  return input.trim();
+}
+
+function validateOptionalId(input: unknown, label: string): string | undefined {
+  if (input === undefined) {
+    return undefined;
+  }
+
+  return validateRequiredId(input, label);
+}
+
+function validatePreferredAction(
+  input: unknown,
+): RevisionSessionPreferredAction | undefined {
+  if (input === undefined) {
+    return undefined;
+  }
+
+  if (typeof input !== 'string') {
+    throw new BadRequestException('Revision session preferred action invalid');
+  }
+
+  const normalized = input.trim();
+
+  if (normalized !== 'diagnostic_quiz' && normalized !== 'open_question') {
+    throw new BadRequestException('Revision session preferred action invalid');
+  }
+
+  return normalized;
+}
+
+function normalizeRevisionSessionError(error: unknown): never {
+  if (error instanceof Error) {
+    if (
+      error.message === 'Revision subject not found' ||
+      error.message === 'Revision document not found' ||
+      error.message === 'Revision knowledge unit not found' ||
+      error.message === 'Revision session not found'
+    ) {
+      throw new NotFoundException(error.message);
+    }
+
+    if (
+      error.message ===
+      'Open question revision session requires a knowledge unit'
+    ) {
+      throw new UnprocessableEntityException(error.message);
+    }
+  }
+
+  throw error;
+}
+`````
+
+### `api/src/modules/revision-sessions/revision-sessions.module.ts`
+
+`````ts
+import { Module } from '@nestjs/common';
+import { ActivitiesModule } from '../activities/activities.module';
+import { AuthModule } from '../auth/auth.module';
+import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
+import { GetRevisionSessionUseCase } from './application/get-revision-session.use-case';
+import { REVISION_SESSIONS_REPOSITORY } from './application/revision-sessions.repository';
+import { StartRevisionSessionUseCase } from './application/start-revision-session.use-case';
+import { PrismaRevisionSessionsRepository } from './infrastructure/prisma-revision-sessions.repository';
+import { RevisionSessionsController } from './interfaces/revision-sessions.controller';
+
+@Module({
+  imports: [ActivitiesModule, AuthModule, PrismaModule],
+  controllers: [RevisionSessionsController],
+  providers: [
+    StartRevisionSessionUseCase,
+    GetRevisionSessionUseCase,
+    {
+      provide: REVISION_SESSIONS_REPOSITORY,
+      useClass: PrismaRevisionSessionsRepository,
+    },
+  ],
+})
+export class RevisionSessionsModule {}
+`````
+
+### `api/src/modules/revision-sessions/application/start-revision-session.use-case.spec.ts`
+
+`````ts
+import { StartRevisionSessionUseCase } from './start-revision-session.use-case';
+import { GetRevisionSessionUseCase } from './get-revision-session.use-case';
+import type { RevisionSessionsRepository } from './revision-sessions.repository';
+import type { StartNextActivityUseCase } from '../../activities/application/start-next-activity.use-case';
+import type { StartOpenQuestionActivityUseCase } from '../../activities/application/start-open-question-activity.use-case';
+
+type EnsureStartContextInput = Parameters<
+  RevisionSessionsRepository['ensureStartContext']
+>[0];
+type CreateWithInitialActionInput = Parameters<
+  RevisionSessionsRepository['createWithInitialAction']
+>[0];
+
+describe('StartRevisionSessionUseCase', () => {
+  it('creates a diagnostic quiz session by default with a subject only', async () => {
+    const repository = createRevisionSessionsRepository();
+    const startNextActivity = createStartNextActivityUseCase();
+    const startOpenQuestionActivity = createStartOpenQuestionActivityUseCase();
+    const useCase = new StartRevisionSessionUseCase(
+      repository,
+      startNextActivity,
+      startOpenQuestionActivity,
+    );
+
+    const result = await useCase.execute({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+    });
+
+    expect(repository.ensureStartContext.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          documentId: undefined,
+          knowledgeUnitId: undefined,
+        },
+      ],
+    ]);
+    expect(startNextActivity.execute.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          knowledgeUnitId: undefined,
+        },
+      ],
+    ]);
+    expect(startOpenQuestionActivity.execute.mock.calls).toHaveLength(0);
+    expect(repository.createWithInitialAction.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          documentId: null,
+          knowledgeUnitId: null,
+          action: {
+            kind: 'DIAGNOSTIC_QUIZ',
+            status: 'READY',
+            displayOrder: 0,
+            activitySessionId: 'quiz-session-1',
+            documentId: null,
+            knowledgeUnitId: null,
+          },
+        },
+      ],
+    ]);
+    expect(result.currentAction.kind).toBe('DIAGNOSTIC_QUIZ');
+    expect(result.currentAction.payload).toEqual(diagnosticQuizActivity());
+    expect(JSON.stringify(result)).not.toContain('correctChoiceId');
+    expect(JSON.stringify(result)).not.toContain('feedback');
+  });
+
+  it('creates an open question session by default when a knowledge unit is provided', async () => {
+    const repository = createRevisionSessionsRepository();
+    const startNextActivity = createStartNextActivityUseCase();
+    const startOpenQuestionActivity = createStartOpenQuestionActivityUseCase();
+    const useCase = new StartRevisionSessionUseCase(
+      repository,
+      startNextActivity,
+      startOpenQuestionActivity,
+    );
+
+    const result = await useCase.execute({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+    });
+
+    expect(startOpenQuestionActivity.execute.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        },
+      ],
+    ]);
+    expect(startNextActivity.execute.mock.calls).toHaveLength(0);
+    expect(repository.createWithInitialAction.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          knowledgeUnitId: 'unit-1',
+          action: {
+            kind: 'OPEN_QUESTION',
+            status: 'READY',
+            displayOrder: 0,
+            activitySessionId: 'open-session-1',
+            documentId: 'document-1',
+            knowledgeUnitId: 'unit-1',
+          },
+        },
+      ],
+    ]);
+    expect(result.currentAction.kind).toBe('OPEN_QUESTION');
+    expect(result.currentAction.payload).toEqual(openQuestionActivity());
+    expect(JSON.stringify(result)).not.toContain('modelAnswer');
+    expect(JSON.stringify(result)).not.toContain('score');
+  });
+
+  it('honors diagnostic quiz as an explicit preferred action', async () => {
+    const repository = createRevisionSessionsRepository();
+    const startNextActivity = createStartNextActivityUseCase();
+    const useCase = new StartRevisionSessionUseCase(
+      repository,
+      startNextActivity,
+      createStartOpenQuestionActivityUseCase(),
+    );
+
+    const result = await useCase.execute({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+      preferredAction: 'diagnostic_quiz',
+    });
+
+    expect(startNextActivity.execute.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        },
+      ],
+    ]);
+    expect(result.currentAction.kind).toBe('DIAGNOSTIC_QUIZ');
+  });
+
+  it('rejects open question preferred action without a knowledge unit', async () => {
+    const useCase = new StartRevisionSessionUseCase(
+      createRevisionSessionsRepository(),
+      createStartNextActivityUseCase(),
+      createStartOpenQuestionActivityUseCase(),
+    );
+
+    await expect(
+      useCase.execute({
+        studentId: 'student-1',
+        subjectId: 'subject-1',
+        preferredAction: 'open_question',
+      }),
+    ).rejects.toThrow(
+      'Open question revision session requires a knowledge unit',
+    );
+  });
+});
+
+describe('GetRevisionSessionUseCase', () => {
+  it('returns an owned revision session without creating a new action', async () => {
+    const repository = createRevisionSessionsRepository();
+
+    const result = await new GetRevisionSessionUseCase(repository).execute({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+
+    expect(repository.findByIdForStudent.mock.calls).toEqual([
+      [
+        {
+          studentId: 'student-1',
+          sessionId: 'revision-session-1',
+        },
+      ],
+    ]);
+    expect(repository.createWithInitialAction.mock.calls).toHaveLength(0);
+    expect(result.currentAction?.payload).toEqual({
+      type: 'open_question',
+      sessionId: 'open-session-1',
+    });
+  });
+});
+
+function createRevisionSessionsRepository(): jest.Mocked<RevisionSessionsRepository> {
+  return {
+    ensureStartContext: jest
+      .fn()
+      .mockImplementation((input: EnsureStartContextInput) =>
+        Promise.resolve({
+          subjectId: input.subjectId,
+          documentId: input.knowledgeUnitId ? 'document-1' : null,
+          knowledgeUnitId: input.knowledgeUnitId ?? null,
+        }),
+      ),
+    createWithInitialAction: jest
+      .fn()
+      .mockImplementation((input: CreateWithInitialActionInput) =>
+        Promise.resolve(
+          revisionSessionResponse(
+            input.action.kind,
+            input.action.activitySessionId ?? 'activity-session-1',
+          ),
+        ),
+      ),
+    findByIdForStudent: jest
+      .fn()
+      .mockResolvedValue(
+        revisionSessionResponse('OPEN_QUESTION', 'open-session-1'),
+      ),
+  };
+}
+
+function createStartNextActivityUseCase(): jest.Mocked<StartNextActivityUseCase> {
+  return {
+    execute: jest.fn().mockResolvedValue(diagnosticQuizActivity()),
+  } as unknown as jest.Mocked<StartNextActivityUseCase>;
+}
+
+function createStartOpenQuestionActivityUseCase(): jest.Mocked<StartOpenQuestionActivityUseCase> {
+  return {
+    execute: jest.fn().mockResolvedValue(openQuestionActivity()),
+  } as unknown as jest.Mocked<StartOpenQuestionActivityUseCase>;
+}
+
+function revisionSessionResponse(
+  kind: 'DIAGNOSTIC_QUIZ' | 'OPEN_QUESTION',
+  activitySessionId: string,
+) {
+  return {
+    session: {
+      id: 'revision-session-1',
+      status: 'STARTED' as const,
+      subjectId: 'subject-1',
+      documentId: kind === 'OPEN_QUESTION' ? 'document-1' : null,
+      knowledgeUnitId: kind === 'OPEN_QUESTION' ? 'unit-1' : null,
+      createdAt: new Date('2026-06-15T10:00:00.000Z'),
+      completedAt: null,
+    },
+    currentAction: {
+      id: 'action-1',
+      kind,
+      status: 'READY' as const,
+      displayOrder: 0,
+      activitySessionId,
+      documentId: kind === 'OPEN_QUESTION' ? 'document-1' : null,
+      knowledgeUnitId: kind === 'OPEN_QUESTION' ? 'unit-1' : null,
+      payload:
+        kind === 'OPEN_QUESTION'
+          ? { type: 'open_question', sessionId: activitySessionId }
+          : { type: 'diagnostic_quiz', sessionId: activitySessionId },
+    },
+    history: [
+      {
+        id: 'action-1',
+        kind,
+        status: 'READY' as const,
+        displayOrder: 0,
+        activitySessionId,
+        documentId: kind === 'OPEN_QUESTION' ? 'document-1' : null,
+        knowledgeUnitId: kind === 'OPEN_QUESTION' ? 'unit-1' : null,
+      },
+    ],
+  };
+}
+
+function diagnosticQuizActivity() {
+  return {
+    sessionId: 'quiz-session-1',
+    type: 'diagnostic_quiz' as const,
+    title: 'Diagnostic constitutionnel',
+    subjectId: 'subject-1',
+    documentId: null,
+    questions: [
+      {
+        id: 'question-1',
+        prompt: 'Quel principe protège contre la concentration du pouvoir ?',
+        choices: [
+          { id: 'a', label: 'La séparation des pouvoirs' },
+          { id: 'b', label: 'La confusion des pouvoirs' },
+        ],
+      },
+    ],
+  };
+}
+
+function openQuestionActivity() {
+  return {
+    sessionId: 'open-session-1',
+    type: 'open_question' as const,
+    version: 1,
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-1',
+    question: {
+      id: 'open-question-1',
+      prompt: 'Explique la séparation des pouvoirs.',
+      instructions: 'Réponds avec le cours.',
+      maxAnswerLength: 4000,
+      sources: [{ chunkId: 'chunk-1', pageNumber: null, index: 0 }],
+    },
+  };
+}
+`````
+
+### `api/src/modules/revision-sessions/infrastructure/prisma-revision-sessions.repository.spec.ts`
+
+`````ts
+import { PrismaRevisionSessionsRepository } from './prisma-revision-sessions.repository';
+
+describe('PrismaRevisionSessionsRepository', () => {
+  it('validates subject, document and knowledge unit ownership', async () => {
+    const { prisma, repository } = createRepository();
+    prisma.subject.findFirst.mockResolvedValue({ id: 'subject-1' });
+    prisma.document.findFirst.mockResolvedValue({ id: 'document-1' });
+    prisma.knowledgeUnit.findFirst.mockResolvedValue({
+      id: 'unit-1',
+      documentId: 'document-1',
+    });
+
+    await expect(
+      repository.ensureStartContext({
+        studentId: 'student-1',
+        subjectId: 'subject-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      }),
+    ).resolves.toEqual({
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+    });
+    expect(prisma.subject.findFirst).toHaveBeenCalledWith({
+      where: { id: 'subject-1', studentId: 'student-1' },
+      select: { id: true },
+    });
+  });
+
+  it('rejects cross-student context as not found', async () => {
+    const { repository } = createRepository();
+
+    await expect(
+      repository.ensureStartContext({
+        studentId: 'student-2',
+        subjectId: 'subject-1',
+      }),
+    ).rejects.toThrow('Revision subject not found');
+  });
+
+  it('persists a session and initial action in one transaction', async () => {
+    const { prisma, repository } = createRepository();
+    prisma.$transaction.mockImplementation((callback: TransactionCallback) =>
+      callback(prisma),
+    );
+    prisma.revisionSession.create.mockResolvedValue(revisionSessionRecord());
+    prisma.revisionSessionAction.create.mockResolvedValue(actionRecord());
+
+    const result = await repository.createWithInitialAction({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      action: {
+        kind: 'OPEN_QUESTION',
+        status: 'READY',
+        displayOrder: 0,
+        activitySessionId: 'activity-session-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      },
+    });
+
+    expect(prisma.revisionSession.create).toHaveBeenCalledWith({
+      data: {
+        studentId: 'student-1',
+        subjectId: 'subject-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+        status: 'STARTED',
+      },
+    });
+    expect(prisma.revisionSessionAction.create).toHaveBeenCalledWith({
+      data: {
+        sessionId: 'revision-session-1',
+        studentId: 'student-1',
+        subjectId: 'subject-1',
+        kind: 'OPEN_QUESTION',
+        status: 'READY',
+        displayOrder: 0,
+        activitySessionId: 'activity-session-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      },
+    });
+    expect(result.history).toHaveLength(1);
+    expect(result.currentAction?.kind).toBe('OPEN_QUESTION');
+  });
+
+  it('loads an owned session with sorted action history', async () => {
+    const { prisma, repository } = createRepository();
+    prisma.revisionSession.findFirst.mockResolvedValue({
+      ...revisionSessionRecord(),
+      actions: [actionRecord()],
+    });
+
+    const result = await repository.findByIdForStudent({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+
+    expect(prisma.revisionSession.findFirst).toHaveBeenCalledWith({
+      where: { id: 'revision-session-1', studentId: 'student-1' },
+      include: {
+        actions: {
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+        },
+      },
+    });
+    expect(result.currentAction?.payload).toEqual({
+      type: 'open_question',
+      sessionId: 'activity-session-1',
+    });
+  });
+});
+
+type PrismaRevisionSessionsMock = ReturnType<typeof createPrismaMock>;
+type TransactionCallback = (tx: PrismaRevisionSessionsMock) => Promise<unknown>;
+
+function createRepository() {
+  const prisma = createPrismaMock();
+
+  return {
+    prisma,
+    repository: new PrismaRevisionSessionsRepository(prisma as never),
+  };
+}
+
+function createPrismaMock() {
+  const prisma = {
+    subject: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    document: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    knowledgeUnit: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    revisionSession: {
+      create: jest.fn(),
+      findFirst: jest.fn(),
+    },
+    revisionSessionAction: {
+      create: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  };
+
+  return prisma;
+}
+
+function revisionSessionRecord() {
+  return {
+    id: 'revision-session-1',
+    studentId: 'student-1',
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-1',
+    status: 'STARTED',
+    createdAt: new Date('2026-06-15T10:00:00.000Z'),
+    updatedAt: new Date('2026-06-15T10:00:00.000Z'),
+    completedAt: null,
+  };
+}
+
+function actionRecord() {
+  return {
+    id: 'action-1',
+    sessionId: 'revision-session-1',
+    studentId: 'student-1',
+    subjectId: 'subject-1',
+    kind: 'OPEN_QUESTION',
+    status: 'READY',
+    displayOrder: 0,
+    activitySessionId: 'activity-session-1',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-1',
+    createdAt: new Date('2026-06-15T10:00:00.000Z'),
+    completedAt: null,
+  };
+}
+`````
+
+### `api/src/modules/revision-sessions/interfaces/revision-sessions.controller.spec.ts`
+
+`````ts
+import { INestApplication } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import request from 'supertest';
+import { App } from 'supertest/types';
+import { AppModule } from '../../../app.module';
+import { TOKEN_VERIFIER } from '../../auth/application/token-verifier';
+import { FirebaseAuthGuard } from '../../auth/interfaces/firebase-auth.guard';
+import { GetRevisionSessionUseCase } from '../application/get-revision-session.use-case';
+import { StartRevisionSessionUseCase } from '../application/start-revision-session.use-case';
+import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
+import type { RevisionSessionResponseDto } from '../domain/revision-session.entity';
+
+jest.mock('firebase-admin/app', () => ({
+  getApps: jest.fn(() => []),
+  initializeApp: jest.fn(),
+}));
+
+jest.mock('firebase-admin/auth', () => ({
+  getAuth: jest.fn(() => ({
+    verifyIdToken: jest.fn(),
+  })),
+}));
+
+describe('RevisionSessionsController', () => {
+  let app: INestApplication<App>;
+  let startRevisionSession: { execute: jest.Mock };
+  let getRevisionSession: { execute: jest.Mock };
+
+  beforeEach(async () => {
+    startRevisionSession = {
+      execute: jest.fn().mockResolvedValue(revisionSessionResponse()),
+    };
+    getRevisionSession = {
+      execute: jest.fn().mockResolvedValue(revisionSessionResponse()),
+    };
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideGuard(FirebaseAuthGuard)
+      .useValue({
+        canActivate: (context: ExecutionContext) => {
+          const request = context
+            .switchToHttp()
+            .getRequest<{ student?: { id: string } }>();
+          request.student = { id: 'student-1' };
+          return true;
+        },
+      })
+      .overrideProvider(TOKEN_VERIFIER)
+      .useValue({ verify: jest.fn() })
+      .overrideProvider(StartRevisionSessionUseCase)
+      .useValue(startRevisionSession)
+      .overrideProvider(GetRevisionSessionUseCase)
+      .useValue(getRevisionSession)
+      .overrideProvider(PrismaService)
+      .useValue({})
+      .compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+  });
+
+  afterEach(async () => {
+    await app?.close();
+  });
+
+  it('creates a deterministic revision session for the current student', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/revision-sessions')
+      .send({
+        subjectId: 'subject-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+        preferredAction: 'open_question',
+      })
+      .expect(201);
+
+    expect(startRevisionSession.execute).toHaveBeenCalledWith({
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      preferredAction: 'open_question',
+    });
+    const body = response.body as RevisionSessionResponseDto;
+    expect(body.currentAction?.kind).toBe('OPEN_QUESTION');
+    expect(JSON.stringify(response.body)).not.toContain('correctChoiceId');
+    expect(JSON.stringify(response.body)).not.toContain('modelAnswer');
+  });
+
+  it('rejects malformed create payloads before calling the use case', async () => {
+    await request(app.getHttpServer())
+      .post('/revision-sessions')
+      .send({ subjectId: '', preferredAction: 'open_question' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/revision-sessions')
+      .send({ subjectId: 'subject-1', preferredAction: 'chat' })
+      .expect(400);
+
+    expect(startRevisionSession.execute).not.toHaveBeenCalled();
+  });
+
+  it('maps impossible open question actions to 422', async () => {
+    startRevisionSession.execute.mockRejectedValue(
+      new Error('Open question revision session requires a knowledge unit'),
+    );
+
+    await request(app.getHttpServer())
+      .post('/revision-sessions')
+      .send({ subjectId: 'subject-1', preferredAction: 'open_question' })
+      .expect(422);
+  });
+
+  it('loads an owned revision session without creating a new action', async () => {
+    await request(app.getHttpServer())
+      .get('/revision-sessions/revision-session-1')
+      .expect(200);
+
+    expect(getRevisionSession.execute).toHaveBeenCalledWith({
+      studentId: 'student-1',
+      sessionId: 'revision-session-1',
+    });
+    expect(startRevisionSession.execute).not.toHaveBeenCalled();
+  });
+
+  it('maps unknown sessions to 404', async () => {
+    getRevisionSession.execute.mockRejectedValue(
+      new Error('Revision session not found'),
+    );
+
+    await request(app.getHttpServer())
+      .get('/revision-sessions/missing-session')
+      .expect(404);
+  });
+});
+
+function revisionSessionResponse() {
+  return {
+    session: {
+      id: 'revision-session-1',
+      status: 'STARTED',
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      createdAt: new Date('2026-06-15T10:00:00.000Z'),
+      completedAt: null,
+    },
+    currentAction: {
+      id: 'action-1',
+      kind: 'OPEN_QUESTION',
+      status: 'READY',
+      displayOrder: 0,
+      activitySessionId: 'open-session-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      payload: {
+        type: 'open_question',
+        sessionId: 'open-session-1',
+      },
+    },
+    history: [
+      {
+        id: 'action-1',
+        kind: 'OPEN_QUESTION',
+        status: 'READY',
+        displayOrder: 0,
+        activitySessionId: 'open-session-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      },
+    ],
+  };
+}
+`````
+
+### `revision_app/docs/ROADMAP_EXECUTION_PLAN.md`
+
+`````markdown
 # Roadmap Execution Plan — Revision App
 
 ## 1. But du document
@@ -3561,3 +6184,8 @@ Livrable attendu :
 - Aucun commit.
 
 Le deuxième lot à lancer immédiatement après devrait être LOT-001B. Il doit trancher si le MVP utilise officiellement l'upload direct backend via `POST /documents/course-pdf`, Firebase Storage avec reader backend, ou une coexistence temporaire documentée. Sans cette décision, il ne faut pas toucher au worker, aux chunks ou aux migrations documentaires.
+`````
+
+### `revision_app/docs/ROADMAP_EXECUTION_LOT_031_REVISION_SESSION_MINIMAL.md`
+
+Le présent fichier est le rapport complet du lot. Son contenu intégral est cette page.
