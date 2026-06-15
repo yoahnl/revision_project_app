@@ -26,6 +26,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-003 | Audit Prisma/DTO et décision versioning | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_003_PRISMA_DTO_VERSIONING_AUDIT.md |
 | V1-004 | Contrat backend rich question kinds | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_004_BACKEND_RICH_QUESTION_KINDS.md |
 | V1-005 | Quality gates pédagogiques backend | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_005_PEDAGOGICAL_QUALITY_GATES.md |
+| V1-005B | Hardening contrat public et validators rich closed questions | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_005B_RICH_CLOSED_CONTRACT_HARDENING.md |
 | V1-006 | Génération Genkit rich closed questions V1-A | À faire | À créer |
 | V1-007 | Persistance minimale V1-A | À faire | À créer |
 | V1-008 | API publique pré-submit/post-submit V1-A | À faire | À créer |
@@ -148,6 +149,14 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - Critère de stop : gates trop stricts pour données pauvres.
 - Risques : faux négatifs sur petits documents.
 - Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_005_PEDAGOGICAL_QUALITY_GATES.md`.
+
+### V1-005B — Hardening contrat public et validators rich closed questions
+
+- Objectif : durcir le contrat public, les validators et les gates avant Genkit.
+- Pourquoi maintenant : éviter que V1-006 produise ou accepte des payloads ambigus ou semi-privés.
+- Périmètre inclus : types publics sans feedback, validation stricte de `cognitiveSkill`, bornes `multiple_choice`, scan anti-fuite renforcé.
+- Non-objectifs : Genkit réel, Prisma, API publique, Flutter UI.
+- Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_005B_RICH_CLOSED_CONTRACT_HARDENING.md`.
 
 ### V1-006 — Génération Genkit rich closed questions V1-A
 
