@@ -122,23 +122,20 @@ GoRouter createAppRouter({
                   subjectId: state.uri.queryParameters['subjectId'],
                   knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
                 ),
-                routes: [
-                  GoRoute(
-                    path: AppRoutes.revisionSessionSegment,
-                    builder: (context, state) => RevisionSessionPage(
-                      revisionSessionController: revisionSessionController,
-                      activityController: activityController,
-                      sessionId: state.uri.queryParameters['sessionId'],
-                      subjectId: state.uri.queryParameters['subjectId'],
-                      documentId: state.uri.queryParameters['documentId'],
-                      knowledgeUnitId:
-                          state.uri.queryParameters['knowledgeUnitId'],
-                      preferredAction: _preferredActionFromQuery(
-                        state.uri.queryParameters['preferredAction'],
-                      ),
-                    ),
+              ),
+              GoRoute(
+                path: AppRoutes.revisionSessionPath,
+                builder: (context, state) => RevisionSessionPage(
+                  revisionSessionController: revisionSessionController,
+                  activityController: activityController,
+                  sessionId: state.uri.queryParameters['sessionId'],
+                  subjectId: state.uri.queryParameters['subjectId'],
+                  documentId: state.uri.queryParameters['documentId'],
+                  knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
+                  preferredAction: _preferredActionFromQuery(
+                    state.uri.queryParameters['preferredAction'],
                   ),
-                ],
+                ),
               ),
             ],
           ),

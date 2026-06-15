@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -103,4 +104,179 @@ void main() {
       '/activities/session?subjectId=subject-1&knowledgeUnitId=unit-1&preferredAction=open_question',
     );
   });
+
+  test('revision session route is a sibling of activities route', () {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+
+    final shellRoute = harness.router.configuration.routes
+        .whereType<StatefulShellRoute>()
+        .single;
+    final activitiesBranch = shellRoute.branches.singleWhere((branch) {
+      return branch.routes
+          .whereType<GoRoute>()
+          .any((route) => route.path == AppRoutes.activities);
+    });
+    final activitiesRoutes = activitiesBranch.routes.whereType<GoRoute>();
+    final activitiesRoute = activitiesRoutes.singleWhere(
+      (route) => route.path == AppRoutes.activities,
+    );
+
+    expect(
+      activitiesRoutes.map((route) => route.path),
+      containsAll([AppRoutes.activities, AppRoutes.revisionSessionPath]),
+    );
+    expect(activitiesRoute.routes, isEmpty);
+  });
+
+  testWidgets(
+    'revision session route starts a session without direct activity',
+    (tester) async {
+      final harness = _RouterHarness();
+      addTearDown(harness.dispose);
+
+      await tester.pumpWidget(harness.buildApp());
+      harness.router.go(
+        AppRoutes.revisionSession(
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Révision IA'), findsOneWidget);
+      expect(find.text('Question ouverte test'), findsOneWidget);
+      expect(harness.revisionSessionsApi.startCount, 1);
+      expect(harness.revisionSessionsApi.startedSubjectId, 'subject-1');
+      expect(harness.revisionSessionsApi.startedKnowledgeUnitId, 'unit-1');
+      expect(harness.activityApi.startedDiagnosticQuizCount, 0);
+      expect(harness.activityApi.startedOpenQuestionCount, 0);
+    },
+  );
+
+  testWidgets('activities route keeps diagnostic quiz behavior', (tester) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    harness.router.go(AppRoutes.activitiesForSubject('subject-1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Activites'), findsWidgets);
+    expect(find.text('Diagnostic rapide'), findsOneWidget);
+    expect(harness.activityApi.startedDiagnosticQuizCount, 1);
+    expect(harness.activityApi.startedOpenQuestionCount, 0);
+    expect(harness.revisionSessionsApi.startCount, 0);
+  });
+
+  testWidgets(
+    'revision session route by session id loads without direct activity',
+    (tester) async {
+      final harness = _RouterHarness();
+      addTearDown(harness.dispose);
+
+      await tester.pumpWidget(harness.buildApp());
+      harness.router.go(
+        AppRoutes.revisionSession(sessionId: 'revision-session-1'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Révision IA'), findsOneWidget);
+      expect(harness.revisionSessionsApi.loadCount, 1);
+      expect(harness.revisionSessionsApi.loadedSessionId, 'revision-session-1');
+      expect(harness.activityApi.startedDiagnosticQuizCount, 0);
+      expect(harness.activityApi.startedOpenQuestionCount, 0);
+    },
+  );
 }
+
+class _RouterHarness {
+  _RouterHarness()
+      : authController = AuthController(
+          _SignedInAuthRepository(),
+          initialSession: _signedInSession,
+        ),
+        subjectsController = SubjectsController(InMemorySubjectsRepository()),
+        revisionGoalsController = RevisionGoalsController(
+          InMemoryRevisionGoalsRepository(),
+        ),
+        documentsController = DocumentsController(InMemoryDocumentsApi()),
+        activityApi = InMemoryActivityApi(),
+        revisionSessionsApi = InMemoryRevisionSessionsApi(),
+        todayController = TodayController(InMemoryTodayRepository()) {
+    activityController = ActivityController(activityApi);
+    revisionSessionController =
+        RevisionSessionController(revisionSessionsApi);
+    router = createAppRouter(
+      authController: authController,
+      subjectsController: subjectsController,
+      revisionGoalsController: revisionGoalsController,
+      documentsController: documentsController,
+      activityController: activityController,
+      revisionSessionController: revisionSessionController,
+      todayController: todayController,
+    );
+  }
+
+  final AuthController authController;
+  final SubjectsController subjectsController;
+  final RevisionGoalsController revisionGoalsController;
+  final DocumentsController documentsController;
+  final InMemoryActivityApi activityApi;
+  final InMemoryRevisionSessionsApi revisionSessionsApi;
+  final TodayController todayController;
+  late final ActivityController activityController;
+  late final RevisionSessionController revisionSessionController;
+  late final GoRouter router;
+
+  Widget buildApp() {
+    return ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWithValue(authController),
+        subjectsControllerProvider.overrideWithValue(subjectsController),
+        revisionGoalsControllerProvider.overrideWithValue(
+          revisionGoalsController,
+        ),
+        documentsControllerProvider.overrideWithValue(documentsController),
+        activityControllerProvider.overrideWithValue(activityController),
+        revisionSessionControllerProvider.overrideWithValue(
+          revisionSessionController,
+        ),
+        todayControllerProvider.overrideWithValue(todayController),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    );
+  }
+
+  void dispose() {
+    router.dispose();
+    authController.dispose();
+  }
+}
+
+class _SignedInAuthRepository implements AuthRepository {
+  @override
+  Stream<AuthSession> watchSession() async* {
+    yield _signedInSession;
+  }
+
+  @override
+  Future<String> requireIdToken() async => 'firebase-id-token';
+
+  @override
+  Future<void> signInWithApple() async {}
+
+  @override
+  Future<void> signInWithGoogle() async {}
+
+  @override
+  Future<void> signOut() async {}
+}
+
+const _signedInSession = AuthSession.signedIn(
+  AuthenticatedUser(
+    uid: 'firebase-123',
+    email: 'student@example.com',
+    displayName: 'Karim',
+  ),
+);
