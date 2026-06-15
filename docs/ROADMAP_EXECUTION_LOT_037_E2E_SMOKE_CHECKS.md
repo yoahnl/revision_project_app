@@ -1,3 +1,1394 @@
+# LOT-037 — Tests e2e critiques et smoke checks
+
+## 1. Résultat
+
+LOT-037 ajoute une suite e2e critique API et une checklist smoke manuelle de démo. La suite protège les chemins qui casseraient la démo : routes protégées, documents, knowledge units, résumé, fiche, TodayPlan multi-actions, QCM, question ouverte et sessions de révision IA. Les tests restent CI-safe : Firebase Admin, Prisma réel, Genkit, Redis/BullMQ et providers IA ne sont pas appelés.
+
+## 2. Sources inspectées
+
+Côté API :
+
+- `api/package.json`
+- `api/test/jest-e2e.json`
+- `api/test/app.e2e-spec.ts`
+- `api/src/app.module.ts`
+- `api/src/modules/auth/**`
+- `api/src/modules/students/**`
+- `api/src/modules/subjects/**`
+- `api/src/modules/documents/**`
+- `api/src/modules/study-artifacts/**`
+- `api/src/modules/activities/**`
+- `api/src/modules/revision/**`
+- `api/src/modules/revision-sessions/**`
+- `api/src/modules/demo-seed/**`
+- `api/prisma/demo-seed.ts`
+- `api/prisma/schema.prisma`
+
+Côté app/docs :
+
+- `revision_app/docs/ROADMAP_EXECUTION_PLAN.md`
+- `revision_app/docs/demo/DEMO_SEED_RUNBOOK.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_034_TODAY_PLAN_MULTI_ACTIONS_BACKEND.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_035_TODAY_PAGE_V2_FRONTEND.md`
+- `revision_app/docs/ROADMAP_EXECUTION_LOT_036_DEMO_SEED_FIXTURES.md`
+
+## 3. Préflight Git
+
+API initial :
+
+```text
+/Users/karim/Project/app-révision/api
+/Users/karim/Project/app-révision/api
+main
+## main...origin/main
+b1d2318 #35-1: ajoute script de démo et données de seed
+a08fd4e #34-1: améliore planification adaptative et plan du jour
+783a728 #33-1: ajoute coach de révision et sélection d'actions
+5e71dde #31-1: ajoute module revision-sessions avec structure minimale
+0f25fed #27-3: finalise corrections de l'évaluateur de réponses ouvertes
+```
+
+Frontend/docs initial :
+
+```text
+/Users/karim/Project/app-révision/revision_app
+/Users/karim/Project/app-révision/revision_app
+main
+## main...origin/main
+10fd329 LOT_036_DEMO_SEED_FIXTURES - Mise à jour plan d'exécution, ajout rapport LOT_036 et runbook de seed démo
+f321d04 LOT_035_TODAY_PAGE_V2_FRONTEND - Mise à jour repository Today, domaine, page et tests, ajout rapport LOT_035
+c814759 LOT_034_TODAY_PLAN_MULTI_ACTIONS_BACKEND - Mise à jour plan d'exécution et ajout rapport LOT_034 (Today Plan Multi-Actions Backend)
+b8fc557 LOT_033_REVISION_COACH_GENKIT - Mise à jour plan d'exécution et ajout rapport LOT_033 (Revision Coach Genkit)
+368d91f HOTFIX_032B_REVISION_SESSION_ROUTE_ISOLATION - Mise à jour router et tests, ajout rapport hotfix 032B (Revision Session Route Isolation)
+```
+
+Les deux repos étaient propres avant LOT-037. LOT-036 était déjà présent dans l’historique local et marqué réalisé dans le plan.
+
+## 4. Périmètre réalisé
+
+- Création de `api/test/critical-paths.e2e-spec.ts`.
+- Création de `revision_app/docs/demo/DEMO_SMOKE_CHECKS.md`.
+- Mise à jour de la ligne LOT-037 dans `ROADMAP_EXECUTION_PLAN.md`.
+- Aucune modification runtime API.
+- Aucune modification Flutter applicative.
+- Aucune modification Prisma, Genkit, GenUI ou TodayPage.
+
+## 5. Stratégie de tests retenue
+
+La stratégie retenue est une suite e2e Nest avec `AppModule` et `supertest`, mais avec les dépendances externes neutralisées. Deux modes sont utilisés :
+
+- routes protégées avec `FirebaseAuthGuard` réel pour vérifier les 401 sans bearer token ;
+- routes authentifiées avec guard mocké injectant un étudiant fake explicite.
+
+Les use cases critiques sont mockés pour tester les contrats HTTP, la validation d’input, le routing des `studentId`, le mapping d’erreurs et les assertions anti-fuite sans connecter Prisma, Genkit, Firebase réel ou Redis.
+
+## 6. Tests e2e ajoutés ou renforcés
+
+Fichier ajouté : `api/test/critical-paths.e2e-spec.ts`.
+
+Couverture :
+
+- routes protégées : `/today`, `/documents/:id`, `/documents/:id/knowledge-units`, `/activities/next`, `/activities/open-question`, `/revision-sessions` ;
+- documents et notions : routing avec `studentId`, sources synthétiques, absence de `storagePath` ;
+- résumé et fiche : absence de metadata interne ;
+- TodayPlan : trois actions `diagnostic_quiz`, `open_question`, `revision_session` ;
+- QCM : payload v3, `questionCount`, visuels, selection modes, validation 400, erreurs 404/409/422 ;
+- question ouverte : start, submit, validation 400, erreurs 404/400/422 ;
+- sessions de révision : start, get, next-action, message libre ignoré, erreurs 400/404/422 ;
+- assertions anti-fuite : `correctChoiceId`, `correctChoiceIds`, `modelAnswer`, `storagePath`, `promptVersion`, `completion`.
+
+`test/app.e2e-spec.ts` existait déjà et couvre `/`, `/health` et CORS preflight ; il n’a pas été dupliqué.
+
+## 7. Smoke checklist ajoutée
+
+Checklist créée : `revision_app/docs/demo/DEMO_SMOKE_CHECKS.md`.
+
+Elle décrit : prérequis, commandes non destructives, dry-run seed, seed réel optionnel hors production, smoke `/health`, `/today`, documents/notions, résumé/fiche, QCM, question ouverte, session IA, frontend manuel, signaux rouges et interdits production.
+
+## 8. Ce qui est mocké
+
+- `firebase-admin/app` et `firebase-admin/auth` via `jest.mock`.
+- `TOKEN_VERIFIER`.
+- `PrismaService`.
+- `FirebaseAuthGuard` dans les tests authentifiés.
+- `GetDocumentUseCase`.
+- `ListDocumentKnowledgeUnitsUseCase`.
+- `GetDocumentSummaryUseCase`.
+- `GenerateDocumentSummaryUseCase`.
+- `GetRevisionSheetUseCase`.
+- `GenerateRevisionSheetUseCase`.
+- `GetTodayPlanUseCase`.
+- `StartNextActivityUseCase`.
+- `StartOpenQuestionActivityUseCase`.
+- `SubmitActivityResultUseCase`.
+- `SubmitOpenAnswerUseCase`.
+- `StartRevisionSessionUseCase`.
+- `GetRevisionSessionUseCase`.
+- `RequestNextRevisionSessionActionUseCase`.
+
+## 9. Ce qui n’est volontairement pas testé en réel
+
+- Firebase réel.
+- Genkit réel.
+- Provider IA.
+- Prisma/PostgreSQL réel.
+- Redis/BullMQ réel.
+- Import PDF réel.
+- Seed réel.
+- UI Flutter.
+
+Ces exclusions gardent la suite CI-safe et centrée sur les contrats critiques de démo.
+
+## 10. Seed réel lancé ou non lancé, avec justification
+
+Seed réel non lancé. Aucune base locale/staging de démo n’a été explicitement configurée pour ce lot.
+
+Dry-run lancé et validé :
+
+```bash
+DEMO_SEED_CONFIRM=revision-demo DEMO_FIREBASE_UID=demo-local-uid npm run demo:seed -- --dry-run
+```
+
+Résultat : succès, sortie JSON, `databaseUrl` masquée, UID Firebase masqué, aucune écriture DB.
+
+## 11. Validations lancées avec résultats
+
+```text
+cd api && npm run lint:check
+Résultat : succès.
+
+cd api && npm test -- demo-seed --runInBand
+Résultat : succès, 1 suite, 5 tests.
+
+cd api && npm test -- activities --runInBand
+Résultat : succès, 9 suites passées, 1 suite skipped, 87 tests passés, 1 skipped.
+
+cd api && npm test -- revision --runInBand
+Résultat : succès, 15 suites, 74 tests.
+
+cd api && npm test -- documents --runInBand
+Résultat : succès, 9 suites, 63 tests.
+
+cd api && npm run test:e2e -- --runInBand
+Résultat : succès, 2 suites, 16 tests.
+
+cd api && DEMO_SEED_CONFIRM=revision-demo DEMO_FIREBASE_UID=demo-local-uid npm run demo:seed -- --dry-run
+Résultat : succès, aucune écriture DB.
+
+cd api && npm run build
+Résultat : succès.
+
+cd api && git diff --check
+Résultat : succès.
+
+cd revision_app && git diff --check
+Résultat : succès.
+```
+
+## 12. Validations non lancées avec justification
+
+- Tests Flutter non lancés : aucun code Flutter applicatif modifié.
+- Seed réel non lancé : pas de DB explicitement prévue.
+- `npm run lint` non lancé : interdit car applique `--fix`.
+- `npm run format` non lancé : interdit.
+- `npm run test:cov` non lancé : interdit.
+- Prisma destructive/deploy commands non lancées : interdites.
+- Provider IA, Firebase réel, Redis réel : volontairement non appelés.
+
+## 13. Risques restants
+
+- Les tests e2e valident les contrats HTTP avec mocks ; ils ne remplacent pas un smoke réel sur staging.
+- Le document seedé reste logique, sans PDF physique.
+- Les endpoints summary/fiche sont testés en lecture mockée ; la persistance réelle reste couverte par les tests repository/use case existants.
+- Le prompt demandait beaucoup de familles de tests ; la suite reste volontairement critique et non exhaustive.
+
+## 14. Recommandation prochain lot
+
+Passer à LOT-038 — Runbook démo et déploiement, avec rejeu réel du seed sur une DB de démo explicitement désignée, puis exécution de la checklist smoke complète.
+
+## 15. Passes de review
+
+- Audit initial : endpoints, modules, specs et dépendances inspectés.
+- Reprise après prompt complet : le prompt attaché complet a été relu et comparé au périmètre implémenté ; aucune famille obligatoire ne manquait.
+- Périmètre : aucun runtime modifié.
+- Sécurité : aucun secret, token, UID réel ou provider externe.
+- CI-safety : Prisma/Firebase/Genkit/Redis neutralisés.
+- Anti-fuite : assertions dédiées sur champs sensibles.
+- Validation : lint, suites ciblées, e2e complet, build et dry-run seed passés.
+
+## 16. Critique honnête du prompt initial
+
+Le prompt est utile pour verrouiller la sécurité, mais très large : il demande à la fois audit, e2e, controller coverage, seed dry-run, smoke manuel et rapport code complet. Cela augmente le risque de produire une suite trop lourde. La meilleure décision a été de rester sur une suite e2e critique, avec mocks explicites, et de ne pas refaire les tests controller/use case déjà présents.
+
+Deux ambiguïtés notées :
+
+- les noms de repos mentionnés (`revision_project_api`, `revision_project_app`) diffèrent des dossiers locaux réels (`api`, `revision_app`) ;
+- le prompt demande beaucoup de commentaires dans le code, ce qui est utile ici pour les helpers e2e, mais peut entrer en tension avec les conventions habituelles de commentaires sobres. Les commentaires ajoutés sont donc limités aux invariants de sécurité et au rôle des mocks.
+
+## 17. Code complet créé/modifié/supprimé pour review
+
+### api/test/critical-paths.e2e-spec.ts
+
+````ts
+import { INestApplication, NotFoundException } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { App } from 'supertest/types';
+import { AppModule } from '../src/app.module';
+import { TOKEN_VERIFIER } from '../src/modules/auth/application/token-verifier';
+import { FirebaseAuthGuard } from '../src/modules/auth/interfaces/firebase-auth.guard';
+import { StartNextActivityUseCase } from '../src/modules/activities/application/start-next-activity.use-case';
+import { StartOpenQuestionActivityUseCase } from '../src/modules/activities/application/start-open-question-activity.use-case';
+import { SubmitActivityResultUseCase } from '../src/modules/activities/application/submit-activity-result.use-case';
+import { SubmitOpenAnswerUseCase } from '../src/modules/activities/application/submit-open-answer.use-case';
+import { GetDocumentUseCase } from '../src/modules/documents/application/get-document.use-case';
+import { ListDocumentKnowledgeUnitsUseCase } from '../src/modules/documents/application/list-document-knowledge-units.use-case';
+import { GetTodayPlanUseCase } from '../src/modules/revision/application/get-today-plan.use-case';
+import { GetRevisionSessionUseCase } from '../src/modules/revision-sessions/application/get-revision-session.use-case';
+import { RequestNextRevisionSessionActionUseCase } from '../src/modules/revision-sessions/application/request-next-revision-session-action.use-case';
+import { StartRevisionSessionUseCase } from '../src/modules/revision-sessions/application/start-revision-session.use-case';
+import { GenerateDocumentSummaryUseCase } from '../src/modules/study-artifacts/application/generate-document-summary.use-case';
+import { GenerateRevisionSheetUseCase } from '../src/modules/study-artifacts/application/generate-revision-sheet.use-case';
+import { GetDocumentSummaryUseCase } from '../src/modules/study-artifacts/application/get-document-summary.use-case';
+import { GetRevisionSheetUseCase } from '../src/modules/study-artifacts/application/get-revision-sheet.use-case';
+import { PrismaService } from '../src/shared/infrastructure/prisma/prisma.service';
+
+jest.mock('firebase-admin/app', () => ({
+  getApps: jest.fn(() => []),
+  initializeApp: jest.fn(),
+}));
+
+jest.mock('firebase-admin/auth', () => ({
+  getAuth: jest.fn(() => ({
+    verifyIdToken: jest.fn(),
+  })),
+}));
+
+type CriticalPathMocks = ReturnType<typeof createCriticalPathMocks>;
+type KnowledgeUnitsResponse = ReturnType<typeof documentKnowledgeUnits>;
+type SummaryResponse = ReturnType<typeof documentSummary>;
+type RevisionSheetResponse = ReturnType<typeof revisionSheet>;
+type TodayPlanResponse = ReturnType<typeof todayPlan>;
+type ActivityResponse = ReturnType<typeof diagnosticQuizActivity>;
+type OpenQuestionResponse = ReturnType<typeof openQuestionActivity>;
+
+const currentStudent = {
+  id: 'student-demo-test',
+  firebaseUid: 'firebase-demo-test-uid',
+  email: 'demo-revision@example.test',
+  displayName: 'Demo Revision',
+};
+
+describe('Critical demo paths (e2e)', () => {
+  describe('protected routes', () => {
+    let app: INestApplication<App>;
+
+    beforeEach(async () => {
+      app = await createAppWithRealAuthGuard();
+    });
+
+    afterEach(async () => {
+      await app?.close();
+    });
+
+    it('rejects critical demo routes without a bearer token', async () => {
+      // This suite keeps the real FirebaseAuthGuard behavior for missing-token
+      // checks, but the verifier itself is mocked so no Firebase network call
+      // can happen even if a future test adds a token.
+      const server = app.getHttpServer();
+
+      await request(server).get('/today').expect(401);
+      await request(server).get('/documents/document-1').expect(401);
+      await request(server)
+        .get('/documents/document-1/knowledge-units')
+        .expect(401);
+      await request(server)
+        .post('/activities/next')
+        .send({ subjectId: 'subject-1' })
+        .expect(401);
+      await request(server)
+        .post('/activities/open-question')
+        .send({ subjectId: 'subject-1', knowledgeUnitId: 'unit-1' })
+        .expect(401);
+      await request(server)
+        .post('/revision-sessions')
+        .send({ subjectId: 'subject-1' })
+        .expect(401);
+    });
+  });
+
+  describe('authenticated contracts', () => {
+    let app: INestApplication<App>;
+    let mocks: CriticalPathMocks;
+
+    beforeEach(async () => {
+      mocks = createCriticalPathMocks();
+      app = await createAuthenticatedApp(mocks);
+    });
+
+    afterEach(async () => {
+      await app?.close();
+    });
+
+    it('routes document and knowledge-unit reads with ownership context and no storage path leak', async () => {
+      const server = app.getHttpServer();
+
+      const documentResponse = await request(server)
+        .get('/documents/document-1')
+        .expect(200);
+
+      expect(mocks.getDocument.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        documentId: 'document-1',
+      });
+      expect(documentResponse.body).toMatchObject({
+        id: 'document-1',
+        subjectId: 'subject-1',
+        status: 'READY',
+      });
+      assertNoSensitivePreSubmitFields(documentResponse.body);
+
+      const knowledgeUnitsResponse = await request(server)
+        .get('/documents/document-1/knowledge-units')
+        .expect(200);
+      const knowledgeUnitsBody =
+        knowledgeUnitsResponse.body as KnowledgeUnitsResponse;
+
+      expect(mocks.listDocumentKnowledgeUnits.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        documentId: 'document-1',
+      });
+      expect(knowledgeUnitsBody.items[0].sources[0]).toMatchObject({
+        chunkId: 'chunk-1',
+        pageNumber: 1,
+        index: 0,
+      });
+      assertNoSensitivePreSubmitFields(knowledgeUnitsResponse.body);
+    });
+
+    it('maps missing documents to a clean 404 response', async () => {
+      mocks.getDocument.execute.mockRejectedValueOnce(
+        new NotFoundException('Document not found'),
+      );
+
+      await request(app.getHttpServer())
+        .get('/documents/missing-document')
+        .expect(404);
+    });
+
+    it('serves ready summary and revision sheet without internal metadata', async () => {
+      const server = app.getHttpServer();
+
+      const summaryResponse = await request(server)
+        .get('/documents/document-1/summary')
+        .expect(200);
+      const summaryBody = summaryResponse.body as SummaryResponse;
+
+      expect(mocks.getDocumentSummary.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        documentId: 'document-1',
+      });
+      expect(summaryBody.title).toBe('Synthèse de démonstration');
+      assertNoSensitivePreSubmitFields(summaryResponse.body);
+      expect(JSON.stringify(summaryResponse.body)).not.toContain('provider');
+      expect(JSON.stringify(summaryResponse.body)).not.toContain(
+        'promptVersion',
+      );
+
+      const sheetResponse = await request(server)
+        .get('/documents/document-1/revision-sheet')
+        .expect(200);
+      const sheetBody = sheetResponse.body as RevisionSheetResponse;
+
+      expect(mocks.getRevisionSheet.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        documentId: 'document-1',
+      });
+      expect(sheetBody.sections).toHaveLength(1);
+      assertNoSensitivePreSubmitFields(sheetResponse.body);
+      expect(JSON.stringify(sheetResponse.body)).not.toContain('provider');
+      expect(JSON.stringify(sheetResponse.body)).not.toContain('promptVersion');
+    });
+
+    it('returns a deterministic multi-action TodayPlan for the current student', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/today')
+        .expect(200);
+      const todayBody = response.body as TodayPlanResponse;
+
+      expect(mocks.getTodayPlan.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+      });
+      expect(todayBody.items.map((item) => item.action)).toEqual([
+        'diagnostic_quiz',
+        'open_question',
+        'revision_session',
+      ]);
+      expect(JSON.stringify(response.body)).not.toContain('other-student');
+    });
+
+    it('starts a QCM with bounded v3 options and no correction leak', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/activities/next')
+        .send({
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+          questionCount: 12,
+          visualsEnabled: true,
+          visualTypes: ['CHART', 'DIAGRAM'],
+          selectionModes: ['single', 'multiple'],
+        })
+        .expect(201);
+      const responseBody = response.body as ActivityResponse;
+
+      expect(mocks.startNextActivity.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        subjectId: 'subject-1',
+        knowledgeUnitId: 'unit-1',
+        questionCount: 12,
+        visualsEnabled: true,
+        visualTypes: ['CHART', 'DIAGRAM'],
+        selectionModes: ['single', 'multiple'],
+      });
+      expect(responseBody.type).toBe('diagnostic_quiz');
+      assertNoSensitivePreSubmitFields(response.body);
+    });
+
+    it('rejects invalid QCM payloads before calling the use case', async () => {
+      await request(app.getHttpServer())
+        .post('/activities/next')
+        .send({
+          subjectId: 'subject-1',
+          questionCount: 25,
+          visualTypes: ['IMAGE'],
+        })
+        .expect(400);
+
+      expect(mocks.startNextActivity.execute).not.toHaveBeenCalled();
+    });
+
+    it('submits QCM answers and maps critical submit errors', async () => {
+      const server = app.getHttpServer();
+
+      await request(server)
+        .post('/activities/quiz-session-1/result')
+        .send({
+          answers: [
+            { questionId: 'question-1', choiceId: 'choice-1' },
+            { questionId: 'question-2', choiceIds: ['choice-2', 'choice-3'] },
+          ],
+        })
+        .expect(201);
+
+      expect(mocks.submitActivityResult.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        sessionId: 'quiz-session-1',
+        answers: [
+          { questionId: 'question-1', choiceId: 'choice-1' },
+          { questionId: 'question-2', choiceIds: ['choice-2', 'choice-3'] },
+        ],
+      });
+
+      await request(server)
+        .post('/activities/quiz-session-1/result')
+        .send({ answers: [{ questionId: 'question-1' }] })
+        .expect(400);
+
+      mocks.submitActivityResult.execute.mockRejectedValueOnce(
+        new Error('Activity session not found'),
+      );
+      await request(server)
+        .post('/activities/missing-session/result')
+        .send({ answers: [{ questionId: 'question-1', choiceId: 'choice-1' }] })
+        .expect(404);
+
+      mocks.submitActivityResult.execute.mockRejectedValueOnce(
+        new Error('Activity session already submitted'),
+      );
+      await request(server)
+        .post('/activities/submitted-session/result')
+        .send({ answers: [{ questionId: 'question-1', choiceId: 'choice-1' }] })
+        .expect(409);
+
+      mocks.submitActivityResult.execute.mockRejectedValueOnce(
+        new Error('Generated diagnostic quiz is invalid'),
+      );
+      await request(server)
+        .post('/activities/invalid-generation/result')
+        .send({ answers: [{ questionId: 'question-1', choiceId: 'choice-1' }] })
+        .expect(422);
+    });
+
+    it('starts an open question without exposing correction fields', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/activities/open-question')
+        .send({ subjectId: 'subject-1', knowledgeUnitId: 'unit-1' })
+        .expect(201);
+      const responseBody = response.body as OpenQuestionResponse;
+
+      expect(mocks.startOpenQuestionActivity.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        subjectId: 'subject-1',
+        knowledgeUnitId: 'unit-1',
+      });
+      expect(responseBody.type).toBe('open_question');
+      assertNoSensitivePreSubmitFields(response.body);
+    });
+
+    it('validates open question start and submit payloads', async () => {
+      const server = app.getHttpServer();
+
+      await request(server)
+        .post('/activities/open-question')
+        .send({ subjectId: 'subject-1' })
+        .expect(400);
+      expect(mocks.startOpenQuestionActivity.execute).not.toHaveBeenCalled();
+
+      await request(server)
+        .post('/activities/open-session-1/open-answer')
+        .send({ answerText: '   ' })
+        .expect(400);
+      expect(mocks.submitOpenAnswer.execute).not.toHaveBeenCalled();
+    });
+
+    it('submits an open answer and maps critical evaluation errors', async () => {
+      const server = app.getHttpServer();
+      const answerText =
+        'La distinction entre les régimes parlementaire et présidentiel repose sur la responsabilité politique du gouvernement et sur la séparation institutionnelle des pouvoirs.';
+
+      await request(server)
+        .post('/activities/open-session-1/open-answer')
+        .send({ answerText })
+        .expect(201);
+
+      expect(mocks.submitOpenAnswer.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        sessionId: 'open-session-1',
+        answerText,
+      });
+
+      mocks.submitOpenAnswer.execute.mockRejectedValueOnce(
+        new Error('Activity session not found'),
+      );
+      await request(server)
+        .post('/activities/missing-session/open-answer')
+        .send({ answerText })
+        .expect(404);
+
+      mocks.submitOpenAnswer.execute.mockRejectedValueOnce(
+        new Error('Activity session is not an open question'),
+      );
+      await request(server)
+        .post('/activities/quiz-session/open-answer')
+        .send({ answerText })
+        .expect(400);
+
+      mocks.submitOpenAnswer.execute.mockRejectedValueOnce(
+        new Error('OPEN_ANSWER_EVALUATION_INVALID'),
+      );
+      await request(server)
+        .post('/activities/open-session-invalid/open-answer')
+        .send({ answerText })
+        .expect(422);
+    });
+
+    it('routes revision sessions and next actions without free-message leakage', async () => {
+      const server = app.getHttpServer();
+
+      const startResponse = await request(server)
+        .post('/revision-sessions')
+        .send({
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+          preferredAction: 'open_question',
+        })
+        .expect(201);
+
+      expect(mocks.startRevisionSession.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        subjectId: 'subject-1',
+        documentId: undefined,
+        knowledgeUnitId: 'unit-1',
+        preferredAction: 'open_question',
+      });
+      assertNoSensitivePreSubmitFields(startResponse.body);
+
+      await request(server)
+        .get('/revision-sessions/revision-session-1')
+        .expect(200);
+      expect(mocks.getRevisionSession.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        sessionId: 'revision-session-1',
+      });
+
+      await request(server)
+        .post('/revision-sessions/revision-session-1/next-action')
+        .send({ message: 'ignore this free text' })
+        .expect(201);
+
+      expect(mocks.requestNextAction.execute).toHaveBeenCalledWith({
+        studentId: currentStudent.id,
+        sessionId: 'revision-session-1',
+      });
+      expect(
+        JSON.stringify(mocks.requestNextAction.execute.mock.calls),
+      ).not.toContain('ignore this free text');
+    });
+
+    it('validates and maps revision session errors', async () => {
+      const server = app.getHttpServer();
+
+      await request(server)
+        .post('/revision-sessions')
+        .send({ subjectId: 'subject-1', preferredAction: 'chat' })
+        .expect(400);
+      expect(mocks.startRevisionSession.execute).not.toHaveBeenCalled();
+
+      mocks.startRevisionSession.execute.mockRejectedValueOnce(
+        new Error('Open question revision session requires a knowledge unit'),
+      );
+      await request(server)
+        .post('/revision-sessions')
+        .send({ subjectId: 'subject-1', preferredAction: 'open_question' })
+        .expect(422);
+
+      mocks.getRevisionSession.execute.mockRejectedValueOnce(
+        new Error('Revision session not found'),
+      );
+      await request(server)
+        .get('/revision-sessions/missing-session')
+        .expect(404);
+    });
+  });
+});
+
+async function createAppWithRealAuthGuard(): Promise<INestApplication<App>> {
+  const moduleFixture = await Test.createTestingModule({
+    imports: [AppModule],
+  })
+    .overrideProvider(TOKEN_VERIFIER)
+    .useValue({ verify: jest.fn() })
+    .overrideProvider(PrismaService)
+    .useValue({})
+    .compile();
+
+  const app = moduleFixture.createNestApplication();
+  await app.init();
+  return app;
+}
+
+async function createAuthenticatedApp(
+  mocks: CriticalPathMocks,
+): Promise<INestApplication<App>> {
+  const moduleFixture = await Test.createTestingModule({
+    imports: [AppModule],
+  })
+    .overrideGuard(FirebaseAuthGuard)
+    .useValue({
+      canActivate: (context: ExecutionContext) => {
+        // The e2e suite verifies controller contracts, not Firebase itself.
+        // Injecting an explicit fake student keeps every request scoped while
+        // avoiding Firebase Admin and BootstrapStudentUseCase side effects.
+        const httpRequest = context
+          .switchToHttp()
+          .getRequest<{ student?: typeof currentStudent }>();
+        httpRequest.student = currentStudent;
+        return true;
+      },
+    })
+    .overrideProvider(TOKEN_VERIFIER)
+    .useValue({ verify: jest.fn() })
+    .overrideProvider(PrismaService)
+    .useValue({})
+    .overrideProvider(GetDocumentUseCase)
+    .useValue(mocks.getDocument)
+    .overrideProvider(ListDocumentKnowledgeUnitsUseCase)
+    .useValue(mocks.listDocumentKnowledgeUnits)
+    .overrideProvider(GetDocumentSummaryUseCase)
+    .useValue(mocks.getDocumentSummary)
+    .overrideProvider(GenerateDocumentSummaryUseCase)
+    .useValue(mocks.generateDocumentSummary)
+    .overrideProvider(GetRevisionSheetUseCase)
+    .useValue(mocks.getRevisionSheet)
+    .overrideProvider(GenerateRevisionSheetUseCase)
+    .useValue(mocks.generateRevisionSheet)
+    .overrideProvider(GetTodayPlanUseCase)
+    .useValue(mocks.getTodayPlan)
+    .overrideProvider(StartNextActivityUseCase)
+    .useValue(mocks.startNextActivity)
+    .overrideProvider(StartOpenQuestionActivityUseCase)
+    .useValue(mocks.startOpenQuestionActivity)
+    .overrideProvider(SubmitActivityResultUseCase)
+    .useValue(mocks.submitActivityResult)
+    .overrideProvider(SubmitOpenAnswerUseCase)
+    .useValue(mocks.submitOpenAnswer)
+    .overrideProvider(StartRevisionSessionUseCase)
+    .useValue(mocks.startRevisionSession)
+    .overrideProvider(GetRevisionSessionUseCase)
+    .useValue(mocks.getRevisionSession)
+    .overrideProvider(RequestNextRevisionSessionActionUseCase)
+    .useValue(mocks.requestNextAction)
+    .compile();
+
+  const app = moduleFixture.createNestApplication();
+  await app.init();
+  return app;
+}
+
+function createCriticalPathMocks() {
+  return {
+    getDocument: {
+      execute: jest.fn().mockResolvedValue(publicDocument()),
+    },
+    listDocumentKnowledgeUnits: {
+      execute: jest.fn().mockResolvedValue(documentKnowledgeUnits()),
+    },
+    getDocumentSummary: {
+      execute: jest.fn().mockResolvedValue(documentSummary()),
+    },
+    generateDocumentSummary: {
+      execute: jest.fn().mockResolvedValue(documentSummary()),
+    },
+    getRevisionSheet: {
+      execute: jest.fn().mockResolvedValue(revisionSheet()),
+    },
+    generateRevisionSheet: {
+      execute: jest.fn().mockResolvedValue(revisionSheet()),
+    },
+    getTodayPlan: {
+      execute: jest.fn().mockResolvedValue(todayPlan()),
+    },
+    startNextActivity: {
+      execute: jest.fn().mockResolvedValue(diagnosticQuizActivity()),
+    },
+    startOpenQuestionActivity: {
+      execute: jest.fn().mockResolvedValue(openQuestionActivity()),
+    },
+    submitActivityResult: {
+      execute: jest.fn().mockResolvedValue(qcmSubmissionResult()),
+    },
+    submitOpenAnswer: {
+      execute: jest.fn().mockResolvedValue(openAnswerSubmissionResult()),
+    },
+    startRevisionSession: {
+      execute: jest.fn().mockResolvedValue(revisionSessionResponse()),
+    },
+    getRevisionSession: {
+      execute: jest.fn().mockResolvedValue(revisionSessionResponse()),
+    },
+    requestNextAction: {
+      execute: jest.fn().mockResolvedValue(revisionSessionResponse()),
+    },
+  };
+}
+
+function publicDocument() {
+  return {
+    id: 'document-1',
+    subjectId: 'subject-1',
+    kind: 'COURSE_PDF',
+    fileName: 'demo-droit-constitutionnel.pdf',
+    mimeType: 'application/pdf',
+    status: 'READY',
+    errorCode: null,
+  };
+}
+
+function documentKnowledgeUnits() {
+  return {
+    documentId: 'document-1',
+    items: [
+      {
+        id: 'unit-1',
+        subjectId: 'subject-1',
+        documentId: 'document-1',
+        title: 'Séparation des pouvoirs',
+        summary: 'La séparation des pouvoirs organise les institutions.',
+        difficulty: 'MEDIUM',
+        displayOrder: 0,
+        sources: [
+          {
+            chunkId: 'chunk-1',
+            pageNumber: 1,
+            index: 0,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function documentSummary() {
+  return {
+    id: 'summary-1',
+    documentId: 'document-1',
+    subjectId: 'subject-1',
+    status: 'READY',
+    title: 'Synthèse de démonstration',
+    content: 'La Ve République articule stabilité exécutive et contrôle.',
+    keyPoints: ['Séparation des pouvoirs', 'Contrôle constitutionnel'],
+    limits: 'Synthèse courte issue des fixtures de démonstration.',
+    errorCode: null,
+    metadata: {
+      provider: 'demo-seed',
+      promptVersion: 'demo-seed-v1',
+    },
+    storagePath: 'internal/demo.pdf',
+    sources: [
+      {
+        chunkId: 'chunk-1',
+        text: 'Extrait borné.',
+        pageNumber: 1,
+        index: 0,
+        relevanceScore: 0.9,
+      },
+    ],
+  };
+}
+
+function revisionSheet() {
+  return {
+    id: 'sheet-1',
+    documentId: 'document-1',
+    subjectId: 'subject-1',
+    status: 'READY',
+    title: 'Fiche de démonstration',
+    introduction: 'Fiche courte de droit constitutionnel.',
+    keyPoints: ['Pouvoir exécutif', 'Parlement'],
+    commonMistakes: ['Confondre régime parlementaire et présidentiel.'],
+    mustKnow: ['Responsabilité politique du gouvernement.'],
+    practiceSuggestions: ['Comparer deux institutions.'],
+    errorCode: null,
+    metadata: {
+      provider: 'demo-seed',
+      promptVersion: 'demo-seed-v1',
+    },
+    sections: [
+      {
+        id: 'section-1',
+        displayOrder: 0,
+        title: 'Institutions',
+        content: 'Le régime organise les rapports entre les pouvoirs.',
+        sources: [
+          {
+            chunkId: 'chunk-2',
+            text: 'Extrait de fiche borné.',
+            pageNumber: 2,
+            index: 1,
+            relevanceScore: 0.8,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function todayPlan() {
+  return {
+    generatedAt: new Date('2026-06-15T12:00:00.000Z'),
+    items: [
+      {
+        id: 'today-1',
+        subjectId: 'subject-1',
+        subjectName: 'Droit constitutionnel',
+        knowledgeUnitId: 'unit-1',
+        knowledgeUnitTitle: 'Séparation des pouvoirs',
+        masteryScore: 0.2,
+        action: 'diagnostic_quiz',
+        estimatedMinutes: 12,
+        priority: 170,
+        reasonCode: 'LOW_MASTERY',
+        reason: 'À revoir en priorité.',
+        startPayload: {
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+          preferredAction: 'diagnostic_quiz',
+        },
+      },
+      {
+        id: 'today-2',
+        subjectId: 'subject-1',
+        subjectName: 'Droit constitutionnel',
+        knowledgeUnitId: 'unit-2',
+        knowledgeUnitTitle: 'Contrôle de constitutionnalité',
+        masteryScore: null,
+        action: 'open_question',
+        estimatedMinutes: 18,
+        priority: 140,
+        reasonCode: 'MIX_ACTIVITY_TYPE',
+        reason: 'Change de format pour renforcer la mémorisation.',
+        startPayload: {
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-2',
+          preferredAction: 'open_question',
+        },
+      },
+      {
+        id: 'today-3',
+        subjectId: 'subject-1',
+        subjectName: 'Droit constitutionnel',
+        knowledgeUnitId: 'unit-1',
+        knowledgeUnitTitle: 'Séparation des pouvoirs',
+        masteryScore: 0.2,
+        action: 'revision_session',
+        estimatedMinutes: 25,
+        priority: 120,
+        reasonCode: 'START_REVISION_SESSION',
+        reason: 'Lance une session guidée.',
+        startPayload: {
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        },
+      },
+    ],
+  };
+}
+
+function diagnosticQuizActivity() {
+  return {
+    sessionId: 'quiz-session-1',
+    type: 'diagnostic_quiz',
+    title: 'QCM de démonstration',
+    questions: [
+      {
+        id: 'question-1',
+        prompt: 'Quel principe organise les pouvoirs ?',
+        difficulty: 'MEDIUM',
+        selectionMode: 'single',
+        choices: [
+          { id: 'choice-1', label: 'La séparation des pouvoirs' },
+          { id: 'choice-2', label: 'La confusion des pouvoirs' },
+        ],
+        sources: [{ chunkId: 'chunk-1', pageNumber: 1, index: 0 }],
+      },
+    ],
+  };
+}
+
+function qcmSubmissionResult() {
+  return {
+    correctAnswers: 2,
+    totalQuestions: 2,
+    score: 1,
+    knowledgeUnitId: 'unit-1',
+    items: [
+      {
+        questionId: 'question-1',
+        selectedChoiceId: 'choice-1',
+        correctChoiceId: 'choice-1',
+        isCorrect: true,
+      },
+    ],
+  };
+}
+
+function openQuestionActivity() {
+  return {
+    sessionId: 'open-session-1',
+    type: 'open_question',
+    version: 1,
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-1',
+    question: {
+      id: 'open-question-1',
+      prompt: 'Explique la séparation des pouvoirs.',
+      instructions: 'Structure ta réponse en deux paragraphes.',
+      maxAnswerLength: 2500,
+      sources: [{ chunkId: 'chunk-1', pageNumber: 1, index: 0 }],
+    },
+  };
+}
+
+function openAnswerSubmissionResult() {
+  return {
+    sessionId: 'open-session-1',
+    type: 'open_question',
+    status: 'submitted',
+    evaluation: {
+      id: 'evaluation-1',
+      status: 'READY',
+      score: 16,
+      maxScore: 20,
+      feedback: 'Réponse structurée.',
+      presentPoints: ['Séparation institutionnelle'],
+      missingPoints: ['Responsabilité politique'],
+      errors: [],
+      modelAnswer: 'La séparation des pouvoirs distingue les fonctions.',
+      advice: 'Revois le régime parlementaire.',
+      sources: [
+        {
+          chunkId: 'chunk-1',
+          text: 'Extrait post-submit borné.',
+          pageNumber: 1,
+          index: 0,
+        },
+      ],
+    },
+  };
+}
+
+function revisionSessionResponse() {
+  return {
+    session: {
+      id: 'revision-session-1',
+      status: 'STARTED',
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      createdAt: new Date('2026-06-15T12:00:00.000Z'),
+      completedAt: null,
+    },
+    currentAction: {
+      id: 'action-1',
+      kind: 'OPEN_QUESTION',
+      status: 'READY',
+      displayOrder: 0,
+      activitySessionId: 'open-session-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      payload: openQuestionActivity(),
+    },
+    history: [
+      {
+        id: 'action-1',
+        kind: 'OPEN_QUESTION',
+        status: 'READY',
+        displayOrder: 0,
+        activitySessionId: 'open-session-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+      },
+    ],
+  };
+}
+
+function assertNoSensitivePreSubmitFields(payload: unknown): void {
+  const serialized = JSON.stringify(payload);
+
+  expect(serialized).not.toContain('correctChoiceId');
+  expect(serialized).not.toContain('correctChoiceIds');
+  expect(serialized).not.toContain('modelAnswer');
+  expect(serialized).not.toContain('storagePath');
+  expect(serialized).not.toContain('promptVersion');
+  expect(serialized).not.toContain('completion');
+}
+
+````
+
+### revision_app/docs/demo/DEMO_SMOKE_CHECKS.md
+
+````md
+# Smoke checks — Revision App
+
+## 1. Objectif
+
+Cette checklist sert à vérifier rapidement que la démo Revision App reste présentable après un changement backend, frontend ou infra.
+
+Elle cible uniquement les chemins critiques :
+
+- disponibilité API ;
+- seed de démo ;
+- plan du jour ;
+- documents et notions ;
+- résumé et fiche ;
+- QCM ;
+- question ouverte ;
+- session de révision IA ;
+- écran Flutter principal.
+
+Elle ne remplace pas les tests automatisés ni une recette complète.
+
+## 2. Prérequis
+
+- API démarrée sur l’environnement à tester.
+- Application Flutter pointée vers cette API.
+- Un compte Firebase de démonstration existe déjà.
+- L’UID Firebase de ce compte est connu par la personne qui exécute le smoke.
+- Les migrations nécessaires ont déjà été appliquées sur la base cible.
+- Ne jamais utiliser une base de production pour le seed.
+
+Valeurs factices utilisées dans les exemples :
+
+```bash
+DEMO_FIREBASE_UID=demo-local-uid
+DEMO_STUDENT_EMAIL=demo-revision@example.test
+```
+
+Ne pas remplacer ces exemples par un vrai UID ou un vrai token dans Git.
+
+## 3. Commandes API non destructives
+
+Depuis le dossier API :
+
+```bash
+npx prisma validate
+npm run prisma:generate
+npm run lint:check
+npm test -- demo-seed --runInBand
+npm run test:e2e -- --runInBand
+```
+
+Ne pas lancer :
+
+```bash
+npm run lint
+npm run format
+npm run test:cov
+npx prisma db push
+npx prisma migrate reset
+```
+
+## 4. Validation du seed dry-run
+
+Le dry-run valide les garde-fous et affiche les objets prévus sans écrire en base.
+
+```bash
+cd api
+DEMO_SEED_CONFIRM=revision-demo DEMO_FIREBASE_UID=demo-local-uid npm run demo:seed -- --dry-run
+```
+
+Attendu :
+
+- sortie JSON ;
+- `mode` vaut `dry-run` ;
+- l’URL DB est masquée ;
+- l’UID Firebase est masqué ;
+- 1 matière ;
+- 1 document ;
+- plusieurs chunks ;
+- plusieurs notions ;
+- plusieurs mastery states ;
+- aucun appel Genkit ;
+- aucune écriture DB.
+
+## 5. Validation optionnelle du seed réel sur DB locale/staging
+
+Le seed réel est autorisé uniquement sur une base locale ou staging explicitement prévue pour la démo.
+
+Exemple :
+
+```bash
+cd api
+DEMO_SEED_CONFIRM=revision-demo \
+DEMO_FIREBASE_UID=<uid-firebase-demo> \
+DEMO_STUDENT_EMAIL=demo-revision@example.test \
+DEMO_STUDENT_DISPLAY_NAME="Demo Revision" \
+npm run demo:seed
+```
+
+Attendu :
+
+- refus si `NODE_ENV=production` ;
+- refus sans confirmation ;
+- refus sans UID Firebase ;
+- résumé des données créées ;
+- aucune donnée hors namespace démo supprimée.
+
+Le seed ne crée pas de compte Firebase. Il crée uniquement les lignes DB associées à l’UID fourni.
+
+## 6. Smoke API `/health`
+
+```bash
+curl -sS "$API_URL/health"
+```
+
+Attendu :
+
+```json
+{"status":"ok"}
+```
+
+## 7. Smoke API `/today` avec token Firebase de démo
+
+Récupérer un token Firebase depuis l’app ou un outil local sécurisé, sans le coller dans Git.
+
+```bash
+curl -sS "$API_URL/today" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+```
+
+Attendu :
+
+- `generatedAt` présent ;
+- `items` est une liste ;
+- actions possibles : `diagnostic_quiz`, `open_question`, `revision_session` ;
+- pas de contenu source complet inattendu ;
+- pas de secret.
+
+## 8. Smoke documents et notions
+
+```bash
+curl -sS "$API_URL/subjects/<subject-id>/documents" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+
+curl -sS "$API_URL/documents/<document-id>" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+
+curl -sS "$API_URL/documents/<document-id>/knowledge-units" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+```
+
+Attendu :
+
+- document READY visible ;
+- notions visibles ;
+- sources visibles sous forme bornée ;
+- pas de `storagePath` dans les réponses publiques.
+
+Le document seedé est un document logique READY. Il ne correspond pas à un PDF physique importé.
+
+## 9. Smoke résumé / fiche
+
+```bash
+curl -sS "$API_URL/documents/<document-id>/summary" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+
+curl -sS "$API_URL/documents/<document-id>/revision-sheet" \
+  -H "Authorization: Bearer <token-firebase-demo>"
+```
+
+Attendu :
+
+- résumé READY ;
+- fiche READY ;
+- sources bornées ;
+- pas de `promptVersion`, `provider`, `model`, `storagePath` dans la réponse publique.
+
+## 10. Smoke QCM
+
+```bash
+curl -sS "$API_URL/activities/next" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -H "Content-Type: application/json" \
+  -d '{"subjectId":"<subject-id>","knowledgeUnitId":"<knowledge-unit-id>","questionCount":10}'
+```
+
+Attendu pré-submit :
+
+- type `diagnostic_quiz` ;
+- questions visibles ;
+- choix visibles ;
+- pas de `correctChoiceId` ;
+- pas de `correctChoiceIds` ;
+- pas de feedback/correction.
+
+Les QCM ne sont pas seedés directement. Ils sont générés ou lancés par les use cases existants.
+
+## 11. Smoke question ouverte
+
+```bash
+curl -sS "$API_URL/activities/open-question" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -H "Content-Type: application/json" \
+  -d '{"subjectId":"<subject-id>","knowledgeUnitId":"<knowledge-unit-id>"}'
+```
+
+Attendu pré-submit :
+
+- type `open_question` ;
+- prompt visible ;
+- sources sans texte complet ;
+- pas de `modelAnswer` ;
+- pas de score ;
+- pas de feedback.
+
+Soumission :
+
+```bash
+curl -sS "$API_URL/activities/<session-id>/open-answer" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -H "Content-Type: application/json" \
+  -d '{"answerText":"Réponse de démonstration structurée, sans donnée personnelle."}'
+```
+
+Attendu post-submit :
+
+- évaluation `READY` ou `FAILED` contrôlé ;
+- pas de stack trace ;
+- pas de message provider brut.
+
+## 12. Smoke session de révision IA
+
+```bash
+curl -sS "$API_URL/revision-sessions" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -H "Content-Type: application/json" \
+  -d '{"subjectId":"<subject-id>","knowledgeUnitId":"<knowledge-unit-id>"}'
+```
+
+Attendu :
+
+- session STARTED ;
+- action initiale déterministe ;
+- payload métier public ;
+- pas de widget arbitraire ;
+- pas de correction pré-submit.
+
+Action suivante :
+
+```bash
+curl -sS "$API_URL/revision-sessions/<session-id>/next-action" \
+  -H "Authorization: Bearer <token-firebase-demo>" \
+  -X POST
+```
+
+Attendu :
+
+- action bornée ;
+- pas de chatbot libre ;
+- pas de payload arbitraire.
+
+## 13. Smoke frontend manuel
+
+Dans l’app Flutter :
+
+1. Se connecter avec le compte Firebase de démonstration.
+2. Ouvrir `Aujourd'hui`.
+3. Vérifier plusieurs actions dans le plan du jour.
+4. Lancer un QCM depuis Today.
+5. Lancer une question ouverte depuis Today.
+6. Lancer une session de révision IA depuis Today.
+7. Ouvrir la matière de démo.
+8. Ouvrir le document de démo.
+9. Vérifier les notions sourcées.
+10. Vérifier le résumé et la fiche si l’UI les expose.
+
+Attendu :
+
+- pas d’écran vide inattendu ;
+- pas de correction QCM avant submit ;
+- pas de source complète pré-submit ;
+- messages d’erreur propres en cas d’échec IA.
+
+## 14. Signaux rouges / rollback
+
+Arrêter la démo et investiguer si :
+
+- `/health` échoue ;
+- `/today` retourne une erreur 500 ;
+- le seed réel a été lancé sur une mauvaise base ;
+- la page Today affiche zéro action malgré le seed ;
+- un payload pré-submit contient `correctChoiceId`, `correctChoiceIds` ou `modelAnswer` ;
+- un endpoint renvoie une stack trace ;
+- un token réel, UID réel ou secret a été copié dans un fichier du repo.
+
+## 15. Ce qui ne doit jamais être fait en production
+
+- Ne jamais lancer le seed réel en production.
+- Ne jamais lancer `prisma migrate reset`.
+- Ne jamais lancer `prisma db push --force-reset`.
+- Ne jamais écrire un token Firebase réel dans Git.
+- Ne jamais écrire un UID personnel dans Git.
+- Ne jamais exposer `DATABASE_URL`, clés IA ou secrets Redis dans une doc.
+- Ne jamais utiliser le dry-run comme preuve que les données ont été écrites.
+
+````
+
+### revision_app/docs/ROADMAP_EXECUTION_PLAN.md
+
+````md
 # Roadmap Execution Plan — Revision App
 
 ## 1. But du document
@@ -3561,3 +4952,9 @@ Livrable attendu :
 - Aucun commit.
 
 Le deuxième lot à lancer immédiatement après devrait être LOT-001B. Il doit trancher si le MVP utilise officiellement l'upload direct backend via `POST /documents/course-pdf`, Firebase Storage avec reader backend, ou une coexistence temporaire documentée. Sans cette décision, il ne faut pas toucher au worker, aux chunks ou aux migrations documentaires.
+
+````
+
+### revision_app/docs/ROADMAP_EXECUTION_LOT_037_E2E_SMOKE_CHECKS.md
+
+Le présent fichier est le rapport de lot. Son contenu complet est directement consultable dans ce document.
