@@ -6,6 +6,8 @@ import '../../features/activities/application/activity_controller.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/documents/application/documents_controller.dart';
 import '../../features/onboarding/application/revision_goals_controller.dart';
+import '../../features/revision_sessions/application/revision_session_controller.dart';
+import '../../features/revision_sessions/data/revision_sessions_api.dart';
 import '../../features/subjects/application/subjects_controller.dart';
 import '../../features/subjects/application/subjects_notifier.dart';
 import '../../features/today/application/today_controller.dart';
@@ -14,6 +16,7 @@ import '../../presentation/pages/auth/sign_in_page.dart';
 import '../../presentation/pages/onboarding/onboarding_page.dart';
 import '../../presentation/pages/profile/profile_page.dart';
 import '../../presentation/pages/documents/document_detail_page.dart';
+import '../../presentation/pages/revision_sessions/revision_session_page.dart';
 import '../../presentation/pages/subjects/subject_detail_page.dart';
 import '../../presentation/pages/subjects/subjects_home_page.dart';
 import '../../presentation/pages/today/today_page.dart';
@@ -28,6 +31,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     revisionGoalsController: ref.read(revisionGoalsControllerProvider),
     documentsController: ref.read(documentsControllerProvider),
     activityController: ref.read(activityControllerProvider),
+    revisionSessionController: ref.read(revisionSessionControllerProvider),
     todayController: ref.read(todayControllerProvider),
     onSubjectCreated: () => ref.invalidate(subjectsNotifierProvider),
   );
@@ -41,6 +45,7 @@ GoRouter createAppRouter({
   required RevisionGoalsController revisionGoalsController,
   required DocumentsController documentsController,
   required ActivityController activityController,
+  required RevisionSessionController revisionSessionController,
   required TodayController todayController,
   VoidCallback? onSubjectCreated,
 }) {
@@ -117,6 +122,23 @@ GoRouter createAppRouter({
                   subjectId: state.uri.queryParameters['subjectId'],
                   knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
                 ),
+                routes: [
+                  GoRoute(
+                    path: AppRoutes.revisionSessionSegment,
+                    builder: (context, state) => RevisionSessionPage(
+                      revisionSessionController: revisionSessionController,
+                      activityController: activityController,
+                      sessionId: state.uri.queryParameters['sessionId'],
+                      subjectId: state.uri.queryParameters['subjectId'],
+                      documentId: state.uri.queryParameters['documentId'],
+                      knowledgeUnitId:
+                          state.uri.queryParameters['knowledgeUnitId'],
+                      preferredAction: _preferredActionFromQuery(
+                        state.uri.queryParameters['preferredAction'],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -133,6 +155,14 @@ GoRouter createAppRouter({
       ),
     ],
   );
+}
+
+RevisionSessionPreferredAction? _preferredActionFromQuery(String? value) {
+  return switch (value) {
+    'diagnostic_quiz' => RevisionSessionPreferredAction.diagnosticQuiz,
+    'open_question' => RevisionSessionPreferredAction.openQuestion,
+    _ => null,
+  };
 }
 
 @visibleForTesting

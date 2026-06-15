@@ -210,7 +210,7 @@ Ce tableau doit être mis à jour à chaque lot réalisé. Cette règle est éga
 | LOT-029 | GenUI composants lecture sourcée | Réalisé | `docs/ROADMAP_EXECUTION_LOT_021_029.md` |
 | LOT-030 | GenUI composants activité et correction | Réalisé | `docs/ROADMAP_EXECUTION_LOT_030_GENUI_ACTIVITY_CORRECTION.md` |
 | LOT-031 | Session de révision IA minimale | Réalisé | `docs/ROADMAP_EXECUTION_LOT_031_REVISION_SESSION_MINIMAL.md` |
-| LOT-032 | Écran Révision IA minimal | À faire | À créer |
+| LOT-032 | Écran Révision IA minimal | Réalisé | `docs/ROADMAP_EXECUTION_LOT_032_REVISION_SESSION_SCREEN.md` |
 | LOT-033 | Orchestration coach Genkit | À faire | À créer |
 | LOT-034 | TodayPlan multi-actions backend | À faire | À créer |
 | LOT-035 | TodayPage v2 frontend | À faire | À créer |

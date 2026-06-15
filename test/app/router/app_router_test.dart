@@ -10,12 +10,14 @@ import 'package:revision_app/features/auth/domain/auth_session.dart';
 import 'package:revision_app/features/auth/domain/authenticated_user.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
+import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
 import 'package:revision_app/features/today/application/today_controller.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
 import '../../fakes/in_memory_documents_api.dart';
 import '../../fakes/in_memory_revision_goals_repository.dart';
+import '../../fakes/in_memory_revision_sessions_api.dart';
 import '../../fakes/in_memory_subjects_repository.dart';
 import '../../fakes/in_memory_today_repository.dart';
 
@@ -69,6 +71,9 @@ void main() {
           activityControllerProvider.overrideWithValue(
             ActivityController(InMemoryActivityApi()),
           ),
+          revisionSessionControllerProvider.overrideWithValue(
+            RevisionSessionController(InMemoryRevisionSessionsApi()),
+          ),
           todayControllerProvider.overrideWithValue(
             TodayController(InMemoryTodayRepository()),
           ),
@@ -85,4 +90,17 @@ void main() {
       );
     },
   );
+
+  test('AppRoutes builds revision session routes with query params', () {
+    final route = AppRoutes.revisionSession(
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+      preferredAction: 'open_question',
+    );
+
+    expect(
+      route,
+      '/activities/session?subjectId=subject-1&knowledgeUnitId=unit-1&preferredAction=open_question',
+    );
+  });
 }

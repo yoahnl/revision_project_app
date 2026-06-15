@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:revision_app/core/routing/route_paths.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
 import 'package:revision_app/features/activities/domain/open_question_activity.dart';
@@ -59,8 +61,10 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
         _ActivityActions(
           selectedKind: _selectedKind,
           canStartOpenQuestion: _canStartOpenQuestion,
+          canStartRevisionSession: _trimmedSubjectId != null,
           onDiagnosticSelected: _startDiagnosticQuiz,
           onOpenQuestionSelected: _startOpenQuestion,
+          onRevisionSessionSelected: _startRevisionSession,
         ),
         const SizedBox(height: AppSpacing.l),
         SizedBox(
@@ -189,6 +193,20 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
       );
     });
   }
+
+  void _startRevisionSession() {
+    final subjectId = _trimmedSubjectId;
+    if (subjectId == null) {
+      return;
+    }
+
+    context.go(
+      revisionSessionRoutePathFor(
+        subjectId: subjectId,
+        knowledgeUnitId: _trimmedKnowledgeUnitId,
+      ),
+    );
+  }
 }
 
 enum _ActivityKind { diagnosticQuiz, openQuestion }
@@ -213,14 +231,18 @@ class _ActivityActions extends StatelessWidget {
   const _ActivityActions({
     required this.selectedKind,
     required this.canStartOpenQuestion,
+    required this.canStartRevisionSession,
     required this.onDiagnosticSelected,
     required this.onOpenQuestionSelected,
+    required this.onRevisionSessionSelected,
   });
 
   final _ActivityKind selectedKind;
   final bool canStartOpenQuestion;
+  final bool canStartRevisionSession;
   final VoidCallback onDiagnosticSelected;
   final VoidCallback onOpenQuestionSelected;
+  final VoidCallback onRevisionSessionSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -246,6 +268,14 @@ class _ActivityActions extends StatelessWidget {
               style: selectedKind == _ActivityKind.openQuestion
                   ? RevisionButtonStyle.primary
                   : RevisionButtonStyle.ghost,
+            ),
+            RevisionButton(
+              onPressed: canStartRevisionSession
+                  ? onRevisionSessionSelected
+                  : null,
+              icon: Icons.auto_awesome_outlined,
+              label: 'Révision IA',
+              style: RevisionButtonStyle.ghost,
             ),
           ],
         ),

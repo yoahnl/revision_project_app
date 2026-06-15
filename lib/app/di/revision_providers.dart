@@ -9,6 +9,9 @@ import '../../features/documents/application/documents_controller.dart';
 import '../../features/documents/data/documents_api.dart';
 import '../../features/onboarding/application/revision_goals_controller.dart';
 import '../../features/onboarding/data/http_revision_goals_api.dart';
+import '../../features/revision_sessions/application/revision_session_controller.dart';
+import '../../features/revision_sessions/data/http_revision_sessions_api.dart';
+import '../../features/revision_sessions/data/revision_sessions_api.dart';
 import '../../features/subjects/application/subjects_controller.dart';
 import '../../features/subjects/data/http_subjects_repository.dart';
 import '../../features/today/application/today_controller.dart';
@@ -82,6 +85,18 @@ final activityApiProvider = Provider<ActivityApi>((ref) {
 
 final activityControllerProvider = Provider<ActivityController>((ref) {
   return ActivityController(ref.read(activityApiProvider));
+});
+
+final revisionSessionsApiProvider = Provider<RevisionSessionsApi>((ref) {
+  final dio = ref.read(dioProvider);
+  final auth = ref.read(authControllerProvider);
+  return HttpRevisionSessionsApi(dio: dio, getIdToken: auth.requireIdToken);
+});
+
+final revisionSessionControllerProvider = Provider<RevisionSessionController>((
+  ref,
+) {
+  return RevisionSessionController(ref.read(revisionSessionsApiProvider));
 });
 
 final todayRepositoryProvider = Provider<TodayRepository>((ref) {
