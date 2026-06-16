@@ -32,7 +32,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-008 | API publique pré-submit/post-submit V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_008_PUBLIC_API_V1A.md |
 | V1-008B | Hardening API/scoring rich closed V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_008B_RICH_CLOSED_API_SCORING_HARDENING.md |
 | V1-009 | Domain models Flutter V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_009_FLUTTER_DOMAIN_V1A.md |
-| V1-010 | Widgets Flutter V1-A single/multiple/case/error | À faire | À créer |
+| V1-010 | Widgets Flutter V1-A single/multiple/case/error | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_010_FLUTTER_WIDGETS_CORE_V1A.md |
 | V1-011 | Widgets Flutter matching/ordering | À faire | À créer |
 | V1-012 | Scoring/correction UI V1-A | À faire | À créer |
 | V1-013 | Today integration V1 | À faire | À créer |
@@ -257,6 +257,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - Pourquoi maintenant : modèles Flutter disponibles.
 - Périmètre inclus : choix unique, multiple, cas, détection d'erreur.
 - Non-objectifs : matching/ordering.
+- Note V1-010 réalisé : widgets core V1-A ajoutés pour single/multiple/case/error, matching/ordering non inclus, correction UI complète reportée à V1-012, aucune intégration Today/session.
 - Fichiers probablement concernés : pages/widgets activities.
 - Backend : aucun.
 - Frontend : widgets natifs accessibles.
