@@ -30,6 +30,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-006 | Génération Genkit rich closed questions V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_006_GENKIT_RICH_CLOSED_V1A.md |
 | V1-007 | Persistance minimale V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_007_PERSISTENCE_V1A.md |
 | V1-008 | API publique pré-submit/post-submit V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_008_PUBLIC_API_V1A.md |
+| V1-008B | Hardening API/scoring rich closed V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_008B_RICH_CLOSED_API_SCORING_HARDENING.md |
 | V1-009 | Domain models Flutter V1-A | À faire | À créer |
 | V1-010 | Widgets Flutter V1-A single/multiple/case/error | À faire | À créer |
 | V1-011 | Widgets Flutter matching/ordering | À faire | À créer |
@@ -220,6 +221,14 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - Critère de stop : contrat public ambigu.
 - Risques : casser QCM v3.
 - Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_008_PUBLIC_API_V1A.md`.
+
+### V1-008B — Hardening API/scoring rich closed V1-A
+
+- Objectif : corriger les validations de soumission et le cas `documentId: null` avant l’intégration Flutter.
+- Pourquoi maintenant : éviter que V1-009 consomme un contrat qui accepte des IDs inconnus ou rejette artificiellement un document nul.
+- Périmètre inclus : scorer rich closed, use case de démarrage, tests module/use case/scorer.
+- Non-objectifs : Prisma, Genkit, Flutter, Today, revision sessions, seed.
+- Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_008B_RICH_CLOSED_API_SCORING_HARDENING.md`.
 
 ### V1-009 — Domain models Flutter V1-A
 
