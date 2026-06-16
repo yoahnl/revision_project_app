@@ -1,15 +1,25 @@
 import 'package:revision_app/features/activities/application/activity_controller.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
 import 'package:revision_app/features/activities/domain/open_question_activity.dart';
+import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
+
+import '../features/activities/fixtures/rich_closed_exercise_fixtures.dart';
 
 class InMemoryActivityApi implements ActivityApi {
   String? startedSubjectId;
   String? startedKnowledgeUnitId;
   String? startedOpenQuestionSubjectId;
   String? startedOpenQuestionKnowledgeUnitId;
+  String? startedRichClosedSubjectId;
+  String? startedRichClosedKnowledgeUnitId;
+  String? loadedRichClosedSessionId;
+  String? submittedRichClosedSessionId;
   int startedDiagnosticQuizCount = 0;
   int startedOpenQuestionCount = 0;
+  int startedRichClosedCount = 0;
+  int submittedRichClosedCount = 0;
   List<DiagnosticQuizAnswer>? submittedAnswers;
+  List<RichClosedAnswer>? submittedRichClosedAnswers;
   String? submittedOpenAnswerText;
 
   @override
@@ -97,5 +107,48 @@ class InMemoryActivityApi implements ActivityApi {
         sources: [],
       ),
     );
+  }
+
+  @override
+  Future<RichClosedExercise> startRichClosedExercise({
+    required String subjectId,
+    required String knowledgeUnitId,
+    String? documentId,
+    int questionCount = 6,
+    RichClosedComplexityProfile complexityProfile =
+        RichClosedComplexityProfile.exam,
+    Map<RichClosedQuestionKind, int>? questionTypeMix,
+  }) async {
+    startedRichClosedSubjectId = subjectId;
+    startedRichClosedKnowledgeUnitId = knowledgeUnitId;
+    startedRichClosedCount += 1;
+
+    return RichClosedExercise.fromJson(richClosedExerciseJson());
+  }
+
+  @override
+  Future<RichClosedExercise> getRichClosedExercise(String sessionId) async {
+    loadedRichClosedSessionId = sessionId;
+
+    return RichClosedExercise.fromJson(richClosedExerciseJson());
+  }
+
+  @override
+  Future<RichClosedExerciseResult> submitRichClosedExercise({
+    required String sessionId,
+    required List<RichClosedAnswer> answers,
+  }) async {
+    submittedRichClosedSessionId = sessionId;
+    submittedRichClosedAnswers = answers;
+    submittedRichClosedCount += 1;
+
+    return RichClosedExerciseResult.fromJson(richClosedResultJson());
+  }
+
+  @override
+  Future<RichClosedExerciseResult> getRichClosedExerciseResult(
+    String sessionId,
+  ) async {
+    return RichClosedExerciseResult.fromJson(richClosedResultJson());
   }
 }

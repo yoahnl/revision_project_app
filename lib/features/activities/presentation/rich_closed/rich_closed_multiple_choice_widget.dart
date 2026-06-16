@@ -10,12 +10,14 @@ class RichClosedMultipleChoiceWidget extends StatefulWidget {
   const RichClosedMultipleChoiceWidget({
     required this.question,
     required this.onAnswerChanged,
+    this.controller,
     this.enabled = true,
     super.key,
   });
 
   final RichClosedMultipleChoiceQuestion question;
   final ValueChanged<RichClosedMultipleChoiceAnswer?> onAnswerChanged;
+  final RichClosedCoreAnswerController? controller;
   final bool enabled;
 
   @override
@@ -30,15 +32,16 @@ class _RichClosedMultipleChoiceWidgetState
   @override
   void initState() {
     super.initState();
-    _controller = RichClosedCoreAnswerController();
+    _controller = widget.controller ?? RichClosedCoreAnswerController();
   }
 
   @override
   void didUpdateWidget(covariant RichClosedMultipleChoiceWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.question.id != widget.question.id) {
-      _controller = RichClosedCoreAnswerController();
+    if (oldWidget.question.id != widget.question.id ||
+        oldWidget.controller != widget.controller) {
+      _controller = widget.controller ?? RichClosedCoreAnswerController();
     }
   }
 

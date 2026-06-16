@@ -35,6 +35,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-010 | Widgets Flutter V1-A single/multiple/case/error | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_010_FLUTTER_WIDGETS_CORE_V1A.md |
 | V1-011 | Widgets Flutter matching/ordering | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_011_FLUTTER_MATCHING_ORDERING.md |
 | V1-012 | Scoring/correction UI V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_012_SCORING_CORRECTION_UI_V1A.md |
+| V1-012B | Page rich closed complète et flow submit local | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_012B_RICH_CLOSED_PAGE_FLOW.md |
 | V1-013 | Today integration V1 | À faire | À créer |
 | V1-014 | Revision session integration V1 | À faire | À créer |
 | V1-015 | Seed V1 rich demo fixtures | À faire | À créer |
@@ -313,6 +314,14 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - Critère de stop : score frontend inventé.
 - Risques : incohérence visuelle.
 - Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_012_SCORING_CORRECTION_UI_V1A.md`.
+
+### V1-012B — Page rich closed complète et flow submit local
+
+- Objectif : assembler les widgets pré-submit/post-submit rich closed en une page utilisable.
+- Pourquoi maintenant : les widgets existent mais ne sont pas encore visibles dans l’app.
+- Périmètre inclus : page Flutter, controller global, renderer six types, submit API, affichage correction.
+- Non-objectifs : Today, revision sessions, backend, GenUI.
+- Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_012B_RICH_CLOSED_PAGE_FLOW.md`.
 
 ### V1-013 — Today integration V1
 

@@ -62,9 +62,11 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
           selectedKind: _selectedKind,
           canStartOpenQuestion: _canStartOpenQuestion,
           canStartRevisionSession: _trimmedSubjectId != null,
+          canStartRichClosedExercise: _canStartOpenQuestion,
           onDiagnosticSelected: _startDiagnosticQuiz,
           onOpenQuestionSelected: _startOpenQuestion,
           onRevisionSessionSelected: _startRevisionSession,
+          onRichClosedSelected: _startRichClosedExercise,
         ),
         const SizedBox(height: AppSpacing.l),
         SizedBox(
@@ -91,7 +93,8 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
                         _DiagnosticQuizActivityPanel(
                           activity: activity,
                           controller: widget.controller,
-                          catalogId: _catalog.catalogId ?? 'revisionActivityCatalog',
+                          catalogId:
+                              _catalog.catalogId ?? 'revisionActivityCatalog',
                         ),
                       _LoadedOpenQuestion(:final activity) =>
                         _OpenQuestionActivityPanel(
@@ -207,6 +210,21 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
       ),
     );
   }
+
+  void _startRichClosedExercise() {
+    final subjectId = _trimmedSubjectId;
+    final knowledgeUnitId = _trimmedKnowledgeUnitId;
+    if (subjectId == null || knowledgeUnitId == null) {
+      return;
+    }
+
+    context.go(
+      richClosedExerciseRoutePathFor(
+        subjectId: subjectId,
+        knowledgeUnitId: knowledgeUnitId,
+      ),
+    );
+  }
 }
 
 enum _ActivityKind { diagnosticQuiz, openQuestion }
@@ -232,17 +250,21 @@ class _ActivityActions extends StatelessWidget {
     required this.selectedKind,
     required this.canStartOpenQuestion,
     required this.canStartRevisionSession,
+    required this.canStartRichClosedExercise,
     required this.onDiagnosticSelected,
     required this.onOpenQuestionSelected,
     required this.onRevisionSessionSelected,
+    required this.onRichClosedSelected,
   });
 
   final _ActivityKind selectedKind;
   final bool canStartOpenQuestion;
   final bool canStartRevisionSession;
+  final bool canStartRichClosedExercise;
   final VoidCallback onDiagnosticSelected;
   final VoidCallback onOpenQuestionSelected;
   final VoidCallback onRevisionSessionSelected;
+  final VoidCallback onRichClosedSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -277,13 +299,21 @@ class _ActivityActions extends StatelessWidget {
               label: 'Révision IA',
               style: RevisionButtonStyle.ghost,
             ),
+            RevisionButton(
+              onPressed: canStartRichClosedExercise
+                  ? onRichClosedSelected
+                  : null,
+              icon: Icons.extension_outlined,
+              label: 'Questions riches',
+              style: RevisionButtonStyle.ghost,
+            ),
           ],
         ),
         if (!canStartOpenQuestion) ...[
           const SizedBox(height: AppSpacing.s),
           RevisionMessage(
             message:
-                'Question ouverte disponible depuis une notion précise du cours.',
+                'Question ouverte et questions riches disponibles depuis une notion précise du cours.',
             color: Theme.of(context).colorScheme.secondary,
             icon: Icons.info_outline,
           ),

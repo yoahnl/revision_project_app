@@ -13,6 +13,7 @@ import '../../features/subjects/application/subjects_notifier.dart';
 import '../../features/today/application/today_controller.dart';
 import '../../presentation/pages/activities/activities_page.dart';
 import '../../presentation/pages/auth/sign_in_page.dart';
+import '../../presentation/pages/activities/rich_closed_exercise_page.dart';
 import '../../presentation/pages/onboarding/onboarding_page.dart';
 import '../../presentation/pages/profile/profile_page.dart';
 import '../../presentation/pages/documents/document_detail_page.dart';
@@ -94,8 +95,7 @@ GoRouter createAppRouter({
                       GoRoute(
                         path: 'documents/:documentId',
                         builder: (context, state) => DocumentDetailPage(
-                          documentId:
-                              state.pathParameters['documentId'] ?? '',
+                          documentId: state.pathParameters['documentId'] ?? '',
                           controller: documentsController,
                         ),
                       ),
@@ -135,6 +135,16 @@ GoRouter createAppRouter({
                   preferredAction: _preferredActionFromQuery(
                     state.uri.queryParameters['preferredAction'],
                   ),
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.richClosedExercisePath,
+                builder: (context, state) => RichClosedExercisePage(
+                  controller: activityController,
+                  sessionId: state.uri.queryParameters['sessionId'],
+                  subjectId: state.uri.queryParameters['subjectId'],
+                  documentId: state.uri.queryParameters['documentId'],
+                  knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
                 ),
               ),
             ],

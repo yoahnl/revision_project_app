@@ -14,6 +14,7 @@ import 'package:revision_app/features/onboarding/application/revision_goals_cont
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
 import 'package:revision_app/features/today/application/today_controller.dart';
+import 'package:revision_app/presentation/widgets/revision_button.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
 import '../../fakes/in_memory_documents_api.dart';
@@ -105,6 +106,19 @@ void main() {
     );
   });
 
+  test('AppRoutes builds rich closed routes with query params', () {
+    final route = AppRoutes.richClosedExercise(
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+      documentId: 'document-1',
+    );
+
+    expect(
+      route,
+      '/activities/rich-closed?subjectId=subject-1&documentId=document-1&knowledgeUnitId=unit-1',
+    );
+  });
+
   test('revision session route is a sibling of activities route', () {
     final harness = _RouterHarness();
     addTearDown(harness.dispose);
@@ -113,9 +127,9 @@ void main() {
         .whereType<StatefulShellRoute>()
         .single;
     final activitiesBranch = shellRoute.branches.singleWhere((branch) {
-      return branch.routes
-          .whereType<GoRoute>()
-          .any((route) => route.path == AppRoutes.activities);
+      return branch.routes.whereType<GoRoute>().any(
+        (route) => route.path == AppRoutes.activities,
+      );
     });
     final activitiesRoutes = activitiesBranch.routes.whereType<GoRoute>();
     final activitiesRoute = activitiesRoutes.singleWhere(
@@ -124,7 +138,11 @@ void main() {
 
     expect(
       activitiesRoutes.map((route) => route.path),
-      containsAll([AppRoutes.activities, AppRoutes.revisionSessionPath]),
+      containsAll([
+        AppRoutes.activities,
+        AppRoutes.revisionSessionPath,
+        AppRoutes.richClosedExercisePath,
+      ]),
     );
     expect(activitiesRoute.routes, isEmpty);
   });
@@ -154,7 +172,9 @@ void main() {
     },
   );
 
-  testWidgets('activities route keeps diagnostic quiz behavior', (tester) async {
+  testWidgets('activities route keeps diagnostic quiz behavior', (
+    tester,
+  ) async {
     final harness = _RouterHarness();
     addTearDown(harness.dispose);
 
@@ -166,6 +186,55 @@ void main() {
     expect(find.text('Diagnostic rapide'), findsOneWidget);
     expect(harness.activityApi.startedDiagnosticQuizCount, 1);
     expect(harness.activityApi.startedOpenQuestionCount, 0);
+    expect(harness.revisionSessionsApi.startCount, 0);
+  });
+
+  testWidgets(
+    'rich closed route starts an exercise without diagnostic or open question',
+    (tester) async {
+      final harness = _RouterHarness();
+      addTearDown(harness.dispose);
+
+      await tester.pumpWidget(harness.buildApp());
+      harness.router.go(
+        AppRoutes.richClosedExercise(
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Questions riches'), findsOneWidget);
+      expect(find.text('Exercice institutions politiques'), findsOneWidget);
+      expect(harness.activityApi.startedRichClosedCount, 1);
+      expect(harness.activityApi.startedDiagnosticQuizCount, 0);
+      expect(harness.activityApi.startedOpenQuestionCount, 0);
+    },
+  );
+
+  testWidgets('activities page exposes the rich closed entry', (tester) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    harness.router.go(
+      Uri(
+        path: AppRoutes.activities,
+        queryParameters: {
+          'subjectId': 'subject-1',
+          'knowledgeUnitId': 'unit-1',
+        },
+      ).toString(),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(RevisionButton, 'Questions riches'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Questions riches'), findsOneWidget);
+    expect(harness.activityApi.startedRichClosedCount, 1);
+    expect(harness.activityApi.startedRichClosedSubjectId, 'subject-1');
+    expect(harness.activityApi.startedRichClosedKnowledgeUnitId, 'unit-1');
     expect(harness.revisionSessionsApi.startCount, 0);
   });
 
@@ -192,21 +261,20 @@ void main() {
 
 class _RouterHarness {
   _RouterHarness()
-      : authController = AuthController(
-          _SignedInAuthRepository(),
-          initialSession: _signedInSession,
-        ),
-        subjectsController = SubjectsController(InMemorySubjectsRepository()),
-        revisionGoalsController = RevisionGoalsController(
-          InMemoryRevisionGoalsRepository(),
-        ),
-        documentsController = DocumentsController(InMemoryDocumentsApi()),
-        activityApi = InMemoryActivityApi(),
-        revisionSessionsApi = InMemoryRevisionSessionsApi(),
-        todayController = TodayController(InMemoryTodayRepository()) {
+    : authController = AuthController(
+        _SignedInAuthRepository(),
+        initialSession: _signedInSession,
+      ),
+      subjectsController = SubjectsController(InMemorySubjectsRepository()),
+      revisionGoalsController = RevisionGoalsController(
+        InMemoryRevisionGoalsRepository(),
+      ),
+      documentsController = DocumentsController(InMemoryDocumentsApi()),
+      activityApi = InMemoryActivityApi(),
+      revisionSessionsApi = InMemoryRevisionSessionsApi(),
+      todayController = TodayController(InMemoryTodayRepository()) {
     activityController = ActivityController(activityApi);
-    revisionSessionController =
-        RevisionSessionController(revisionSessionsApi);
+    revisionSessionController = RevisionSessionController(revisionSessionsApi);
     router = createAppRouter(
       authController: authController,
       subjectsController: subjectsController,

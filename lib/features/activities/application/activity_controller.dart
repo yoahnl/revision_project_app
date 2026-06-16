@@ -1,5 +1,6 @@
 import '../domain/diagnostic_quiz_activity.dart';
 import '../domain/open_question_activity.dart';
+import '../domain/rich_closed_exercise.dart';
 
 typedef DiagnosticQuizSubmitter =
     Future<DiagnosticQuizResult> Function(List<DiagnosticQuizAnswer> answers);
@@ -28,6 +29,27 @@ abstract interface class ActivityApi {
     required String sessionId,
     required String answerText,
   });
+
+  Future<RichClosedExercise> startRichClosedExercise({
+    required String subjectId,
+    required String knowledgeUnitId,
+    String? documentId,
+    int questionCount = 6,
+    RichClosedComplexityProfile complexityProfile =
+        RichClosedComplexityProfile.exam,
+    Map<RichClosedQuestionKind, int>? questionTypeMix,
+  });
+
+  Future<RichClosedExercise> getRichClosedExercise(String sessionId);
+
+  Future<RichClosedExerciseResult> submitRichClosedExercise({
+    required String sessionId,
+    required List<RichClosedAnswer> answers,
+  });
+
+  Future<RichClosedExerciseResult> getRichClosedExerciseResult(
+    String sessionId,
+  );
 }
 
 class ActivityController {
@@ -102,6 +124,81 @@ class ActivityController {
       sessionId: trimmedSessionId,
       answerText: trimmedAnswerText,
     );
+  }
+
+  Future<RichClosedExercise> startRichClosedExercise({
+    required String subjectId,
+    required String knowledgeUnitId,
+    String? documentId,
+    int questionCount = 6,
+    RichClosedComplexityProfile complexityProfile =
+        RichClosedComplexityProfile.exam,
+    Map<RichClosedQuestionKind, int>? questionTypeMix,
+  }) {
+    final trimmedSubjectId = subjectId.trim();
+    final trimmedKnowledgeUnitId = knowledgeUnitId.trim();
+    final trimmedDocumentId = documentId?.trim();
+
+    if (trimmedSubjectId.isEmpty) {
+      throw ArgumentError('Subject id is required');
+    }
+
+    if (trimmedKnowledgeUnitId.isEmpty) {
+      throw ArgumentError('Knowledge unit id is required');
+    }
+
+    return _api.startRichClosedExercise(
+      subjectId: trimmedSubjectId,
+      knowledgeUnitId: trimmedKnowledgeUnitId,
+      documentId: trimmedDocumentId == null || trimmedDocumentId.isEmpty
+          ? null
+          : trimmedDocumentId,
+      questionCount: questionCount,
+      complexityProfile: complexityProfile,
+      questionTypeMix: questionTypeMix,
+    );
+  }
+
+  Future<RichClosedExercise> getRichClosedExercise(String sessionId) {
+    final trimmedSessionId = sessionId.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Activity session id is required');
+    }
+
+    return _api.getRichClosedExercise(trimmedSessionId);
+  }
+
+  Future<RichClosedExerciseResult> submitRichClosedExercise({
+    required String sessionId,
+    required List<RichClosedAnswer> answers,
+  }) {
+    final trimmedSessionId = sessionId.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Activity session id is required');
+    }
+
+    if (answers.isEmpty) {
+      throw ArgumentError('At least one answer is required');
+    }
+
+    return _api.submitRichClosedExercise(
+      sessionId: trimmedSessionId,
+      answers: answers,
+    );
+  }
+
+  Future<RichClosedExerciseResult> getRichClosedExerciseResult(
+    String sessionId,
+  ) {
+    final trimmedSessionId = sessionId.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Activity session id is required');
+    }
+
+    return _api.getRichClosedExerciseResult(trimmedSessionId);
   }
 }
 

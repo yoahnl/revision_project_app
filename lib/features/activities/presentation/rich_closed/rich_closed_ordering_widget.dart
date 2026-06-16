@@ -9,12 +9,14 @@ class RichClosedOrderingWidget extends StatefulWidget {
   const RichClosedOrderingWidget({
     required this.question,
     required this.onAnswerChanged,
+    this.controller,
     this.enabled = true,
     super.key,
   });
 
   final RichClosedOrderingQuestion question;
   final ValueChanged<RichClosedOrderingAnswer> onAnswerChanged;
+  final RichClosedCoreAnswerController? controller;
   final bool enabled;
 
   @override
@@ -28,15 +30,16 @@ class _RichClosedOrderingWidgetState extends State<RichClosedOrderingWidget> {
   @override
   void initState() {
     super.initState();
-    _controller = RichClosedCoreAnswerController();
+    _controller = widget.controller ?? RichClosedCoreAnswerController();
   }
 
   @override
   void didUpdateWidget(covariant RichClosedOrderingWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.question.id != widget.question.id) {
-      _controller = RichClosedCoreAnswerController();
+    if (oldWidget.question.id != widget.question.id ||
+        oldWidget.controller != widget.controller) {
+      _controller = widget.controller ?? RichClosedCoreAnswerController();
     }
   }
 

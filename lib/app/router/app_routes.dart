@@ -7,6 +7,7 @@ class AppRoutes {
   static const activities = '/activities';
   static const revisionSessionSegment = 'session';
   static const revisionSessionPath = '/activities/session';
+  static const richClosedExercisePath = '/activities/rich-closed';
   static const profile = '/profile';
   static const onboarding = '/onboarding';
   static const signIn = '/sign-in';
@@ -53,6 +54,32 @@ class AppRoutes {
 
     return Uri(
       path: revisionSessionPath,
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    ).toString();
+  }
+
+  static String richClosedExercise({
+    String? sessionId,
+    String? subjectId,
+    String? documentId,
+    String? knowledgeUnitId,
+  }) {
+    final queryParameters = <String, String>{};
+    if (sessionId != null && sessionId.trim().isNotEmpty) {
+      queryParameters['sessionId'] = sessionId.trim();
+    }
+    if (subjectId != null && subjectId.trim().isNotEmpty) {
+      queryParameters['subjectId'] = subjectId.trim();
+    }
+    if (documentId != null && documentId.trim().isNotEmpty) {
+      queryParameters['documentId'] = documentId.trim();
+    }
+    if (knowledgeUnitId != null && knowledgeUnitId.trim().isNotEmpty) {
+      queryParameters['knowledgeUnitId'] = knowledgeUnitId.trim();
+    }
+
+    return Uri(
+      path: richClosedExercisePath,
       queryParameters: queryParameters.isEmpty ? null : queryParameters,
     ).toString();
   }

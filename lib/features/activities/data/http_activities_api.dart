@@ -84,6 +84,7 @@ class HttpActivitiesApi implements ActivityApi {
     return _OpenAnswerSubmissionJson(response.data).toResult();
   }
 
+  @override
   Future<RichClosedExercise> startRichClosedExercise({
     required String subjectId,
     required String knowledgeUnitId,
@@ -120,6 +121,7 @@ class HttpActivitiesApi implements ActivityApi {
     return RichClosedExercise.fromJson(response.data);
   }
 
+  @override
   Future<RichClosedExercise> getRichClosedExercise(String sessionId) async {
     final response = await _dio.get<Object?>(
       '/activities/rich-closed/$sessionId',
@@ -129,6 +131,7 @@ class HttpActivitiesApi implements ActivityApi {
     return RichClosedExercise.fromJson(response.data);
   }
 
+  @override
   Future<RichClosedExerciseResult> submitRichClosedExercise({
     required String sessionId,
     required List<RichClosedAnswer> answers,
@@ -142,6 +145,7 @@ class HttpActivitiesApi implements ActivityApi {
     return RichClosedExerciseResult.fromJson(response.data);
   }
 
+  @override
   Future<RichClosedExerciseResult> getRichClosedExerciseResult(
     String sessionId,
   ) async {

@@ -4,13 +4,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
 import 'package:revision_app/features/activities/domain/open_question_activity.dart';
+import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
+
+import 'fixtures/rich_closed_exercise_fixtures.dart';
 
 class FakeActivityApi implements ActivityApi {
   String? startedSubjectId;
   List<DiagnosticQuizAnswer>? submittedAnswers;
   String? startedOpenQuestionSubjectId;
   String? startedOpenQuestionKnowledgeUnitId;
+  String? startedRichClosedSubjectId;
+  String? startedRichClosedKnowledgeUnitId;
+  String? startedRichClosedDocumentId;
+  String? submittedRichClosedSessionId;
   String? submittedOpenAnswerText;
+  List<RichClosedAnswer>? submittedRichClosedAnswers;
   int submitCallCount = 0;
   int openAnswerSubmitCallCount = 0;
   Completer<DiagnosticQuizResult>? submitCompleter;
@@ -91,6 +99,46 @@ class FakeActivityApi implements ActivityApi {
 
     return openAnswerReadyResult();
   }
+
+  @override
+  Future<RichClosedExercise> startRichClosedExercise({
+    required String subjectId,
+    required String knowledgeUnitId,
+    String? documentId,
+    int questionCount = 6,
+    RichClosedComplexityProfile complexityProfile =
+        RichClosedComplexityProfile.exam,
+    Map<RichClosedQuestionKind, int>? questionTypeMix,
+  }) async {
+    startedRichClosedSubjectId = subjectId;
+    startedRichClosedKnowledgeUnitId = knowledgeUnitId;
+    startedRichClosedDocumentId = documentId;
+
+    return RichClosedExercise.fromJson(richClosedExerciseJson());
+  }
+
+  @override
+  Future<RichClosedExercise> getRichClosedExercise(String sessionId) async {
+    return RichClosedExercise.fromJson(richClosedExerciseJson());
+  }
+
+  @override
+  Future<RichClosedExerciseResult> submitRichClosedExercise({
+    required String sessionId,
+    required List<RichClosedAnswer> answers,
+  }) async {
+    submittedRichClosedSessionId = sessionId;
+    submittedRichClosedAnswers = answers;
+
+    return RichClosedExerciseResult.fromJson(richClosedResultJson());
+  }
+
+  @override
+  Future<RichClosedExerciseResult> getRichClosedExerciseResult(
+    String sessionId,
+  ) async {
+    return RichClosedExerciseResult.fromJson(richClosedResultJson());
+  }
 }
 
 void main() {
@@ -147,9 +195,57 @@ void main() {
       answerText: ' La séparation des pouvoirs limite chaque autorité. ',
     );
 
-    expect(api.submittedOpenAnswerText, 'La séparation des pouvoirs limite chaque autorité.');
+    expect(
+      api.submittedOpenAnswerText,
+      'La séparation des pouvoirs limite chaque autorité.',
+    );
     expect(result.evaluation.status, OpenAnswerEvaluationStatus.ready);
   });
+
+  test('starts a rich closed exercise with trimmed context', () async {
+    final api = FakeActivityApi();
+    final controller = ActivityController(api);
+
+    final exercise = await controller.startRichClosedExercise(
+      subjectId: ' subject-1 ',
+      knowledgeUnitId: ' unit-1 ',
+      documentId: ' document-1 ',
+    );
+
+    expect(exercise.sessionId, 'rich-session-1');
+    expect(api.startedRichClosedSubjectId, 'subject-1');
+    expect(api.startedRichClosedKnowledgeUnitId, 'unit-1');
+    expect(api.startedRichClosedDocumentId, 'document-1');
+  });
+
+  test(
+    'submits rich closed answers without accepting empty payloads',
+    () async {
+      final api = FakeActivityApi();
+      final controller = ActivityController(api);
+
+      expect(
+        () => controller.submitRichClosedExercise(
+          sessionId: 'rich-session-1',
+          answers: const [],
+        ),
+        throwsArgumentError,
+      );
+
+      await controller.submitRichClosedExercise(
+        sessionId: ' rich-session-1 ',
+        answers: const [
+          RichClosedSingleChoiceAnswer(
+            questionId: 'single-1',
+            choiceId: 'choice-a',
+          ),
+        ],
+      );
+
+      expect(api.submittedRichClosedSessionId, 'rich-session-1');
+      expect(api.submittedRichClosedAnswers, hasLength(1));
+    },
+  );
 
   test('manages selected answers and enriched correction state', () async {
     final controller = DiagnosticQuizSessionController(
@@ -315,7 +411,10 @@ void main() {
 
     await controller.submit();
 
-    expect(controller.result?.evaluation.status, OpenAnswerEvaluationStatus.ready);
+    expect(
+      controller.result?.evaluation.status,
+      OpenAnswerEvaluationStatus.ready,
+    );
     expect(controller.result?.evaluation.feedback, 'Réponse solide.');
     expect(controller.canSubmit, isFalse);
   });
@@ -342,7 +441,10 @@ void main() {
 
     await controller.submit();
 
-    expect(controller.result?.evaluation.status, OpenAnswerEvaluationStatus.failed);
+    expect(
+      controller.result?.evaluation.status,
+      OpenAnswerEvaluationStatus.failed,
+    );
     expect(controller.submitError, isNull);
   });
 
@@ -359,7 +461,10 @@ void main() {
     expect(controller.result, isNull);
     expect(controller.answerText, 'Réponse assez longue.');
     expect(controller.submitError, isA<StateError>());
-    expect(controller.submitErrorMessage, contains('peut-être été enregistrée'));
+    expect(
+      controller.submitErrorMessage,
+      contains('peut-être été enregistrée'),
+    );
   });
 
   test('prevents duplicate open answer submit while running', () async {
@@ -384,7 +489,10 @@ void main() {
     await Future.wait([firstSubmit, secondSubmit]);
 
     expect(controller.isSubmitting, isFalse);
-    expect(controller.result?.evaluation.status, OpenAnswerEvaluationStatus.ready);
+    expect(
+      controller.result?.evaluation.status,
+      OpenAnswerEvaluationStatus.ready,
+    );
   });
 }
 
