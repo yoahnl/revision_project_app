@@ -28,8 +28,8 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-005 | Quality gates pédagogiques backend | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_005_PEDAGOGICAL_QUALITY_GATES.md |
 | V1-005B | Hardening contrat public et validators rich closed questions | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_005B_RICH_CLOSED_CONTRACT_HARDENING.md |
 | V1-006 | Génération Genkit rich closed questions V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_006_GENKIT_RICH_CLOSED_V1A.md |
-| V1-007 | Persistance minimale V1-A | À faire | À créer |
-| V1-008 | API publique pré-submit/post-submit V1-A | À faire | À créer |
+| V1-007 | Persistance minimale V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_007_PERSISTENCE_V1A.md |
+| V1-008 | API publique pré-submit/post-submit V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_008_PUBLIC_API_V1A.md |
 | V1-009 | Domain models Flutter V1-A | À faire | À créer |
 | V1-010 | Widgets Flutter V1-A single/multiple/case/error | À faire | À créer |
 | V1-011 | Widgets Flutter matching/ordering | À faire | À créer |
@@ -192,6 +192,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - GenUI : aucun.
 - Prisma : migration non destructive si nécessaire.
 - API : mapping interne.
+- Note V1-007 réalisé : persistance dédiée `RichClosedExercisePayload` et `RichClosedExerciseResult`, payload interne JSON typé, relecture pré-submit via mapper public.
 - Tests attendus : persistance, relecture pré-submit, anti-fuite.
 - Validations à lancer : `npx prisma validate`, `npm run prisma:generate`, tests activities, migration sur DB jetable si créée.
 - Critères d'acceptation : données privées jamais exposées pré-submit.
@@ -212,6 +213,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - GenUI : aucun.
 - Prisma : aucun.
 - API : nouveau type d'activité ou version selon ADR.
+- Note V1-008 réalisé : endpoints `/activities/rich-closed/start`, `/activities/rich-closed/:sessionId`, `/activities/rich-closed/:sessionId/submit` et `/activities/rich-closed/:sessionId/result`.
 - Tests attendus : e2e critiques, 400/404/409/422, anti-fuite.
 - Validations à lancer : tests e2e, activities, lint check, build.
 - Critères d'acceptation : endpoints exploitables par Flutter.
