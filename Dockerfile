@@ -8,7 +8,11 @@ RUN flutter pub get
 COPY . .
 
 ARG API_BASE_URL=https://revision-api.yoahn.me
-RUN flutter build web --release --base-href=/ --dart-define=API_BASE_URL=${API_BASE_URL}
+ARG APP_BUILD_VERSION
+RUN flutter build web --release --base-href=/ --dart-define=API_BASE_URL=${API_BASE_URL} \
+  && BUILD_VERSION="${APP_BUILD_VERSION:-$(date +%s)}" \
+  && sed -i "s|src=\"flutter_bootstrap.js\"|src=\"flutter_bootstrap.js?v=${BUILD_VERSION}\"|g" build/web/index.html \
+  && sed -i "s|mainJsPath\":\"main.dart.js\"|mainJsPath\":\"main.dart.js?v=${BUILD_VERSION}\"|g" build/web/flutter_bootstrap.js
 
 FROM nginx:1.27-alpine
 
