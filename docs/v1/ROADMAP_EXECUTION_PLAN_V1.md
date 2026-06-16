@@ -31,7 +31,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-007 | Persistance minimale V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_007_PERSISTENCE_V1A.md |
 | V1-008 | API publique pré-submit/post-submit V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_008_PUBLIC_API_V1A.md |
 | V1-008B | Hardening API/scoring rich closed V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_008B_RICH_CLOSED_API_SCORING_HARDENING.md |
-| V1-009 | Domain models Flutter V1-A | À faire | À créer |
+| V1-009 | Domain models Flutter V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_009_FLUTTER_DOMAIN_V1A.md |
 | V1-010 | Widgets Flutter V1-A single/multiple/case/error | À faire | À créer |
 | V1-011 | Widgets Flutter matching/ordering | À faire | À créer |
 | V1-012 | Scoring/correction UI V1-A | À faire | À créer |
@@ -239,6 +239,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - Fichiers probablement concernés : `lib/features/activities/domain/**`, data, tests.
 - Backend : aucun.
 - Frontend : sealed classes par `questionKind`.
+- Note V1-009 réalisé : modèles discriminés, parsers stricts, API client préparée, aucune UI branchée.
 - Genkit : aucun.
 - GenUI : aucun.
 - Prisma : aucun.

@@ -7,6 +7,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:revision_app/features/activities/data/http_activities_api.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
 import 'package:revision_app/features/activities/domain/open_question_activity.dart';
+import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
+
+import 'fixtures/rich_closed_exercise_fixtures.dart';
 
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   CapturingHttpClientAdapter(this.response);
@@ -55,40 +58,43 @@ void main() {
     );
   });
 
-  test('starts an open question activity with subject and knowledge unit', () async {
-    final adapter = CapturingHttpClientAdapter(
-      jsonResponse(openQuestionStartJson()),
-    );
-    final dio = Dio()..httpClientAdapter = adapter;
-    final api = HttpActivitiesApi(
-      dio: dio,
-      getIdToken: () async => 'firebase-id-token',
-    );
+  test(
+    'starts an open question activity with subject and knowledge unit',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(openQuestionStartJson()),
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final api = HttpActivitiesApi(
+        dio: dio,
+        getIdToken: () async => 'firebase-id-token',
+      );
 
-    final activity = await api.startOpenQuestion(
-      subjectId: 'subject-1',
-      knowledgeUnitId: 'unit-1',
-    );
+      final activity = await api.startOpenQuestion(
+        subjectId: 'subject-1',
+        knowledgeUnitId: 'unit-1',
+      );
 
-    expect(activity.sessionId, 'open-session-1');
-    expect(activity.type, 'open_question');
-    expect(activity.version, 1);
-    expect(activity.documentId, 'document-1');
-    expect(activity.subjectId, 'subject-1');
-    expect(activity.knowledgeUnitId, 'unit-1');
-    expect(activity.question.id, 'open-question-1');
-    expect(activity.question.prompt, 'Explique la séparation des pouvoirs.');
-    expect(activity.question.instructions, 'Réponds en quelques phrases.');
-    expect(activity.question.maxAnswerLength, 4000);
-    expect(activity.question.sources.single.chunkId, 'chunk-1');
-    expect(activity.question.sources.single.pageNumber, isNull);
-    expect(activity.question.sources.single.index, 0);
-    expect(adapter.lastOptions?.path, '/activities/open-question');
-    expect(adapter.lastOptions?.data, {
-      'subjectId': 'subject-1',
-      'knowledgeUnitId': 'unit-1',
-    });
-  });
+      expect(activity.sessionId, 'open-session-1');
+      expect(activity.type, 'open_question');
+      expect(activity.version, 1);
+      expect(activity.documentId, 'document-1');
+      expect(activity.subjectId, 'subject-1');
+      expect(activity.knowledgeUnitId, 'unit-1');
+      expect(activity.question.id, 'open-question-1');
+      expect(activity.question.prompt, 'Explique la séparation des pouvoirs.');
+      expect(activity.question.instructions, 'Réponds en quelques phrases.');
+      expect(activity.question.maxAnswerLength, 4000);
+      expect(activity.question.sources.single.chunkId, 'chunk-1');
+      expect(activity.question.sources.single.pageNumber, isNull);
+      expect(activity.question.sources.single.index, 0);
+      expect(adapter.lastOptions?.path, '/activities/open-question');
+      expect(adapter.lastOptions?.data, {
+        'subjectId': 'subject-1',
+        'knowledgeUnitId': 'unit-1',
+      });
+    },
+  );
 
   test('parses an open question activity without document', () async {
     final adapter = CapturingHttpClientAdapter(
@@ -445,6 +451,178 @@ void main() {
       await expectLater(
         api.startNextActivity(subjectId: 'subject-1'),
         throwsFormatException,
+      );
+    },
+  );
+
+  test('starts a rich closed exercise and omits null document id', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(richClosedExerciseJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final exercise = await api.startRichClosedExercise(
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+    );
+
+    expect(exercise.sessionId, 'rich-session-1');
+    expect(exercise.questions, hasLength(6));
+    expect(adapter.lastOptions?.path, '/activities/rich-closed/start');
+    expect(adapter.lastOptions?.data, {
+      'subjectId': 'subject-1',
+      'knowledgeUnitId': 'unit-1',
+      'questionCount': 6,
+      'complexityProfile': 'exam',
+    });
+  });
+
+  test('starts a rich closed exercise with optional payload fields', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(richClosedExerciseJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await api.startRichClosedExercise(
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      questionCount: 10,
+      complexityProfile: RichClosedComplexityProfile.advanced,
+      questionTypeMix: {
+        RichClosedQuestionKind.singleChoice: 1,
+        RichClosedQuestionKind.multipleChoice: 2,
+        RichClosedQuestionKind.matching: 2,
+        RichClosedQuestionKind.ordering: 1,
+        RichClosedQuestionKind.caseQualification: 2,
+        RichClosedQuestionKind.errorDetection: 2,
+      },
+    );
+
+    expect(adapter.lastOptions?.data, {
+      'subjectId': 'subject-1',
+      'knowledgeUnitId': 'unit-1',
+      'questionCount': 10,
+      'complexityProfile': 'advanced',
+      'documentId': 'document-1',
+      'questionTypeMix': {
+        'single_choice': 1,
+        'multiple_choice': 2,
+        'matching': 2,
+        'ordering': 1,
+        'case_qualification': 2,
+        'error_detection': 2,
+      },
+    });
+  });
+
+  test('gets a rich closed exercise by session id', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(richClosedExerciseJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final exercise = await api.getRichClosedExercise('rich-session-1');
+
+    expect(exercise.type, richClosedExerciseType);
+    expect(adapter.lastOptions?.path, '/activities/rich-closed/rich-session-1');
+  });
+
+  test('submits rich closed answers and parses the result', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(richClosedResultJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.submitRichClosedExercise(
+      sessionId: 'rich-session-1',
+      answers: const [
+        RichClosedSingleChoiceAnswer(
+          questionId: 'single-1',
+          choiceId: 'choice-a',
+        ),
+      ],
+    );
+
+    expect(result.score, 0.833);
+    expect(
+      adapter.lastOptions?.path,
+      '/activities/rich-closed/rich-session-1/submit',
+    );
+    expect(adapter.lastOptions?.data, {
+      'answers': [
+        {
+          'questionId': 'single-1',
+          'questionKind': 'single_choice',
+          'choiceId': 'choice-a',
+        },
+      ],
+    });
+  });
+
+  test('gets a rich closed result by session id', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(richClosedResultJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.getRichClosedExerciseResult('rich-session-1');
+
+    expect(result.status, 'completed');
+    expect(
+      adapter.lastOptions?.path,
+      '/activities/rich-closed/rich-session-1/result',
+    );
+  });
+
+  test(
+    'rejects rich closed correction leaks in start and get responses',
+    () async {
+      final startAdapter = CapturingHttpClientAdapter(
+        jsonResponse(richClosedExerciseWithCorrectChoiceLeak()),
+      );
+      final startApi = HttpActivitiesApi(
+        dio: Dio()..httpClientAdapter = startAdapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+      await expectLater(
+        startApi.startRichClosedExercise(
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+        throwsA(isA<RichClosedExerciseParseException>()),
+      );
+
+      final getAdapter = CapturingHttpClientAdapter(
+        jsonResponse(richClosedExerciseWithFeedbackLeak()),
+      );
+      final getApi = HttpActivitiesApi(
+        dio: Dio()..httpClientAdapter = getAdapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+      await expectLater(
+        getApi.getRichClosedExercise('rich-session-1'),
+        throwsA(isA<RichClosedExerciseParseException>()),
       );
     },
   );

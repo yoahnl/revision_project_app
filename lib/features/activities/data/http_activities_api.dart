@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../application/activity_controller.dart';
 import '../domain/diagnostic_quiz_activity.dart';
 import '../domain/open_question_activity.dart';
+import '../domain/rich_closed_exercise.dart';
 
 class HttpActivitiesApi implements ActivityApi {
   HttpActivitiesApi({
@@ -81,6 +82,75 @@ class HttpActivitiesApi implements ActivityApi {
     );
 
     return _OpenAnswerSubmissionJson(response.data).toResult();
+  }
+
+  Future<RichClosedExercise> startRichClosedExercise({
+    required String subjectId,
+    required String knowledgeUnitId,
+    String? documentId,
+    int questionCount = 6,
+    RichClosedComplexityProfile complexityProfile =
+        RichClosedComplexityProfile.exam,
+    Map<RichClosedQuestionKind, int>? questionTypeMix,
+  }) async {
+    final data = <String, Object?>{
+      'subjectId': subjectId,
+      'knowledgeUnitId': knowledgeUnitId,
+      'questionCount': questionCount,
+      'complexityProfile': complexityProfile.wireValue,
+    };
+
+    if (documentId != null) {
+      data['documentId'] = documentId;
+    }
+
+    if (questionTypeMix != null) {
+      data['questionTypeMix'] = {
+        for (final entry in questionTypeMix.entries)
+          entry.key.wireValue: entry.value,
+      };
+    }
+
+    final response = await _dio.post<Object?>(
+      '/activities/rich-closed/start',
+      data: data,
+      options: await _authorizedOptions(),
+    );
+
+    return RichClosedExercise.fromJson(response.data);
+  }
+
+  Future<RichClosedExercise> getRichClosedExercise(String sessionId) async {
+    final response = await _dio.get<Object?>(
+      '/activities/rich-closed/$sessionId',
+      options: await _authorizedOptions(),
+    );
+
+    return RichClosedExercise.fromJson(response.data);
+  }
+
+  Future<RichClosedExerciseResult> submitRichClosedExercise({
+    required String sessionId,
+    required List<RichClosedAnswer> answers,
+  }) async {
+    final response = await _dio.post<Object?>(
+      '/activities/rich-closed/$sessionId/submit',
+      data: RichClosedExerciseSubmission(answers: answers).toJson(),
+      options: await _authorizedOptions(),
+    );
+
+    return RichClosedExerciseResult.fromJson(response.data);
+  }
+
+  Future<RichClosedExerciseResult> getRichClosedExerciseResult(
+    String sessionId,
+  ) async {
+    final response = await _dio.get<Object?>(
+      '/activities/rich-closed/$sessionId/result',
+      options: await _authorizedOptions(),
+    );
+
+    return RichClosedExerciseResult.fromJson(response.data);
   }
 
   Future<Options> _authorizedOptions() async {
@@ -860,10 +930,16 @@ class _OpenAnswerEvaluationJson {
       maxScore: maxScore is num ? maxScore.toDouble() : null,
       feedback: feedback is String ? feedback : null,
       presentPoints: presentPoints is List
-          ? _stringList(presentPoints, 'Invalid open answer evaluation response')
+          ? _stringList(
+              presentPoints,
+              'Invalid open answer evaluation response',
+            )
           : const [],
       missingPoints: missingPoints is List
-          ? _stringList(missingPoints, 'Invalid open answer evaluation response')
+          ? _stringList(
+              missingPoints,
+              'Invalid open answer evaluation response',
+            )
           : const [],
       errors: errors is List
           ? _stringList(errors, 'Invalid open answer evaluation response')
