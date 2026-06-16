@@ -33,7 +33,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-008B | Hardening API/scoring rich closed V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_008B_RICH_CLOSED_API_SCORING_HARDENING.md |
 | V1-009 | Domain models Flutter V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_009_FLUTTER_DOMAIN_V1A.md |
 | V1-010 | Widgets Flutter V1-A single/multiple/case/error | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_010_FLUTTER_WIDGETS_CORE_V1A.md |
-| V1-011 | Widgets Flutter matching/ordering | À faire | À créer |
+| V1-011 | Widgets Flutter matching/ordering | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_011_FLUTTER_MATCHING_ORDERING.md |
 | V1-012 | Scoring/correction UI V1-A | À faire | À créer |
 | V1-013 | Today integration V1 | À faire | À créer |
 | V1-014 | Revision session integration V1 | À faire | À créer |
@@ -278,6 +278,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - Pourquoi maintenant : ce sont les interactions V1-A les plus nouvelles.
 - Périmètre inclus : matching, ordering, validations locales.
 - Non-objectifs : timeline complète.
+- Note V1-011 réalisé : widgets matching/ordering ajoutés avec interactions accessibles sans drag-only, correction UI complète reportée à V1-012, aucune intégration Today/session.
 - Fichiers probablement concernés : widgets activities, tests.
 - Backend : aucun.
 - Frontend : menus/dropdowns ou reordering accessible.
