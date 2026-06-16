@@ -1,0 +1,250 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
+import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_correction_presenter.dart';
+
+import 'fixtures/rich_closed_exercise_fixtures.dart';
+
+void main() {
+  late RichClosedExercise exercise;
+  late RichClosedExerciseResult result;
+  late RichClosedCorrectionPresenter presenter;
+
+  setUp(() {
+    exercise = RichClosedExercise.fromJson(richClosedExerciseJson());
+    result = RichClosedExerciseResult.fromJson(richClosedResultJson());
+    presenter = const RichClosedCorrectionPresenter();
+  });
+
+  test('construit un summary depuis les valeurs backend', () {
+    final viewModel = presenter.present(exercise: exercise, result: result);
+
+    expect(viewModel.summary.sessionId, 'rich-session-1');
+    expect(viewModel.summary.status, 'completed');
+    expect(viewModel.summary.correctAnswers, 5);
+    expect(viewModel.summary.totalQuestions, 6);
+    expect(viewModel.summary.score, 0.833);
+    expect(viewModel.summary.scoreLabel, '0.833');
+    expect(viewModel.summary.answerRatioLabel, '5 / 6');
+  });
+
+  test('mappe les six types de corrections en labels lisibles', () {
+    final viewModel = presenter.present(exercise: exercise, result: result);
+
+    expect(_item(viewModel, 'single-1').submittedAnswerLines, [
+      'Responsabilité politique',
+    ]);
+    expect(_item(viewModel, 'single-1').correctAnswerLines, [
+      'Responsabilité politique',
+    ]);
+
+    expect(_item(viewModel, 'multiple-1').submittedAnswerLines, [
+      'Responsabilité du gouvernement',
+      'Collaboration des pouvoirs',
+    ]);
+    expect(_item(viewModel, 'multiple-1').correctAnswerLines, [
+      'Responsabilité du gouvernement',
+      'Collaboration des pouvoirs',
+    ]);
+
+    expect(_item(viewModel, 'case-1').contextText, contains('confiance'));
+    expect(_item(viewModel, 'case-1').submittedAnswerLines, [
+      'Régime parlementaire',
+    ]);
+    expect(_item(viewModel, 'case-1').correctAnswerLines, [
+      'Régime parlementaire',
+    ]);
+
+    expect(_item(viewModel, 'error-1').contextText, contains('présidentiel'));
+    expect(_item(viewModel, 'error-1').submittedAnswerLines, [
+      'Confusion avec l’État fédéral',
+    ]);
+    expect(_item(viewModel, 'error-1').correctAnswerLines, [
+      'Confusion avec le parlementarisme',
+    ]);
+
+    expect(_item(viewModel, 'matching-1').submittedAnswerLines, [
+      'Motion de censure → Responsabilité politique',
+      'Dissolution → Fin anticipée d’une chambre',
+      'Contrôle constitutionnel → Vérification d’une norme',
+    ]);
+    expect(_item(viewModel, 'matching-1').correctAnswerLines, [
+      'Motion de censure → Responsabilité politique',
+      'Dissolution → Fin anticipée d’une chambre',
+      'Contrôle constitutionnel → Vérification d’une norme',
+    ]);
+
+    expect(_item(viewModel, 'ordering-1').submittedAnswerLines, [
+      '1. Repérer les organes',
+      '2. Analyser les moyens d’action',
+      '3. Qualifier le régime',
+    ]);
+    expect(_item(viewModel, 'ordering-1').correctAnswerLines, [
+      '1. Repérer les organes',
+      '2. Analyser les moyens d’action',
+      '3. Qualifier le régime',
+    ]);
+  });
+
+  test('conserve isCorrect et partialScore backend sans recalcul', () {
+    final json = richClosedResultJson();
+    final single =
+        (json['items']! as List<Object?>).first! as Map<String, Object?>;
+    single['isCorrect'] = false;
+    single['partialScore'] = 0.42;
+
+    final viewModel = presenter.present(
+      exercise: exercise,
+      result: RichClosedExerciseResult.fromJson(json),
+    );
+    final item = _item(viewModel, 'single-1');
+
+    expect(item.submittedAnswerLines, item.correctAnswerLines);
+    expect(item.isCorrect, isFalse);
+    expect(item.statusLabel, 'Incorrect');
+    expect(item.partialScore, 0.42);
+    expect(item.partialScoreLabel, '0.42');
+  });
+
+  test('conserve isCorrect true même si les labels soumis diffèrent', () {
+    final json = richClosedResultJson();
+    final single =
+        (json['items']! as List<Object?>).first! as Map<String, Object?>;
+    final answer = single['submittedAnswer']! as Map<String, Object?>;
+    answer['choiceId'] = 'choice-b';
+    single['isCorrect'] = true;
+
+    final viewModel = presenter.present(
+      exercise: exercise,
+      result: RichClosedExerciseResult.fromJson(json),
+    );
+    final item = _item(viewModel, 'single-1');
+
+    expect(item.submittedAnswerLines, ['Séparation étanche']);
+    expect(item.correctAnswerLines, ['Responsabilité politique']);
+    expect(item.isCorrect, isTrue);
+    expect(item.statusLabel, 'Correct');
+  });
+
+  test('conserve score/correctAnswers/totalQuestions backend atypiques', () {
+    final json = richClosedResultJson()
+      ..['score'] = 0.123
+      ..['correctAnswers'] = 99
+      ..['totalQuestions'] = 100;
+
+    final viewModel = presenter.present(
+      exercise: exercise,
+      result: RichClosedExerciseResult.fromJson(json),
+    );
+
+    expect(viewModel.summary.score, 0.123);
+    expect(viewModel.summary.scoreLabel, '0.123');
+    expect(viewModel.summary.correctAnswers, 99);
+    expect(viewModel.summary.totalQuestions, 100);
+    expect(viewModel.summary.answerRatioLabel, '99 / 100');
+  });
+
+  test('rejette une question inconnue', () {
+    final json = richClosedResultJson();
+    final item =
+        (json['items']! as List<Object?>).first! as Map<String, Object?>;
+    item['questionId'] = 'unknown-question';
+    final answer = item['submittedAnswer']! as Map<String, Object?>;
+    answer['questionId'] = 'unknown-question';
+
+    expect(
+      () => presenter.present(
+        exercise: exercise,
+        result: RichClosedExerciseResult.fromJson(json),
+      ),
+      throwsA(isA<RichClosedCorrectionPresentationException>()),
+    );
+  });
+
+  test('rejette un choice soumis inconnu', () {
+    final json = richClosedResultJson();
+    final item =
+        (json['items']! as List<Object?>).first! as Map<String, Object?>;
+    final answer = item['submittedAnswer']! as Map<String, Object?>;
+    answer['choiceId'] = 'unknown-choice';
+
+    expect(
+      () => presenter.present(
+        exercise: exercise,
+        result: RichClosedExerciseResult.fromJson(json),
+      ),
+      throwsA(isA<RichClosedCorrectionPresentationException>()),
+    );
+  });
+
+  test('rejette une paire matching inconnue', () {
+    final json = richClosedResultJson();
+    final item = (json['items']! as List<Object?>)[2]! as Map<String, Object?>;
+    final answer = item['submittedAnswer']! as Map<String, Object?>;
+    final pairs = answer['pairs']! as List<Object?>;
+    (pairs.first! as Map<String, Object?>)['rightId'] = 'unknown-right';
+
+    expect(
+      () => presenter.present(
+        exercise: exercise,
+        result: RichClosedExerciseResult.fromJson(json),
+      ),
+      throwsA(isA<RichClosedCorrectionPresentationException>()),
+    );
+  });
+
+  test('rejette un item ordering inconnu', () {
+    final json = richClosedResultJson();
+    final item = (json['items']! as List<Object?>)[3]! as Map<String, Object?>;
+    final answer = item['submittedAnswer']! as Map<String, Object?>;
+    answer['orderedIds'] = ['item-1', 'unknown-item', 'item-3'];
+
+    expect(
+      () => presenter.present(
+        exercise: exercise,
+        result: RichClosedExerciseResult.fromJson(json),
+      ),
+      throwsA(isA<RichClosedCorrectionPresentationException>()),
+    );
+  });
+
+  test('rejette une correction incohérente avec questionKind', () {
+    final badResult = RichClosedExerciseResult(
+      sessionId: result.sessionId,
+      type: result.type,
+      status: result.status,
+      correctAnswers: result.correctAnswers,
+      totalQuestions: result.totalQuestions,
+      score: result.score,
+      items: [
+        RichClosedCorrectionItem(
+          questionId: 'single-1',
+          questionKind: RichClosedQuestionKind.singleChoice,
+          prompt: 'Quel critère caractérise un régime parlementaire ?',
+          submittedAnswer: const RichClosedSingleChoiceAnswer(
+            questionId: 'single-1',
+            choiceId: 'choice-a',
+          ),
+          isCorrect: true,
+          partialScore: 1,
+          explanation: 'Correction incohérente.',
+          sourceChunkIds: const ['chunk-1'],
+          correction: const RichClosedCorrectOrderCorrection(
+            correctOrder: ['item-1'],
+          ),
+        ),
+      ],
+    );
+
+    expect(
+      () => presenter.present(exercise: exercise, result: badResult),
+      throwsA(isA<RichClosedCorrectionPresentationException>()),
+    );
+  });
+}
+
+RichClosedCorrectionItemViewModel _item(
+  RichClosedCorrectionViewModel viewModel,
+  String questionId,
+) {
+  return viewModel.items.singleWhere((item) => item.questionId == questionId);
+}

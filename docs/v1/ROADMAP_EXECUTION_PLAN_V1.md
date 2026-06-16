@@ -34,7 +34,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-009 | Domain models Flutter V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_009_FLUTTER_DOMAIN_V1A.md |
 | V1-010 | Widgets Flutter V1-A single/multiple/case/error | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_010_FLUTTER_WIDGETS_CORE_V1A.md |
 | V1-011 | Widgets Flutter matching/ordering | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_011_FLUTTER_MATCHING_ORDERING.md |
-| V1-012 | Scoring/correction UI V1-A | À faire | À créer |
+| V1-012 | Scoring/correction UI V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_012_SCORING_CORRECTION_UI_V1A.md |
 | V1-013 | Today integration V1 | À faire | À créer |
 | V1-014 | Revision session integration V1 | À faire | À créer |
 | V1-015 | Seed V1 rich demo fixtures | À faire | À créer |
@@ -299,6 +299,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - Pourquoi maintenant : plusieurs widgets existent.
 - Périmètre inclus : panels correction, score par type, sources post-submit.
 - Non-objectifs : recalcul frontend.
+- Note V1-012 réalisé : summary/result UI et correction cards V1-A ajoutées, aucun recalcul frontend, aucune intégration Today/session.
 - Fichiers probablement concernés : widgets correction activities.
 - Backend : aucun sauf bug de contrat.
 - Frontend : affichage post-submit.
