@@ -27,7 +27,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-004 | Contrat backend rich question kinds | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_004_BACKEND_RICH_QUESTION_KINDS.md |
 | V1-005 | Quality gates pédagogiques backend | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_005_PEDAGOGICAL_QUALITY_GATES.md |
 | V1-005B | Hardening contrat public et validators rich closed questions | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_005B_RICH_CLOSED_CONTRACT_HARDENING.md |
-| V1-006 | Génération Genkit rich closed questions V1-A | À faire | À créer |
+| V1-006 | Génération Genkit rich closed questions V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_006_GENKIT_RICH_CLOSED_V1A.md |
 | V1-007 | Persistance minimale V1-A | À faire | À créer |
 | V1-008 | API publique pré-submit/post-submit V1-A | À faire | À créer |
 | V1-009 | Domain models Flutter V1-A | À faire | À créer |
@@ -171,6 +171,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - GenUI : aucun.
 - Prisma : aucun.
 - API : pas encore public si persistance absente.
+- Note V1-006 réalisé : le générateur reste non public, non persisté et non branché API.
 - Tests attendus : mock Genkit, schema strict, error codes whitelistés.
 - Validations à lancer : tests ai/activities, lint check, build.
 - Critères d'acceptation : le prompt impose `questionTypeMix`.
