@@ -295,6 +295,20 @@ void _answerAllQuestions(RichClosedExerciseFlowController controller) {
             ],
           ),
         );
+      case RichClosedInstitutionMatrixQuestion():
+        controller.recordAnswer(
+          question,
+          RichClosedInstitutionMatrixAnswer(
+            questionId: question.id,
+            values: [
+              for (final cell in question.cells)
+                RichClosedInstitutionMatrixValue(
+                  cellId: cell.id,
+                  optionId: cell.options.first.id,
+                ),
+            ],
+          ),
+        );
       case RichClosedCaseQualificationQuestion():
         controller.recordAnswer(
           question,

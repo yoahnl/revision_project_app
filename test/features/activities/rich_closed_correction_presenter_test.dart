@@ -164,6 +164,32 @@ void main() {
     },
   );
 
+  test('mappe institution_matrix depuis les corrections backend', () {
+    final v1cExercise = RichClosedExercise.fromJson(
+      richClosedV1CExerciseJson(),
+    );
+    final v1cResult = RichClosedExerciseResult.fromJson(
+      richClosedV1CResultJson(),
+    );
+    final viewModel = presenter.present(
+      exercise: v1cExercise,
+      result: v1cResult,
+    );
+
+    expect(_item(viewModel, 'institution-matrix-1').kindLabel, 'Matrice');
+    expect(_item(viewModel, 'institution-matrix-1').submittedAnswerLines, [
+      'Président de la République / Mode de légitimité : Élection nationale',
+      'Gouvernement / Responsabilité politique : Assemblée nationale',
+      'Assemblée nationale / Moyen d’action : Motion de censure',
+    ]);
+    expect(_item(viewModel, 'institution-matrix-1').correctAnswerLines, [
+      'Président de la République / Mode de légitimité : Élection nationale',
+      'Gouvernement / Responsabilité politique : Assemblée nationale',
+      'Assemblée nationale / Moyen d’action : Motion de censure',
+    ]);
+    expect(_item(viewModel, 'institution-matrix-1').isCorrect, isTrue);
+  });
+
   test('conserve isCorrect et partialScore backend sans recalcul', () {
     final json = richClosedResultJson();
     final single =

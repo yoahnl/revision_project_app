@@ -20,7 +20,8 @@ enum RichClosedQuestionKind {
   timeline('timeline'),
   dateSlider('date_slider'),
   trueFalseGrid('true_false_grid'),
-  causeConsequence('cause_consequence');
+  causeConsequence('cause_consequence'),
+  institutionMatrix('institution_matrix');
 
   const RichClosedQuestionKind(this.wireValue);
 
@@ -248,6 +249,20 @@ sealed class RichClosedQuestion {
             'Invalid cause/consequence consequences',
           ),
         ).._validateItems(),
+      RichClosedQuestionKind.institutionMatrix =>
+        RichClosedInstitutionMatrixQuestion(
+          base: base,
+          instruction: _readOptionalString(json['instruction']),
+          rows: _institutionMatrixAxisItems(
+            json['rows'],
+            'Invalid institution matrix rows',
+          ),
+          columns: _institutionMatrixAxisItems(
+            json['columns'],
+            'Invalid institution matrix columns',
+          ),
+          cells: _institutionMatrixCells(json['cells']),
+        ).._validateMatrix(),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationQuestion(
           base: base,
@@ -472,6 +487,64 @@ class RichClosedCauseConsequenceQuestion extends RichClosedQuestion {
       throw const RichClosedExerciseParseException(
         'Invalid cause/consequence items',
       );
+    }
+  }
+}
+
+class RichClosedInstitutionMatrixQuestion extends RichClosedQuestion {
+  RichClosedInstitutionMatrixQuestion({
+    required RichClosedQuestionBase base,
+    required this.instruction,
+    required this.rows,
+    required this.columns,
+    required this.cells,
+  }) : super(
+         id: base.id,
+         questionKind: RichClosedQuestionKind.institutionMatrix,
+         prompt: base.prompt,
+         difficulty: base.difficulty,
+         cognitiveSkill: base.cognitiveSkill,
+         sourceChunkIds: base.sourceChunkIds,
+       );
+
+  final String? instruction;
+  final List<RichClosedInstitutionMatrixAxisItem> rows;
+  final List<RichClosedInstitutionMatrixAxisItem> columns;
+  final List<RichClosedInstitutionMatrixCell> cells;
+
+  void _validateMatrix() {
+    final rowIds = rows.map((row) => row.id).toSet();
+    final columnIds = columns.map((column) => column.id).toSet();
+    final cellIds = cells.map((cell) => cell.id).toSet();
+
+    if (rows.length < 2 ||
+        rows.length > 5 ||
+        rowIds.length != rows.length ||
+        columns.length < 2 ||
+        columns.length > 5 ||
+        columnIds.length != columns.length ||
+        cells.length < 3 ||
+        cells.length > rows.length * columns.length ||
+        cellIds.length != cells.length) {
+      throw const RichClosedExerciseParseException(
+        'Invalid institution matrix contract',
+      );
+    }
+
+    final cellCoordinates = <String>{};
+    for (final cell in cells) {
+      final coordinate = '${cell.rowId}\u0000${cell.columnId}';
+      final optionIds = cell.options.map((option) => option.id).toSet();
+      if (!cellCoordinates.add(coordinate) ||
+          !rowIds.contains(cell.rowId) ||
+          !columnIds.contains(cell.columnId) ||
+          cell.options.length < 2 ||
+          cell.options.length > 6 ||
+          optionIds.length != cell.options.length) {
+        throw const RichClosedExerciseParseException(
+          'Invalid institution matrix contract',
+        );
+      }
     }
   }
 }
@@ -710,6 +783,86 @@ class RichClosedCauseConsequencePair {
   final String consequenceId;
 }
 
+class RichClosedInstitutionMatrixAxisItem {
+  const RichClosedInstitutionMatrixAxisItem({
+    required this.id,
+    required this.label,
+    required this.description,
+  });
+
+  factory RichClosedInstitutionMatrixAxisItem.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid institution matrix axis item');
+
+    return RichClosedInstitutionMatrixAxisItem(
+      id: _readString(json['id'], 'Invalid institution matrix axis id'),
+      label: _readString(
+        json['label'],
+        'Invalid institution matrix axis label',
+      ),
+      description: _readOptionalString(json['description']),
+    );
+  }
+
+  final String id;
+  final String label;
+  final String? description;
+}
+
+class RichClosedInstitutionMatrixCell {
+  const RichClosedInstitutionMatrixCell({
+    required this.id,
+    required this.rowId,
+    required this.columnId,
+    required this.prompt,
+    required this.options,
+  });
+
+  factory RichClosedInstitutionMatrixCell.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid institution matrix cell');
+
+    return RichClosedInstitutionMatrixCell(
+      id: _readString(json['id'], 'Invalid institution matrix cell id'),
+      rowId: _readString(json['rowId'], 'Invalid institution matrix row id'),
+      columnId: _readString(
+        json['columnId'],
+        'Invalid institution matrix column id',
+      ),
+      prompt: _readOptionalString(json['prompt']),
+      options: _choices(json['options']),
+    );
+  }
+
+  final String id;
+  final String rowId;
+  final String columnId;
+  final String? prompt;
+  final List<RichClosedChoice> options;
+}
+
+class RichClosedInstitutionMatrixValue {
+  const RichClosedInstitutionMatrixValue({
+    required this.cellId,
+    required this.optionId,
+  });
+
+  factory RichClosedInstitutionMatrixValue.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid institution matrix value');
+
+    return RichClosedInstitutionMatrixValue(
+      cellId: _readString(json['cellId'], 'Invalid institution matrix cell id'),
+      optionId: _readString(
+        json['optionId'],
+        'Invalid institution matrix option id',
+      ),
+    );
+  }
+
+  Map<String, Object?> toJson() => {'cellId': cellId, 'optionId': optionId};
+
+  final String cellId;
+  final String optionId;
+}
+
 class RichClosedPair {
   const RichClosedPair({required this.leftId, required this.rightId});
 
@@ -786,6 +939,11 @@ sealed class RichClosedAnswer {
         RichClosedCauseConsequenceAnswer(
           questionId: questionId,
           pairs: _causeConsequencePairs(json['pairs']),
+        ),
+      RichClosedQuestionKind.institutionMatrix =>
+        RichClosedInstitutionMatrixAnswer(
+          questionId: questionId,
+          values: _institutionMatrixValues(json['values']),
         ),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationAnswer(
@@ -933,6 +1091,22 @@ class RichClosedCauseConsequenceAnswer extends RichClosedAnswer {
     'questionId': questionId,
     'questionKind': questionKind.wireValue,
     'pairs': [for (final pair in pairs) pair.toJson()],
+  };
+}
+
+class RichClosedInstitutionMatrixAnswer extends RichClosedAnswer {
+  const RichClosedInstitutionMatrixAnswer({
+    required super.questionId,
+    required this.values,
+  }) : super(questionKind: RichClosedQuestionKind.institutionMatrix);
+
+  final List<RichClosedInstitutionMatrixValue> values;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'questionId': questionId,
+    'questionKind': questionKind.wireValue,
+    'values': [for (final value in values) value.toJson()],
   };
 }
 
@@ -1155,6 +1329,10 @@ sealed class RichClosedCorrectionPayload {
         RichClosedCorrectCauseConsequencePairsCorrection(
           correctPairs: _causeConsequencePairs(json['correctPairs']),
         ),
+      RichClosedQuestionKind.institutionMatrix =>
+        RichClosedCorrectInstitutionMatrixValuesCorrection(
+          correctValues: _institutionMatrixValues(json['correctValues']),
+        ),
       RichClosedQuestionKind.errorDetection =>
         RichClosedCorrectErrorIdCorrection(
           correctErrorId: _readString(
@@ -1218,6 +1396,15 @@ class RichClosedCorrectCauseConsequencePairsCorrection
   });
 
   final List<RichClosedCauseConsequencePair> correctPairs;
+}
+
+class RichClosedCorrectInstitutionMatrixValuesCorrection
+    extends RichClosedCorrectionPayload {
+  const RichClosedCorrectInstitutionMatrixValuesCorrection({
+    required this.correctValues,
+  });
+
+  final List<RichClosedInstitutionMatrixValue> correctValues;
 }
 
 class RichClosedCorrectErrorIdCorrection extends RichClosedCorrectionPayload {
@@ -1328,6 +1515,52 @@ List<RichClosedCauseConsequencePair> _causeConsequencePairs(Object? value) {
   }
 
   return pairs;
+}
+
+List<RichClosedInstitutionMatrixAxisItem> _institutionMatrixAxisItems(
+  Object? value,
+  String message,
+) {
+  final items = _readList(
+    value,
+    message,
+  ).map(RichClosedInstitutionMatrixAxisItem.fromJson).toList(growable: false);
+
+  if (items.isEmpty) {
+    throw RichClosedExerciseParseException(message);
+  }
+
+  return items;
+}
+
+List<RichClosedInstitutionMatrixCell> _institutionMatrixCells(Object? value) {
+  final cells = _readList(
+    value,
+    'Invalid institution matrix cells',
+  ).map(RichClosedInstitutionMatrixCell.fromJson).toList(growable: false);
+
+  if (cells.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Institution matrix cells cannot be empty',
+    );
+  }
+
+  return cells;
+}
+
+List<RichClosedInstitutionMatrixValue> _institutionMatrixValues(Object? value) {
+  final values = _readList(
+    value,
+    'Invalid institution matrix values',
+  ).map(RichClosedInstitutionMatrixValue.fromJson).toList(growable: false);
+
+  if (values.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Institution matrix values cannot be empty',
+    );
+  }
+
+  return values;
 }
 
 List<RichClosedPair> _pairs(Object? value) {

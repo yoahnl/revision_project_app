@@ -143,6 +143,49 @@ void main() {
     expect(changedQuestions, contains('true-false-grid-1'));
   });
 
+  testWidgets('renderer rend institution_matrix', (tester) async {
+    final controller = RichClosedCoreAnswerController();
+    final v1cExercise = RichClosedExercise.fromJson(
+      richClosedV1CExerciseJson(),
+    );
+    final changedQuestions = <String>[];
+
+    await tester.pumpWidget(
+      _TestHost(
+        scrollable: true,
+        child: Column(
+          children: [
+            RichClosedQuestionRenderer(
+              question: v1cExercise.questions.last,
+              controller: controller,
+              enabled: true,
+              onChanged: (_) =>
+                  changedQuestions.add(v1cExercise.questions.last.id),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(find.text('Président de la République'), findsOneWidget);
+    expect(find.text('Mode de légitimité'), findsOneWidget);
+    expect(find.text('correctValues'), findsNothing);
+    expect(find.text('explanation'), findsNothing);
+
+    final dropdown = tester.widget<DropdownButton<String>>(
+      find.byKey(
+        const ValueKey(
+          'institution-matrix-institution-matrix-1-cell-president-legitimacy',
+        ),
+      ),
+    );
+    dropdown.onChanged!('option-legitimacy-election');
+    await tester.pump();
+
+    expect(changedQuestions, contains('institution-matrix-1'));
+    expect(controller.canSubmitQuestion(v1cExercise.questions.last), isFalse);
+  });
+
   testWidgets('page démarre, collecte six réponses et affiche la correction', (
     tester,
   ) async {
@@ -331,6 +374,63 @@ void main() {
     );
   });
 
+  testWidgets('page submit et affiche les corrections V1-C', (tester) async {
+    final v1cExercise = RichClosedExercise.fromJson(
+      richClosedV1CExerciseJson(),
+    );
+    final v1cResult = RichClosedExerciseResult.fromJson(
+      richClosedV1CResultJson(),
+    );
+    final api = _FakeRichClosedActivityApi(
+      exercise: v1cExercise,
+      result: v1cResult,
+    );
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedExercisePage(
+          controller: ActivityController(api),
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 / 11 répondues'), findsOneWidget);
+
+    await _answerAllQuestions(tester);
+
+    expect(find.text('11 / 11 répondues'), findsOneWidget);
+    expect(_submitButton(tester).onPressed, isNotNull);
+
+    await _tapVisible(
+      tester,
+      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.submittedAnswers, hasLength(11));
+    expect(
+      api.submittedAnswers!
+          .whereType<RichClosedInstitutionMatrixAnswer>()
+          .single
+          .values
+          .map((value) => '${value.cellId}:${value.optionId}'),
+      [
+        'cell-president-legitimacy:option-legitimacy-election',
+        'cell-government-responsibility:option-responsibility-assembly',
+        'cell-assembly-action:option-action-censure',
+      ],
+    );
+    expect(
+      find.text(
+        'Président de la République / Mode de légitimité : Élection nationale',
+      ),
+      findsWidgets,
+    );
+  });
+
   testWidgets('page affiche une erreur contrôlée au démarrage', (tester) async {
     final api = _FakeRichClosedActivityApi(
       exercise: exercise,
@@ -431,6 +531,21 @@ Future<void> _answerAllQuestions(WidgetTester tester) async {
     causeId: 'cause-3',
     consequenceId: 'consequence-3',
   );
+  await _selectInstitutionMatrix(
+    tester,
+    cellId: 'cell-president-legitimacy',
+    optionId: 'option-legitimacy-election',
+  );
+  await _selectInstitutionMatrix(
+    tester,
+    cellId: 'cell-government-responsibility',
+    optionId: 'option-responsibility-assembly',
+  );
+  await _selectInstitutionMatrix(
+    tester,
+    cellId: 'cell-assembly-action',
+    optionId: 'option-action-censure',
+  );
 }
 
 Future<void> _selectMatchingRight(
@@ -461,6 +576,24 @@ Future<void> _selectCauseConsequence(
   await tester.ensureVisible(finder);
   final dropdown = tester.widget<DropdownButton<String>>(finder);
   dropdown.onChanged!(consequenceId);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectInstitutionMatrix(
+  WidgetTester tester, {
+  required String cellId,
+  required String optionId,
+}) async {
+  final finder = find.byKey(
+    ValueKey('institution-matrix-institution-matrix-1-$cellId'),
+  );
+  if (finder.evaluate().isEmpty) {
+    return;
+  }
+
+  await tester.ensureVisible(finder);
+  final dropdown = tester.widget<DropdownButton<String>>(finder);
+  dropdown.onChanged!(optionId);
   await tester.pumpAndSettle();
 }
 

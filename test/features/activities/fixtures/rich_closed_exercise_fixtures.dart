@@ -476,6 +476,152 @@ Map<String, Object?> richClosedV1BFullResultJson() {
   return json;
 }
 
+Map<String, Object?> richClosedV1CExerciseJson() {
+  final json = richClosedV1BFullExerciseJson();
+  final questions = List<Object?>.from(json['questions']! as List<Object?>);
+  json['questions'] = questions;
+
+  questions.add({
+    'id': 'institution-matrix-1',
+    'questionKind': 'institution_matrix',
+    'prompt':
+        'Complète la matrice comparant Président, Gouvernement et Assemblée nationale.',
+    'instruction': 'Choisis une option fermée pour chaque cellule demandée.',
+    'difficulty': 'MEDIUM',
+    'cognitiveSkill': 'comparison',
+    'sourceChunkIds': ['chunk-10'],
+    'rows': [
+      {
+        'id': 'row-president',
+        'label': 'Président de la République',
+        'description': 'Chef de l’État.',
+      },
+      {
+        'id': 'row-government',
+        'label': 'Gouvernement',
+        'description': 'Organe chargé de conduire la politique nationale.',
+      },
+      {
+        'id': 'row-assembly',
+        'label': 'Assemblée nationale',
+        'description': 'Chambre élue au suffrage universel direct.',
+      },
+    ],
+    'columns': [
+      {
+        'id': 'column-legitimacy',
+        'label': 'Mode de légitimité',
+        'description': 'Origine politique principale.',
+      },
+      {
+        'id': 'column-action',
+        'label': 'Moyen d’action',
+        'description': 'Instrument institutionnel caractéristique.',
+      },
+      {
+        'id': 'column-responsibility',
+        'label': 'Responsabilité politique',
+        'description': 'Lien de responsabilité devant une institution.',
+      },
+    ],
+    'cells': [
+      {
+        'id': 'cell-president-legitimacy',
+        'rowId': 'row-president',
+        'columnId': 'column-legitimacy',
+        'prompt': 'Quelle légitimité caractérise principalement le Président ?',
+        'options': [
+          {'id': 'option-legitimacy-election', 'label': 'Élection nationale'},
+          {
+            'id': 'option-legitimacy-confidence',
+            'label': 'Confiance parlementaire',
+          },
+          {'id': 'option-legitimacy-nomination', 'label': 'Nomination simple'},
+        ],
+      },
+      {
+        'id': 'cell-government-responsibility',
+        'rowId': 'row-government',
+        'columnId': 'column-responsibility',
+        'prompt':
+            'Devant qui le Gouvernement est-il politiquement responsable ?',
+        'options': [
+          {
+            'id': 'option-responsibility-assembly',
+            'label': 'Assemblée nationale',
+          },
+          {'id': 'option-responsibility-senate', 'label': 'Sénat'},
+          {'id': 'option-responsibility-none', 'label': 'Aucune institution'},
+        ],
+      },
+      {
+        'id': 'cell-assembly-action',
+        'rowId': 'row-assembly',
+        'columnId': 'column-action',
+        'prompt': 'Quel moyen d’action vise le Gouvernement ?',
+        'options': [
+          {'id': 'option-action-censure', 'label': 'Motion de censure'},
+          {'id': 'option-action-dissolution', 'label': 'Dissolution'},
+          {'id': 'option-action-promulgation', 'label': 'Promulgation'},
+        ],
+      },
+    ],
+  });
+
+  return json;
+}
+
+Map<String, Object?> richClosedV1CResultJson() {
+  final json = richClosedV1BFullResultJson();
+  final items = List<Object?>.from(json['items']! as List<Object?>);
+
+  json['correctAnswers'] = 10;
+  json['totalQuestions'] = 11;
+  json['score'] = 0.909;
+  json['items'] = items;
+  items.add({
+    'questionId': 'institution-matrix-1',
+    'questionKind': 'institution_matrix',
+    'prompt':
+        'Complète la matrice comparant Président, Gouvernement et Assemblée nationale.',
+    'submittedAnswer': {
+      'questionId': 'institution-matrix-1',
+      'questionKind': 'institution_matrix',
+      'values': [
+        {
+          'cellId': 'cell-president-legitimacy',
+          'optionId': 'option-legitimacy-election',
+        },
+        {
+          'cellId': 'cell-government-responsibility',
+          'optionId': 'option-responsibility-assembly',
+        },
+        {'cellId': 'cell-assembly-action', 'optionId': 'option-action-censure'},
+      ],
+    },
+    'isCorrect': true,
+    'partialScore': 1,
+    'explanation':
+        'Chaque cellule associe une institution à une propriété fermée du régime.',
+    'sourceChunkIds': ['chunk-10'],
+    'correction': {
+      'correctValues': [
+        {
+          'cellId': 'cell-president-legitimacy',
+          'optionId': 'option-legitimacy-election',
+        },
+        {
+          'cellId': 'cell-government-responsibility',
+          'optionId': 'option-responsibility-assembly',
+        },
+        {'cellId': 'cell-assembly-action', 'optionId': 'option-action-censure'},
+      ],
+    },
+  });
+
+  return json;
+}
+
 Map<String, Object?> richClosedExerciseWithCorrectChoiceLeak() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
@@ -498,7 +644,7 @@ Map<String, Object?> richClosedExerciseWithUnknownKind() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
           as Map<String, Object?>)['questionKind'] =
-      'institution_matrix';
+      'diagram_labeling';
   return json;
 }
 

@@ -443,6 +443,95 @@ void main() {
     );
   });
 
+  test('institution_matrix commence incomplet puis produit values', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1cExercise = RichClosedExercise.fromJson(
+      richClosedV1CExerciseJson(),
+    );
+    final matrix = _question<RichClosedInstitutionMatrixQuestion>(v1cExercise);
+
+    expect(controller.canSubmitQuestion(matrix), isFalse);
+    expect(controller.answerFor(matrix), isNull);
+    expect(controller.institutionMatrixValuesFor(matrix), isEmpty);
+
+    controller.setInstitutionMatrixValue(
+      question: matrix,
+      cellId: 'cell-president-legitimacy',
+      optionId: 'option-legitimacy-election',
+    );
+    controller.setInstitutionMatrixValue(
+      question: matrix,
+      cellId: 'cell-government-responsibility',
+      optionId: 'option-responsibility-assembly',
+    );
+
+    expect(controller.canSubmitQuestion(matrix), isFalse);
+
+    controller.setInstitutionMatrixValue(
+      question: matrix,
+      cellId: 'cell-assembly-action',
+      optionId: 'option-action-censure',
+    );
+
+    final answer = controller.answerFor(matrix);
+    expect(controller.canSubmitQuestion(matrix), isTrue);
+    expect(answer, isA<RichClosedInstitutionMatrixAnswer>());
+    expect(
+      (answer! as RichClosedInstitutionMatrixAnswer).values.map(
+        (value) => '${value.cellId}:${value.optionId}',
+      ),
+      [
+        'cell-president-legitimacy:option-legitimacy-election',
+        'cell-government-responsibility:option-responsibility-assembly',
+        'cell-assembly-action:option-action-censure',
+      ],
+    );
+  });
+
+  test('institution_matrix ignore ids inconnus et remplace une valeur', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1cExercise = RichClosedExercise.fromJson(
+      richClosedV1CExerciseJson(),
+    );
+    final matrix = _question<RichClosedInstitutionMatrixQuestion>(v1cExercise);
+
+    controller.setInstitutionMatrixValue(
+      question: matrix,
+      cellId: 'cell-unknown',
+      optionId: 'option-legitimacy-election',
+    );
+    controller.setInstitutionMatrixValue(
+      question: matrix,
+      cellId: 'cell-president-legitimacy',
+      optionId: 'option-unknown',
+    );
+    controller.setInstitutionMatrixValue(
+      question: matrix,
+      cellId: 'cell-president-legitimacy',
+      optionId: 'option-legitimacy-confidence',
+    );
+    controller.setInstitutionMatrixValue(
+      question: matrix,
+      cellId: 'cell-president-legitimacy',
+      optionId: 'option-legitimacy-election',
+    );
+
+    expect(
+      controller.selectedInstitutionMatrixOptionIdFor(
+        matrix.id,
+        'cell-president-legitimacy',
+      ),
+      'option-legitimacy-election',
+    );
+    expect(
+      controller
+          .institutionMatrixValuesFor(matrix)
+          .map((value) => '${value.cellId}:${value.optionId}'),
+      ['cell-president-legitimacy:option-legitimacy-election'],
+    );
+    expect(controller.canSubmitQuestion(matrix), isFalse);
+  });
+
   test('matching et ordering ne produisent jamais de correction', () {
     final controller = RichClosedCoreAnswerController();
     final matching = _question<RichClosedMatchingQuestion>(exercise);
@@ -536,6 +625,28 @@ void main() {
       }
     },
   );
+
+  test('institution_matrix ne produit jamais de correction', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1cExercise = RichClosedExercise.fromJson(
+      richClosedV1CExerciseJson(),
+    );
+    final matrix = _question<RichClosedInstitutionMatrixQuestion>(v1cExercise);
+
+    for (final cell in matrix.cells) {
+      controller.setInstitutionMatrixValue(
+        question: matrix,
+        cellId: cell.id,
+        optionId: cell.options.first.id,
+      );
+    }
+
+    final json = controller.answerFor(matrix)!.toJson();
+    expect(json.keys.any((key) => key.startsWith('correct')), isFalse);
+    expect(json.containsKey('correction'), isFalse);
+    expect(json.containsKey('score'), isFalse);
+    expect(json.containsKey('explanation'), isFalse);
+  });
 
   test('ne produit jamais de correction dans le JSON de réponse', () {
     final controller = RichClosedCoreAnswerController();

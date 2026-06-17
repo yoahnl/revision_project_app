@@ -9,6 +9,7 @@ class RichClosedCoreAnswerController {
   final Map<String, int> _dateSliderSelections = {};
   final Map<String, Map<String, bool>> _trueFalseSelections = {};
   final Map<String, Map<String, String>> _causeConsequenceSelections = {};
+  final Map<String, Map<String, String>> _institutionMatrixSelections = {};
 
   String? _message;
 
@@ -116,6 +117,31 @@ class RichClosedCoreAnswerController {
           RichClosedCauseConsequencePair(
             causeId: cause.id,
             consequenceId: selections[cause.id]!,
+          ),
+    ];
+  }
+
+  String? selectedInstitutionMatrixOptionIdFor(
+    String questionId,
+    String cellId,
+  ) {
+    return _institutionMatrixSelections[questionId]?[cellId];
+  }
+
+  List<RichClosedInstitutionMatrixValue> institutionMatrixValuesFor(
+    RichClosedInstitutionMatrixQuestion question,
+  ) {
+    final selections = _institutionMatrixSelections[question.id];
+    if (selections == null || selections.isEmpty) {
+      return const [];
+    }
+
+    return [
+      for (final cell in question.cells)
+        if (selections[cell.id] != null)
+          RichClosedInstitutionMatrixValue(
+            cellId: cell.id,
+            optionId: selections[cell.id]!,
           ),
     ];
   }
@@ -283,6 +309,24 @@ class RichClosedCoreAnswerController {
     _message = null;
   }
 
+  void setInstitutionMatrixValue({
+    required RichClosedInstitutionMatrixQuestion question,
+    required String cellId,
+    required String optionId,
+  }) {
+    final cell = _institutionMatrixCell(question.cells, cellId);
+    if (cell == null || !_hasChoice(cell.options, optionId)) {
+      return;
+    }
+
+    final selections = _institutionMatrixSelections.putIfAbsent(
+      question.id,
+      () => <String, String>{},
+    );
+    selections[cellId] = optionId;
+    _message = null;
+  }
+
   bool canSubmitQuestion(RichClosedQuestion question) {
     return switch (question) {
       RichClosedSingleChoiceQuestion() =>
@@ -298,6 +342,9 @@ class RichClosedCoreAnswerController {
       RichClosedDateSliderQuestion() => true,
       RichClosedTrueFalseGridQuestion() => _canSubmitTrueFalseGrid(question),
       RichClosedCauseConsequenceQuestion() => _canSubmitCauseConsequence(
+        question,
+      ),
+      RichClosedInstitutionMatrixQuestion() => _canSubmitInstitutionMatrix(
         question,
       ),
     };
@@ -350,6 +397,11 @@ class RichClosedCoreAnswerController {
         questionId: question.id,
         pairs: causeConsequencePairsFor(question),
       ),
+      RichClosedInstitutionMatrixQuestion() =>
+        RichClosedInstitutionMatrixAnswer(
+          questionId: question.id,
+          values: institutionMatrixValuesFor(question),
+        ),
     };
   }
 
@@ -408,6 +460,24 @@ class RichClosedCoreAnswerController {
     return selections.keys.every(causeIds.contains) &&
         selections.values.every(consequenceIds.contains) &&
         selectedConsequenceIds.length == selections.length;
+  }
+
+  bool _canSubmitInstitutionMatrix(
+    RichClosedInstitutionMatrixQuestion question,
+  ) {
+    final selections = _institutionMatrixSelections[question.id];
+    if (selections == null || selections.length != question.cells.length) {
+      return false;
+    }
+
+    final cellIds = question.cells.map((cell) => cell.id).toSet();
+
+    return selections.entries.every((entry) {
+      final cell = _institutionMatrixCell(question.cells, entry.key);
+      return cellIds.contains(entry.key) &&
+          cell != null &&
+          _hasChoice(cell.options, entry.value);
+    });
   }
 
   void _moveOrderingItem({
@@ -527,5 +597,17 @@ class RichClosedCoreAnswerController {
     String itemId,
   ) {
     return items.any((item) => item.id == itemId);
+  }
+
+  RichClosedInstitutionMatrixCell? _institutionMatrixCell(
+    List<RichClosedInstitutionMatrixCell> cells,
+    String cellId,
+  ) {
+    for (final cell in cells) {
+      if (cell.id == cellId) {
+        return cell;
+      }
+    }
+    return null;
   }
 }

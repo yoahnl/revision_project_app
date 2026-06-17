@@ -42,7 +42,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-016 | E2E/smoke V1 rich questions | Non applicable côté app (API-only) | Voir api/docs/v1/ROADMAP_EXECUTION_LOT_V1_015_016_RICH_DEMO_SEED_AND_SMOKE.md |
 | V1-017 | Timeline/date slider V1-B | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_017_TIMELINE_DATE_SLIDER.md |
 | V1-018 | True/false grid + cause/consequence V1-B | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_018_TRUE_FALSE_GRID_CAUSE_CONSEQUENCE.md |
-| V1-019 | Institution matrix V1-C | À faire | À créer |
+| V1-019 | Institution matrix V1-C | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_019_INSTITUTION_MATRIX.md |
 | V1-020 | Diagram labeling V1-C | À faire | À créer |
 | V1-021 | Calculation MCQ modes de scrutin V1-C | À faire | À créer |
 | V1-022 | Image choice/personnages historiques V1-D | À faire | À créer |
@@ -449,18 +449,18 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 
 - Objectif : ajouter matrice institutionnelle.
 - Pourquoi maintenant : base des grids disponible.
-- Périmètre inclus : contrat borné, widget table.
-- Non-objectifs : diagram labeling.
-- Fichiers probablement concernés : activities.
-- Backend : dimensions bornées.
-- Frontend : table scrollable accessible.
-- Genkit : schema V1-C.
-- GenUI : non principal.
-- Prisma : selon ADR.
-- API : type matrix.
-- Tests attendus : dimensions, cellules, correction.
-- Validations à lancer : targeted backend/flutter.
-- Critères d'acceptation : matrice lisible mobile.
+- Périmètre inclus : modèles Flutter typés, parser strict, controller de réponses fermées par cellule, widget liste groupée mobile-safe, correction UI post-submit.
+- Non-objectifs : diagram labeling, nouveau flow UI global, rendu JSON arbitraire, score côté Flutter.
+- Fichiers probablement concernés : activities rich closed.
+- Backend : traité côté API.
+- Frontend : liste groupée par ligne avec dropdown fermé par cellule.
+- Genkit : traité côté API.
+- GenUI : non modifié.
+- Prisma : non modifié.
+- API : type `institution_matrix`.
+- Tests attendus : parser anti-fuite, controller, widget, page, correction.
+- Validations à lancer : `dart analyze lib test`, `flutter test test/features/activities --reporter compact`, puis suites non-régression.
+- Critères d'acceptation : matrice lisible mobile sans valeur par défaut.
 - Critère de stop : table inaccessible.
 - Risques : complexité UI.
 - Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_019_INSTITUTION_MATRIX.md`.

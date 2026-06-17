@@ -75,6 +75,7 @@ class RichClosedQuestionCard extends StatelessWidget {
       RichClosedQuestionKind.dateSlider => 'Curseur temporel',
       RichClosedQuestionKind.trueFalseGrid => 'Vrai / faux',
       RichClosedQuestionKind.causeConsequence => 'Cause / conséquence',
+      RichClosedQuestionKind.institutionMatrix => 'Matrice',
     };
   }
 

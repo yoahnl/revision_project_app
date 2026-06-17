@@ -102,6 +102,37 @@ void main() {
       expect(causeConsequence.causes.first.description, contains('confiance'));
     });
 
+    test('parses institution_matrix public questions', () {
+      final questions = RichClosedExercise.fromJson(
+        richClosedV1CExerciseJson(),
+      ).questions;
+      final matrix = questions[10] as RichClosedInstitutionMatrixQuestion;
+
+      expect(questions, hasLength(11));
+      expect(matrix.questionKind, RichClosedQuestionKind.institutionMatrix);
+      expect(matrix.instruction, contains('option fermée'));
+      expect(matrix.rows.map((row) => row.id), [
+        'row-president',
+        'row-government',
+        'row-assembly',
+      ]);
+      expect(matrix.columns.map((column) => column.id), [
+        'column-legitimacy',
+        'column-action',
+        'column-responsibility',
+      ]);
+      expect(matrix.cells.map((cell) => cell.id), [
+        'cell-president-legitimacy',
+        'cell-government-responsibility',
+        'cell-assembly-action',
+      ]);
+      expect(matrix.cells.first.options.map((option) => option.id), [
+        'option-legitimacy-election',
+        'option-legitimacy-confidence',
+        'option-legitimacy-nomination',
+      ]);
+    });
+
     test('rejects cause_consequence with fewer consequences than causes', () {
       final payload = richClosedV1BFullExerciseJson();
       final question =
@@ -237,6 +268,63 @@ void main() {
         );
       },
     );
+
+    test(
+      'rejects institution_matrix public questions carrying private fields',
+      () {
+        final correctValuesLeak = richClosedV1CExerciseJson();
+        ((correctValuesLeak['questions']! as List<Object?>)[10]!
+            as Map<String, Object?>)['correctValues'] = [
+          {
+            'cellId': 'cell-president-legitimacy',
+            'optionId': 'option-legitimacy-election',
+          },
+        ];
+        final explanationLeak = richClosedV1CExerciseJson();
+        ((explanationLeak['questions']! as List<Object?>)[10]!
+                as Map<String, Object?>)['explanation'] =
+            'Ne doit pas être visible en pré-submit.';
+
+        expectParseError(() => RichClosedExercise.fromJson(correctValuesLeak));
+        expectParseError(() => RichClosedExercise.fromJson(explanationLeak));
+      },
+    );
+
+    test('rejects institution_matrix cells with unknown axis references', () {
+      final badRow = richClosedV1CExerciseJson();
+      final badRowQuestion =
+          (badRow['questions']! as List<Object?>)[10]! as Map<String, Object?>;
+      ((badRowQuestion['cells']! as List<Object?>).first!
+              as Map<String, Object?>)['rowId'] =
+          'row-unknown';
+      final badColumn = richClosedV1CExerciseJson();
+      final badColumnQuestion =
+          (badColumn['questions']! as List<Object?>)[10]!
+              as Map<String, Object?>;
+      ((badColumnQuestion['cells']! as List<Object?>).first!
+              as Map<String, Object?>)['columnId'] =
+          'column-unknown';
+
+      expectParseError(() => RichClosedExercise.fromJson(badRow));
+      expectParseError(() => RichClosedExercise.fromJson(badColumn));
+    });
+
+    test(
+      'rejects institution_matrix cells with duplicate row/column slots',
+      () {
+        final payload = richClosedV1CExerciseJson();
+        final question =
+            (payload['questions']! as List<Object?>)[10]!
+                as Map<String, Object?>;
+        final cells = question['cells']! as List<Object?>;
+        final firstCell = cells[0]! as Map<String, Object?>;
+        final secondCell = cells[1]! as Map<String, Object?>;
+        secondCell['rowId'] = firstCell['rowId'];
+        secondCell['columnId'] = firstCell['columnId'];
+
+        expectParseError(() => RichClosedExercise.fromJson(payload));
+      },
+    );
   });
 
   group('RichClosedAnswer submit DTO', () {
@@ -363,6 +451,27 @@ void main() {
           'questionKind': 'cause_consequence',
           'pairs': [
             {'causeId': 'cause-1', 'consequenceId': 'consequence-1'},
+          ],
+        },
+      );
+      expect(
+        const RichClosedInstitutionMatrixAnswer(
+          questionId: 'institution-matrix-1',
+          values: [
+            RichClosedInstitutionMatrixValue(
+              cellId: 'cell-president-legitimacy',
+              optionId: 'option-legitimacy-election',
+            ),
+          ],
+        ).toJson(),
+        {
+          'questionId': 'institution-matrix-1',
+          'questionKind': 'institution_matrix',
+          'values': [
+            {
+              'cellId': 'cell-president-legitimacy',
+              'optionId': 'option-legitimacy-election',
+            },
           ],
         },
       );
@@ -499,6 +608,39 @@ void main() {
         );
       },
     );
+
+    test('parses institution_matrix post-submit corrections', () {
+      final result = RichClosedExerciseResult.fromJson(
+        richClosedV1CResultJson(),
+      );
+      final matrix = result.items[10];
+
+      expect(matrix.submittedAnswer, isA<RichClosedInstitutionMatrixAnswer>());
+      expect(
+        (matrix.submittedAnswer as RichClosedInstitutionMatrixAnswer).values
+            .map((value) => '${value.cellId}:${value.optionId}'),
+        [
+          'cell-president-legitimacy:option-legitimacy-election',
+          'cell-government-responsibility:option-responsibility-assembly',
+          'cell-assembly-action:option-action-censure',
+        ],
+      );
+      expect(
+        matrix.correction,
+        isA<RichClosedCorrectInstitutionMatrixValuesCorrection>(),
+      );
+      expect(
+        (matrix.correction
+                as RichClosedCorrectInstitutionMatrixValuesCorrection)
+            .correctValues
+            .map((value) => '${value.cellId}:${value.optionId}'),
+        [
+          'cell-president-legitimacy:option-legitimacy-election',
+          'cell-government-responsibility:option-responsibility-assembly',
+          'cell-assembly-action:option-action-censure',
+        ],
+      );
+    });
 
     test('rejects absent or incoherent correction payloads', () {
       final missing = richClosedResultJson();

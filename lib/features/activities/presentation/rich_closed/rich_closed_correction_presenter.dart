@@ -64,6 +64,10 @@ class RichClosedCorrectionPresenter {
         question,
         item,
       ),
+      RichClosedInstitutionMatrixQuestion() => _presentInstitutionMatrix(
+        question,
+        item,
+      ),
       RichClosedCaseQualificationQuestion() => _presentCaseQualification(
         question,
         item,
@@ -211,6 +215,25 @@ class RichClosedCorrectionPresenter {
       correctAnswerLines: _causeConsequenceLines(
         question,
         correction.correctPairs,
+      ),
+    );
+  }
+
+  RichClosedCorrectionItemViewModel _presentInstitutionMatrix(
+    RichClosedInstitutionMatrixQuestion question,
+    RichClosedCorrectionItem item,
+  ) {
+    final submitted = _institutionMatrixAnswer(item);
+    final correction = _institutionMatrixValuesCorrection(item);
+
+    return _baseItem(
+      question: question,
+      item: item,
+      contextText: question.instruction,
+      submittedAnswerLines: _institutionMatrixLines(question, submitted.values),
+      correctAnswerLines: _institutionMatrixLines(
+        question,
+        correction.correctValues,
       ),
     );
   }
@@ -403,6 +426,18 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedInstitutionMatrixAnswer _institutionMatrixAnswer(
+    RichClosedCorrectionItem item,
+  ) {
+    final answer = item.submittedAnswer;
+    if (answer is RichClosedInstitutionMatrixAnswer) {
+      return answer;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid institution matrix submitted answer for ${item.questionId}',
+    );
+  }
+
   RichClosedCaseQualificationAnswer _caseQualificationAnswer(
     RichClosedCorrectionItem item,
   ) {
@@ -510,6 +545,17 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedCorrectInstitutionMatrixValuesCorrection
+  _institutionMatrixValuesCorrection(RichClosedCorrectionItem item) {
+    final correction = item.correction;
+    if (correction is RichClosedCorrectInstitutionMatrixValuesCorrection) {
+      return correction;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid institution matrix correction for ${item.questionId}',
+    );
+  }
+
   RichClosedCorrectErrorIdCorrection _errorIdCorrection(
     RichClosedCorrectionItem item,
   ) {
@@ -564,6 +610,35 @@ class RichClosedCorrectionPresenter {
     }
     throw RichClosedCorrectionPresentationException(
       'Unknown cause/consequence item $itemId for question $questionId',
+    );
+  }
+
+  String _institutionMatrixAxisLabel(
+    List<RichClosedInstitutionMatrixAxisItem> items,
+    String itemId,
+    String questionId,
+  ) {
+    for (final item in items) {
+      if (item.id == itemId) {
+        return item.label;
+      }
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Unknown institution matrix axis $itemId for question $questionId',
+    );
+  }
+
+  RichClosedInstitutionMatrixCell _institutionMatrixCell(
+    RichClosedInstitutionMatrixQuestion question,
+    String cellId,
+  ) {
+    for (final cell in question.cells) {
+      if (cell.id == cellId) {
+        return cell;
+      }
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Unknown institution matrix cell $cellId for question ${question.id}',
     );
   }
 
@@ -636,6 +711,35 @@ class RichClosedCorrectionPresenter {
     ];
   }
 
+  List<String> _institutionMatrixLines(
+    RichClosedInstitutionMatrixQuestion question,
+    List<RichClosedInstitutionMatrixValue> values,
+  ) {
+    return [
+      for (final value in values) _institutionMatrixLine(question, value),
+    ];
+  }
+
+  String _institutionMatrixLine(
+    RichClosedInstitutionMatrixQuestion question,
+    RichClosedInstitutionMatrixValue value,
+  ) {
+    final cell = _institutionMatrixCell(question, value.cellId);
+    final rowLabel = _institutionMatrixAxisLabel(
+      question.rows,
+      cell.rowId,
+      question.id,
+    );
+    final columnLabel = _institutionMatrixAxisLabel(
+      question.columns,
+      cell.columnId,
+      question.id,
+    );
+    final optionLabel = _choiceLabel(cell.options, value.optionId, question.id);
+
+    return '$rowLabel / $columnLabel : $optionLabel';
+  }
+
   String _booleanLabel(bool? value, String questionId, String rowId) {
     if (value == null) {
       throw RichClosedCorrectionPresentationException(
@@ -658,6 +762,7 @@ class RichClosedCorrectionPresenter {
       RichClosedQuestionKind.dateSlider => 'Curseur temporel',
       RichClosedQuestionKind.trueFalseGrid => 'Vrai / faux',
       RichClosedQuestionKind.causeConsequence => 'Cause / conséquence',
+      RichClosedQuestionKind.institutionMatrix => 'Matrice',
     };
   }
 }
