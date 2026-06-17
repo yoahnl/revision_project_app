@@ -73,6 +73,47 @@ void main() {
       expect(dateSlider.toleranceYears, 0);
     });
 
+    test('parses true_false_grid and cause_consequence public questions', () {
+      final questions = RichClosedExercise.fromJson(
+        richClosedV1BFullExerciseJson(),
+      ).questions;
+      final trueFalse = questions[8] as RichClosedTrueFalseGridQuestion;
+      final causeConsequence =
+          questions[9] as RichClosedCauseConsequenceQuestion;
+
+      expect(questions, hasLength(10));
+      expect(trueFalse.questionKind, RichClosedQuestionKind.trueFalseGrid);
+      expect(trueFalse.instruction, contains('lignes'));
+      expect(trueFalse.rows.map((row) => row.id), ['row-1', 'row-2', 'row-3']);
+      expect(trueFalse.rows.first.context, contains('parlementaire'));
+      expect(
+        causeConsequence.questionKind,
+        RichClosedQuestionKind.causeConsequence,
+      );
+      expect(causeConsequence.causes.map((cause) => cause.id), [
+        'cause-1',
+        'cause-2',
+        'cause-3',
+      ]);
+      expect(
+        causeConsequence.consequences.map((consequence) => consequence.id),
+        ['consequence-1', 'consequence-2', 'consequence-3'],
+      );
+      expect(causeConsequence.causes.first.description, contains('confiance'));
+    });
+
+    test('rejects cause_consequence with fewer consequences than causes', () {
+      final payload = richClosedV1BFullExerciseJson();
+      final question =
+          (payload['questions'] as List<Object?>)[9]! as Map<String, Object?>;
+      question['causes'] = [
+        ...(question['causes']! as List<Object?>),
+        {'id': 'cause-4', 'label': 'Cause sans conséquence disponible'},
+      ];
+
+      expectParseError(() => RichClosedExercise.fromJson(payload));
+    });
+
     test('rejects unsupported question kinds', () {
       expectParseError(
         () => RichClosedExercise.fromJson(richClosedExerciseWithUnknownKind()),
@@ -96,6 +137,7 @@ void main() {
         'correctChoiceIds',
         'correctPairs',
         'correctOrder',
+        'correctValues',
         'correctErrorId',
         'correctYear',
         'explanation',
@@ -172,6 +214,27 @@ void main() {
 
         expectParseError(() => RichClosedExercise.fromJson(timelineLeak));
         expectParseError(() => RichClosedExercise.fromJson(dateLeak));
+      },
+    );
+
+    test(
+      'rejects V1-018 public questions carrying private correction fields',
+      () {
+        final trueFalseLeak = richClosedV1BFullExerciseJson();
+        ((trueFalseLeak['questions']! as List<Object?>)[8]!
+            as Map<String, Object?>)['correctValues'] = [
+          {'rowId': 'row-1', 'value': true},
+        ];
+        final causeConsequenceLeak = richClosedV1BFullExerciseJson();
+        ((causeConsequenceLeak['questions']! as List<Object?>)[9]!
+            as Map<String, Object?>)['correctPairs'] = [
+          {'causeId': 'cause-1', 'consequenceId': 'consequence-1'},
+        ];
+
+        expectParseError(() => RichClosedExercise.fromJson(trueFalseLeak));
+        expectParseError(
+          () => RichClosedExercise.fromJson(causeConsequenceLeak),
+        );
       },
     );
   });
@@ -268,6 +331,41 @@ void main() {
           'year': 1958,
         },
       );
+      expect(
+        const RichClosedTrueFalseGridAnswer(
+          questionId: 'true-false-grid-1',
+          values: [
+            RichClosedTrueFalseGridValue(rowId: 'row-1', value: true),
+            RichClosedTrueFalseGridValue(rowId: 'row-2', value: false),
+          ],
+        ).toJson(),
+        {
+          'questionId': 'true-false-grid-1',
+          'questionKind': 'true_false_grid',
+          'values': [
+            {'rowId': 'row-1', 'value': true},
+            {'rowId': 'row-2', 'value': false},
+          ],
+        },
+      );
+      expect(
+        const RichClosedCauseConsequenceAnswer(
+          questionId: 'cause-consequence-1',
+          pairs: [
+            RichClosedCauseConsequencePair(
+              causeId: 'cause-1',
+              consequenceId: 'consequence-1',
+            ),
+          ],
+        ).toJson(),
+        {
+          'questionId': 'cause-consequence-1',
+          'questionKind': 'cause_consequence',
+          'pairs': [
+            {'causeId': 'cause-1', 'consequenceId': 'consequence-1'},
+          ],
+        },
+      );
     });
 
     test('serializes submit wrapper without correction or free text', () {
@@ -359,6 +457,48 @@ void main() {
         1958,
       );
     });
+
+    test(
+      'parses true_false_grid and cause_consequence post-submit corrections',
+      () {
+        final result = RichClosedExerciseResult.fromJson(
+          richClosedV1BFullResultJson(),
+        );
+        final trueFalse = result.items[8];
+        final causeConsequence = result.items[9];
+
+        expect(trueFalse.submittedAnswer, isA<RichClosedTrueFalseGridAnswer>());
+        expect(
+          trueFalse.correction,
+          isA<RichClosedCorrectTrueFalseValuesCorrection>(),
+        );
+        expect(
+          (trueFalse.correction as RichClosedCorrectTrueFalseValuesCorrection)
+              .correctValues
+              .map((value) => '${value.rowId}:${value.value}'),
+          ['row-1:true', 'row-2:false', 'row-3:true'],
+        );
+        expect(
+          causeConsequence.submittedAnswer,
+          isA<RichClosedCauseConsequenceAnswer>(),
+        );
+        expect(
+          causeConsequence.correction,
+          isA<RichClosedCorrectCauseConsequencePairsCorrection>(),
+        );
+        expect(
+          (causeConsequence.correction
+                  as RichClosedCorrectCauseConsequencePairsCorrection)
+              .correctPairs
+              .map((pair) => '${pair.causeId}:${pair.consequenceId}'),
+          [
+            'cause-1:consequence-1',
+            'cause-2:consequence-2',
+            'cause-3:consequence-3',
+          ],
+        );
+      },
+    );
 
     test('rejects absent or incoherent correction payloads', () {
       final missing = richClosedResultJson();

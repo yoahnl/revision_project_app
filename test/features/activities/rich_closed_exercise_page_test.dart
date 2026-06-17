@@ -103,6 +103,46 @@ void main() {
     expect(find.text('correctYear'), findsNothing);
   });
 
+  testWidgets('renderer rend true_false_grid et cause_consequence', (
+    tester,
+  ) async {
+    final controller = RichClosedCoreAnswerController();
+    final v1bFullExercise = RichClosedExercise.fromJson(
+      richClosedV1BFullExerciseJson(),
+    );
+    final changedQuestions = <String>[];
+
+    await tester.pumpWidget(
+      _TestHost(
+        scrollable: true,
+        child: Column(
+          children: [
+            for (final question in v1bFullExercise.questions.skip(8))
+              RichClosedQuestionRenderer(
+                question: question,
+                controller: controller,
+                enabled: true,
+                onChanged: (_) => changedQuestions.add(question.id),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    expect(
+      find.text('Le gouvernement peut être responsable devant le Parlement.'),
+      findsOneWidget,
+    );
+    expect(find.text('Motion de censure adoptée'), findsOneWidget);
+    expect(find.text('correctValues'), findsNothing);
+    expect(find.text('correctPairs'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('true-false-row-1-true')));
+    await tester.pump();
+
+    expect(changedQuestions, contains('true-false-grid-1'));
+  });
+
   testWidgets('page démarre, collecte six réponses et affiche la correction', (
     tester,
   ) async {
@@ -222,6 +262,75 @@ void main() {
     expect(find.text('Plage acceptée : 1958 - 1958'), findsOneWidget);
   });
 
+  testWidgets('page submit et affiche les corrections V1-018', (tester) async {
+    final v1bFullExercise = RichClosedExercise.fromJson(
+      richClosedV1BFullExerciseJson(),
+    );
+    final v1bFullResult = RichClosedExerciseResult.fromJson(
+      richClosedV1BFullResultJson(),
+    );
+    final api = _FakeRichClosedActivityApi(
+      exercise: v1bFullExercise,
+      result: v1bFullResult,
+    );
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedExercisePage(
+          controller: ActivityController(api),
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 / 10 répondues'), findsOneWidget);
+
+    await _answerAllQuestions(tester);
+
+    expect(find.text('10 / 10 répondues'), findsOneWidget);
+    expect(_submitButton(tester).onPressed, isNotNull);
+
+    await _tapVisible(
+      tester,
+      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.submittedAnswers, hasLength(10));
+    expect(
+      api.submittedAnswers!
+          .whereType<RichClosedTrueFalseGridAnswer>()
+          .single
+          .values
+          .map((value) => '${value.rowId}:${value.value}'),
+      ['row-1:true', 'row-2:true', 'row-3:true'],
+    );
+    expect(
+      api.submittedAnswers!
+          .whereType<RichClosedCauseConsequenceAnswer>()
+          .single
+          .pairs
+          .map((pair) => '${pair.causeId}:${pair.consequenceId}'),
+      [
+        'cause-1:consequence-1',
+        'cause-2:consequence-2',
+        'cause-3:consequence-3',
+      ],
+    );
+    expect(
+      find.text(
+        'La séparation des pouvoirs interdit toute collaboration. : Faux',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Motion de censure adoptée → Démission du gouvernement'),
+      findsWidgets,
+    );
+  });
+
   testWidgets('page affiche une erreur contrôlée au démarrage', (tester) async {
     final api = _FakeRichClosedActivityApi(
       exercise: exercise,
@@ -295,6 +404,33 @@ Future<void> _answerAllQuestions(WidgetTester tester) async {
     tester,
     find.text('Confusion avec le parlementarisme').first,
   );
+  await _tapIfPresent(
+    tester,
+    find.byKey(const ValueKey('true-false-row-1-true')),
+  );
+  await _tapIfPresent(
+    tester,
+    find.byKey(const ValueKey('true-false-row-2-true')),
+  );
+  await _tapIfPresent(
+    tester,
+    find.byKey(const ValueKey('true-false-row-3-true')),
+  );
+  await _selectCauseConsequence(
+    tester,
+    causeId: 'cause-1',
+    consequenceId: 'consequence-1',
+  );
+  await _selectCauseConsequence(
+    tester,
+    causeId: 'cause-2',
+    consequenceId: 'consequence-2',
+  );
+  await _selectCauseConsequence(
+    tester,
+    causeId: 'cause-3',
+    consequenceId: 'consequence-3',
+  );
 }
 
 Future<void> _selectMatchingRight(
@@ -308,6 +444,32 @@ Future<void> _selectMatchingRight(
   await tester.pumpAndSettle();
   await tester.tap(find.text(label).last);
   await tester.pumpAndSettle();
+}
+
+Future<void> _selectCauseConsequence(
+  WidgetTester tester, {
+  required String causeId,
+  required String consequenceId,
+}) async {
+  final finder = find.byKey(
+    ValueKey('cause-consequence-cause-consequence-1-$causeId'),
+  );
+  if (finder.evaluate().isEmpty) {
+    return;
+  }
+
+  await tester.ensureVisible(finder);
+  final dropdown = tester.widget<DropdownButton<String>>(finder);
+  dropdown.onChanged!(consequenceId);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapIfPresent(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    return;
+  }
+
+  await _tapVisible(tester, finder);
 }
 
 Future<void> _tapVisible(WidgetTester tester, Finder finder) async {

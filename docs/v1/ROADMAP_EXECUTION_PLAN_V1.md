@@ -38,10 +38,10 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-012B | Page rich closed complète et flow submit local | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_012B_RICH_CLOSED_PAGE_FLOW.md |
 | V1-013 | Today integration V1 | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_013_TODAY_INTEGRATION_V1.md |
 | V1-014 | Revision session integration V1 | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_014_REVISION_SESSION_INTEGRATION_V1.md |
-| V1-015 | Seed V1 rich demo fixtures | À faire | À créer |
-| V1-016 | E2E/smoke V1 rich questions | À faire | À créer |
+| V1-015 | Seed V1 rich demo fixtures | Non applicable côté app (API-only) | Voir api/docs/v1/ROADMAP_EXECUTION_LOT_V1_015_016_RICH_DEMO_SEED_AND_SMOKE.md |
+| V1-016 | E2E/smoke V1 rich questions | Non applicable côté app (API-only) | Voir api/docs/v1/ROADMAP_EXECUTION_LOT_V1_015_016_RICH_DEMO_SEED_AND_SMOKE.md |
 | V1-017 | Timeline/date slider V1-B | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_017_TIMELINE_DATE_SLIDER.md |
-| V1-018 | True/false grid + cause/consequence V1-B | À faire | À créer |
+| V1-018 | True/false grid + cause/consequence V1-B | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_018_TRUE_FALSE_GRID_CAUSE_CONSEQUENCE.md |
 | V1-019 | Institution matrix V1-C | À faire | À créer |
 | V1-020 | Diagram labeling V1-C | À faire | À créer |
 | V1-021 | Calculation MCQ modes de scrutin V1-C | À faire | À créer |
@@ -366,6 +366,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 ### V1-015 — Seed V1 rich demo fixtures
 
 - Objectif : préparer une démo stable d'exercices riches.
+- Statut côté app : non applicable, lot réalisé côté API uniquement.
 - Pourquoi maintenant : intégrations principales prêtes.
 - Périmètre inclus : fixtures synthétiques, dry-run, docs.
 - Non-objectifs : provider IA réel.
@@ -386,6 +387,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 ### V1-016 — E2E/smoke V1 rich questions
 
 - Objectif : protéger les chemins critiques V1.
+- Statut côté app : non applicable, lot réalisé côté API uniquement.
 - Pourquoi maintenant : seed V1 disponible.
 - Périmètre inclus : e2e API, smoke docs.
 - Non-objectifs : couverture exhaustive.
@@ -425,22 +427,22 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 
 ### V1-018 — True/false grid + cause/consequence V1-B
 
-- Objectif : ajouter grille et relations cause/conséquence.
-- Pourquoi maintenant : interactions comparatives avancées.
-- Périmètre inclus : contrats, widgets, correction.
-- Non-objectifs : matrix institutionnelle complète.
-- Fichiers probablement concernés : activities.
-- Backend : validations lignes/paires.
-- Frontend : grille accessible et matching spécialisé.
-- Genkit : quotas V1-B.
-- GenUI : optionnel.
-- Prisma : selon ADR.
-- API : types V1-B.
-- Tests attendus : lignes complètes, paires univoques.
-- Validations à lancer : tests ciblés.
-- Critères d'acceptation : pas de grille trop large.
-- Critère de stop : UX mobile illisible.
-- Risques : surcharge cognitive.
+- Objectif : ajouter les types rich closed fermés `true_false_grid` et `cause_consequence`.
+- Pourquoi maintenant : V1-017 a ajouté `timeline` et `date_slider`; l'app peut rendre deux interactions fermées supplémentaires.
+- Périmètre inclus : modèles Flutter, parser strict, answers typées, widgets minimaux, correction UI post-submit, tests parser/controller/widgets/page.
+- Non-objectifs : V1-019, `institution_matrix`, refonte de page rich closed, widget libre, rendu JSON arbitraire, score côté Flutter.
+- Fichiers concernés : activities rich closed.
+- Backend : traité dans le repo API.
+- Frontend : grille vrai/faux sans valeur par défaut, association cause/conséquence par dropdown sans drag obligatoire.
+- Genkit : non appelé côté app.
+- GenUI : non modifié.
+- Prisma : non applicable.
+- API : consommation des types V1-B fournis par le backend.
+- Tests attendus : réponses complètes, paires univoques, correction post-submit, anti-fuite pré-submit.
+- Validations à lancer : tests activities, analyze, tests non-régression Today/sessions/router/full suite.
+- Critères d'acceptation : aucune correction pré-submit, aucun score Flutter, V1-A et V1-017 non cassés.
+- Critère de stop : payload public non typé ou fuite de correction.
+- Risques : UI volontairement minimale avant refonte.
 - Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_018_TRUE_FALSE_GRID_CAUSE_CONSEQUENCE.md`.
 
 ### V1-019 — Institution matrix V1-C

@@ -325,6 +325,157 @@ Map<String, Object?> richClosedV1BResultJson() {
   return json;
 }
 
+Map<String, Object?> richClosedV1BFullExerciseJson() {
+  final json = richClosedV1BExerciseJson();
+  final questions = List<Object?>.from(json['questions']! as List<Object?>);
+  json['questions'] = questions;
+
+  questions.addAll([
+    {
+      'id': 'true-false-grid-1',
+      'questionKind': 'true_false_grid',
+      'prompt':
+          'Indique si chaque affirmation sur le régime parlementaire est vraie ou fausse.',
+      'instruction': 'Réponds à toutes les lignes.',
+      'difficulty': 'MEDIUM',
+      'cognitiveSkill': 'classification',
+      'sourceChunkIds': ['chunk-8'],
+      'rows': [
+        {
+          'id': 'row-1',
+          'statement':
+              'Le gouvernement peut être responsable devant le Parlement.',
+          'context': 'Critère du régime parlementaire.',
+        },
+        {
+          'id': 'row-2',
+          'statement':
+              'La séparation des pouvoirs interdit toute collaboration.',
+          'context': 'La collaboration est possible en régime parlementaire.',
+        },
+        {
+          'id': 'row-3',
+          'statement': 'La dissolution peut être un moyen réciproque.',
+          'context': 'Elle peut équilibrer la responsabilité politique.',
+        },
+      ],
+    },
+    {
+      'id': 'cause-consequence-1',
+      'questionKind': 'cause_consequence',
+      'prompt':
+          'Associe chaque mécanisme institutionnel à sa conséquence politique.',
+      'instruction': 'Choisis une conséquence différente pour chaque cause.',
+      'difficulty': 'HIGH',
+      'cognitiveSkill': 'causality',
+      'sourceChunkIds': ['chunk-9'],
+      'causes': [
+        {
+          'id': 'cause-1',
+          'label': 'Motion de censure adoptée',
+          'description': 'La chambre retire sa confiance.',
+        },
+        {
+          'id': 'cause-2',
+          'label': 'Dissolution de l’Assemblée',
+          'description': 'Le mandat de la chambre prend fin.',
+        },
+        {
+          'id': 'cause-3',
+          'label': 'Question de confiance rejetée',
+          'description': 'Le gouvernement engage sa responsabilité.',
+        },
+      ],
+      'consequences': [
+        {
+          'id': 'consequence-1',
+          'label': 'Démission du gouvernement',
+          'description': 'La responsabilité politique produit ses effets.',
+        },
+        {
+          'id': 'consequence-2',
+          'label': 'Nouvelles élections législatives',
+          'description': 'Le corps électoral renouvelle la chambre.',
+        },
+        {
+          'id': 'consequence-3',
+          'label': 'Crise politique ou départ du gouvernement',
+          'description': 'Le rejet manifeste une perte de confiance.',
+        },
+      ],
+    },
+  ]);
+
+  return json;
+}
+
+Map<String, Object?> richClosedV1BFullResultJson() {
+  final json = richClosedV1BResultJson();
+  final items = List<Object?>.from(json['items']! as List<Object?>);
+
+  json['correctAnswers'] = 9;
+  json['totalQuestions'] = 10;
+  json['score'] = 0.9;
+  json['items'] = items;
+  items.addAll([
+    {
+      'questionId': 'true-false-grid-1',
+      'questionKind': 'true_false_grid',
+      'prompt':
+          'Indique si chaque affirmation sur le régime parlementaire est vraie ou fausse.',
+      'submittedAnswer': {
+        'questionId': 'true-false-grid-1',
+        'questionKind': 'true_false_grid',
+        'values': [
+          {'rowId': 'row-1', 'value': true},
+          {'rowId': 'row-2', 'value': true},
+          {'rowId': 'row-3', 'value': true},
+        ],
+      },
+      'isCorrect': false,
+      'partialScore': 0,
+      'explanation': 'Le parlementarisme admet la collaboration des pouvoirs.',
+      'sourceChunkIds': ['chunk-8'],
+      'correction': {
+        'correctValues': [
+          {'rowId': 'row-1', 'value': true},
+          {'rowId': 'row-2', 'value': false},
+          {'rowId': 'row-3', 'value': true},
+        ],
+      },
+    },
+    {
+      'questionId': 'cause-consequence-1',
+      'questionKind': 'cause_consequence',
+      'prompt':
+          'Associe chaque mécanisme institutionnel à sa conséquence politique.',
+      'submittedAnswer': {
+        'questionId': 'cause-consequence-1',
+        'questionKind': 'cause_consequence',
+        'pairs': [
+          {'causeId': 'cause-1', 'consequenceId': 'consequence-1'},
+          {'causeId': 'cause-2', 'consequenceId': 'consequence-2'},
+          {'causeId': 'cause-3', 'consequenceId': 'consequence-3'},
+        ],
+      },
+      'isCorrect': true,
+      'partialScore': 1,
+      'explanation':
+          'Chaque mécanisme active une conséquence institutionnelle distincte.',
+      'sourceChunkIds': ['chunk-9'],
+      'correction': {
+        'correctPairs': [
+          {'causeId': 'cause-1', 'consequenceId': 'consequence-1'},
+          {'causeId': 'cause-2', 'consequenceId': 'consequence-2'},
+          {'causeId': 'cause-3', 'consequenceId': 'consequence-3'},
+        ],
+      },
+    },
+  ]);
+
+  return json;
+}
+
 Map<String, Object?> richClosedExerciseWithCorrectChoiceLeak() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
@@ -347,7 +498,7 @@ Map<String, Object?> richClosedExerciseWithUnknownKind() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
           as Map<String, Object?>)['questionKind'] =
-      'true_false_grid';
+      'institution_matrix';
   return json;
 }
 

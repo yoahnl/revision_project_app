@@ -7,6 +7,8 @@ class RichClosedCoreAnswerController {
   final Map<String, List<String>> _orderingSelections = {};
   final Map<String, List<String>> _timelineSelections = {};
   final Map<String, int> _dateSliderSelections = {};
+  final Map<String, Map<String, bool>> _trueFalseSelections = {};
+  final Map<String, Map<String, String>> _causeConsequenceSelections = {};
 
   String? _message;
 
@@ -72,6 +74,50 @@ class RichClosedCoreAnswerController {
       question.id,
       () => _initialYearFor(question),
     );
+  }
+
+  bool? selectedTrueFalseValueFor(String questionId, String rowId) {
+    return _trueFalseSelections[questionId]?[rowId];
+  }
+
+  List<RichClosedTrueFalseGridValue> trueFalseValuesFor(
+    RichClosedTrueFalseGridQuestion question,
+  ) {
+    final selections = _trueFalseSelections[question.id];
+    if (selections == null || selections.isEmpty) {
+      return const [];
+    }
+
+    return [
+      for (final row in question.rows)
+        if (selections[row.id] != null)
+          RichClosedTrueFalseGridValue(
+            rowId: row.id,
+            value: selections[row.id]!,
+          ),
+    ];
+  }
+
+  String? selectedConsequenceIdFor(String questionId, String causeId) {
+    return _causeConsequenceSelections[questionId]?[causeId];
+  }
+
+  List<RichClosedCauseConsequencePair> causeConsequencePairsFor(
+    RichClosedCauseConsequenceQuestion question,
+  ) {
+    final selections = _causeConsequenceSelections[question.id];
+    if (selections == null || selections.isEmpty) {
+      return const [];
+    }
+
+    return [
+      for (final cause in question.causes)
+        if (selections[cause.id] != null)
+          RichClosedCauseConsequencePair(
+            causeId: cause.id,
+            consequenceId: selections[cause.id]!,
+          ),
+    ];
   }
 
   void selectSingleChoice({
@@ -198,6 +244,45 @@ class RichClosedCoreAnswerController {
     _message = null;
   }
 
+  void setTrueFalseValue({
+    required RichClosedTrueFalseGridQuestion question,
+    required String rowId,
+    required bool value,
+  }) {
+    if (!_hasTrueFalseRow(question.rows, rowId)) {
+      return;
+    }
+
+    final selections = _trueFalseSelections.putIfAbsent(
+      question.id,
+      () => <String, bool>{},
+    );
+    selections[rowId] = value;
+    _message = null;
+  }
+
+  void setCauseConsequencePair({
+    required RichClosedCauseConsequenceQuestion question,
+    required String causeId,
+    required String consequenceId,
+  }) {
+    if (!_hasCauseConsequenceItem(question.causes, causeId) ||
+        !_hasCauseConsequenceItem(question.consequences, consequenceId)) {
+      return;
+    }
+
+    final selections = _causeConsequenceSelections.putIfAbsent(
+      question.id,
+      () => <String, String>{},
+    );
+    selections.removeWhere(
+      (existingCauseId, existingConsequenceId) =>
+          existingCauseId != causeId && existingConsequenceId == consequenceId,
+    );
+    selections[causeId] = consequenceId;
+    _message = null;
+  }
+
   bool canSubmitQuestion(RichClosedQuestion question) {
     return switch (question) {
       RichClosedSingleChoiceQuestion() =>
@@ -211,6 +296,10 @@ class RichClosedCoreAnswerController {
       RichClosedOrderingQuestion() => _canSubmitOrdering(question),
       RichClosedTimelineQuestion() => _canSubmitTimeline(question),
       RichClosedDateSliderQuestion() => true,
+      RichClosedTrueFalseGridQuestion() => _canSubmitTrueFalseGrid(question),
+      RichClosedCauseConsequenceQuestion() => _canSubmitCauseConsequence(
+        question,
+      ),
     };
   }
 
@@ -253,6 +342,14 @@ class RichClosedCoreAnswerController {
         questionId: question.id,
         year: selectedYearFor(question),
       ),
+      RichClosedTrueFalseGridQuestion() => RichClosedTrueFalseGridAnswer(
+        questionId: question.id,
+        values: trueFalseValuesFor(question),
+      ),
+      RichClosedCauseConsequenceQuestion() => RichClosedCauseConsequenceAnswer(
+        questionId: question.id,
+        pairs: causeConsequencePairsFor(question),
+      ),
     };
   }
 
@@ -283,6 +380,34 @@ class RichClosedCoreAnswerController {
 
   bool _canSubmitTimeline(RichClosedTimelineQuestion question) {
     return _isCompleteTimeline(question, orderedEventIdsFor(question));
+  }
+
+  bool _canSubmitTrueFalseGrid(RichClosedTrueFalseGridQuestion question) {
+    final selections = _trueFalseSelections[question.id];
+    if (selections == null || selections.length != question.rows.length) {
+      return false;
+    }
+
+    final rowIds = question.rows.map((row) => row.id).toSet();
+
+    return selections.keys.every(rowIds.contains);
+  }
+
+  bool _canSubmitCauseConsequence(RichClosedCauseConsequenceQuestion question) {
+    final selections = _causeConsequenceSelections[question.id];
+    if (selections == null || selections.length != question.causes.length) {
+      return false;
+    }
+
+    final causeIds = question.causes.map((cause) => cause.id).toSet();
+    final consequenceIds = question.consequences
+        .map((consequence) => consequence.id)
+        .toSet();
+    final selectedConsequenceIds = selections.values.toSet();
+
+    return selections.keys.every(causeIds.contains) &&
+        selections.values.every(consequenceIds.contains) &&
+        selectedConsequenceIds.length == selections.length;
   }
 
   void _moveOrderingItem({
@@ -391,5 +516,16 @@ class RichClosedCoreAnswerController {
 
   bool _hasTimelineEvent(List<RichClosedTimelineEvent> events, String eventId) {
     return events.any((event) => event.id == eventId);
+  }
+
+  bool _hasTrueFalseRow(List<RichClosedTrueFalseRow> rows, String rowId) {
+    return rows.any((row) => row.id == rowId);
+  }
+
+  bool _hasCauseConsequenceItem(
+    List<RichClosedCauseConsequenceItem> items,
+    String itemId,
+  ) {
+    return items.any((item) => item.id == itemId);
   }
 }

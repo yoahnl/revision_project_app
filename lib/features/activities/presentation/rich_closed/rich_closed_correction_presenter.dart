@@ -56,6 +56,14 @@ class RichClosedCorrectionPresenter {
       RichClosedOrderingQuestion() => _presentOrdering(question, item),
       RichClosedTimelineQuestion() => _presentTimeline(question, item),
       RichClosedDateSliderQuestion() => _presentDateSlider(question, item),
+      RichClosedTrueFalseGridQuestion() => _presentTrueFalseGrid(
+        question,
+        item,
+      ),
+      RichClosedCauseConsequenceQuestion() => _presentCauseConsequence(
+        question,
+        item,
+      ),
       RichClosedCaseQualificationQuestion() => _presentCaseQualification(
         question,
         item,
@@ -169,6 +177,41 @@ class RichClosedCorrectionPresenter {
         'Année correcte : ${correction.correctYear}',
         'Plage acceptée : ${correction.minAcceptedYear} - ${correction.maxAcceptedYear}',
       ],
+    );
+  }
+
+  RichClosedCorrectionItemViewModel _presentTrueFalseGrid(
+    RichClosedTrueFalseGridQuestion question,
+    RichClosedCorrectionItem item,
+  ) {
+    final submitted = _trueFalseGridAnswer(item);
+    final correction = _trueFalseValuesCorrection(item);
+
+    return _baseItem(
+      question: question,
+      item: item,
+      contextText: question.instruction,
+      submittedAnswerLines: _trueFalseLines(question, submitted.values),
+      correctAnswerLines: _trueFalseLines(question, correction.correctValues),
+    );
+  }
+
+  RichClosedCorrectionItemViewModel _presentCauseConsequence(
+    RichClosedCauseConsequenceQuestion question,
+    RichClosedCorrectionItem item,
+  ) {
+    final submitted = _causeConsequenceAnswer(item);
+    final correction = _causeConsequencePairsCorrection(item);
+
+    return _baseItem(
+      question: question,
+      item: item,
+      contextText: question.instruction,
+      submittedAnswerLines: _causeConsequenceLines(question, submitted.pairs),
+      correctAnswerLines: _causeConsequenceLines(
+        question,
+        correction.correctPairs,
+      ),
     );
   }
 
@@ -336,6 +379,30 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedTrueFalseGridAnswer _trueFalseGridAnswer(
+    RichClosedCorrectionItem item,
+  ) {
+    final answer = item.submittedAnswer;
+    if (answer is RichClosedTrueFalseGridAnswer) {
+      return answer;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid true/false submitted answer for ${item.questionId}',
+    );
+  }
+
+  RichClosedCauseConsequenceAnswer _causeConsequenceAnswer(
+    RichClosedCorrectionItem item,
+  ) {
+    final answer = item.submittedAnswer;
+    if (answer is RichClosedCauseConsequenceAnswer) {
+      return answer;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid cause/consequence submitted answer for ${item.questionId}',
+    );
+  }
+
   RichClosedCaseQualificationAnswer _caseQualificationAnswer(
     RichClosedCorrectionItem item,
   ) {
@@ -420,6 +487,29 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedCorrectTrueFalseValuesCorrection _trueFalseValuesCorrection(
+    RichClosedCorrectionItem item,
+  ) {
+    final correction = item.correction;
+    if (correction is RichClosedCorrectTrueFalseValuesCorrection) {
+      return correction;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid true/false correction for ${item.questionId}',
+    );
+  }
+
+  RichClosedCorrectCauseConsequencePairsCorrection
+  _causeConsequencePairsCorrection(RichClosedCorrectionItem item) {
+    final correction = item.correction;
+    if (correction is RichClosedCorrectCauseConsequencePairsCorrection) {
+      return correction;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid cause/consequence correction for ${item.questionId}',
+    );
+  }
+
   RichClosedCorrectErrorIdCorrection _errorIdCorrection(
     RichClosedCorrectionItem item,
   ) {
@@ -459,6 +549,21 @@ class RichClosedCorrectionPresenter {
     }
     throw RichClosedCorrectionPresentationException(
       'Unknown choice $choiceId for question $questionId',
+    );
+  }
+
+  String _causeConsequenceItemLabel(
+    List<RichClosedCauseConsequenceItem> items,
+    String itemId,
+    String questionId,
+  ) {
+    for (final item in items) {
+      if (item.id == itemId) {
+        return item.label;
+      }
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Unknown cause/consequence item $itemId for question $questionId',
     );
   }
 
@@ -508,6 +613,39 @@ class RichClosedCorrectionPresenter {
     ];
   }
 
+  List<String> _trueFalseLines(
+    RichClosedTrueFalseGridQuestion question,
+    List<RichClosedTrueFalseGridValue> values,
+  ) {
+    final valuesByRowId = {for (final value in values) value.rowId: value};
+
+    return [
+      for (final row in question.rows)
+        '${row.statement} : ${_booleanLabel(valuesByRowId[row.id]?.value, question.id, row.id)}',
+    ];
+  }
+
+  List<String> _causeConsequenceLines(
+    RichClosedCauseConsequenceQuestion question,
+    List<RichClosedCauseConsequencePair> pairs,
+  ) {
+    return [
+      for (final pair in pairs)
+        '${_causeConsequenceItemLabel(question.causes, pair.causeId, question.id)} → '
+            '${_causeConsequenceItemLabel(question.consequences, pair.consequenceId, question.id)}',
+    ];
+  }
+
+  String _booleanLabel(bool? value, String questionId, String rowId) {
+    if (value == null) {
+      throw RichClosedCorrectionPresentationException(
+        'Missing true/false value $rowId for question $questionId',
+      );
+    }
+
+    return value ? 'Vrai' : 'Faux';
+  }
+
   String _kindLabel(RichClosedQuestionKind kind) {
     return switch (kind) {
       RichClosedQuestionKind.singleChoice => 'Choix unique',
@@ -518,6 +656,8 @@ class RichClosedCorrectionPresenter {
       RichClosedQuestionKind.errorDetection => 'Erreur à repérer',
       RichClosedQuestionKind.timeline => 'Chronologie',
       RichClosedQuestionKind.dateSlider => 'Curseur temporel',
+      RichClosedQuestionKind.trueFalseGrid => 'Vrai / faux',
+      RichClosedQuestionKind.causeConsequence => 'Cause / conséquence',
     };
   }
 }

@@ -66,7 +66,7 @@ Ce catalogue décrit les types de questions fermées proposés pour la V1. Tous 
 - Structure de réponse attendue : `{ questionId, valuesByRowId: Record<string, boolean> }`.
 - Scoring : un point par ligne ou ensemble exact selon ADR.
 - Sources : source par ligne ou source globale.
-- Validation backend : 3 à 6 lignes, affirmations courtes, correction complète.
+- Validation backend : 3 à 8 lignes, affirmations courtes, correction complète.
 - Validation frontend : grille accessible avec radios par ligne.
 - Rendu UI : tableau vertical compact.
 - Correction UI : ligne correcte/incorrecte avec explication groupée.

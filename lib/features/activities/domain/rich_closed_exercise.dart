@@ -18,7 +18,9 @@ enum RichClosedQuestionKind {
   caseQualification('case_qualification'),
   errorDetection('error_detection'),
   timeline('timeline'),
-  dateSlider('date_slider');
+  dateSlider('date_slider'),
+  trueFalseGrid('true_false_grid'),
+  causeConsequence('cause_consequence');
 
   const RichClosedQuestionKind(this.wireValue);
 
@@ -228,6 +230,24 @@ sealed class RichClosedQuestion {
           'Invalid date slider tolerance',
         ),
       ).._validateBounds(),
+      RichClosedQuestionKind.trueFalseGrid => RichClosedTrueFalseGridQuestion(
+        base: base,
+        instruction: _readOptionalString(json['instruction']),
+        rows: _trueFalseRows(json['rows']),
+      ).._validateRows(),
+      RichClosedQuestionKind.causeConsequence =>
+        RichClosedCauseConsequenceQuestion(
+          base: base,
+          instruction: _readOptionalString(json['instruction']),
+          causes: _causeConsequenceItems(
+            json['causes'],
+            'Invalid cause/consequence causes',
+          ),
+          consequences: _causeConsequenceItems(
+            json['consequences'],
+            'Invalid cause/consequence consequences',
+          ),
+        ).._validateItems(),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationQuestion(
           base: base,
@@ -393,6 +413,69 @@ class RichClosedDateSliderQuestion extends RichClosedQuestion {
   }
 }
 
+class RichClosedTrueFalseGridQuestion extends RichClosedQuestion {
+  RichClosedTrueFalseGridQuestion({
+    required RichClosedQuestionBase base,
+    required this.instruction,
+    required this.rows,
+  }) : super(
+         id: base.id,
+         questionKind: RichClosedQuestionKind.trueFalseGrid,
+         prompt: base.prompt,
+         difficulty: base.difficulty,
+         cognitiveSkill: base.cognitiveSkill,
+         sourceChunkIds: base.sourceChunkIds,
+       );
+
+  final String? instruction;
+  final List<RichClosedTrueFalseRow> rows;
+
+  void _validateRows() {
+    final rowIds = rows.map((row) => row.id).toSet();
+    if (rows.length < 3 || rows.length > 8 || rowIds.length != rows.length) {
+      throw const RichClosedExerciseParseException(
+        'Invalid true/false grid rows',
+      );
+    }
+  }
+}
+
+class RichClosedCauseConsequenceQuestion extends RichClosedQuestion {
+  RichClosedCauseConsequenceQuestion({
+    required RichClosedQuestionBase base,
+    required this.instruction,
+    required this.causes,
+    required this.consequences,
+  }) : super(
+         id: base.id,
+         questionKind: RichClosedQuestionKind.causeConsequence,
+         prompt: base.prompt,
+         difficulty: base.difficulty,
+         cognitiveSkill: base.cognitiveSkill,
+         sourceChunkIds: base.sourceChunkIds,
+       );
+
+  final String? instruction;
+  final List<RichClosedCauseConsequenceItem> causes;
+  final List<RichClosedCauseConsequenceItem> consequences;
+
+  void _validateItems() {
+    final causeIds = causes.map((cause) => cause.id).toSet();
+    final consequenceIds = consequences
+        .map((consequence) => consequence.id)
+        .toSet();
+    if (causes.length < 3 ||
+        consequences.length < 3 ||
+        consequences.length < causes.length ||
+        causeIds.length != causes.length ||
+        consequenceIds.length != consequences.length) {
+      throw const RichClosedExerciseParseException(
+        'Invalid cause/consequence items',
+      );
+    }
+  }
+}
+
 class RichClosedCaseQualificationQuestion extends RichClosedQuestion {
   RichClosedCaseQualificationQuestion({
     required RichClosedQuestionBase base,
@@ -526,6 +609,107 @@ class RichClosedTimelineEvent {
   final String? description;
 }
 
+class RichClosedTrueFalseRow {
+  const RichClosedTrueFalseRow({
+    required this.id,
+    required this.statement,
+    required this.context,
+  });
+
+  factory RichClosedTrueFalseRow.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid rich closed true/false row');
+
+    return RichClosedTrueFalseRow(
+      id: _readString(json['id'], 'Invalid true/false row id'),
+      statement: _readString(
+        json['statement'],
+        'Invalid true/false row statement',
+      ),
+      context: _readOptionalString(json['context']),
+    );
+  }
+
+  final String id;
+  final String statement;
+  final String? context;
+}
+
+class RichClosedTrueFalseGridValue {
+  const RichClosedTrueFalseGridValue({
+    required this.rowId,
+    required this.value,
+  });
+
+  factory RichClosedTrueFalseGridValue.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid rich closed true/false value');
+
+    return RichClosedTrueFalseGridValue(
+      rowId: _readString(json['rowId'], 'Invalid true/false row id'),
+      value: _readBool(json['value'], 'Invalid true/false value'),
+    );
+  }
+
+  Map<String, Object?> toJson() => {'rowId': rowId, 'value': value};
+
+  final String rowId;
+  final bool value;
+}
+
+class RichClosedCauseConsequenceItem {
+  const RichClosedCauseConsequenceItem({
+    required this.id,
+    required this.label,
+    required this.description,
+  });
+
+  factory RichClosedCauseConsequenceItem.fromJson(Object? value) {
+    final json = _readObject(
+      value,
+      'Invalid rich closed cause/consequence item',
+    );
+
+    return RichClosedCauseConsequenceItem(
+      id: _readString(json['id'], 'Invalid cause/consequence item id'),
+      label: _readString(json['label'], 'Invalid cause/consequence item label'),
+      description: _readOptionalString(json['description']),
+    );
+  }
+
+  final String id;
+  final String label;
+  final String? description;
+}
+
+class RichClosedCauseConsequencePair {
+  const RichClosedCauseConsequencePair({
+    required this.causeId,
+    required this.consequenceId,
+  });
+
+  factory RichClosedCauseConsequencePair.fromJson(Object? value) {
+    final json = _readObject(
+      value,
+      'Invalid rich closed cause/consequence pair',
+    );
+
+    return RichClosedCauseConsequencePair(
+      causeId: _readString(json['causeId'], 'Invalid cause id'),
+      consequenceId: _readString(
+        json['consequenceId'],
+        'Invalid consequence id',
+      ),
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+    'causeId': causeId,
+    'consequenceId': consequenceId,
+  };
+
+  final String causeId;
+  final String consequenceId;
+}
+
 class RichClosedPair {
   const RichClosedPair({required this.leftId, required this.rightId});
 
@@ -594,6 +778,15 @@ sealed class RichClosedAnswer {
         questionId: questionId,
         year: _readInt(json['year'], 'Invalid date slider answer'),
       ),
+      RichClosedQuestionKind.trueFalseGrid => RichClosedTrueFalseGridAnswer(
+        questionId: questionId,
+        values: _trueFalseValues(json['values']),
+      ),
+      RichClosedQuestionKind.causeConsequence =>
+        RichClosedCauseConsequenceAnswer(
+          questionId: questionId,
+          pairs: _causeConsequencePairs(json['pairs']),
+        ),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationAnswer(
           questionId: questionId,
@@ -708,6 +901,38 @@ class RichClosedDateSliderAnswer extends RichClosedAnswer {
     'questionId': questionId,
     'questionKind': questionKind.wireValue,
     'year': year,
+  };
+}
+
+class RichClosedTrueFalseGridAnswer extends RichClosedAnswer {
+  const RichClosedTrueFalseGridAnswer({
+    required super.questionId,
+    required this.values,
+  }) : super(questionKind: RichClosedQuestionKind.trueFalseGrid);
+
+  final List<RichClosedTrueFalseGridValue> values;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'questionId': questionId,
+    'questionKind': questionKind.wireValue,
+    'values': [for (final value in values) value.toJson()],
+  };
+}
+
+class RichClosedCauseConsequenceAnswer extends RichClosedAnswer {
+  const RichClosedCauseConsequenceAnswer({
+    required super.questionId,
+    required this.pairs,
+  }) : super(questionKind: RichClosedQuestionKind.causeConsequence);
+
+  final List<RichClosedCauseConsequencePair> pairs;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'questionId': questionId,
+    'questionKind': questionKind.wireValue,
+    'pairs': [for (final pair in pairs) pair.toJson()],
   };
 }
 
@@ -922,6 +1147,14 @@ sealed class RichClosedCorrectionPayload {
           'Invalid maximum accepted year',
         ),
       ),
+      RichClosedQuestionKind.trueFalseGrid =>
+        RichClosedCorrectTrueFalseValuesCorrection(
+          correctValues: _trueFalseValues(json['correctValues']),
+        ),
+      RichClosedQuestionKind.causeConsequence =>
+        RichClosedCorrectCauseConsequencePairsCorrection(
+          correctPairs: _causeConsequencePairs(json['correctPairs']),
+        ),
       RichClosedQuestionKind.errorDetection =>
         RichClosedCorrectErrorIdCorrection(
           correctErrorId: _readString(
@@ -967,6 +1200,24 @@ class RichClosedCorrectYearCorrection extends RichClosedCorrectionPayload {
   final int correctYear;
   final int minAcceptedYear;
   final int maxAcceptedYear;
+}
+
+class RichClosedCorrectTrueFalseValuesCorrection
+    extends RichClosedCorrectionPayload {
+  const RichClosedCorrectTrueFalseValuesCorrection({
+    required this.correctValues,
+  });
+
+  final List<RichClosedTrueFalseGridValue> correctValues;
+}
+
+class RichClosedCorrectCauseConsequencePairsCorrection
+    extends RichClosedCorrectionPayload {
+  const RichClosedCorrectCauseConsequencePairsCorrection({
+    required this.correctPairs,
+  });
+
+  final List<RichClosedCauseConsequencePair> correctPairs;
 }
 
 class RichClosedCorrectErrorIdCorrection extends RichClosedCorrectionPayload {
@@ -1016,6 +1267,67 @@ List<RichClosedTimelineEvent> _timelineEvents(Object? value) {
   }
 
   return events;
+}
+
+List<RichClosedTrueFalseRow> _trueFalseRows(Object? value) {
+  final rows = _readList(
+    value,
+    'Invalid rich closed true/false rows',
+  ).map(RichClosedTrueFalseRow.fromJson).toList(growable: false);
+
+  if (rows.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Rich closed true/false rows cannot be empty',
+    );
+  }
+
+  return rows;
+}
+
+List<RichClosedTrueFalseGridValue> _trueFalseValues(Object? value) {
+  final values = _readList(
+    value,
+    'Invalid rich closed true/false values',
+  ).map(RichClosedTrueFalseGridValue.fromJson).toList(growable: false);
+
+  if (values.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Rich closed true/false values cannot be empty',
+    );
+  }
+
+  return values;
+}
+
+List<RichClosedCauseConsequenceItem> _causeConsequenceItems(
+  Object? value,
+  String message,
+) {
+  final items = _readList(
+    value,
+    message,
+  ).map(RichClosedCauseConsequenceItem.fromJson).toList(growable: false);
+
+  if (items.isEmpty) {
+    throw RichClosedExerciseParseException(message);
+  }
+
+  return items;
+}
+
+List<RichClosedCauseConsequencePair> _causeConsequencePairs(Object? value) {
+  final pairs = _readList(
+    value,
+    'Invalid rich closed cause/consequence pairs',
+  ).map(RichClosedCauseConsequencePair.fromJson).toList(growable: false);
+
+  if (pairs.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Rich closed cause/consequence pairs cannot be empty',
+    );
+  }
+
+  return pairs;
 }
 
 List<RichClosedPair> _pairs(Object? value) {

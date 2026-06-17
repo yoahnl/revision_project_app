@@ -344,6 +344,105 @@ void main() {
     expect((answer! as RichClosedDateSliderAnswer).year, 1960);
   });
 
+  test('true_false_grid commence incomplet puis produit values', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1bFullExercise = RichClosedExercise.fromJson(
+      richClosedV1BFullExerciseJson(),
+    );
+    final trueFalse = _question<RichClosedTrueFalseGridQuestion>(
+      v1bFullExercise,
+    );
+
+    expect(controller.canSubmitQuestion(trueFalse), isFalse);
+    expect(controller.answerFor(trueFalse), isNull);
+
+    controller.setTrueFalseValue(
+      question: trueFalse,
+      rowId: 'row-1',
+      value: true,
+    );
+    controller.setTrueFalseValue(
+      question: trueFalse,
+      rowId: 'row-2',
+      value: false,
+    );
+
+    expect(controller.canSubmitQuestion(trueFalse), isFalse);
+
+    controller.setTrueFalseValue(
+      question: trueFalse,
+      rowId: 'row-3',
+      value: true,
+    );
+
+    final answer = controller.answerFor(trueFalse);
+    expect(answer, isA<RichClosedTrueFalseGridAnswer>());
+    expect(
+      (answer! as RichClosedTrueFalseGridAnswer).values.map(
+        (value) => '${value.rowId}:${value.value}',
+      ),
+      ['row-1:true', 'row-2:false', 'row-3:true'],
+    );
+  });
+
+  test('cause_consequence commence incomplet et remplace les doublons', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1bFullExercise = RichClosedExercise.fromJson(
+      richClosedV1BFullExerciseJson(),
+    );
+    final causeConsequence = _question<RichClosedCauseConsequenceQuestion>(
+      v1bFullExercise,
+    );
+
+    expect(controller.canSubmitQuestion(causeConsequence), isFalse);
+    expect(controller.answerFor(causeConsequence), isNull);
+
+    controller.setCauseConsequencePair(
+      question: causeConsequence,
+      causeId: 'cause-1',
+      consequenceId: 'consequence-1',
+    );
+    controller.setCauseConsequencePair(
+      question: causeConsequence,
+      causeId: 'cause-2',
+      consequenceId: 'consequence-1',
+    );
+
+    expect(
+      controller.selectedConsequenceIdFor(causeConsequence.id, 'cause-1'),
+      isNull,
+    );
+    expect(
+      controller.selectedConsequenceIdFor(causeConsequence.id, 'cause-2'),
+      'consequence-1',
+    );
+    expect(controller.canSubmitQuestion(causeConsequence), isFalse);
+
+    controller.setCauseConsequencePair(
+      question: causeConsequence,
+      causeId: 'cause-1',
+      consequenceId: 'consequence-2',
+    );
+    controller.setCauseConsequencePair(
+      question: causeConsequence,
+      causeId: 'cause-3',
+      consequenceId: 'consequence-3',
+    );
+
+    final answer = controller.answerFor(causeConsequence);
+    expect(answer, isA<RichClosedCauseConsequenceAnswer>());
+    expect(
+      (answer! as RichClosedCauseConsequenceAnswer).pairs.map(
+        (pair) => '${pair.causeId}:${pair.consequenceId}',
+      ),
+      [
+        'cause-1:consequence-2',
+        'cause-2:consequence-1',
+        'cause-3:consequence-3',
+      ],
+    );
+  });
+
   test('matching et ordering ne produisent jamais de correction', () {
     final controller = RichClosedCoreAnswerController();
     final matching = _question<RichClosedMatchingQuestion>(exercise);
@@ -394,6 +493,49 @@ void main() {
       expect(json.containsKey('explanation'), isFalse);
     }
   });
+
+  test(
+    'true_false_grid et cause_consequence ne produisent jamais de correction',
+    () {
+      final controller = RichClosedCoreAnswerController();
+      final v1bFullExercise = RichClosedExercise.fromJson(
+        richClosedV1BFullExerciseJson(),
+      );
+      final trueFalse = _question<RichClosedTrueFalseGridQuestion>(
+        v1bFullExercise,
+      );
+      final causeConsequence = _question<RichClosedCauseConsequenceQuestion>(
+        v1bFullExercise,
+      );
+
+      for (final row in trueFalse.rows) {
+        controller.setTrueFalseValue(
+          question: trueFalse,
+          rowId: row.id,
+          value: true,
+        );
+      }
+      for (final indexedCause in causeConsequence.causes.indexed) {
+        controller.setCauseConsequencePair(
+          question: causeConsequence,
+          causeId: indexedCause.$2.id,
+          consequenceId: causeConsequence.consequences[indexedCause.$1].id,
+        );
+      }
+
+      final trueFalseJson = controller.answerFor(trueFalse)!.toJson();
+      final causeConsequenceJson = controller
+          .answerFor(causeConsequence)!
+          .toJson();
+
+      for (final json in [trueFalseJson, causeConsequenceJson]) {
+        expect(json.keys.any((key) => key.startsWith('correct')), isFalse);
+        expect(json.containsKey('correction'), isFalse);
+        expect(json.containsKey('score'), isFalse);
+        expect(json.containsKey('explanation'), isFalse);
+      }
+    },
+  );
 
   test('ne produit jamais de correction dans le JSON de réponse', () {
     final controller = RichClosedCoreAnswerController();

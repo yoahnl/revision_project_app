@@ -270,6 +270,31 @@ void _answerAllQuestions(RichClosedExerciseFlowController controller) {
         break;
       case RichClosedDateSliderQuestion():
         break;
+      case RichClosedTrueFalseGridQuestion():
+        controller.recordAnswer(
+          question,
+          RichClosedTrueFalseGridAnswer(
+            questionId: question.id,
+            values: [
+              for (final row in question.rows)
+                RichClosedTrueFalseGridValue(rowId: row.id, value: true),
+            ],
+          ),
+        );
+      case RichClosedCauseConsequenceQuestion():
+        controller.recordAnswer(
+          question,
+          RichClosedCauseConsequenceAnswer(
+            questionId: question.id,
+            pairs: [
+              for (final indexedCause in question.causes.indexed)
+                RichClosedCauseConsequencePair(
+                  causeId: indexedCause.$2.id,
+                  consequenceId: question.consequences[indexedCause.$1].id,
+                ),
+            ],
+          ),
+        );
       case RichClosedCaseQualificationQuestion():
         controller.recordAnswer(
           question,

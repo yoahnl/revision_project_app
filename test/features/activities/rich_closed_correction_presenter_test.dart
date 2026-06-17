@@ -120,6 +120,50 @@ void main() {
     expect(_item(viewModel, 'date-slider-1').isCorrect, isFalse);
   });
 
+  test(
+    'mappe true_false_grid et cause_consequence depuis les corrections backend',
+    () {
+      final v1bFullExercise = RichClosedExercise.fromJson(
+        richClosedV1BFullExerciseJson(),
+      );
+      final v1bFullResult = RichClosedExerciseResult.fromJson(
+        richClosedV1BFullResultJson(),
+      );
+      final viewModel = presenter.present(
+        exercise: v1bFullExercise,
+        result: v1bFullResult,
+      );
+
+      expect(_item(viewModel, 'true-false-grid-1').kindLabel, 'Vrai / faux');
+      expect(_item(viewModel, 'true-false-grid-1').submittedAnswerLines, [
+        'Le gouvernement peut être responsable devant le Parlement. : Vrai',
+        'La séparation des pouvoirs interdit toute collaboration. : Vrai',
+        'La dissolution peut être un moyen réciproque. : Vrai',
+      ]);
+      expect(_item(viewModel, 'true-false-grid-1').correctAnswerLines, [
+        'Le gouvernement peut être responsable devant le Parlement. : Vrai',
+        'La séparation des pouvoirs interdit toute collaboration. : Faux',
+        'La dissolution peut être un moyen réciproque. : Vrai',
+      ]);
+      expect(_item(viewModel, 'true-false-grid-1').isCorrect, isFalse);
+
+      expect(
+        _item(viewModel, 'cause-consequence-1').kindLabel,
+        'Cause / conséquence',
+      );
+      expect(_item(viewModel, 'cause-consequence-1').submittedAnswerLines, [
+        'Motion de censure adoptée → Démission du gouvernement',
+        'Dissolution de l’Assemblée → Nouvelles élections législatives',
+        'Question de confiance rejetée → Crise politique ou départ du gouvernement',
+      ]);
+      expect(_item(viewModel, 'cause-consequence-1').correctAnswerLines, [
+        'Motion de censure adoptée → Démission du gouvernement',
+        'Dissolution de l’Assemblée → Nouvelles élections législatives',
+        'Question de confiance rejetée → Crise politique ou départ du gouvernement',
+      ]);
+    },
+  );
+
   test('conserve isCorrect et partialScore backend sans recalcul', () {
     final json = richClosedResultJson();
     final single =
