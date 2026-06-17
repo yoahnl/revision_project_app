@@ -1,3 +1,174 @@
+# LOT V1-025 — Readiness audit V1 App
+
+## 1. Verdict final
+
+Statut côté app : `NOT_READY_BLOCKED` par dépendance au blocker backend F-001 et par durcissement anti-fuite app requis.
+
+L'app Flutter couvre les 14 types et les validations critiques passent, mais le lot V1-025 global ne peut pas être marqué ready. Côté app, le finding principal est le parser pré-submit qui doit rejeter davantage de champs post-submit.
+
+## 2. Résumé exécutif
+
+Les modèles, parser, widgets, answer controller, correction UI, Today, revision sessions et router ont été audités. Les 14 types sont parsés et rendus par des widgets dédiés. Flutter ne calcule pas le score rich closed et consomme les corrections backend post-submit. `image_choice` reste local/fallback sans image distante. Les tests Flutter critiques passent: analyze, activities, Today, revision sessions, router et full test.
+
+Le verdict app reste bloqué pour la readiness globale: le backend `date_slider` peut valider une question impossible, et le parser app accepte encore certains champs post-submit en pré-submit au lieu de les rejeter strictement. Aucun code runtime n'a été modifié dans V1-025.
+
+## 3. Sources inspectées
+
+- `docs/v1/ROADMAP_EXECUTION_PLAN_V1.md`, rapports V1-009 à V1-024, README.
+- `lib/features/activities/domain/rich_closed_exercise.dart`.
+- `lib/features/activities/data/http_activities_api.dart`.
+- `lib/features/activities/application/rich_closed_exercise_flow_controller.dart`.
+- `lib/features/activities/presentation/rich_closed/*`.
+- `lib/presentation/pages/activities/rich_closed_exercise_page.dart`.
+- Router, Today, revision sessions.
+- Tests activities/today/revision_sessions/router.
+
+## 4. Préflight Git
+
+### App
+
+- Repo : `/Users/karim/Project/app-révision/revision_app`.
+- Branche : `main`.
+- Status initial : clean.
+- Derniers commits : `e6666fc V1-023: Ajout du Demo Runbook V1 et V1-024: Améliorations UI, accessibilité et performance`, `fcf0da6 V1-022: Ajout du widget Image Choice et registre d'assets pour les exercices riches fermés`, `82cd3ee V1-021: Ajout du widget Calculation MCQ pour les exercices riches fermés`, `be1c3dd V1-020: Ajout du widget Diagram Labeling pour les exercices riches fermés`, `1c5c384 V1-019: Ajout du widget Institution Matrix pour les exercices riches fermés`.
+- Fichiers modifiés/créés : `docs/v1/ROADMAP_EXECUTION_PLAN_V1.md`, `docs/v1/ROADMAP_EXECUTION_LOT_V1_025_READINESS_AUDIT.md`.
+- Aucun commit fait.
+
+### API
+
+- Repo audité en parallèle : `/Users/karim/Project/app-révision/api`.
+- V1-025 bloqué globalement côté API par le contrat `date_slider`.
+
+## 5. Périmètre audité
+
+- Parser/modèles rich closed.
+- Answer controller et submit local.
+- Widgets et UX/accessibilité V1.
+- Correction UI post-submit.
+- Today, revision sessions, router.
+- Tests et validations.
+- Anti-fuite et absence de rendu JSON arbitraire.
+
+## 6. Matrice de couverture Flutter des 14 types
+
+| Type | Parser | Answer DTO | Widget | Correction UI | Tests | Verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| `single_choice` | OK | OK | OK | OK | OK | OK |
+| `multiple_choice` | OK | OK | OK | OK | OK | OK |
+| `matching` | OK | OK | OK | OK | OK | OK |
+| `ordering` | OK | OK | OK | OK | OK | OK |
+| `case_qualification` | OK | OK | OK | OK | OK | OK |
+| `error_detection` | OK | OK | OK | OK | OK | OK |
+| `timeline` | OK | OK | OK | OK | OK | OK |
+| `date_slider` | OK | OK | OK | OK | OK | PARTIAL (dépend du blocker backend) |
+| `true_false_grid` | OK | OK | OK | OK | OK | OK |
+| `cause_consequence` | OK | OK | OK | OK | OK | OK |
+| `institution_matrix` | OK | OK | OK | OK | OK | OK |
+| `diagram_labeling` | OK | OK | OK | OK | OK | OK |
+| `calculation_mcq` | OK | OK | OK | OK | OK | OK |
+| `image_choice` | OK | OK | OK | OK | OK | OK |
+
+## 7. Parser/anti-fuite
+
+Le parser est discriminé et rejette les types futurs. Les réponses submit sont minimales. La denylist pré-submit bloque `correct*`, `explanation`, `score`, `modelAnswer`, `answerText`, `renderPayload`, champs image dangereux et formule/eval. Finding app principal: ajouter `isCorrect`, `minAcceptedYear`, `maxAcceptedYear` et tests associés.
+
+## 8. Answer controller
+
+Le controller stocke les réponses localement et `canSubmit` exige complétude selon le type. `date_slider` initialise une année snappée au pas public, ce qui est cohérent côté app mais révèle le blocker backend si `correctYear` n'est pas aligné. Aucun score n'est calculé dans le controller.
+
+## 9. Widgets et UX
+
+Les 14 types ont un widget dédié. Les interactions ne dépendent pas d'un drag-only obligatoire. V1-024 améliore image fallback, petits écrans et longs dropdowns matrix/diagram. Restent des LOW: `calculation_mcq` pourrait être plus explicitement focusable clavier; matching/cause peuvent mieux borner les longs labels.
+
+## 10. Correction UI
+
+La correction UI consomme les corrections backend post-submit. Les tests vérifient que les valeurs backend sont affichées sans recalcul. Le parser de résultat post-submit accepte les payloads typés de correction.
+
+## 11. Today / revision sessions / routing
+
+Today direct rich closed fonctionne avec subject/notion et navigation rich closed. Revision sessions proposent un launcher rich closed cohérent. Router accepte le flow rich closed. Finding MEDIUM: retry après erreur de submit est câblé mais no-op car l'état `failed` bloque `submit()`.
+
+## 12. Tests et validations
+
+| Repo | Commande | Résultat | Notes |
+| --- | --- | --- | --- |
+| API | `DEMO_SEED_CONFIRM=revision-demo DEMO_FIREBASE_UID=demo-local-uid npm run demo:seed -- --dry-run` | OK | Dry-run, non destructif, seed V1-A listé. |
+| API | `npm test -- rich-closed --runInBand` | OK | 10 suites, 245 tests. |
+| API | `npm test -- activities --runInBand` | OK | 19 suites passées, 1 skipped; 342 tests passés, 1 skipped. |
+| API | `npm run test:e2e -- --runInBand` | Initialement rouge puis OK sur relances | 1 échec initial sur le smoke diagram_labeling; test ciblé OK, puis deux relances full E2E OK, 25/25. Risque de stabilité documenté. |
+| API | `npm test -- revision --runInBand` | OK | 15 suites, 87 tests. |
+| API | `npm test -- revision-session --runInBand` | OK | 6 suites, 41 tests. |
+| API | `npm test -- revision-sessions --runInBand` | OK | 6 suites, 41 tests. |
+| API | `npm run lint:check` | OK | ESLint sans erreur. |
+| API | `npm run build` | OK | Build Nest OK. |
+| API | `git diff --check` | OK avant rapports | Relancé après création des rapports en validation finale. |
+| App | `dart format <docs modifiés>` | N/A | V1-025 ne modifie que du Markdown côté app. |
+| App | `dart analyze lib test` | OK | No issues found. |
+| App | `flutter test test/features/activities --reporter compact` | OK | 231 tests. |
+| App | `flutter test test/features/today --reporter compact` | OK | 18 tests. |
+| App | `flutter test test/features/revision_sessions --reporter compact` | OK | 21 tests. |
+| App | `flutter test test/app/router --reporter compact` | OK | 11 tests. |
+| App | `flutter test --reporter compact` | OK | 362 tests. |
+| App | `git diff --check` | OK avant rapports | Relancé après création des rapports en validation finale. |
+
+Validations supplémentaires sub-agents: suites ciblées parser/API, widgets, routing et tests/coverage passées en lecture seule. Pas de device E2E réel ni integration_test Flutter.
+
+## 13. Findings
+
+| ID | Sévérité | Repo | Zone | Titre | Impact | Recommandation | Bis requis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| F-001 | BLOCKER | API | Contrat `date_slider` | `correctYear` peut être non sélectionnable par le `step` public | Une question valide peut devenir impossible à répondre; readiness V1 non validable | V1-025B: imposer `(correctYear - minYear) % step === 0` ou adapter scoring/tolérance/slider, avec tests validator/scorer/Flutter | Oui |
+| F-002 | HIGH | API | Genkit diagnostics | IDs générés bruts possibles dans logs/prompt de réparation | Données invalides rejetées mais potentiellement réinjectées/logguées | Sanitiser diagnostics, borner `sourceChunkIds`, tester logger/repair prompt | Oui, avec F-001 |
+| F-003 | HIGH | App | Parser pré-submit | `isCorrect`, `minAcceptedYear`, `maxAcceptedYear` non rejetés en pré-submit | Payload pré-submit malformé peut transporter des champs post-submit ignorés mais acceptés | Ajouter ces champs à la denylist et tests parser | Oui, avec F-001 |
+| F-004 | MEDIUM | API | Submit parser | Clés extra non interdites acceptées puis droppées | Contrat HTTP moins strict qu'un strict closed API contract | Rejeter les clés extra par shape stricte ou documenter canonicalisation | Non si V1-025B traite blockers d'abord |
+| F-005 | MEDIUM | API | Genkit mix custom | Mix custom impossible accepté à l'entrée | Échecs de génération prévisibles côté quality gate | Valider la compatibilité mix/quality gate avant génération | Non bloquant seul |
+| F-006 | MEDIUM | App | Retry submit | CTA de retry post-échec submit peut no-op | Erreur transitoire laisse l'utilisateur bloqué | Autoriser retry depuis état failed ou restaurer ready avec réponses conservées | Non bloquant seul |
+| F-007 | MEDIUM | Tests | Validation stack | Tests par défaut pas full-stack Prisma; pas de CI/coverage gate | Readiness dépend de validations manuelles locales | Ajouter CI, seuils coverage, smoke persistance local disposable | Non bloquant seul |
+| F-008 | LOW | API/App | Anti-fuite tests | Boucles de tests omettent `expectedAnswer(s)` dans certains scans | Gap de régression; runtime déjà protégé ailleurs | Ajouter aux listes de tests anti-fuite | Non |
+| F-009 | LOW | API | Runbook | `npm run start:prod` recommandé dans runbook local | Wording ambigu même si pas déploiement | Renommer en commande build/start local ou déplacer en non vérifié | Non |
+| F-010 | LOW | API | Seed docs/tests | Seed V1-A pas épinglé par spec dédiée | Drift possible du runbook si fixture change | Ajouter assertion sur les 6 questionKind du seed | Non |
+| F-011 | LOW | App | UX widgets | Keyboard/focus et longs dropdowns perfectibles | Dette accessibilité/polish | Backlog polish post-V1 | Non |
+
+Côté app, findings particulièrement concernés: F-003, F-006, F-007, F-011. Le blocker F-001 est backend mais bloque la readiness app car l'app ne peut pas rendre correct un contrat impossible.
+
+## 14. Risques acceptés
+
+- UI non finale avant refonte.
+- Fallback image local sans assets réels licenciés.
+- Pas de device E2E/integration_test.
+- Coverage mesurée manuellement mais non gatée.
+- Today preferred-action rich closed en revisionSession edge case à clarifier.
+
+## 15. Décision readiness côté app
+
+Non ready globalement. L'app est présentable en démo locale/dev avec les flows réussis, mais pas validable readiness finale tant que V1-025B n'a pas corrigé le blocker backend et durci l'anti-fuite parser app.
+
+## 16. Recommandation post-V1
+
+Recommandation : `V1-025B — Readiness blockers fix`, puis reprise d'audit. Ensuite seulement: refonte UI globale, design system, assets réels `image_choice`, CI/coverage/device E2E.
+
+## 17. Non-objectifs respectés
+
+- Pas de nouveau type.
+- Pas de refonte UI.
+- Pas de nouveau flow global.
+- Pas de rendu JSON arbitraire.
+- Pas de score Flutter.
+- Pas de correction pré-submit ajoutée.
+- Pas d'image distante.
+- Pas de provider IA réel, déploiement, migration, secret ou commit.
+
+## 18. Critique honnête du prompt initial
+
+Le prompt est pertinent pour empêcher une fausse clôture. Il mélange readiness locale/dev et attentes de durcissement quasi beta; l'audit distingue donc blockers stricts, highs à traiter dans le bis, et dettes post-V1.
+
+## 19. Contenu complet des fichiers créés/modifiés/supprimés
+
+Le présent rapport est listé sans s'inclure lui-même pour éviter une récursion infinie.
+
+### docs/v1/ROADMAP_EXECUTION_PLAN_V1.md
+
+```md
 # Plan d'exécution V1 — Questions riches fermées
 
 ## Introduction
@@ -587,3 +758,5 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - Suite recommandée : `V1-025B — Readiness blockers fix`.
 - Risques : dette documentée dans le rapport d'audit.
 - Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_025_READINESS_AUDIT.md`.
+
+```
