@@ -197,6 +197,31 @@ void main() {
       );
     });
 
+    test('parses image_choice public questions', () {
+      final questions = RichClosedExercise.fromJson(
+        richClosedV1DImageChoiceExerciseJson(),
+      ).questions;
+      final imageChoice = questions[13] as RichClosedImageChoiceQuestion;
+
+      expect(questions, hasLength(14));
+      expect(imageChoice.questionKind, RichClosedQuestionKind.imageChoice);
+      expect(imageChoice.instruction, contains('catalogue contrôlé'));
+      expect(imageChoice.choices.map((choice) => choice.id), [
+        'choice-image-a',
+        'choice-image-b',
+        'choice-image-c',
+      ]);
+      expect(
+        imageChoice.choices.first.imageAssetId,
+        'image-choice-historical-figure-001-v1',
+      );
+      expect(
+        imageChoice.choices.first.altText,
+        'Portrait historique en noir et blanc d’un homme en uniforme.',
+      );
+      expect(imageChoice.choices.first.license, 'internal_placeholder');
+    });
+
     test('parses largest remainder calculation data without scoring it', () {
       final payload = richClosedExerciseJson();
       payload['questions'] = [
@@ -489,6 +514,70 @@ void main() {
       },
     );
 
+    test(
+      'rejects image_choice public questions carrying private or image fields',
+      () {
+        for (final field in [
+          'correctChoiceId',
+          'explanation',
+          'semanticLabel',
+          'answerHint',
+          'imageUrl',
+          'url',
+          'remoteUrl',
+          'src',
+          'href',
+          'storagePath',
+          'bucketPath',
+          'cdnUrl',
+          'base64',
+          'dataUri',
+          'blob',
+          'rawImage',
+          'assetPath',
+          'render',
+          'renderPayload',
+        ]) {
+          final payload = richClosedV1DImageChoiceExerciseJson();
+          ((payload['questions']! as List<Object?>)[13]!
+                  as Map<String, Object?>)[field] =
+              'forbidden';
+
+          expectParseError(() => RichClosedExercise.fromJson(payload));
+        }
+      },
+    );
+
+    test('rejects incoherent image_choice public contracts', () {
+      final unknownAsset = richClosedV1DImageChoiceExerciseJson();
+      final unknownAssetQuestion =
+          (unknownAsset['questions']! as List<Object?>)[13]!
+              as Map<String, Object?>;
+      ((unknownAssetQuestion['choices']! as List<Object?>).first!
+              as Map<String, Object?>)['imageAssetId'] =
+          'unknown-asset';
+
+      final duplicateAsset = richClosedV1DImageChoiceExerciseJson();
+      final duplicateAssetQuestion =
+          (duplicateAsset['questions']! as List<Object?>)[13]!
+              as Map<String, Object?>;
+      ((duplicateAssetQuestion['choices']! as List<Object?>)[1]!
+              as Map<String, Object?>)['imageAssetId'] =
+          'image-choice-historical-figure-001-v1';
+
+      final wrongAltText = richClosedV1DImageChoiceExerciseJson();
+      final wrongAltQuestion =
+          (wrongAltText['questions']! as List<Object?>)[13]!
+              as Map<String, Object?>;
+      ((wrongAltQuestion['choices']! as List<Object?>).first!
+              as Map<String, Object?>)['altText'] =
+          'Alt text inventé.';
+
+      expectParseError(() => RichClosedExercise.fromJson(unknownAsset));
+      expectParseError(() => RichClosedExercise.fromJson(duplicateAsset));
+      expectParseError(() => RichClosedExercise.fromJson(wrongAltText));
+    });
+
     test('rejects incoherent calculation_mcq public contracts', () {
       final badMode = richClosedV1CCalculationExerciseJson();
       final badModeQuestion =
@@ -777,6 +866,17 @@ void main() {
           'choiceId': 'choice-289',
         },
       );
+      expect(
+        const RichClosedImageChoiceAnswer(
+          questionId: 'image-choice-1',
+          choiceId: 'choice-image-a',
+        ).toJson(),
+        {
+          'questionId': 'image-choice-1',
+          'questionKind': 'image_choice',
+          'choiceId': 'choice-image-a',
+        },
+      );
     });
 
     test('serializes submit wrapper without correction or free text', () {
@@ -817,6 +917,13 @@ void main() {
         'function',
         'formula',
         'expression',
+        'semanticLabel',
+        'answerHint',
+        'imageUrl',
+        'url',
+        'storagePath',
+        'base64',
+        'blob',
       ]) {
         expectParseError(
           () => RichClosedAnswer.fromJson({
@@ -1035,6 +1142,28 @@ void main() {
         'majority-rule',
         'threshold',
       ]);
+    });
+
+    test('parses image_choice post-submit corrections', () {
+      final result = RichClosedExerciseResult.fromJson(
+        richClosedV1DImageChoiceResultJson(),
+      );
+      final imageChoice = result.items[13];
+
+      expect(imageChoice.submittedAnswer, isA<RichClosedImageChoiceAnswer>());
+      expect(
+        (imageChoice.submittedAnswer as RichClosedImageChoiceAnswer).choiceId,
+        'choice-image-a',
+      );
+      expect(
+        imageChoice.correction,
+        isA<RichClosedCorrectChoiceIdCorrection>(),
+      );
+      expect(
+        (imageChoice.correction as RichClosedCorrectChoiceIdCorrection)
+            .correctChoiceId,
+        'choice-image-a',
+      );
     });
 
     test('rejects absent or incoherent correction payloads', () {

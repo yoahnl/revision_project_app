@@ -76,6 +76,7 @@ class RichClosedCorrectionPresenter {
         question,
         item,
       ),
+      RichClosedImageChoiceQuestion() => _presentImageChoice(question, item),
       RichClosedCaseQualificationQuestion() => _presentCaseQualification(
         question,
         item,
@@ -286,6 +287,30 @@ class RichClosedCorrectionPresenter {
         'Valeur attendue : ${correction.expectedValue}',
         for (final step in correction.workedSteps)
           '${step.label} : ${step.detail}',
+      ],
+    );
+  }
+
+  RichClosedCorrectionItemViewModel _presentImageChoice(
+    RichClosedImageChoiceQuestion question,
+    RichClosedCorrectionItem item,
+  ) {
+    final submitted = _imageChoiceAnswer(item);
+    final correction = _choiceIdCorrection(item);
+
+    return _baseItem(
+      question: question,
+      item: item,
+      contextText: question.instruction,
+      submittedAnswerLines: [
+        _imageChoiceLabel(question.choices, submitted.choiceId, question.id),
+      ],
+      correctAnswerLines: [
+        _imageChoiceLabel(
+          question.choices,
+          correction.correctChoiceId,
+          question.id,
+        ),
       ],
     );
   }
@@ -514,6 +539,18 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedImageChoiceAnswer _imageChoiceAnswer(
+    RichClosedCorrectionItem item,
+  ) {
+    final answer = item.submittedAnswer;
+    if (answer is RichClosedImageChoiceAnswer) {
+      return answer;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid image choice submitted answer for ${item.questionId}',
+    );
+  }
+
   RichClosedCaseQualificationAnswer _caseQualificationAnswer(
     RichClosedCorrectionItem item,
   ) {
@@ -709,6 +746,25 @@ class RichClosedCorrectionPresenter {
     }
     throw RichClosedCorrectionPresentationException(
       'Unknown calculation choice $choiceId for question $questionId',
+    );
+  }
+
+  String _imageChoiceLabel(
+    List<RichClosedImageChoiceOption> choices,
+    String choiceId,
+    String questionId,
+  ) {
+    for (final choice in choices) {
+      if (choice.id == choiceId) {
+        final caption = choice.caption;
+        if (caption == null) {
+          return choice.label;
+        }
+        return '${choice.label} - $caption';
+      }
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Unknown image choice $choiceId for question $questionId',
     );
   }
 
@@ -988,6 +1044,7 @@ class RichClosedCorrectionPresenter {
       RichClosedQuestionKind.institutionMatrix => 'Matrice',
       RichClosedQuestionKind.diagramLabeling => 'Schéma',
       RichClosedQuestionKind.calculationMcq => 'Calcul',
+      RichClosedQuestionKind.imageChoice => 'Image',
     };
   }
 }

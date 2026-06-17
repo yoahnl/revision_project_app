@@ -78,6 +78,7 @@ class RichClosedQuestionCard extends StatelessWidget {
       RichClosedQuestionKind.institutionMatrix => 'Matrice',
       RichClosedQuestionKind.diagramLabeling => 'Schéma',
       RichClosedQuestionKind.calculationMcq => 'Calcul',
+      RichClosedQuestionKind.imageChoice => 'Image',
     };
   }
 

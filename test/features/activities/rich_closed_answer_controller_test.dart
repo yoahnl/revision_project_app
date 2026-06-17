@@ -687,6 +687,64 @@ void main() {
     );
   });
 
+  test('image_choice commence incomplet puis produit choiceId', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1dExercise = RichClosedExercise.fromJson(
+      richClosedV1DImageChoiceExerciseJson(),
+    );
+    final imageChoice = _question<RichClosedImageChoiceQuestion>(v1dExercise);
+
+    expect(controller.canSubmitQuestion(imageChoice), isFalse);
+    expect(controller.answerFor(imageChoice), isNull);
+    expect(controller.selectedImageChoiceIdFor(imageChoice.id), isNull);
+
+    controller.selectImageChoice(
+      question: imageChoice,
+      choiceId: 'choice-image-a',
+    );
+
+    final answer = controller.answerFor(imageChoice);
+    expect(controller.canSubmitQuestion(imageChoice), isTrue);
+    expect(answer, isA<RichClosedImageChoiceAnswer>());
+    expect((answer! as RichClosedImageChoiceAnswer).choiceId, 'choice-image-a');
+    expect(answer.toJson(), {
+      'questionId': 'image-choice-1',
+      'questionKind': 'image_choice',
+      'choiceId': 'choice-image-a',
+    });
+  });
+
+  test('image_choice ignore ids inconnus et remplace une valeur', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1dExercise = RichClosedExercise.fromJson(
+      richClosedV1DImageChoiceExerciseJson(),
+    );
+    final imageChoice = _question<RichClosedImageChoiceQuestion>(v1dExercise);
+
+    controller.selectImageChoice(
+      question: imageChoice,
+      choiceId: 'choice-unknown',
+    );
+    controller.selectImageChoice(
+      question: imageChoice,
+      choiceId: 'choice-image-b',
+    );
+    controller.selectImageChoice(
+      question: imageChoice,
+      choiceId: 'choice-image-a',
+    );
+
+    expect(
+      controller.selectedImageChoiceIdFor(imageChoice.id),
+      'choice-image-a',
+    );
+    expect(
+      (controller.answerFor(imageChoice)! as RichClosedImageChoiceAnswer)
+          .choiceId,
+      'choice-image-a',
+    );
+  });
+
   test('matching et ordering ne produisent jamais de correction', () {
     final controller = RichClosedCoreAnswerController();
     final matching = _question<RichClosedMatchingQuestion>(exercise);
@@ -850,6 +908,32 @@ void main() {
     expect(json.containsKey('expectedValue'), isFalse);
     expect(json.containsKey('workedSteps'), isFalse);
     expect(json.containsKey('formula'), isFalse);
+  });
+
+  test('image_choice ne produit jamais de correction ni rendu arbitraire', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1dExercise = RichClosedExercise.fromJson(
+      richClosedV1DImageChoiceExerciseJson(),
+    );
+    final imageChoice = _question<RichClosedImageChoiceQuestion>(v1dExercise);
+
+    controller.selectImageChoice(
+      question: imageChoice,
+      choiceId: 'choice-image-a',
+    );
+
+    final json = controller.answerFor(imageChoice)!.toJson();
+    expect(json.keys.any((key) => key.startsWith('correct')), isFalse);
+    expect(json.containsKey('correction'), isFalse);
+    expect(json.containsKey('score'), isFalse);
+    expect(json.containsKey('explanation'), isFalse);
+    expect(json.containsKey('semanticLabel'), isFalse);
+    expect(json.containsKey('answerHint'), isFalse);
+    expect(json.containsKey('imageUrl'), isFalse);
+    expect(json.containsKey('storagePath'), isFalse);
+    expect(json.containsKey('base64'), isFalse);
+    expect(json.containsKey('blob'), isFalse);
+    expect(json.containsKey('renderPayload'), isFalse);
   });
 
   test('ne produit jamais de correction dans le JSON de réponse', () {

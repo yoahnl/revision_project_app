@@ -242,6 +242,26 @@ void main() {
     expect(item.isCorrect, isTrue);
   });
 
+  test('mappe image_choice depuis les corrections backend', () {
+    final v1dExercise = RichClosedExercise.fromJson(
+      richClosedV1DImageChoiceExerciseJson(),
+    );
+    final v1dResult = RichClosedExerciseResult.fromJson(
+      richClosedV1DImageChoiceResultJson(),
+    );
+    final viewModel = presenter.present(
+      exercise: v1dExercise,
+      result: v1dResult,
+    );
+
+    final item = _item(viewModel, 'image-choice-1');
+    expect(item.kindLabel, 'Image');
+    expect(item.contextText, contains('catalogue contrôlé'));
+    expect(item.submittedAnswerLines, ['Image A - Portrait historique A']);
+    expect(item.correctAnswerLines, ['Image A - Portrait historique A']);
+    expect(item.isCorrect, isTrue);
+  });
+
   test('rejette une correction diagram_labeling incomplète ou dupliquée', () {
     final exercise = RichClosedExercise.fromJson(
       richClosedV1CFullExerciseJson(),

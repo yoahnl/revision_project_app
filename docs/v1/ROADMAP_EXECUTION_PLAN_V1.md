@@ -45,7 +45,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-019 | Institution matrix V1-C | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_019_INSTITUTION_MATRIX.md |
 | V1-020 | Diagram labeling V1-C | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_020_DIAGRAM_LABELING.md |
 | V1-021 | Calculation MCQ modes de scrutin V1-C | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_021_CALCULATION_MCQ.md |
-| V1-022 | Image choice/personnages historiques V1-D | À faire | À créer |
+| V1-022 | Image choice/personnages historiques V1-D | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_022_IMAGE_CHOICE.md |
 | V1-023 | Runbook demo V1 | À faire | À créer |
 | V1-024 | Polish UI/accessibilité/performance | À faire | À créer |
 | V1-025 | Revue finale V1 et readiness audit | À faire | À créer |

@@ -851,6 +851,83 @@ Map<String, Object?> richClosedV1CCalculationResultJson() {
   return json;
 }
 
+Map<String, Object?> richClosedV1DImageChoiceExerciseJson() {
+  final json = richClosedV1CCalculationExerciseJson();
+  final questions = List<Object?>.from(json['questions']! as List<Object?>);
+  json['questions'] = questions;
+
+  questions.add({
+    'id': 'image-choice-1',
+    'questionKind': 'image_choice',
+    'prompt':
+        'Quel portrait correspond au personnage associé à l’appel du 18 juin ?',
+    'instruction': 'Choisis uniquement parmi les images du catalogue contrôlé.',
+    'difficulty': 'MEDIUM',
+    'cognitiveSkill': 'memorization',
+    'sourceChunkIds': ['chunk-13'],
+    'choices': [
+      {
+        'id': 'choice-image-a',
+        'label': 'Image A',
+        'imageAssetId': 'image-choice-historical-figure-001-v1',
+        'altText':
+            'Portrait historique en noir et blanc d’un homme en uniforme.',
+        'caption': 'Portrait historique A',
+        'creditLabel': 'Asset de démonstration contrôlé',
+        'license': 'internal_placeholder',
+      },
+      {
+        'id': 'choice-image-b',
+        'label': 'Image B',
+        'imageAssetId': 'image-choice-historical-figure-002-v1',
+        'altText': 'Portrait peint d’un homme en tenue impériale.',
+        'caption': 'Portrait historique B',
+        'creditLabel': 'Asset de démonstration contrôlé',
+        'license': 'internal_placeholder',
+      },
+      {
+        'id': 'choice-image-c',
+        'label': 'Image C',
+        'imageAssetId': 'image-choice-historical-figure-003-v1',
+        'altText': 'Portrait historique d’une femme politique.',
+        'caption': 'Portrait historique C',
+        'creditLabel': 'Asset de démonstration contrôlé',
+        'license': 'internal_placeholder',
+      },
+    ],
+  });
+
+  return json;
+}
+
+Map<String, Object?> richClosedV1DImageChoiceResultJson() {
+  final json = richClosedV1CCalculationResultJson();
+  final items = List<Object?>.from(json['items']! as List<Object?>);
+
+  json['correctAnswers'] = 13;
+  json['totalQuestions'] = 14;
+  json['score'] = 0.929;
+  json['items'] = items;
+  items.add({
+    'questionId': 'image-choice-1',
+    'questionKind': 'image_choice',
+    'prompt':
+        'Quel portrait correspond au personnage associé à l’appel du 18 juin ?',
+    'submittedAnswer': {
+      'questionId': 'image-choice-1',
+      'questionKind': 'image_choice',
+      'choiceId': 'choice-image-a',
+    },
+    'isCorrect': true,
+    'partialScore': 1,
+    'explanation': 'L’appel du 18 juin 1940 est associé à Charles de Gaulle.',
+    'sourceChunkIds': ['chunk-13'],
+    'correction': {'correctChoiceId': 'choice-image-a'},
+  });
+
+  return json;
+}
+
 Map<String, Object?> richClosedCalculationLargestRemainderQuestionJson() {
   return {
     'id': 'calculation-mcq-remainder-1',
@@ -904,7 +981,7 @@ Map<String, Object?> richClosedExerciseWithUnknownKind() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
           as Map<String, Object?>)['questionKind'] =
-      'image_choice';
+      'fill_blank_dropdown';
   return json;
 }
 

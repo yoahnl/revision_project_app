@@ -7,6 +7,7 @@ import 'package:revision_app/features/activities/presentation/rich_closed/rich_c
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_date_slider_widget.dart';
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_diagram_labeling_widget.dart';
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_error_detection_widget.dart';
+import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_image_choice_widget.dart';
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_institution_matrix_widget.dart';
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_matching_widget.dart';
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_multiple_choice_widget.dart';
@@ -96,6 +97,12 @@ class RichClosedQuestionRenderer extends StatelessWidget {
         onAnswerChanged: onChanged,
       ),
       RichClosedCalculationMcqQuestion() => RichClosedCalculationMcqWidget(
+        question: currentQuestion,
+        controller: controller,
+        enabled: enabled,
+        onAnswerChanged: onChanged,
+      ),
+      RichClosedImageChoiceQuestion() => RichClosedImageChoiceWidget(
         question: currentQuestion,
         controller: controller,
         enabled: enabled,

@@ -23,7 +23,8 @@ enum RichClosedQuestionKind {
   causeConsequence('cause_consequence'),
   institutionMatrix('institution_matrix'),
   diagramLabeling('diagram_labeling'),
-  calculationMcq('calculation_mcq');
+  calculationMcq('calculation_mcq'),
+  imageChoice('image_choice');
 
   const RichClosedQuestionKind(this.wireValue);
 
@@ -345,6 +346,11 @@ sealed class RichClosedQuestion {
         calculation: RichClosedCalculationData.fromJson(json['calculation']),
         choices: _calculationChoices(json['choices']),
       ).._validateCalculation(),
+      RichClosedQuestionKind.imageChoice => RichClosedImageChoiceQuestion(
+        base: base,
+        instruction: _readOptionalString(json['instruction']),
+        choices: _imageChoices(json['choices']),
+      ).._validateChoices(),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationQuestion(
           base: base,
@@ -769,6 +775,47 @@ class RichClosedCalculationMcqQuestion extends RichClosedQuestion {
   }
 }
 
+class RichClosedImageChoiceQuestion extends RichClosedQuestion {
+  RichClosedImageChoiceQuestion({
+    required RichClosedQuestionBase base,
+    required this.instruction,
+    required this.choices,
+  }) : super(
+         id: base.id,
+         questionKind: RichClosedQuestionKind.imageChoice,
+         prompt: base.prompt,
+         difficulty: base.difficulty,
+         cognitiveSkill: base.cognitiveSkill,
+         sourceChunkIds: base.sourceChunkIds,
+       );
+
+  final String? instruction;
+  final List<RichClosedImageChoiceOption> choices;
+
+  void _validateChoices() {
+    final choiceIds = choices.map((choice) => choice.id).toSet();
+    final imageAssetIds = choices.map((choice) => choice.imageAssetId).toSet();
+
+    if (choices.length < 2 ||
+        choices.length > 6 ||
+        choiceIds.length != choices.length ||
+        imageAssetIds.length != choices.length) {
+      throw const RichClosedExerciseParseException(
+        'Invalid image choice contract',
+      );
+    }
+
+    for (final choice in choices) {
+      final expectedAltText = _publicAltTextForImageAsset(choice.imageAssetId);
+      if (expectedAltText == null || choice.altText != expectedAltText) {
+        throw const RichClosedExerciseParseException(
+          'Invalid image choice asset contract',
+        );
+      }
+    }
+  }
+}
+
 class RichClosedCaseQualificationQuestion extends RichClosedQuestion {
   RichClosedCaseQualificationQuestion({
     required RichClosedQuestionBase base,
@@ -859,6 +906,43 @@ class RichClosedChoice {
 
   final String id;
   final String label;
+}
+
+class RichClosedImageChoiceOption {
+  const RichClosedImageChoiceOption({
+    required this.id,
+    required this.label,
+    required this.imageAssetId,
+    required this.altText,
+    required this.caption,
+    required this.creditLabel,
+    required this.license,
+  });
+
+  factory RichClosedImageChoiceOption.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid image choice option');
+
+    return RichClosedImageChoiceOption(
+      id: _readString(json['id'], 'Invalid image choice id'),
+      label: _readString(json['label'], 'Invalid image choice label'),
+      imageAssetId: _readString(
+        json['imageAssetId'],
+        'Invalid image choice asset id',
+      ),
+      altText: _readString(json['altText'], 'Invalid image choice alt text'),
+      caption: _readOptionalString(json['caption']),
+      creditLabel: _readOptionalString(json['creditLabel']),
+      license: _readOptionalString(json['license']),
+    );
+  }
+
+  final String id;
+  final String label;
+  final String imageAssetId;
+  final String altText;
+  final String? caption;
+  final String? creditLabel;
+  final String? license;
 }
 
 class RichClosedLabelItem {
@@ -1466,6 +1550,10 @@ sealed class RichClosedAnswer {
         questionId: questionId,
         choiceId: _readString(json['choiceId'], 'Invalid calculation answer'),
       ),
+      RichClosedQuestionKind.imageChoice => RichClosedImageChoiceAnswer(
+        questionId: questionId,
+        choiceId: _readString(json['choiceId'], 'Invalid image choice answer'),
+      ),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationAnswer(
           questionId: questionId,
@@ -1663,6 +1751,22 @@ class RichClosedCalculationMcqAnswer extends RichClosedAnswer {
   };
 }
 
+class RichClosedImageChoiceAnswer extends RichClosedAnswer {
+  const RichClosedImageChoiceAnswer({
+    required super.questionId,
+    required this.choiceId,
+  }) : super(questionKind: RichClosedQuestionKind.imageChoice);
+
+  final String choiceId;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'questionId': questionId,
+    'questionKind': questionKind.wireValue,
+    'choiceId': choiceId,
+  };
+}
+
 class RichClosedCaseQualificationAnswer extends RichClosedAnswer {
   const RichClosedCaseQualificationAnswer({
     required super.questionId,
@@ -1834,13 +1938,13 @@ sealed class RichClosedCorrectionPayload {
 
     return switch (kind) {
       RichClosedQuestionKind.singleChoice ||
-      RichClosedQuestionKind.caseQualification =>
-        RichClosedCorrectChoiceIdCorrection(
-          correctChoiceId: _readString(
-            json['correctChoiceId'],
-            'Invalid correct choice id',
-          ),
+      RichClosedQuestionKind.caseQualification ||
+      RichClosedQuestionKind.imageChoice => RichClosedCorrectChoiceIdCorrection(
+        correctChoiceId: _readString(
+          json['correctChoiceId'],
+          'Invalid correct choice id',
         ),
+      ),
       RichClosedQuestionKind.multipleChoice =>
         RichClosedCorrectChoiceIdsCorrection(
           correctChoiceIds: _nonEmptyStringList(
@@ -2236,6 +2340,21 @@ List<RichClosedCalculationChoice> _calculationChoices(Object? value) {
   return choices;
 }
 
+List<RichClosedImageChoiceOption> _imageChoices(Object? value) {
+  final choices = _readList(
+    value,
+    'Invalid image choices',
+  ).map(RichClosedImageChoiceOption.fromJson).toList(growable: false);
+
+  if (choices.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Image choices cannot be empty',
+    );
+  }
+
+  return choices;
+}
+
 List<RichClosedCalculationParty> _calculationParties(Object? value) {
   final parties = _readList(
     value,
@@ -2393,6 +2512,19 @@ bool _containsForbiddenField(Object? value, Set<String> forbiddenKeys) {
   return false;
 }
 
+String? _publicAltTextForImageAsset(String imageAssetId) {
+  return _richClosedImageAssetAltTexts[imageAssetId];
+}
+
+const _richClosedImageAssetAltTexts = {
+  'image-choice-historical-figure-001-v1':
+      'Portrait historique en noir et blanc d’un homme en uniforme.',
+  'image-choice-historical-figure-002-v1':
+      'Portrait peint d’un homme en tenue impériale.',
+  'image-choice-historical-figure-003-v1':
+      'Portrait historique d’une femme politique.',
+};
+
 const _forbiddenPreSubmitKeys = {
   'correctionPayload',
   'correction',
@@ -2410,6 +2542,8 @@ const _forbiddenPreSubmitKeys = {
   'answersPayload',
   'expectedAnswer',
   'expectedAnswers',
+  'semanticLabel',
+  'answerHint',
   'html',
   'svg',
   'rawSvg',
@@ -2424,6 +2558,18 @@ const _forbiddenPreSubmitKeys = {
   'script',
   'imageUrl',
   'assetUrl',
+  'url',
+  'remoteUrl',
+  'src',
+  'href',
+  'storagePath',
+  'bucketPath',
+  'cdnUrl',
+  'base64',
+  'dataUri',
+  'blob',
+  'rawImage',
+  'assetPath',
   'canvas',
   'code',
   'eval',
@@ -2455,6 +2601,8 @@ const _forbiddenAnswerKeys = {
   'answersPayload',
   'expectedAnswer',
   'expectedAnswers',
+  'semanticLabel',
+  'answerHint',
   'html',
   'svg',
   'rawSvg',
@@ -2469,6 +2617,18 @@ const _forbiddenAnswerKeys = {
   'script',
   'imageUrl',
   'assetUrl',
+  'url',
+  'remoteUrl',
+  'src',
+  'href',
+  'storagePath',
+  'bucketPath',
+  'cdnUrl',
+  'base64',
+  'dataUri',
+  'blob',
+  'rawImage',
+  'assetPath',
   'canvas',
   'code',
   'eval',

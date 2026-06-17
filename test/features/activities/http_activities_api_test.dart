@@ -524,6 +524,32 @@ void main() {
     });
   });
 
+  test('starts a rich closed exercise with image_choice mix', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(richClosedV1DImageChoiceExerciseJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpActivitiesApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await api.startRichClosedExercise(
+      subjectId: 'subject-1',
+      knowledgeUnitId: 'unit-1',
+      questionCount: 14,
+      questionTypeMix: {RichClosedQuestionKind.imageChoice: 1},
+    );
+
+    expect(adapter.lastOptions?.data, {
+      'subjectId': 'subject-1',
+      'knowledgeUnitId': 'unit-1',
+      'questionCount': 14,
+      'complexityProfile': 'exam',
+      'questionTypeMix': {'image_choice': 1},
+    });
+  });
+
   test('gets a rich closed exercise by session id', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse(richClosedExerciseJson()),

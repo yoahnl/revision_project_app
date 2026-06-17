@@ -331,6 +331,14 @@ void _answerAllQuestions(RichClosedExerciseFlowController controller) {
             choiceId: question.choices.first.id,
           ),
         );
+      case RichClosedImageChoiceQuestion():
+        controller.recordAnswer(
+          question,
+          RichClosedImageChoiceAnswer(
+            questionId: question.id,
+            choiceId: question.choices.first.id,
+          ),
+        );
       case RichClosedCaseQualificationQuestion():
         controller.recordAnswer(
           question,

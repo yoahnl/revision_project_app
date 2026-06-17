@@ -277,6 +277,45 @@ void main() {
     expect(controller.canSubmitQuestion(question), isTrue);
   });
 
+  testWidgets('renderer rend image_choice', (tester) async {
+    final controller = RichClosedCoreAnswerController();
+    final v1dExercise = RichClosedExercise.fromJson(
+      richClosedV1DImageChoiceExerciseJson(),
+    );
+    final changedQuestions = <String>[];
+    final question = v1dExercise.questions.last;
+
+    await tester.pumpWidget(
+      _TestHost(
+        scrollable: true,
+        child: RichClosedQuestionRenderer(
+          question: question,
+          controller: controller,
+          enabled: true,
+          onChanged: (_) => changedQuestions.add(question.id),
+        ),
+      ),
+    );
+
+    expect(find.text('Image A'), findsOneWidget);
+    expect(find.text('Image B'), findsOneWidget);
+    expect(find.text('Image C'), findsOneWidget);
+    expect(find.text('Portrait historique A'), findsWidgets);
+    expect(find.text('Charles de Gaulle'), findsNothing);
+    expect(find.text('correctChoiceId'), findsNothing);
+    expect(find.text('semanticLabel'), findsNothing);
+    expect(find.text('imageUrl'), findsNothing);
+    expect(find.text('base64'), findsNothing);
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('image-choice-image-choice-1-choice-image-a')),
+    );
+
+    expect(changedQuestions, contains('image-choice-1'));
+    expect(controller.canSubmitQuestion(question), isTrue);
+  });
+
   testWidgets('page démarre, collecte six réponses et affiche la correction', (
     tester,
   ) async {
@@ -628,6 +667,57 @@ void main() {
     expect(find.text('Valeur attendue : 289'), findsWidgets);
   });
 
+  testWidgets('page submit et affiche les corrections V1-022', (tester) async {
+    final v1dExercise = RichClosedExercise.fromJson(
+      richClosedV1DImageChoiceExerciseJson(),
+    );
+    final v1dResult = RichClosedExerciseResult.fromJson(
+      richClosedV1DImageChoiceResultJson(),
+    );
+    final api = _FakeRichClosedActivityApi(
+      exercise: v1dExercise,
+      result: v1dResult,
+    );
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedExercisePage(
+          controller: ActivityController(api),
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 / 14 répondues'), findsOneWidget);
+
+    await _answerAllQuestions(tester);
+
+    expect(find.text('14 / 14 répondues'), findsOneWidget);
+    expect(_submitButton(tester).onPressed, isNotNull);
+
+    await _tapVisible(
+      tester,
+      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.submittedAnswers, hasLength(14));
+    expect(
+      api.submittedAnswers!
+          .whereType<RichClosedImageChoiceAnswer>()
+          .single
+          .choiceId,
+      'choice-image-a',
+    );
+    expect(find.text('Image A - Portrait historique A'), findsWidgets);
+    expect(
+      find.text('L’appel du 18 juin 1940 est associé à Charles de Gaulle.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('page affiche une erreur contrôlée au démarrage', (tester) async {
     final api = _FakeRichClosedActivityApi(
       exercise: exercise,
@@ -759,6 +849,7 @@ Future<void> _answerAllQuestions(WidgetTester tester) async {
     optionId: 'option-nomination',
   );
   await _selectCalculationMcq(tester, choiceId: 'choice-289');
+  await _selectImageChoice(tester, choiceId: 'choice-image-a');
 }
 
 Future<void> _selectMatchingRight(
@@ -835,6 +926,18 @@ Future<void> _selectCalculationMcq(
   final finder = find.byKey(
     ValueKey('calculation-mcq-calculation-mcq-majority-1-$choiceId'),
   );
+  if (finder.evaluate().isEmpty) {
+    return;
+  }
+
+  await _tapVisible(tester, finder);
+}
+
+Future<void> _selectImageChoice(
+  WidgetTester tester, {
+  required String choiceId,
+}) async {
+  final finder = find.byKey(ValueKey('image-choice-image-choice-1-$choiceId'));
   if (finder.evaluate().isEmpty) {
     return;
   }

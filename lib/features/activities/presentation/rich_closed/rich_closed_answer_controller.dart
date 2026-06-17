@@ -12,6 +12,7 @@ class RichClosedCoreAnswerController {
   final Map<String, Map<String, String>> _institutionMatrixSelections = {};
   final Map<String, Map<String, String>> _diagramLabelingSelections = {};
   final Map<String, String> _calculationMcqSelections = {};
+  final Map<String, String> _imageChoiceSelections = {};
 
   String? _message;
 
@@ -172,6 +173,10 @@ class RichClosedCoreAnswerController {
 
   String? selectedCalculationChoiceIdFor(String questionId) {
     return _calculationMcqSelections[questionId];
+  }
+
+  String? selectedImageChoiceIdFor(String questionId) {
+    return _imageChoiceSelections[questionId];
   }
 
   void selectSingleChoice({
@@ -385,6 +390,18 @@ class RichClosedCoreAnswerController {
     _message = null;
   }
 
+  void selectImageChoice({
+    required RichClosedImageChoiceQuestion question,
+    required String choiceId,
+  }) {
+    if (!_hasImageChoice(question.choices, choiceId)) {
+      return;
+    }
+
+    _imageChoiceSelections[question.id] = choiceId;
+    _message = null;
+  }
+
   bool canSubmitQuestion(RichClosedQuestion question) {
     return switch (question) {
       RichClosedSingleChoiceQuestion() =>
@@ -410,6 +427,8 @@ class RichClosedCoreAnswerController {
       ),
       RichClosedCalculationMcqQuestion() =>
         _calculationMcqSelections[question.id] != null,
+      RichClosedImageChoiceQuestion() =>
+        _imageChoiceSelections[question.id] != null,
     };
   }
 
@@ -472,6 +491,10 @@ class RichClosedCoreAnswerController {
       RichClosedCalculationMcqQuestion() => RichClosedCalculationMcqAnswer(
         questionId: question.id,
         choiceId: _calculationMcqSelections[question.id]!,
+      ),
+      RichClosedImageChoiceQuestion() => RichClosedImageChoiceAnswer(
+        questionId: question.id,
+        choiceId: _imageChoiceSelections[question.id]!,
       ),
     };
   }
@@ -669,6 +692,13 @@ class RichClosedCoreAnswerController {
 
   bool _hasCalculationChoice(
     List<RichClosedCalculationChoice> choices,
+    String choiceId,
+  ) {
+    return choices.any((choice) => choice.id == choiceId);
+  }
+
+  bool _hasImageChoice(
+    List<RichClosedImageChoiceOption> choices,
     String choiceId,
   ) {
     return choices.any((choice) => choice.id == choiceId);
