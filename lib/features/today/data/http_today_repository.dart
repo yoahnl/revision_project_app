@@ -83,6 +83,7 @@ class _TodayPlanItemJson {
     final id = json['id'];
     final subjectId = json['subjectId'];
     final subjectName = json['subjectName'];
+    final documentId = json['documentId'];
     final knowledgeUnitId = json['knowledgeUnitId'];
     final knowledgeUnitTitle = json['knowledgeUnitTitle'];
     final masteryScore = json['masteryScore'];
@@ -96,6 +97,7 @@ class _TodayPlanItemJson {
     if (id is! String ||
         subjectId is! String ||
         subjectName is! String ||
+        (documentId != null && documentId is! String) ||
         (knowledgeUnitId != null && knowledgeUnitId is! String) ||
         (knowledgeUnitTitle != null && knowledgeUnitTitle is! String) ||
         (masteryScore != null && masteryScore is! num) ||
@@ -107,23 +109,37 @@ class _TodayPlanItemJson {
       throw const FormatException('Invalid today item response');
     }
 
+    final parsedAction = _parseAction(action);
+    final parsedDocumentId = documentId as String?;
     final parsedKnowledgeUnitId = knowledgeUnitId as String?;
     final parsedKnowledgeUnitTitle = knowledgeUnitTitle as String?;
     final parsedMasteryScore = masteryScore as num?;
+    final parsedStartPayload = _TodayPlanStartPayloadJson(
+      startPayload,
+    ).toPayload();
+
+    if (parsedAction == TodayPlanActionType.richClosedExercise &&
+        (parsedKnowledgeUnitId == null ||
+            parsedKnowledgeUnitId.trim().isEmpty ||
+            parsedStartPayload.knowledgeUnitId == null ||
+            parsedStartPayload.knowledgeUnitId!.trim().isEmpty)) {
+      throw const FormatException('Invalid today rich closed action');
+    }
 
     return TodayPlanItem(
       id: id,
       subjectId: subjectId,
       subjectName: subjectName,
+      documentId: _trimOptionalString(parsedDocumentId),
       knowledgeUnitId: parsedKnowledgeUnitId,
       knowledgeUnitTitle: parsedKnowledgeUnitTitle,
       masteryScore: parsedMasteryScore?.toDouble(),
-      action: _parseAction(action),
+      action: parsedAction,
       estimatedMinutes: estimatedMinutes,
       priority: priority,
       reasonCode: _parseReasonCode(reasonCode),
       reason: reason,
-      startPayload: _TodayPlanStartPayloadJson(startPayload).toPayload(),
+      startPayload: parsedStartPayload,
     );
   }
 
@@ -131,6 +147,7 @@ class _TodayPlanItemJson {
     return switch (value) {
       'diagnostic_quiz' => TodayPlanActionType.diagnosticQuiz,
       'open_question' => TodayPlanActionType.openQuestion,
+      'rich_closed_exercise' => TodayPlanActionType.richClosedExercise,
       'revision_session' => TodayPlanActionType.revisionSession,
       _ => throw const FormatException('Invalid today action'),
     };
@@ -142,6 +159,7 @@ class _TodayPlanItemJson {
       'STALE_PRACTICE' => TodayPlanReasonCode.stalePractice,
       'HIGH_PRIORITY_SUBJECT' => TodayPlanReasonCode.highPrioritySubject,
       'MIX_ACTIVITY_TYPE' => TodayPlanReasonCode.mixActivityType,
+      'RICH_CLOSED_PRACTICE' => TodayPlanReasonCode.richClosedPractice,
       'START_REVISION_SESSION' => TodayPlanReasonCode.startRevisionSession,
       'CONTINUE_PROGRESS' => TodayPlanReasonCode.continueProgress,
       _ => throw const FormatException('Invalid today reason code'),
@@ -162,26 +180,26 @@ class _TodayPlanStartPayloadJson {
     }
 
     final subjectId = json['subjectId'];
+    final documentId = json['documentId'];
     final knowledgeUnitId = json['knowledgeUnitId'];
     final preferredAction = json['preferredAction'];
 
     if (subjectId is! String ||
         subjectId.trim().isEmpty ||
+        (documentId != null && documentId is! String) ||
         (knowledgeUnitId != null && knowledgeUnitId is! String) ||
         (preferredAction != null && preferredAction is! String)) {
       throw const FormatException('Invalid today start payload');
     }
 
+    final parsedDocumentId = documentId as String?;
     final parsedKnowledgeUnitId = knowledgeUnitId as String?;
     final parsedPreferredAction = preferredAction as String?;
-    final trimmedKnowledgeUnitId = parsedKnowledgeUnitId?.trim();
 
     return TodayPlanStartPayload(
       subjectId: subjectId.trim(),
-      knowledgeUnitId: trimmedKnowledgeUnitId == null ||
-              trimmedKnowledgeUnitId.isEmpty
-          ? null
-          : trimmedKnowledgeUnitId,
+      documentId: _trimOptionalString(parsedDocumentId),
+      knowledgeUnitId: _trimOptionalString(parsedKnowledgeUnitId),
       preferredAction: parsedPreferredAction == null
           ? null
           : _parsePreferredAction(parsedPreferredAction),
@@ -195,4 +213,9 @@ class _TodayPlanStartPayloadJson {
       _ => throw const FormatException('Invalid today preferred action'),
     };
   }
+}
+
+String? _trimOptionalString(String? value) {
+  final trimmedValue = value?.trim();
+  return trimmedValue == null || trimmedValue.isEmpty ? null : trimmedValue;
 }

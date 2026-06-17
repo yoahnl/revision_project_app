@@ -12,6 +12,7 @@ class InMemoryActivityApi implements ActivityApi {
   String? startedOpenQuestionKnowledgeUnitId;
   String? startedRichClosedSubjectId;
   String? startedRichClosedKnowledgeUnitId;
+  String? startedRichClosedDocumentId;
   String? loadedRichClosedSessionId;
   String? submittedRichClosedSessionId;
   int startedDiagnosticQuizCount = 0;
@@ -121,6 +122,7 @@ class InMemoryActivityApi implements ActivityApi {
   }) async {
     startedRichClosedSubjectId = subjectId;
     startedRichClosedKnowledgeUnitId = knowledgeUnitId;
+    startedRichClosedDocumentId = documentId;
     startedRichClosedCount += 1;
 
     return RichClosedExercise.fromJson(richClosedExerciseJson());

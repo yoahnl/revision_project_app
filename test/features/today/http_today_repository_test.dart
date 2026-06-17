@@ -40,7 +40,7 @@ void main() {
 
     final plan = await repository.getTodayPlan();
 
-    expect(plan.items, hasLength(3));
+    expect(plan.items, hasLength(4));
     expect(plan.items.first.id, 'subject-1:unit-1:diagnostic_quiz');
     expect(plan.items.first.subjectName, 'Anatomie');
     expect(plan.items.first.knowledgeUnitId, 'unit-1');
@@ -59,9 +59,14 @@ void main() {
     expect(plan.items[1].masteryScore, isNull);
     expect(plan.items[1].action, TodayPlanActionType.openQuestion);
     expect(plan.items[1].startPayload.preferredAction, isNull);
-    expect(plan.items[2].knowledgeUnitId, isNull);
-    expect(plan.items[2].knowledgeUnitTitle, isNull);
-    expect(plan.items[2].action, TodayPlanActionType.revisionSession);
+    expect(plan.items[2].documentId, 'document-1');
+    expect(plan.items[2].action, TodayPlanActionType.richClosedExercise);
+    expect(plan.items[2].reasonCode, TodayPlanReasonCode.richClosedPractice);
+    expect(plan.items[2].startPayload.documentId, 'document-1');
+    expect(plan.items[2].startPayload.knowledgeUnitId, 'unit-2');
+    expect(plan.items[3].knowledgeUnitId, isNull);
+    expect(plan.items[3].knowledgeUnitTitle, isNull);
+    expect(plan.items[3].action, TodayPlanActionType.revisionSession);
     expect(adapter.lastOptions?.path, '/today');
     expect(
       adapter.lastOptions?.headers['Authorization'],
@@ -113,6 +118,25 @@ void main() {
     );
     firstItem['startPayload'] = {'knowledgeUnitId': 'unit-1'};
     items[0] = firstItem;
+    final adapter = CapturingHttpClientAdapter(jsonResponse(body));
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = HttpTodayRepository(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(repository.getTodayPlan(), throwsFormatException);
+  });
+
+  test('rejects rich closed actions without a knowledge unit id', () async {
+    final body = todayJson();
+    final items = body['items']! as List<Object?>;
+    final richClosedItem = Map<String, Object?>.from(
+      items[2]! as Map<String, Object?>,
+    );
+    richClosedItem['knowledgeUnitId'] = null;
+    richClosedItem['startPayload'] = {'subjectId': 'subject-1'};
+    items[2] = richClosedItem;
     final adapter = CapturingHttpClientAdapter(jsonResponse(body));
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = HttpTodayRepository(
@@ -196,6 +220,25 @@ Map<String, Object?> todayJson() {
         'reasonCode': 'MIX_ACTIVITY_TYPE',
         'reason': 'Change de format.',
         'startPayload': {'subjectId': 'subject-1', 'knowledgeUnitId': 'unit-2'},
+      },
+      {
+        'id': 'subject-1:unit-2:rich_closed_exercise',
+        'subjectId': 'subject-1',
+        'subjectName': 'Anatomie',
+        'documentId': 'document-1',
+        'knowledgeUnitId': 'unit-2',
+        'knowledgeUnitTitle': 'Valves',
+        'masteryScore': null,
+        'action': 'rich_closed_exercise',
+        'estimatedMinutes': 8,
+        'priority': 585,
+        'reasonCode': 'RICH_CLOSED_PRACTICE',
+        'reason': 'Questions riches recommandées.',
+        'startPayload': {
+          'subjectId': 'subject-1',
+          'documentId': 'document-1',
+          'knowledgeUnitId': 'unit-2',
+        },
       },
       {
         'id': 'subject-2:null:revision_session',

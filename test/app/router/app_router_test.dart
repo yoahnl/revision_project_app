@@ -14,6 +14,7 @@ import 'package:revision_app/features/onboarding/application/revision_goals_cont
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
 import 'package:revision_app/features/today/application/today_controller.dart';
+import 'package:revision_app/features/today/domain/today_plan.dart';
 import 'package:revision_app/presentation/widgets/revision_button.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
@@ -239,6 +240,36 @@ void main() {
   });
 
   testWidgets(
+    'today rich closed action navigates to rich closed without other activity',
+    (tester) async {
+      final harness = _RouterHarness();
+      harness.todayRepository.plan = _todayPlanWithRichClosedAction();
+      addTearDown(harness.dispose);
+
+      await tester.pumpWidget(harness.buildApp());
+      harness.router.go(AppRoutes.today);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Commencer'));
+      await tester.tap(find.text('Commencer'));
+      await tester.pumpAndSettle();
+
+      expect(
+        harness.router.routeInformationProvider.value.uri.toString(),
+        '/activities/rich-closed?subjectId=subject-1&documentId=document-1&knowledgeUnitId=unit-1',
+      );
+      expect(find.text('Questions riches'), findsOneWidget);
+      expect(harness.activityApi.startedRichClosedCount, 1);
+      expect(harness.activityApi.startedRichClosedSubjectId, 'subject-1');
+      expect(harness.activityApi.startedRichClosedKnowledgeUnitId, 'unit-1');
+      expect(harness.activityApi.startedRichClosedDocumentId, 'document-1');
+      expect(harness.activityApi.startedDiagnosticQuizCount, 0);
+      expect(harness.activityApi.startedOpenQuestionCount, 0);
+      expect(harness.revisionSessionsApi.startCount, 0);
+    },
+  );
+
+  testWidgets(
     'revision session route by session id loads without direct activity',
     (tester) async {
       final harness = _RouterHarness();
@@ -271,8 +302,9 @@ class _RouterHarness {
       ),
       documentsController = DocumentsController(InMemoryDocumentsApi()),
       activityApi = InMemoryActivityApi(),
-      revisionSessionsApi = InMemoryRevisionSessionsApi(),
-      todayController = TodayController(InMemoryTodayRepository()) {
+      revisionSessionsApi = InMemoryRevisionSessionsApi() {
+    todayRepository = InMemoryTodayRepository();
+    todayController = TodayController(todayRepository);
     activityController = ActivityController(activityApi);
     revisionSessionController = RevisionSessionController(revisionSessionsApi);
     router = createAppRouter(
@@ -292,7 +324,8 @@ class _RouterHarness {
   final DocumentsController documentsController;
   final InMemoryActivityApi activityApi;
   final InMemoryRevisionSessionsApi revisionSessionsApi;
-  final TodayController todayController;
+  late final InMemoryTodayRepository todayRepository;
+  late final TodayController todayController;
   late final ActivityController activityController;
   late final RevisionSessionController revisionSessionController;
   late final GoRouter router;
@@ -310,6 +343,7 @@ class _RouterHarness {
         revisionSessionControllerProvider.overrideWithValue(
           revisionSessionController,
         ),
+        todayRepositoryProvider.overrideWithValue(todayRepository),
         todayControllerProvider.overrideWithValue(todayController),
       ],
       child: MaterialApp.router(routerConfig: router),
@@ -348,3 +382,30 @@ const _signedInSession = AuthSession.signedIn(
     displayName: 'Karim',
   ),
 );
+
+TodayPlan _todayPlanWithRichClosedAction() {
+  return TodayPlan(
+    generatedAt: DateTime.parse('2026-06-15T10:00:00.000Z'),
+    items: const [
+      TodayPlanItem(
+        id: 'subject-1:unit-1:rich_closed_exercise',
+        subjectId: 'subject-1',
+        subjectName: 'Droit constitutionnel',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+        knowledgeUnitTitle: 'Institutions politiques',
+        masteryScore: 0.2,
+        action: TodayPlanActionType.richClosedExercise,
+        estimatedMinutes: 8,
+        priority: 605,
+        reasonCode: TodayPlanReasonCode.richClosedPractice,
+        reason: 'Questions riches recommandées.',
+        startPayload: TodayPlanStartPayload(
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      ),
+    ],
+  );
+}

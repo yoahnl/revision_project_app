@@ -9,13 +9,19 @@ class TodayPlan {
   }
 }
 
-enum TodayPlanActionType { diagnosticQuiz, openQuestion, revisionSession }
+enum TodayPlanActionType {
+  diagnosticQuiz,
+  openQuestion,
+  richClosedExercise,
+  revisionSession,
+}
 
 enum TodayPlanReasonCode {
   lowMastery,
   stalePractice,
   highPrioritySubject,
   mixActivityType,
+  richClosedPractice,
   startRevisionSession,
   continueProgress,
 }
@@ -25,11 +31,13 @@ enum TodayPlanPreferredAction { diagnosticQuiz, openQuestion }
 class TodayPlanStartPayload {
   const TodayPlanStartPayload({
     required this.subjectId,
+    this.documentId,
     this.knowledgeUnitId,
     this.preferredAction,
   });
 
   final String subjectId;
+  final String? documentId;
   final String? knowledgeUnitId;
   final TodayPlanPreferredAction? preferredAction;
 }
@@ -39,6 +47,7 @@ class TodayPlanItem {
     required this.id,
     required this.subjectId,
     required this.subjectName,
+    this.documentId,
     required this.knowledgeUnitId,
     required this.knowledgeUnitTitle,
     required this.masteryScore,
@@ -53,6 +62,7 @@ class TodayPlanItem {
   final String id;
   final String subjectId;
   final String subjectName;
+  final String? documentId;
   final String? knowledgeUnitId;
   final String? knowledgeUnitTitle;
   final double? masteryScore;

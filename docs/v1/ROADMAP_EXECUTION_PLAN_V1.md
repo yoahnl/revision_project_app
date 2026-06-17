@@ -36,7 +36,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-011 | Widgets Flutter matching/ordering | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_011_FLUTTER_MATCHING_ORDERING.md |
 | V1-012 | Scoring/correction UI V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_012_SCORING_CORRECTION_UI_V1A.md |
 | V1-012B | Page rich closed complète et flow submit local | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_012B_RICH_CLOSED_PAGE_FLOW.md |
-| V1-013 | Today integration V1 | À faire | À créer |
+| V1-013 | Today integration V1 | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_013_TODAY_INTEGRATION_V1.md |
 | V1-014 | Revision session integration V1 | À faire | À créer |
 | V1-015 | Seed V1 rich demo fixtures | À faire | À créer |
 | V1-016 | E2E/smoke V1 rich questions | À faire | À créer |

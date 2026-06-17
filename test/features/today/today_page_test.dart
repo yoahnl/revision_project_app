@@ -25,7 +25,10 @@ void main() {
     await tester.pumpWidget(_buildApp(repository: repository));
     await tester.pump();
 
-    expect(find.text('Aucune action prioritaire pour aujourd’hui.'), findsOneWidget);
+    expect(
+      find.text('Aucune action prioritaire pour aujourd’hui.'),
+      findsOneWidget,
+    );
     expect(find.text('Voir mes matières'), findsOneWidget);
   });
 
@@ -54,38 +57,43 @@ void main() {
     await tester.pumpWidget(_buildApp(repository: repository));
     await tester.pump();
 
-    expect(find.text('3 actions'), findsOneWidget);
-    expect(find.text('55 min'), findsOneWidget);
+    expect(find.text('4 actions'), findsOneWidget);
+    expect(find.text('63 min'), findsOneWidget);
     expect(find.text('QCM ciblé'), findsOneWidget);
     expect(find.text('Question ouverte'), findsOneWidget);
+    expect(find.text('Questions riches'), findsOneWidget);
     expect(find.text('Session de révision IA'), findsOneWidget);
     expect(find.text('À revoir en priorité.'), findsOneWidget);
     expect(find.text('Change de format.'), findsOneWidget);
+    expect(find.text('Questions riches recommandées.'), findsOneWidget);
     expect(find.text('Lance une session guidée.'), findsOneWidget);
+    expect(find.text('8 min'), findsOneWidget);
     expect(find.text('12 min'), findsOneWidget);
     expect(find.text('Priorité 610'), findsOneWidget);
     expect(find.text('Maîtrise 20 %'), findsOneWidget);
     expect(find.text('Maîtrise non mesurée'), findsOneWidget);
     expect(find.text('Démarrer le QCM'), findsOneWidget);
     expect(find.text('Répondre à la question'), findsOneWidget);
+    expect(find.text('Commencer'), findsOneWidget);
     expect(find.text('Lancer la session'), findsOneWidget);
   });
 
-  testWidgets('ne montre pas de barre de progression pour maîtrise non mesurée', (
-    tester,
-  ) async {
-    final repository = InMemoryTodayRepository()
-      ..plan = TodayPlan(
-        generatedAt: DateTime.parse('2026-06-15T10:00:00.000Z'),
-        items: [openQuestionItem()],
-      );
+  testWidgets(
+    'ne montre pas de barre de progression pour maîtrise non mesurée',
+    (tester) async {
+      final repository = InMemoryTodayRepository()
+        ..plan = TodayPlan(
+          generatedAt: DateTime.parse('2026-06-15T10:00:00.000Z'),
+          items: [openQuestionItem()],
+        );
 
-    await tester.pumpWidget(_buildApp(repository: repository));
-    await tester.pump();
+      await tester.pumpWidget(_buildApp(repository: repository));
+      await tester.pump();
 
-    expect(find.text('Maîtrise non mesurée'), findsOneWidget);
-    expect(find.byType(LinearProgressIndicator), findsNothing);
-  });
+      expect(find.text('Maîtrise non mesurée'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+    },
+  );
 
   testWidgets('navigue vers Activities pour QCM sans forcer question ouverte', (
     tester,
@@ -105,7 +113,10 @@ void main() {
     await tester.tap(find.text('Démarrer le QCM'));
     await tester.pumpAndSettle();
 
-    expect(router.routeInformationProvider.value.uri.toString(), '/activities?subjectId=subject-1');
+    expect(
+      router.routeInformationProvider.value.uri.toString(),
+      '/activities?subjectId=subject-1',
+    );
   });
 
   testWidgets('navigue vers Activities avec notion pour question ouverte', (
@@ -131,6 +142,32 @@ void main() {
     expect(
       router.routeInformationProvider.value.uri.toString(),
       '/activities?subjectId=subject-1&knowledgeUnitId=unit-2',
+    );
+  });
+
+  testWidgets('navigue vers Questions riches avec notion et document', (
+    tester,
+  ) async {
+    final repository = InMemoryTodayRepository()..plan = todayPlan();
+    final router = _router(repository);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [todayRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    addTearDown(router.dispose);
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('Commencer'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Commencer'));
+    await tester.pumpAndSettle();
+
+    expect(
+      router.routeInformationProvider.value.uri.toString(),
+      '/activities/rich-closed?subjectId=subject-1&documentId=document-1&knowledgeUnitId=unit-2',
     );
   });
 
@@ -203,6 +240,11 @@ GoRouter _router(InMemoryTodayRepository repository) {
         path: '/activities/session',
         builder: (context, state) => const Scaffold(body: Text('Session')),
       ),
+      GoRoute(
+        path: '/activities/rich-closed',
+        builder: (context, state) =>
+            const Scaffold(body: Text('Questions riches')),
+      ),
     ],
   );
 }
@@ -238,6 +280,7 @@ TodayPlan todayPlan() {
         ),
       ),
       openQuestionItem(),
+      richClosedItem(),
       const TodayPlanItem(
         id: 'subject-2:session:revision_session',
         subjectId: 'subject-2',
@@ -253,6 +296,28 @@ TodayPlan todayPlan() {
         startPayload: TodayPlanStartPayload(subjectId: 'subject-2'),
       ),
     ],
+  );
+}
+
+TodayPlanItem richClosedItem() {
+  return const TodayPlanItem(
+    id: 'subject-1:unit-2:rich_closed_exercise',
+    subjectId: 'subject-1',
+    subjectName: 'Anatomie',
+    documentId: 'document-1',
+    knowledgeUnitId: 'unit-2',
+    knowledgeUnitTitle: 'Valves',
+    masteryScore: 0.35,
+    action: TodayPlanActionType.richClosedExercise,
+    estimatedMinutes: 8,
+    priority: 585,
+    reasonCode: TodayPlanReasonCode.richClosedPractice,
+    reason: 'Questions riches recommandées.',
+    startPayload: TodayPlanStartPayload(
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-2',
+    ),
   );
 }
 

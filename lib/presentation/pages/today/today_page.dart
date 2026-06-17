@@ -124,9 +124,9 @@ class _TodayPlanItemCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.l),
           Text(
             item.reason,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: AppSpacing.m),
           Wrap(
@@ -184,7 +184,8 @@ class _TodayPlanItemCard extends StatelessWidget {
       return false;
     }
 
-    if (item.action == TodayPlanActionType.openQuestion) {
+    if (item.action == TodayPlanActionType.openQuestion ||
+        item.action == TodayPlanActionType.richClosedExercise) {
       return item.startPayload.knowledgeUnitId?.trim().isNotEmpty ?? false;
     }
 
@@ -206,8 +207,14 @@ class _TodayPlanItemCard extends StatelessWidget {
           'knowledgeUnitId': payload.knowledgeUnitId!,
         },
       ).toString(),
+      TodayPlanActionType.richClosedExercise => richClosedExerciseRoutePathFor(
+        subjectId: payload.subjectId,
+        documentId: payload.documentId ?? item.documentId,
+        knowledgeUnitId: payload.knowledgeUnitId,
+      ),
       TodayPlanActionType.revisionSession => revisionSessionRoutePathFor(
         subjectId: payload.subjectId,
+        documentId: payload.documentId ?? item.documentId,
         knowledgeUnitId: payload.knowledgeUnitId,
         preferredAction: _preferredActionValue(payload.preferredAction),
       ),
@@ -229,6 +236,7 @@ class _TodayPlanItemCard extends StatelessWidget {
       TodayPlanReasonCode.stalePractice => 'À entretenir',
       TodayPlanReasonCode.highPrioritySubject => 'Matière prioritaire',
       TodayPlanReasonCode.mixActivityType => 'Format varié',
+      TodayPlanReasonCode.richClosedPractice => 'Exercice structuré',
       TodayPlanReasonCode.startRevisionSession => 'Session guidée',
       TodayPlanReasonCode.continueProgress => 'Progression',
     };
@@ -273,6 +281,12 @@ class _TodayActionPresentation {
         buttonLabel: 'Répondre à la question',
         icon: Icons.edit_note,
         color: AppColors.aqua,
+      ),
+      TodayPlanActionType.richClosedExercise => const _TodayActionPresentation(
+        title: 'Questions riches',
+        buttonLabel: 'Commencer',
+        icon: Icons.fact_check,
+        color: AppColors.amber,
       ),
       TodayPlanActionType.revisionSession => const _TodayActionPresentation(
         title: 'Session de révision IA',
