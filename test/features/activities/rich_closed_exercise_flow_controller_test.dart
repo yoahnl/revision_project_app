@@ -309,6 +309,20 @@ void _answerAllQuestions(RichClosedExerciseFlowController controller) {
             ],
           ),
         );
+      case RichClosedDiagramLabelingQuestion():
+        controller.recordAnswer(
+          question,
+          RichClosedDiagramLabelingAnswer(
+            questionId: question.id,
+            values: [
+              for (final slot in question.slots)
+                RichClosedDiagramLabelingValue(
+                  slotId: slot.id,
+                  optionId: slot.options.first.id,
+                ),
+            ],
+          ),
+        );
       case RichClosedCaseQualificationQuestion():
         controller.recordAnswer(
           question,

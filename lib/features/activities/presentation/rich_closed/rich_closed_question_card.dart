@@ -76,6 +76,7 @@ class RichClosedQuestionCard extends StatelessWidget {
       RichClosedQuestionKind.trueFalseGrid => 'Vrai / faux',
       RichClosedQuestionKind.causeConsequence => 'Cause / conséquence',
       RichClosedQuestionKind.institutionMatrix => 'Matrice',
+      RichClosedQuestionKind.diagramLabeling => 'Schéma',
     };
   }
 

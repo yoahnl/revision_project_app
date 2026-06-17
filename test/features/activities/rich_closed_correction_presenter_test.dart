@@ -190,6 +190,64 @@ void main() {
     expect(_item(viewModel, 'institution-matrix-1').isCorrect, isTrue);
   });
 
+  test('mappe diagram_labeling depuis les corrections backend', () {
+    final v1cFullExercise = RichClosedExercise.fromJson(
+      richClosedV1CFullExerciseJson(),
+    );
+    final v1cFullResult = RichClosedExerciseResult.fromJson(
+      richClosedV1CFullResultJson(),
+    );
+    final viewModel = presenter.present(
+      exercise: v1cFullExercise,
+      result: v1cFullResult,
+    );
+
+    expect(_item(viewModel, 'diagram-labeling-1').kindLabel, 'Schéma');
+    expect(_item(viewModel, 'diagram-labeling-1').submittedAnswerLines, [
+      'Gouvernement : Gouvernement',
+      'Assemblée nationale -> Gouvernement / contrôle : Motion de censure',
+      'Président de la République -> Gouvernement / nomme : Nomination',
+    ]);
+    expect(_item(viewModel, 'diagram-labeling-1').correctAnswerLines, [
+      'Gouvernement : Gouvernement',
+      'Assemblée nationale -> Gouvernement / contrôle : Motion de censure',
+      'Président de la République -> Gouvernement / nomme : Nomination',
+    ]);
+    expect(_item(viewModel, 'diagram-labeling-1').isCorrect, isTrue);
+  });
+
+  test('rejette une correction diagram_labeling incomplète ou dupliquée', () {
+    final exercise = RichClosedExercise.fromJson(
+      richClosedV1CFullExerciseJson(),
+    );
+
+    for (final correctValues in [
+      [
+        {'slotId': 'slot-government-role', 'optionId': 'option-government'},
+        {'slotId': 'slot-censure', 'optionId': 'option-motion-censure'},
+      ],
+      [
+        {'slotId': 'slot-government-role', 'optionId': 'option-government'},
+        {'slotId': 'slot-government-role', 'optionId': 'option-president'},
+        {'slotId': 'slot-nomination', 'optionId': 'option-nomination'},
+      ],
+    ]) {
+      final json = richClosedV1CFullResultJson();
+      final item =
+          (json['items']! as List<Object?>).last! as Map<String, Object?>;
+      final correction = item['correction']! as Map<String, Object?>;
+      correction['correctValues'] = correctValues;
+
+      expect(
+        () => presenter.present(
+          exercise: exercise,
+          result: RichClosedExerciseResult.fromJson(json),
+        ),
+        throwsA(isA<RichClosedCorrectionPresentationException>()),
+      );
+    }
+  });
+
   test('conserve isCorrect et partialScore backend sans recalcul', () {
     final json = richClosedResultJson();
     final single =

@@ -622,6 +622,159 @@ Map<String, Object?> richClosedV1CResultJson() {
   return json;
 }
 
+Map<String, Object?> richClosedV1CFullExerciseJson() {
+  final json = richClosedV1CExerciseJson();
+  final questions = List<Object?>.from(json['questions']! as List<Object?>);
+  json['questions'] = questions;
+
+  questions.add({
+    'id': 'diagram-labeling-1',
+    'questionKind': 'diagram_labeling',
+    'prompt':
+        'Complète le schéma des rapports institutionnels sous la Ve République.',
+    'instruction':
+        'Choisis une option fermée pour chaque zone du schéma textuel.',
+    'difficulty': 'MEDIUM',
+    'cognitiveSkill': 'classification',
+    'sourceChunkIds': ['chunk-11'],
+    'diagram': {
+      'title': 'Rapports institutionnels',
+      'description':
+          'Schéma textuel borné entre exécutif et Parlement, sans SVG ni HTML.',
+      'layout': 'vertical_flow',
+      'nodes': [
+        {
+          'id': 'node-president',
+          'label': 'Président de la République',
+          'description': 'Chef de l’État.',
+          'groupId': 'group-executive',
+        },
+        {
+          'id': 'node-government',
+          'label': 'Gouvernement',
+          'description': 'Conduit la politique nationale.',
+          'groupId': 'group-executive',
+        },
+        {
+          'id': 'node-assembly',
+          'label': 'Assemblée nationale',
+          'description': 'Chambre politiquement déterminante.',
+          'groupId': 'group-parliament',
+        },
+        {
+          'id': 'node-senate',
+          'label': 'Sénat',
+          'description': 'Chambre représentant les collectivités.',
+          'groupId': 'group-parliament',
+        },
+      ],
+      'groups': [
+        {'id': 'group-executive', 'label': 'Exécutif'},
+        {'id': 'group-parliament', 'label': 'Parlement'},
+      ],
+      'edges': [
+        {
+          'id': 'edge-president-government',
+          'fromNodeId': 'node-president',
+          'toNodeId': 'node-government',
+          'label': 'nomme',
+          'description': 'Nomination du Premier ministre.',
+        },
+        {
+          'id': 'edge-government-assembly',
+          'fromNodeId': 'node-government',
+          'toNodeId': 'node-assembly',
+          'label': 'responsable devant',
+          'description': 'Responsabilité politique.',
+        },
+        {
+          'id': 'edge-assembly-government',
+          'fromNodeId': 'node-assembly',
+          'toNodeId': 'node-government',
+          'label': 'contrôle',
+          'description': 'Contrôle parlementaire.',
+        },
+      ],
+    },
+    'slots': [
+      {
+        'id': 'slot-government-role',
+        'anchorType': 'node',
+        'anchorId': 'node-government',
+        'prompt': 'Quel organe conduit la politique nationale ?',
+        'options': [
+          {'id': 'option-government', 'label': 'Gouvernement'},
+          {'id': 'option-president', 'label': 'Président'},
+          {'id': 'option-senate', 'label': 'Sénat'},
+        ],
+      },
+      {
+        'id': 'slot-censure',
+        'anchorType': 'edge',
+        'anchorId': 'edge-assembly-government',
+        'prompt': 'Quel mécanisme illustre le contrôle parlementaire ?',
+        'options': [
+          {'id': 'option-motion-censure', 'label': 'Motion de censure'},
+          {'id': 'option-referendum', 'label': 'Référendum'},
+          {'id': 'option-promulgation', 'label': 'Promulgation'},
+        ],
+      },
+      {
+        'id': 'slot-nomination',
+        'anchorType': 'edge',
+        'anchorId': 'edge-president-government',
+        'prompt': 'Quelle relation relie le Président au Gouvernement ?',
+        'options': [
+          {'id': 'option-nomination', 'label': 'Nomination'},
+          {'id': 'option-censure', 'label': 'Censure'},
+          {'id': 'option-election', 'label': 'Élection parlementaire'},
+        ],
+      },
+    ],
+  });
+
+  return json;
+}
+
+Map<String, Object?> richClosedV1CFullResultJson() {
+  final json = richClosedV1CResultJson();
+  final items = List<Object?>.from(json['items']! as List<Object?>);
+
+  json['correctAnswers'] = 11;
+  json['totalQuestions'] = 12;
+  json['score'] = 0.917;
+  json['items'] = items;
+  items.add({
+    'questionId': 'diagram-labeling-1',
+    'questionKind': 'diagram_labeling',
+    'prompt':
+        'Complète le schéma des rapports institutionnels sous la Ve République.',
+    'submittedAnswer': {
+      'questionId': 'diagram-labeling-1',
+      'questionKind': 'diagram_labeling',
+      'values': [
+        {'slotId': 'slot-government-role', 'optionId': 'option-government'},
+        {'slotId': 'slot-censure', 'optionId': 'option-motion-censure'},
+        {'slotId': 'slot-nomination', 'optionId': 'option-nomination'},
+      ],
+    },
+    'isCorrect': true,
+    'partialScore': 1,
+    'explanation':
+        'Le schéma relie des organes et mécanismes institutionnels fermés.',
+    'sourceChunkIds': ['chunk-11'],
+    'correction': {
+      'correctValues': [
+        {'slotId': 'slot-government-role', 'optionId': 'option-government'},
+        {'slotId': 'slot-censure', 'optionId': 'option-motion-censure'},
+        {'slotId': 'slot-nomination', 'optionId': 'option-nomination'},
+      ],
+    },
+  });
+
+  return json;
+}
+
 Map<String, Object?> richClosedExerciseWithCorrectChoiceLeak() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
@@ -644,7 +797,7 @@ Map<String, Object?> richClosedExerciseWithUnknownKind() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
           as Map<String, Object?>)['questionKind'] =
-      'diagram_labeling';
+      'calculation_mcq';
   return json;
 }
 

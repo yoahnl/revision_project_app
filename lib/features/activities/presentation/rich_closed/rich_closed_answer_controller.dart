@@ -10,6 +10,7 @@ class RichClosedCoreAnswerController {
   final Map<String, Map<String, bool>> _trueFalseSelections = {};
   final Map<String, Map<String, String>> _causeConsequenceSelections = {};
   final Map<String, Map<String, String>> _institutionMatrixSelections = {};
+  final Map<String, Map<String, String>> _diagramLabelingSelections = {};
 
   String? _message;
 
@@ -142,6 +143,28 @@ class RichClosedCoreAnswerController {
           RichClosedInstitutionMatrixValue(
             cellId: cell.id,
             optionId: selections[cell.id]!,
+          ),
+    ];
+  }
+
+  String? selectedDiagramLabelingOptionIdFor(String questionId, String slotId) {
+    return _diagramLabelingSelections[questionId]?[slotId];
+  }
+
+  List<RichClosedDiagramLabelingValue> diagramLabelingValuesFor(
+    RichClosedDiagramLabelingQuestion question,
+  ) {
+    final selections = _diagramLabelingSelections[question.id];
+    if (selections == null || selections.isEmpty) {
+      return const [];
+    }
+
+    return [
+      for (final slot in question.slots)
+        if (selections[slot.id] != null)
+          RichClosedDiagramLabelingValue(
+            slotId: slot.id,
+            optionId: selections[slot.id]!,
           ),
     ];
   }
@@ -327,6 +350,24 @@ class RichClosedCoreAnswerController {
     _message = null;
   }
 
+  void setDiagramLabelingValue({
+    required RichClosedDiagramLabelingQuestion question,
+    required String slotId,
+    required String optionId,
+  }) {
+    final slot = _diagramLabelingSlot(question.slots, slotId);
+    if (slot == null || !_hasChoice(slot.options, optionId)) {
+      return;
+    }
+
+    final selections = _diagramLabelingSelections.putIfAbsent(
+      question.id,
+      () => <String, String>{},
+    );
+    selections[slotId] = optionId;
+    _message = null;
+  }
+
   bool canSubmitQuestion(RichClosedQuestion question) {
     return switch (question) {
       RichClosedSingleChoiceQuestion() =>
@@ -345,6 +386,9 @@ class RichClosedCoreAnswerController {
         question,
       ),
       RichClosedInstitutionMatrixQuestion() => _canSubmitInstitutionMatrix(
+        question,
+      ),
+      RichClosedDiagramLabelingQuestion() => _canSubmitDiagramLabeling(
         question,
       ),
     };
@@ -402,6 +446,10 @@ class RichClosedCoreAnswerController {
           questionId: question.id,
           values: institutionMatrixValuesFor(question),
         ),
+      RichClosedDiagramLabelingQuestion() => RichClosedDiagramLabelingAnswer(
+        questionId: question.id,
+        values: diagramLabelingValuesFor(question),
+      ),
     };
   }
 
@@ -477,6 +525,22 @@ class RichClosedCoreAnswerController {
       return cellIds.contains(entry.key) &&
           cell != null &&
           _hasChoice(cell.options, entry.value);
+    });
+  }
+
+  bool _canSubmitDiagramLabeling(RichClosedDiagramLabelingQuestion question) {
+    final selections = _diagramLabelingSelections[question.id];
+    if (selections == null || selections.length != question.slots.length) {
+      return false;
+    }
+
+    final slotIds = question.slots.map((slot) => slot.id).toSet();
+
+    return selections.entries.every((entry) {
+      final slot = _diagramLabelingSlot(question.slots, entry.key);
+      return slotIds.contains(entry.key) &&
+          slot != null &&
+          _hasChoice(slot.options, entry.value);
     });
   }
 
@@ -606,6 +670,18 @@ class RichClosedCoreAnswerController {
     for (final cell in cells) {
       if (cell.id == cellId) {
         return cell;
+      }
+    }
+    return null;
+  }
+
+  RichClosedDiagramLabelingSlot? _diagramLabelingSlot(
+    List<RichClosedDiagramLabelingSlot> slots,
+    String slotId,
+  ) {
+    for (final slot in slots) {
+      if (slot.id == slotId) {
+        return slot;
       }
     }
     return null;

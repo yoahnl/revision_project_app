@@ -186,6 +186,58 @@ void main() {
     expect(controller.canSubmitQuestion(v1cExercise.questions.last), isFalse);
   });
 
+  testWidgets('renderer rend diagram_labeling', (tester) async {
+    final controller = RichClosedCoreAnswerController();
+    final v1cFullExercise = RichClosedExercise.fromJson(
+      richClosedV1CFullExerciseJson(),
+    );
+    final changedQuestions = <String>[];
+
+    await tester.pumpWidget(
+      _TestHost(
+        scrollable: true,
+        child: Column(
+          children: [
+            RichClosedQuestionRenderer(
+              question: v1cFullExercise.questions.last,
+              controller: controller,
+              enabled: true,
+              onChanged: (_) =>
+                  changedQuestions.add(v1cFullExercise.questions.last.id),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(find.text('Rapports institutionnels'), findsOneWidget);
+    expect(find.text('Président de la République'), findsOneWidget);
+    expect(
+      find.text('Quel organe conduit la politique nationale ?'),
+      findsOneWidget,
+    );
+    expect(find.text('correctValues'), findsNothing);
+    expect(find.text('explanation'), findsNothing);
+    expect(find.text('svg'), findsNothing);
+    expect(find.text('renderPayload'), findsNothing);
+
+    final dropdown = tester.widget<DropdownButton<String>>(
+      find.byKey(
+        const ValueKey(
+          'diagram-labeling-diagram-labeling-1-slot-government-role',
+        ),
+      ),
+    );
+    dropdown.onChanged!('option-government');
+    await tester.pump();
+
+    expect(changedQuestions, contains('diagram-labeling-1'));
+    expect(
+      controller.canSubmitQuestion(v1cFullExercise.questions.last),
+      isFalse,
+    );
+  });
+
   testWidgets('page démarre, collecte six réponses et affiche la correction', (
     tester,
   ) async {
@@ -431,6 +483,64 @@ void main() {
     );
   });
 
+  testWidgets('page submit et affiche les corrections V1-020', (tester) async {
+    final v1cFullExercise = RichClosedExercise.fromJson(
+      richClosedV1CFullExerciseJson(),
+    );
+    final v1cFullResult = RichClosedExerciseResult.fromJson(
+      richClosedV1CFullResultJson(),
+    );
+    final api = _FakeRichClosedActivityApi(
+      exercise: v1cFullExercise,
+      result: v1cFullResult,
+    );
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedExercisePage(
+          controller: ActivityController(api),
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 / 12 répondues'), findsOneWidget);
+
+    await _answerAllQuestions(tester);
+
+    expect(find.text('12 / 12 répondues'), findsOneWidget);
+    expect(_submitButton(tester).onPressed, isNotNull);
+
+    await _tapVisible(
+      tester,
+      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.submittedAnswers, hasLength(12));
+    expect(
+      api.submittedAnswers!
+          .whereType<RichClosedDiagramLabelingAnswer>()
+          .single
+          .values
+          .map((value) => '${value.slotId}:${value.optionId}'),
+      [
+        'slot-government-role:option-government',
+        'slot-censure:option-motion-censure',
+        'slot-nomination:option-nomination',
+      ],
+    );
+    expect(find.text('Gouvernement : Gouvernement'), findsWidgets);
+    expect(
+      find.text(
+        'Assemblée nationale -> Gouvernement / contrôle : Motion de censure',
+      ),
+      findsWidgets,
+    );
+  });
+
   testWidgets('page affiche une erreur contrôlée au démarrage', (tester) async {
     final api = _FakeRichClosedActivityApi(
       exercise: exercise,
@@ -546,6 +656,21 @@ Future<void> _answerAllQuestions(WidgetTester tester) async {
     cellId: 'cell-assembly-action',
     optionId: 'option-action-censure',
   );
+  await _selectDiagramLabeling(
+    tester,
+    slotId: 'slot-government-role',
+    optionId: 'option-government',
+  );
+  await _selectDiagramLabeling(
+    tester,
+    slotId: 'slot-censure',
+    optionId: 'option-motion-censure',
+  );
+  await _selectDiagramLabeling(
+    tester,
+    slotId: 'slot-nomination',
+    optionId: 'option-nomination',
+  );
 }
 
 Future<void> _selectMatchingRight(
@@ -586,6 +711,24 @@ Future<void> _selectInstitutionMatrix(
 }) async {
   final finder = find.byKey(
     ValueKey('institution-matrix-institution-matrix-1-$cellId'),
+  );
+  if (finder.evaluate().isEmpty) {
+    return;
+  }
+
+  await tester.ensureVisible(finder);
+  final dropdown = tester.widget<DropdownButton<String>>(finder);
+  dropdown.onChanged!(optionId);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectDiagramLabeling(
+  WidgetTester tester, {
+  required String slotId,
+  required String optionId,
+}) async {
+  final finder = find.byKey(
+    ValueKey('diagram-labeling-diagram-labeling-1-$slotId'),
   );
   if (finder.evaluate().isEmpty) {
     return;

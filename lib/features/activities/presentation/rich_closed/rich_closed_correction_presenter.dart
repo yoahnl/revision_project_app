@@ -68,6 +68,10 @@ class RichClosedCorrectionPresenter {
         question,
         item,
       ),
+      RichClosedDiagramLabelingQuestion() => _presentDiagramLabeling(
+        question,
+        item,
+      ),
       RichClosedCaseQualificationQuestion() => _presentCaseQualification(
         question,
         item,
@@ -232,6 +236,25 @@ class RichClosedCorrectionPresenter {
       contextText: question.instruction,
       submittedAnswerLines: _institutionMatrixLines(question, submitted.values),
       correctAnswerLines: _institutionMatrixLines(
+        question,
+        correction.correctValues,
+      ),
+    );
+  }
+
+  RichClosedCorrectionItemViewModel _presentDiagramLabeling(
+    RichClosedDiagramLabelingQuestion question,
+    RichClosedCorrectionItem item,
+  ) {
+    final submitted = _diagramLabelingAnswer(item);
+    final correction = _diagramLabelingValuesCorrection(item);
+
+    return _baseItem(
+      question: question,
+      item: item,
+      contextText: question.instruction,
+      submittedAnswerLines: _diagramLabelingLines(question, submitted.values),
+      correctAnswerLines: _diagramLabelingLines(
         question,
         correction.correctValues,
       ),
@@ -438,6 +461,18 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedDiagramLabelingAnswer _diagramLabelingAnswer(
+    RichClosedCorrectionItem item,
+  ) {
+    final answer = item.submittedAnswer;
+    if (answer is RichClosedDiagramLabelingAnswer) {
+      return answer;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid diagram labeling submitted answer for ${item.questionId}',
+    );
+  }
+
   RichClosedCaseQualificationAnswer _caseQualificationAnswer(
     RichClosedCorrectionItem item,
   ) {
@@ -556,6 +591,17 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedCorrectDiagramLabelingValuesCorrection
+  _diagramLabelingValuesCorrection(RichClosedCorrectionItem item) {
+    final correction = item.correction;
+    if (correction is RichClosedCorrectDiagramLabelingValuesCorrection) {
+      return correction;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid diagram labeling correction for ${item.questionId}',
+    );
+  }
+
   RichClosedCorrectErrorIdCorrection _errorIdCorrection(
     RichClosedCorrectionItem item,
   ) {
@@ -639,6 +685,48 @@ class RichClosedCorrectionPresenter {
     }
     throw RichClosedCorrectionPresentationException(
       'Unknown institution matrix cell $cellId for question ${question.id}',
+    );
+  }
+
+  RichClosedDiagramLabelingSlot _diagramLabelingSlot(
+    RichClosedDiagramLabelingQuestion question,
+    String slotId,
+  ) {
+    for (final slot in question.slots) {
+      if (slot.id == slotId) {
+        return slot;
+      }
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Unknown diagram labeling slot $slotId for question ${question.id}',
+    );
+  }
+
+  RichClosedDiagramNode _diagramNode(
+    RichClosedDiagramLabelingQuestion question,
+    String nodeId,
+  ) {
+    for (final node in question.diagram.nodes) {
+      if (node.id == nodeId) {
+        return node;
+      }
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Unknown diagram node $nodeId for question ${question.id}',
+    );
+  }
+
+  RichClosedDiagramEdge _diagramEdge(
+    RichClosedDiagramLabelingQuestion question,
+    String edgeId,
+  ) {
+    for (final edge in question.diagram.edges) {
+      if (edge.id == edgeId) {
+        return edge;
+      }
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Unknown diagram edge $edgeId for question ${question.id}',
     );
   }
 
@@ -740,6 +828,73 @@ class RichClosedCorrectionPresenter {
     return '$rowLabel / $columnLabel : $optionLabel';
   }
 
+  List<String> _diagramLabelingLines(
+    RichClosedDiagramLabelingQuestion question,
+    List<RichClosedDiagramLabelingValue> values,
+  ) {
+    _assertCompleteDiagramLabelingValues(question, values);
+
+    return [for (final value in values) _diagramLabelingLine(question, value)];
+  }
+
+  void _assertCompleteDiagramLabelingValues(
+    RichClosedDiagramLabelingQuestion question,
+    List<RichClosedDiagramLabelingValue> values,
+  ) {
+    final expectedSlotIds = question.slots.map((slot) => slot.id).toSet();
+    final seenSlotIds = <String>{};
+
+    if (values.length != question.slots.length) {
+      throw RichClosedCorrectionPresentationException(
+        'Incomplete diagram labeling values for question ${question.id}',
+      );
+    }
+
+    for (final value in values) {
+      if (!expectedSlotIds.contains(value.slotId) ||
+          !seenSlotIds.add(value.slotId)) {
+        throw RichClosedCorrectionPresentationException(
+          'Invalid diagram labeling values for question ${question.id}',
+        );
+      }
+    }
+  }
+
+  String _diagramLabelingLine(
+    RichClosedDiagramLabelingQuestion question,
+    RichClosedDiagramLabelingValue value,
+  ) {
+    final slot = _diagramLabelingSlot(question, value.slotId);
+    final anchorLabel = switch (slot.anchorType) {
+      RichClosedDiagramAnchorType.node => _diagramNode(
+        question,
+        slot.anchorId,
+      ).label,
+      RichClosedDiagramAnchorType.edge => _diagramEdgeLine(
+        question,
+        _diagramEdge(question, slot.anchorId),
+      ),
+    };
+    final optionLabel = _choiceLabel(slot.options, value.optionId, question.id);
+
+    return '$anchorLabel : $optionLabel';
+  }
+
+  String _diagramEdgeLine(
+    RichClosedDiagramLabelingQuestion question,
+    RichClosedDiagramEdge edge,
+  ) {
+    final from = _diagramNode(question, edge.fromNodeId).label;
+    final to = _diagramNode(question, edge.toNodeId).label;
+    final label = edge.label;
+    final endpoints = '$from -> $to';
+
+    if (label == null) {
+      return endpoints;
+    }
+    return '$endpoints / $label';
+  }
+
   String _booleanLabel(bool? value, String questionId, String rowId) {
     if (value == null) {
       throw RichClosedCorrectionPresentationException(
@@ -763,6 +918,7 @@ class RichClosedCorrectionPresenter {
       RichClosedQuestionKind.trueFalseGrid => 'Vrai / faux',
       RichClosedQuestionKind.causeConsequence => 'Cause / conséquence',
       RichClosedQuestionKind.institutionMatrix => 'Matrice',
+      RichClosedQuestionKind.diagramLabeling => 'Schéma',
     };
   }
 }

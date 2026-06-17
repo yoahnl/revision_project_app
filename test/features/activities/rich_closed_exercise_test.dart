@@ -133,6 +133,44 @@ void main() {
       ]);
     });
 
+    test('parses diagram_labeling public questions', () {
+      final questions = RichClosedExercise.fromJson(
+        richClosedV1CFullExerciseJson(),
+      ).questions;
+      final diagram = questions[11] as RichClosedDiagramLabelingQuestion;
+
+      expect(questions, hasLength(12));
+      expect(diagram.questionKind, RichClosedQuestionKind.diagramLabeling);
+      expect(diagram.instruction, contains('option fermée'));
+      expect(diagram.diagram.layout, RichClosedDiagramLayout.verticalFlow);
+      expect(diagram.diagram.nodes.map((node) => node.id), [
+        'node-president',
+        'node-government',
+        'node-assembly',
+        'node-senate',
+      ]);
+      expect(diagram.diagram.groups.map((group) => group.id), [
+        'group-executive',
+        'group-parliament',
+      ]);
+      expect(diagram.diagram.edges.map((edge) => edge.id), [
+        'edge-president-government',
+        'edge-government-assembly',
+        'edge-assembly-government',
+      ]);
+      expect(diagram.slots.map((slot) => slot.id), [
+        'slot-government-role',
+        'slot-censure',
+        'slot-nomination',
+      ]);
+      expect(diagram.slots.first.anchorType, RichClosedDiagramAnchorType.node);
+      expect(diagram.slots.first.options.map((option) => option.id), [
+        'option-government',
+        'option-president',
+        'option-senate',
+      ]);
+    });
+
     test('rejects cause_consequence with fewer consequences than causes', () {
       final payload = richClosedV1BFullExerciseJson();
       final question =
@@ -289,6 +327,92 @@ void main() {
         expectParseError(() => RichClosedExercise.fromJson(explanationLeak));
       },
     );
+
+    test(
+      'rejects diagram_labeling public questions carrying private or render fields',
+      () {
+        for (final field in [
+          'correctValues',
+          'explanation',
+          'html',
+          'svg',
+          'rawSvg',
+          'mermaid',
+          'markdown',
+          'widget',
+          'component',
+          'renderPayload',
+          'style',
+          'css',
+          'script',
+          'imageUrl',
+          'assetUrl',
+          'canvas',
+          'code',
+          'markup',
+        ]) {
+          final payload = richClosedV1CFullExerciseJson();
+          ((payload['questions']! as List<Object?>)[11]!
+              as Map<String, Object?>)[field] = field == 'correctValues'
+              ? [
+                  {
+                    'slotId': 'slot-government-role',
+                    'optionId': 'option-government',
+                  },
+                ]
+              : 'forbidden';
+
+          expectParseError(() => RichClosedExercise.fromJson(payload));
+        }
+      },
+    );
+
+    test('rejects diagram_labeling incoherent diagram references', () {
+      final badEdge = richClosedV1CFullExerciseJson();
+      final badEdgeQuestion =
+          (badEdge['questions']! as List<Object?>)[11]! as Map<String, Object?>;
+      final badEdgeDiagram =
+          badEdgeQuestion['diagram']! as Map<String, Object?>;
+      ((badEdgeDiagram['edges']! as List<Object?>).first!
+              as Map<String, Object?>)['fromNodeId'] =
+          'node-unknown';
+
+      final badGroup = richClosedV1CFullExerciseJson();
+      final badGroupQuestion =
+          (badGroup['questions']! as List<Object?>)[11]!
+              as Map<String, Object?>;
+      final badGroupDiagram =
+          badGroupQuestion['diagram']! as Map<String, Object?>;
+      ((badGroupDiagram['nodes']! as List<Object?>).first!
+              as Map<String, Object?>)['groupId'] =
+          'group-unknown';
+
+      expectParseError(() => RichClosedExercise.fromJson(badEdge));
+      expectParseError(() => RichClosedExercise.fromJson(badGroup));
+    });
+
+    test('rejects diagram_labeling slots with unknown anchors', () {
+      final badNodeAnchor = richClosedV1CFullExerciseJson();
+      final badNodeQuestion =
+          (badNodeAnchor['questions']! as List<Object?>)[11]!
+              as Map<String, Object?>;
+      ((badNodeQuestion['slots']! as List<Object?>).first!
+              as Map<String, Object?>)['anchorId'] =
+          'node-unknown';
+
+      final badEdgeAnchor = richClosedV1CFullExerciseJson();
+      final badEdgeQuestion =
+          (badEdgeAnchor['questions']! as List<Object?>)[11]!
+              as Map<String, Object?>;
+      final slot =
+          (badEdgeQuestion['slots']! as List<Object?>).first!
+              as Map<String, Object?>;
+      slot['anchorType'] = 'edge';
+      slot['anchorId'] = 'edge-unknown';
+
+      expectParseError(() => RichClosedExercise.fromJson(badNodeAnchor));
+      expectParseError(() => RichClosedExercise.fromJson(badEdgeAnchor));
+    });
 
     test('rejects institution_matrix cells with unknown axis references', () {
       final badRow = richClosedV1CExerciseJson();
@@ -475,6 +599,24 @@ void main() {
           ],
         },
       );
+      expect(
+        const RichClosedDiagramLabelingAnswer(
+          questionId: 'diagram-labeling-1',
+          values: [
+            RichClosedDiagramLabelingValue(
+              slotId: 'slot-government-role',
+              optionId: 'option-government',
+            ),
+          ],
+        ).toJson(),
+        {
+          'questionId': 'diagram-labeling-1',
+          'questionKind': 'diagram_labeling',
+          'values': [
+            {'slotId': 'slot-government-role', 'optionId': 'option-government'},
+          ],
+        },
+      );
     });
 
     test('serializes submit wrapper without correction or free text', () {
@@ -638,6 +780,39 @@ void main() {
           'cell-president-legitimacy:option-legitimacy-election',
           'cell-government-responsibility:option-responsibility-assembly',
           'cell-assembly-action:option-action-censure',
+        ],
+      );
+    });
+
+    test('parses diagram_labeling post-submit corrections', () {
+      final result = RichClosedExerciseResult.fromJson(
+        richClosedV1CFullResultJson(),
+      );
+      final diagram = result.items[11];
+
+      expect(diagram.submittedAnswer, isA<RichClosedDiagramLabelingAnswer>());
+      expect(
+        (diagram.submittedAnswer as RichClosedDiagramLabelingAnswer).values.map(
+          (value) => '${value.slotId}:${value.optionId}',
+        ),
+        [
+          'slot-government-role:option-government',
+          'slot-censure:option-motion-censure',
+          'slot-nomination:option-nomination',
+        ],
+      );
+      expect(
+        diagram.correction,
+        isA<RichClosedCorrectDiagramLabelingValuesCorrection>(),
+      );
+      expect(
+        (diagram.correction as RichClosedCorrectDiagramLabelingValuesCorrection)
+            .correctValues
+            .map((value) => '${value.slotId}:${value.optionId}'),
+        [
+          'slot-government-role:option-government',
+          'slot-censure:option-motion-censure',
+          'slot-nomination:option-nomination',
         ],
       );
     });

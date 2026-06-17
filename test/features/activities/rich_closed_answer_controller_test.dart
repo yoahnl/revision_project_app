@@ -532,6 +532,99 @@ void main() {
     expect(controller.canSubmitQuestion(matrix), isFalse);
   });
 
+  test('diagram_labeling commence incomplet puis produit values', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1cFullExercise = RichClosedExercise.fromJson(
+      richClosedV1CFullExerciseJson(),
+    );
+    final diagram = _question<RichClosedDiagramLabelingQuestion>(
+      v1cFullExercise,
+    );
+
+    expect(controller.canSubmitQuestion(diagram), isFalse);
+    expect(controller.answerFor(diagram), isNull);
+    expect(controller.diagramLabelingValuesFor(diagram), isEmpty);
+
+    controller.setDiagramLabelingValue(
+      question: diagram,
+      slotId: 'slot-government-role',
+      optionId: 'option-government',
+    );
+    controller.setDiagramLabelingValue(
+      question: diagram,
+      slotId: 'slot-censure',
+      optionId: 'option-motion-censure',
+    );
+
+    expect(controller.canSubmitQuestion(diagram), isFalse);
+
+    controller.setDiagramLabelingValue(
+      question: diagram,
+      slotId: 'slot-nomination',
+      optionId: 'option-nomination',
+    );
+
+    final answer = controller.answerFor(diagram);
+    expect(controller.canSubmitQuestion(diagram), isTrue);
+    expect(answer, isA<RichClosedDiagramLabelingAnswer>());
+    expect(
+      (answer! as RichClosedDiagramLabelingAnswer).values.map(
+        (value) => '${value.slotId}:${value.optionId}',
+      ),
+      [
+        'slot-government-role:option-government',
+        'slot-censure:option-motion-censure',
+        'slot-nomination:option-nomination',
+      ],
+    );
+  });
+
+  test('diagram_labeling ignore ids inconnus et remplace une valeur', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1cFullExercise = RichClosedExercise.fromJson(
+      richClosedV1CFullExerciseJson(),
+    );
+    final diagram = _question<RichClosedDiagramLabelingQuestion>(
+      v1cFullExercise,
+    );
+
+    controller.setDiagramLabelingValue(
+      question: diagram,
+      slotId: 'slot-unknown',
+      optionId: 'option-government',
+    );
+    controller.setDiagramLabelingValue(
+      question: diagram,
+      slotId: 'slot-government-role',
+      optionId: 'option-unknown',
+    );
+    controller.setDiagramLabelingValue(
+      question: diagram,
+      slotId: 'slot-government-role',
+      optionId: 'option-president',
+    );
+    controller.setDiagramLabelingValue(
+      question: diagram,
+      slotId: 'slot-government-role',
+      optionId: 'option-government',
+    );
+
+    expect(
+      controller.selectedDiagramLabelingOptionIdFor(
+        diagram.id,
+        'slot-government-role',
+      ),
+      'option-government',
+    );
+    expect(
+      controller
+          .diagramLabelingValuesFor(diagram)
+          .map((value) => '${value.slotId}:${value.optionId}'),
+      ['slot-government-role:option-government'],
+    );
+    expect(controller.canSubmitQuestion(diagram), isFalse);
+  });
+
   test('matching et ordering ne produisent jamais de correction', () {
     final controller = RichClosedCoreAnswerController();
     final matching = _question<RichClosedMatchingQuestion>(exercise);
@@ -646,6 +739,31 @@ void main() {
     expect(json.containsKey('correction'), isFalse);
     expect(json.containsKey('score'), isFalse);
     expect(json.containsKey('explanation'), isFalse);
+  });
+
+  test('diagram_labeling ne produit jamais de correction', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1cFullExercise = RichClosedExercise.fromJson(
+      richClosedV1CFullExerciseJson(),
+    );
+    final diagram = _question<RichClosedDiagramLabelingQuestion>(
+      v1cFullExercise,
+    );
+
+    for (final slot in diagram.slots) {
+      controller.setDiagramLabelingValue(
+        question: diagram,
+        slotId: slot.id,
+        optionId: slot.options.first.id,
+      );
+    }
+
+    final json = controller.answerFor(diagram)!.toJson();
+    expect(json.keys.any((key) => key.startsWith('correct')), isFalse);
+    expect(json.containsKey('correction'), isFalse);
+    expect(json.containsKey('score'), isFalse);
+    expect(json.containsKey('explanation'), isFalse);
+    expect(json.containsKey('renderPayload'), isFalse);
   });
 
   test('ne produit jamais de correction dans le JSON de réponse', () {

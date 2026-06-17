@@ -21,7 +21,8 @@ enum RichClosedQuestionKind {
   dateSlider('date_slider'),
   trueFalseGrid('true_false_grid'),
   causeConsequence('cause_consequence'),
-  institutionMatrix('institution_matrix');
+  institutionMatrix('institution_matrix'),
+  diagramLabeling('diagram_labeling');
 
   const RichClosedQuestionKind(this.wireValue);
 
@@ -85,6 +86,51 @@ enum RichClosedCognitiveSkill {
 
     throw const RichClosedExerciseParseException(
       'Invalid rich closed cognitive skill',
+    );
+  }
+}
+
+enum RichClosedDiagramLayout {
+  verticalFlow('vertical_flow'),
+  twoColumn('two_column'),
+  cycle('cycle'),
+  hierarchy('hierarchy'),
+  plain('plain');
+
+  const RichClosedDiagramLayout(this.wireValue);
+
+  final String wireValue;
+
+  static RichClosedDiagramLayout parse(Object? value) {
+    for (final layout in values) {
+      if (value == layout.wireValue) {
+        return layout;
+      }
+    }
+
+    throw const RichClosedExerciseParseException(
+      'Invalid rich closed diagram layout',
+    );
+  }
+}
+
+enum RichClosedDiagramAnchorType {
+  node('node'),
+  edge('edge');
+
+  const RichClosedDiagramAnchorType(this.wireValue);
+
+  final String wireValue;
+
+  static RichClosedDiagramAnchorType parse(Object? value) {
+    for (final type in values) {
+      if (value == type.wireValue) {
+        return type;
+      }
+    }
+
+    throw const RichClosedExerciseParseException(
+      'Invalid rich closed diagram anchor type',
     );
   }
 }
@@ -263,6 +309,13 @@ sealed class RichClosedQuestion {
           ),
           cells: _institutionMatrixCells(json['cells']),
         ).._validateMatrix(),
+      RichClosedQuestionKind.diagramLabeling =>
+        RichClosedDiagramLabelingQuestion(
+          base: base,
+          instruction: _readOptionalString(json['instruction']),
+          diagram: RichClosedDiagram.fromJson(json['diagram']),
+          slots: _diagramLabelingSlots(json['slots']),
+        ).._validateDiagram(),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationQuestion(
           base: base,
@@ -543,6 +596,83 @@ class RichClosedInstitutionMatrixQuestion extends RichClosedQuestion {
           optionIds.length != cell.options.length) {
         throw const RichClosedExerciseParseException(
           'Invalid institution matrix contract',
+        );
+      }
+    }
+  }
+}
+
+class RichClosedDiagramLabelingQuestion extends RichClosedQuestion {
+  RichClosedDiagramLabelingQuestion({
+    required RichClosedQuestionBase base,
+    required this.instruction,
+    required this.diagram,
+    required this.slots,
+  }) : super(
+         id: base.id,
+         questionKind: RichClosedQuestionKind.diagramLabeling,
+         prompt: base.prompt,
+         difficulty: base.difficulty,
+         cognitiveSkill: base.cognitiveSkill,
+         sourceChunkIds: base.sourceChunkIds,
+       );
+
+  final String? instruction;
+  final RichClosedDiagram diagram;
+  final List<RichClosedDiagramLabelingSlot> slots;
+
+  void _validateDiagram() {
+    final nodeIds = diagram.nodes.map((node) => node.id).toSet();
+    final groupIds = diagram.groups.map((group) => group.id).toSet();
+    final edgeIds = diagram.edges.map((edge) => edge.id).toSet();
+    final slotIds = slots.map((slot) => slot.id).toSet();
+
+    if (diagram.nodes.length < 2 ||
+        diagram.nodes.length > 8 ||
+        nodeIds.length != diagram.nodes.length ||
+        diagram.groups.length > 4 ||
+        groupIds.length != diagram.groups.length ||
+        diagram.edges.length > 12 ||
+        edgeIds.length != diagram.edges.length ||
+        slots.length < 2 ||
+        slots.length > 8 ||
+        slotIds.length != slots.length) {
+      throw const RichClosedExerciseParseException(
+        'Invalid diagram labeling contract',
+      );
+    }
+
+    for (final node in diagram.nodes) {
+      final groupId = node.groupId;
+      if (groupId != null && !groupIds.contains(groupId)) {
+        throw const RichClosedExerciseParseException(
+          'Invalid diagram labeling contract',
+        );
+      }
+    }
+
+    for (final edge in diagram.edges) {
+      if (!nodeIds.contains(edge.fromNodeId) ||
+          !nodeIds.contains(edge.toNodeId)) {
+        throw const RichClosedExerciseParseException(
+          'Invalid diagram labeling contract',
+        );
+      }
+    }
+
+    for (final slot in slots) {
+      final optionIds = slot.options.map((option) => option.id).toSet();
+      final anchorExists = switch (slot.anchorType) {
+        RichClosedDiagramAnchorType.node => nodeIds.contains(slot.anchorId),
+        RichClosedDiagramAnchorType.edge => edgeIds.contains(slot.anchorId),
+      };
+
+      if (!anchorExists ||
+          slot.options.length < 2 ||
+          slot.options.length > 6 ||
+          optionIds.length != slot.options.length) {
+        throw const RichClosedExerciseParseException(
+          'Invalid diagram labeling contract',
         );
       }
     }
@@ -863,6 +993,167 @@ class RichClosedInstitutionMatrixValue {
   final String optionId;
 }
 
+class RichClosedDiagram {
+  const RichClosedDiagram({
+    required this.title,
+    required this.description,
+    required this.layout,
+    required this.nodes,
+    required this.groups,
+    required this.edges,
+  });
+
+  factory RichClosedDiagram.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid rich closed diagram');
+
+    return RichClosedDiagram(
+      title: _readOptionalString(json['title']),
+      description: _readOptionalString(json['description']),
+      layout: RichClosedDiagramLayout.parse(json['layout']),
+      nodes: _diagramNodes(json['nodes']),
+      groups: _diagramGroups(json['groups']),
+      edges: _diagramEdges(json['edges']),
+    );
+  }
+
+  final String? title;
+  final String? description;
+  final RichClosedDiagramLayout layout;
+  final List<RichClosedDiagramNode> nodes;
+  final List<RichClosedDiagramGroup> groups;
+  final List<RichClosedDiagramEdge> edges;
+}
+
+class RichClosedDiagramGroup {
+  const RichClosedDiagramGroup({
+    required this.id,
+    required this.label,
+    required this.description,
+  });
+
+  factory RichClosedDiagramGroup.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid rich closed diagram group');
+
+    return RichClosedDiagramGroup(
+      id: _readString(json['id'], 'Invalid diagram group id'),
+      label: _readString(json['label'], 'Invalid diagram group label'),
+      description: _readOptionalString(json['description']),
+    );
+  }
+
+  final String id;
+  final String label;
+  final String? description;
+}
+
+class RichClosedDiagramNode {
+  const RichClosedDiagramNode({
+    required this.id,
+    required this.label,
+    required this.description,
+    required this.groupId,
+  });
+
+  factory RichClosedDiagramNode.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid rich closed diagram node');
+
+    return RichClosedDiagramNode(
+      id: _readString(json['id'], 'Invalid diagram node id'),
+      label: _readString(json['label'], 'Invalid diagram node label'),
+      description: _readOptionalString(json['description']),
+      groupId: _readOptionalString(json['groupId']),
+    );
+  }
+
+  final String id;
+  final String label;
+  final String? description;
+  final String? groupId;
+}
+
+class RichClosedDiagramEdge {
+  const RichClosedDiagramEdge({
+    required this.id,
+    required this.fromNodeId,
+    required this.toNodeId,
+    required this.label,
+    required this.description,
+  });
+
+  factory RichClosedDiagramEdge.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid rich closed diagram edge');
+
+    return RichClosedDiagramEdge(
+      id: _readString(json['id'], 'Invalid diagram edge id'),
+      fromNodeId: _readString(
+        json['fromNodeId'],
+        'Invalid diagram edge source node id',
+      ),
+      toNodeId: _readString(
+        json['toNodeId'],
+        'Invalid diagram edge target node id',
+      ),
+      label: _readOptionalString(json['label']),
+      description: _readOptionalString(json['description']),
+    );
+  }
+
+  final String id;
+  final String fromNodeId;
+  final String toNodeId;
+  final String? label;
+  final String? description;
+}
+
+class RichClosedDiagramLabelingSlot {
+  const RichClosedDiagramLabelingSlot({
+    required this.id,
+    required this.anchorType,
+    required this.anchorId,
+    required this.prompt,
+    required this.options,
+  });
+
+  factory RichClosedDiagramLabelingSlot.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid rich closed diagram slot');
+
+    return RichClosedDiagramLabelingSlot(
+      id: _readString(json['id'], 'Invalid diagram slot id'),
+      anchorType: RichClosedDiagramAnchorType.parse(json['anchorType']),
+      anchorId: _readString(json['anchorId'], 'Invalid diagram anchor id'),
+      prompt: _readString(json['prompt'], 'Invalid diagram slot prompt'),
+      options: _choices(json['options']),
+    );
+  }
+
+  final String id;
+  final RichClosedDiagramAnchorType anchorType;
+  final String anchorId;
+  final String prompt;
+  final List<RichClosedChoice> options;
+}
+
+class RichClosedDiagramLabelingValue {
+  const RichClosedDiagramLabelingValue({
+    required this.slotId,
+    required this.optionId,
+  });
+
+  factory RichClosedDiagramLabelingValue.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid diagram labeling value');
+
+    return RichClosedDiagramLabelingValue(
+      slotId: _readString(json['slotId'], 'Invalid diagram slot id'),
+      optionId: _readString(json['optionId'], 'Invalid diagram option id'),
+    );
+  }
+
+  Map<String, Object?> toJson() => {'slotId': slotId, 'optionId': optionId};
+
+  final String slotId;
+  final String optionId;
+}
+
 class RichClosedPair {
   const RichClosedPair({required this.leftId, required this.rightId});
 
@@ -945,6 +1236,10 @@ sealed class RichClosedAnswer {
           questionId: questionId,
           values: _institutionMatrixValues(json['values']),
         ),
+      RichClosedQuestionKind.diagramLabeling => RichClosedDiagramLabelingAnswer(
+        questionId: questionId,
+        values: _diagramLabelingValues(json['values']),
+      ),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationAnswer(
           questionId: questionId,
@@ -1101,6 +1396,22 @@ class RichClosedInstitutionMatrixAnswer extends RichClosedAnswer {
   }) : super(questionKind: RichClosedQuestionKind.institutionMatrix);
 
   final List<RichClosedInstitutionMatrixValue> values;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'questionId': questionId,
+    'questionKind': questionKind.wireValue,
+    'values': [for (final value in values) value.toJson()],
+  };
+}
+
+class RichClosedDiagramLabelingAnswer extends RichClosedAnswer {
+  const RichClosedDiagramLabelingAnswer({
+    required super.questionId,
+    required this.values,
+  }) : super(questionKind: RichClosedQuestionKind.diagramLabeling);
+
+  final List<RichClosedDiagramLabelingValue> values;
 
   @override
   Map<String, Object?> toJson() => {
@@ -1333,6 +1644,10 @@ sealed class RichClosedCorrectionPayload {
         RichClosedCorrectInstitutionMatrixValuesCorrection(
           correctValues: _institutionMatrixValues(json['correctValues']),
         ),
+      RichClosedQuestionKind.diagramLabeling =>
+        RichClosedCorrectDiagramLabelingValuesCorrection(
+          correctValues: _diagramLabelingValues(json['correctValues']),
+        ),
       RichClosedQuestionKind.errorDetection =>
         RichClosedCorrectErrorIdCorrection(
           correctErrorId: _readString(
@@ -1405,6 +1720,15 @@ class RichClosedCorrectInstitutionMatrixValuesCorrection
   });
 
   final List<RichClosedInstitutionMatrixValue> correctValues;
+}
+
+class RichClosedCorrectDiagramLabelingValuesCorrection
+    extends RichClosedCorrectionPayload {
+  const RichClosedCorrectDiagramLabelingValuesCorrection({
+    required this.correctValues,
+  });
+
+  final List<RichClosedDiagramLabelingValue> correctValues;
 }
 
 class RichClosedCorrectErrorIdCorrection extends RichClosedCorrectionPayload {
@@ -1563,6 +1887,73 @@ List<RichClosedInstitutionMatrixValue> _institutionMatrixValues(Object? value) {
   return values;
 }
 
+List<RichClosedDiagramNode> _diagramNodes(Object? value) {
+  final nodes = _readList(
+    value,
+    'Invalid rich closed diagram nodes',
+  ).map(RichClosedDiagramNode.fromJson).toList(growable: false);
+
+  if (nodes.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Rich closed diagram nodes cannot be empty',
+    );
+  }
+
+  return nodes;
+}
+
+List<RichClosedDiagramGroup> _diagramGroups(Object? value) {
+  if (value == null) {
+    return const [];
+  }
+
+  return _readList(
+    value,
+    'Invalid rich closed diagram groups',
+  ).map(RichClosedDiagramGroup.fromJson).toList(growable: false);
+}
+
+List<RichClosedDiagramEdge> _diagramEdges(Object? value) {
+  if (value == null) {
+    return const [];
+  }
+
+  return _readList(
+    value,
+    'Invalid rich closed diagram edges',
+  ).map(RichClosedDiagramEdge.fromJson).toList(growable: false);
+}
+
+List<RichClosedDiagramLabelingSlot> _diagramLabelingSlots(Object? value) {
+  final slots = _readList(
+    value,
+    'Invalid diagram labeling slots',
+  ).map(RichClosedDiagramLabelingSlot.fromJson).toList(growable: false);
+
+  if (slots.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Diagram labeling slots cannot be empty',
+    );
+  }
+
+  return slots;
+}
+
+List<RichClosedDiagramLabelingValue> _diagramLabelingValues(Object? value) {
+  final values = _readList(
+    value,
+    'Invalid diagram labeling values',
+  ).map(RichClosedDiagramLabelingValue.fromJson).toList(growable: false);
+
+  if (values.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Diagram labeling values cannot be empty',
+    );
+  }
+
+  return values;
+}
+
 List<RichClosedPair> _pairs(Object? value) {
   final pairs = _readList(
     value,
@@ -1706,6 +2097,22 @@ const _forbiddenPreSubmitKeys = {
   'answersPayload',
   'expectedAnswer',
   'expectedAnswers',
+  'html',
+  'svg',
+  'rawSvg',
+  'mermaid',
+  'markdown',
+  'widget',
+  'component',
+  'renderPayload',
+  'style',
+  'css',
+  'script',
+  'imageUrl',
+  'assetUrl',
+  'canvas',
+  'code',
+  'markup',
 };
 
 const _forbiddenAnswerKeys = {
@@ -1724,4 +2131,20 @@ const _forbiddenAnswerKeys = {
   'answersPayload',
   'expectedAnswer',
   'expectedAnswers',
+  'html',
+  'svg',
+  'rawSvg',
+  'mermaid',
+  'markdown',
+  'widget',
+  'component',
+  'renderPayload',
+  'style',
+  'css',
+  'script',
+  'imageUrl',
+  'assetUrl',
+  'canvas',
+  'code',
+  'markup',
 };
