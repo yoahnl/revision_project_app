@@ -37,7 +37,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-012 | Scoring/correction UI V1-A | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_012_SCORING_CORRECTION_UI_V1A.md |
 | V1-012B | Page rich closed complète et flow submit local | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_012B_RICH_CLOSED_PAGE_FLOW.md |
 | V1-013 | Today integration V1 | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_013_TODAY_INTEGRATION_V1.md |
-| V1-014 | Revision session integration V1 | À faire | À créer |
+| V1-014 | Revision session integration V1 | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_014_REVISION_SESSION_INTEGRATION_V1.md |
 | V1-015 | Seed V1 rich demo fixtures | À faire | À créer |
 | V1-016 | E2E/smoke V1 rich questions | À faire | À créer |
 | V1-017 | Timeline/date slider V1-B | À faire | À créer |
@@ -347,18 +347,18 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 
 - Objectif : orchestrer les exercices riches dans la session IA.
 - Pourquoi maintenant : Today et activité V1 sont prêts.
-- Périmètre inclus : action kind fermée, next-action bornée.
-- Non-objectifs : widget libre ou chat libre.
-- Fichiers probablement concernés : revision-sessions backend, Flutter session.
-- Backend : `RICH_CLOSED_EXERCISE` action.
-- Frontend : rendu payload métier.
+- Périmètre inclus : parser du lanceur rich closed, `preferredAction`, rendu borné en session, navigation vers `/activities/rich-closed`.
+- Non-objectifs : widget libre, chat libre, rendu des questions/corrections rich closed dans la session.
+- Fichiers concernés : modèles/API revision sessions, page session, router, fakes et tests.
+- Backend : traité dans le rapport API V1-014.
+- Frontend : rendu d'un lanceur borné et navigation vers le flow rich closed existant.
 - Genkit : coach choisit une enum, pas un widget.
 - GenUI : aucun widget arbitraire.
-- Prisma : migration possible si enum action.
-- API : session response.
-- Tests attendus : action, anti-fuite, routing.
-- Validations à lancer : tests revision-sessions, activities, flutter revision sessions.
-- Critères d'acceptation : session peut enchaîner rich closed exercise.
+- Prisma : aucun côté app.
+- API : parsing du payload `rich_closed_exercise`.
+- Tests attendus : parser, contrôleur, page, routing, anti-fuite.
+- Validations lancées : `dart analyze lib test`, `flutter test test/features/revision_sessions --reporter compact`, `flutter test test/app/router --reporter compact`, `flutter test --reporter compact`, `git diff --check`.
+- Critères d'acceptation : une session peut proposer rich closed sans afficher de question/correction, puis lancer le flow dédié au clic.
 - Critère de stop : action coach non bornée.
 - Risques : migration enum.
 - Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_014_REVISION_SESSION_INTEGRATION_V1.md`.

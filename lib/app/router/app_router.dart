@@ -168,6 +168,7 @@ RevisionSessionPreferredAction? _preferredActionFromQuery(String? value) {
   return switch (value) {
     'diagnostic_quiz' => RevisionSessionPreferredAction.diagnosticQuiz,
     'open_question' => RevisionSessionPreferredAction.openQuestion,
+    'rich_closed_exercise' => RevisionSessionPreferredAction.richClosedExercise,
     _ => null,
   };
 }

@@ -69,6 +69,8 @@ class HttpRevisionSessionsApi implements RevisionSessionsApi {
     return switch (action) {
       RevisionSessionPreferredAction.diagnosticQuiz => 'diagnostic_quiz',
       RevisionSessionPreferredAction.openQuestion => 'open_question',
+      RevisionSessionPreferredAction.richClosedExercise =>
+        'rich_closed_exercise',
     };
   }
 }
@@ -97,8 +99,10 @@ class _RevisionSessionResponseJson {
       session: _RevisionSessionJson(session).toSession(),
       currentAction: currentAction == null
           ? null
-          : _RevisionSessionActionJson(currentAction, allowPayload: true)
-                .toAction(),
+          : _RevisionSessionActionJson(
+              currentAction,
+              allowPayload: true,
+            ).toAction(),
       history: history
           .map(
             (action) => _RevisionSessionActionJson(
@@ -189,7 +193,9 @@ class _RevisionSessionActionJson {
       activitySessionId: activitySessionId is String ? activitySessionId : null,
       documentId: documentId is String ? documentId : null,
       knowledgeUnitId: knowledgeUnitId is String ? knowledgeUnitId : null,
-      payload: allowPayload ? _ActionPayloadJson(json['payload']).toPayload() : null,
+      payload: allowPayload
+          ? _ActionPayloadJson(json['payload']).toPayload()
+          : null,
     );
   }
 
@@ -197,6 +203,7 @@ class _RevisionSessionActionJson {
     return switch (kind) {
       'DIAGNOSTIC_QUIZ' => RevisionSessionActionKind.diagnosticQuiz,
       'OPEN_QUESTION' => RevisionSessionActionKind.openQuestion,
+      'RICH_CLOSED_EXERCISE' => RevisionSessionActionKind.richClosedExercise,
       _ => RevisionSessionActionKind.unknown,
     };
   }
@@ -233,6 +240,9 @@ class _ActionPayloadJson {
     if (type == 'open_question') {
       return _openQuestionPayload(json);
     }
+    if (type == 'rich_closed_exercise') {
+      return _richClosedExercisePayload(json);
+    }
 
     return const RevisionSessionUnknownPayload();
   }
@@ -252,13 +262,13 @@ class _ActionPayloadJson {
 
     return RevisionSessionMinimalPayload(
       type: 'diagnostic_quiz',
-      sessionId: json['sessionId'] is String ? json['sessionId'] as String : null,
+      sessionId: json['sessionId'] is String
+          ? json['sessionId'] as String
+          : null,
     );
   }
 
-  RevisionSessionActionPayload _openQuestionPayload(
-    Map<String, Object?> json,
-  ) {
+  RevisionSessionActionPayload _openQuestionPayload(Map<String, Object?> json) {
     if (json['question'] is Map<String, Object?>) {
       try {
         return RevisionSessionOpenQuestionPayload(
@@ -271,8 +281,50 @@ class _ActionPayloadJson {
 
     return RevisionSessionMinimalPayload(
       type: 'open_question',
-      sessionId: json['sessionId'] is String ? json['sessionId'] as String : null,
+      sessionId: json['sessionId'] is String
+          ? json['sessionId'] as String
+          : null,
     );
+  }
+
+  RevisionSessionActionPayload _richClosedExercisePayload(
+    Map<String, Object?> json,
+  ) {
+    if (_containsRichClosedExerciseContent(json)) {
+      return const RevisionSessionUnknownPayload();
+    }
+
+    final subjectId = json['subjectId'];
+    final documentId = json['documentId'];
+    final knowledgeUnitId = json['knowledgeUnitId'];
+    final knowledgeUnitTitle = json['knowledgeUnitTitle'];
+    final reason = json['reason'];
+    final estimatedMinutes = json['estimatedMinutes'];
+    final preferredAction = json['preferredAction'];
+
+    if (subjectId is! String || knowledgeUnitId is! String) {
+      return const RevisionSessionUnknownPayload();
+    }
+
+    return RevisionSessionRichClosedExercisePayload(
+      subjectId: subjectId,
+      documentId: documentId is String ? documentId : null,
+      knowledgeUnitId: knowledgeUnitId,
+      knowledgeUnitTitle: knowledgeUnitTitle is String
+          ? knowledgeUnitTitle
+          : null,
+      reason: reason is String ? reason : 'Questions riches recommandées.',
+      estimatedMinutes: estimatedMinutes is int ? estimatedMinutes : 8,
+      preferredAction: preferredAction is String ? preferredAction : null,
+    );
+  }
+
+  bool _containsRichClosedExerciseContent(Map<String, Object?> json) {
+    return json.containsKey('questions') ||
+        json.containsKey('answers') ||
+        json.containsKey('correction') ||
+        json.containsKey('correctAnswers') ||
+        json.containsKey('score');
   }
 }
 
@@ -336,10 +388,7 @@ class _DiagnosticQuizQuestionJson {
         .map((choice) => _DiagnosticQuizChoiceJson(choice).toChoice())
         .toList(growable: false);
     final selectionMode = _selectionMode(json['selectionMode']);
-    final minSelections = _selectionCount(
-      json['minSelections'],
-      fallback: 1,
-    );
+    final minSelections = _selectionCount(json['minSelections'], fallback: 1);
     final maxSelections = _selectionCount(
       json['maxSelections'],
       fallback: selectionMode == DiagnosticQuizSelectionMode.multiple
@@ -380,7 +429,10 @@ class _DiagnosticQuizQuestionJson {
       choices: parsedChoices,
       sources: sources is List
           ? sources
-                .map((source) => _DiagnosticQuizSourceRefJson(source).toSourceRef())
+                .map(
+                  (source) =>
+                      _DiagnosticQuizSourceRefJson(source).toSourceRef(),
+                )
                 .toList(growable: false)
           : const [],
       visuals: parsedVisuals,
@@ -756,7 +808,9 @@ class _OpenQuestionSourceJson {
     final json = value;
 
     if (json is! Map<String, Object?>) {
-      throw const FormatException('Invalid revision open question source payload');
+      throw const FormatException(
+        'Invalid revision open question source payload',
+      );
     }
 
     final chunkId = json['chunkId'];
@@ -764,7 +818,9 @@ class _OpenQuestionSourceJson {
     final index = json['index'];
 
     if (chunkId is! String || index is! int) {
-      throw const FormatException('Invalid revision open question source payload');
+      throw const FormatException(
+        'Invalid revision open question source payload',
+      );
     }
 
     return OpenQuestionSource(

@@ -60,11 +60,52 @@ void main() {
       'Bearer firebase-id-token',
     );
     expect(response.session.id, 'revision-session-1');
-    expect(response.currentAction?.kind, RevisionSessionActionKind.diagnosticQuiz);
+    expect(
+      response.currentAction?.kind,
+      RevisionSessionActionKind.diagnosticQuiz,
+    );
     expect(
       response.currentAction?.payload,
       isA<RevisionSessionDiagnosticQuizPayload>(),
     );
+  });
+
+  test('starts and parses a rich closed launcher payload', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(revisionSessionJson(payload: richClosedPayloadJson())),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await api.startRevisionSession(
+      subjectId: 'subject-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      preferredAction: RevisionSessionPreferredAction.richClosedExercise,
+    );
+
+    expect(adapter.lastOptions?.data, {
+      'subjectId': 'subject-1',
+      'documentId': 'document-1',
+      'knowledgeUnitId': 'unit-1',
+      'preferredAction': 'rich_closed_exercise',
+    });
+    expect(
+      response.currentAction?.kind,
+      RevisionSessionActionKind.richClosedExercise,
+    );
+    expect(response.currentAction?.activitySessionId, isNull);
+    final payload = response.currentAction?.payload;
+    expect(payload, isA<RevisionSessionRichClosedExercisePayload>());
+    final launcher = payload as RevisionSessionRichClosedExercisePayload;
+    expect(launcher.subjectId, 'subject-1');
+    expect(launcher.documentId, 'document-1');
+    expect(launcher.knowledgeUnitId, 'unit-1');
+    expect(launcher.knowledgeUnitTitle, 'Institutions politiques');
+    expect(launcher.estimatedMinutes, 8);
   });
 
   test('omits null fields from start request', () async {
@@ -103,27 +144,30 @@ void main() {
     expect(payload.sessionId, 'open-session-1');
   });
 
-  test('parses an open question full payload without correction leaks', () async {
-    final adapter = CapturingHttpClientAdapter(
-      jsonResponse(revisionSessionJson(payload: openQuestionPayloadJson())),
-    );
-    final dio = Dio()..httpClientAdapter = adapter;
-    final api = HttpRevisionSessionsApi(
-      dio: dio,
-      getIdToken: () async => 'firebase-id-token',
-    );
+  test(
+    'parses an open question full payload without correction leaks',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(revisionSessionJson(payload: openQuestionPayloadJson())),
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final api = HttpRevisionSessionsApi(
+        dio: dio,
+        getIdToken: () async => 'firebase-id-token',
+      );
 
-    final response = await api.startRevisionSession(
-      subjectId: 'subject-1',
-      knowledgeUnitId: 'unit-1',
-    );
+      final response = await api.startRevisionSession(
+        subjectId: 'subject-1',
+        knowledgeUnitId: 'unit-1',
+      );
 
-    final payload = response.currentAction?.payload;
-    expect(payload, isA<RevisionSessionOpenQuestionPayload>());
-    final activity = (payload as RevisionSessionOpenQuestionPayload).activity;
-    expect(activity.question.prompt, 'Explique la séparation des pouvoirs.');
-    expect(activity.question.sources.single.chunkId, 'chunk-1');
-  });
+      final payload = response.currentAction?.payload;
+      expect(payload, isA<RevisionSessionOpenQuestionPayload>());
+      final activity = (payload as RevisionSessionOpenQuestionPayload).activity;
+      expect(activity.question.prompt, 'Explique la séparation des pouvoirs.');
+      expect(activity.question.sources.single.chunkId, 'chunk-1');
+    },
+  );
 
   test('parses currentAction null and history', () async {
     final json = revisionSessionJson(payload: null)..['currentAction'] = null;
@@ -140,7 +184,35 @@ void main() {
 
     expect(response.currentAction, isNull);
     expect(response.history, hasLength(1));
-    expect(response.history.single.kind, RevisionSessionActionKind.openQuestion);
+    expect(
+      response.history.single.kind,
+      RevisionSessionActionKind.openQuestion,
+    );
+  });
+
+  test('rejects rich closed payloads that contain exercise content', () async {
+    final payload = richClosedPayloadJson()
+      ..['questions'] = [
+        {'id': 'question-1'},
+      ]
+      ..['correction'] = {'correctChoiceId': 'choice-1'};
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(revisionSessionJson(payload: payload)),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await api.getRevisionSession(
+      sessionId: 'revision-session-1',
+    );
+
+    expect(
+      response.currentAction?.payload,
+      isA<RevisionSessionUnknownPayload>(),
+    );
   });
 
   test('refuses an empty token before network call', () async {
@@ -185,6 +257,9 @@ ResponseBody jsonResponse(Object? payload) {
 }
 
 Map<String, Object?> revisionSessionJson({required Object? payload}) {
+  final actionKind = payload == null ? 'OPEN_QUESTION' : actionKindFor(payload);
+  final isRichClosed = actionKind == 'RICH_CLOSED_EXERCISE';
+
   return {
     'session': {
       'id': 'revision-session-1',
@@ -197,10 +272,10 @@ Map<String, Object?> revisionSessionJson({required Object? payload}) {
     },
     'currentAction': {
       'id': 'action-1',
-      'kind': payload == null ? 'OPEN_QUESTION' : actionKindFor(payload),
+      'kind': actionKind,
       'status': 'READY',
       'displayOrder': 0,
-      'activitySessionId': 'activity-session-1',
+      'activitySessionId': isRichClosed ? null : 'activity-session-1',
       'documentId': null,
       'knowledgeUnitId': 'unit-1',
       'payload': payload,
@@ -208,10 +283,10 @@ Map<String, Object?> revisionSessionJson({required Object? payload}) {
     'history': [
       {
         'id': 'action-1',
-        'kind': 'OPEN_QUESTION',
+        'kind': actionKind,
         'status': 'READY',
         'displayOrder': 0,
-        'activitySessionId': 'activity-session-1',
+        'activitySessionId': isRichClosed ? null : 'activity-session-1',
         'documentId': null,
         'knowledgeUnitId': 'unit-1',
       },
@@ -222,6 +297,9 @@ Map<String, Object?> revisionSessionJson({required Object? payload}) {
 String actionKindFor(Object payload) {
   if (payload is Map && payload['type'] == 'diagnostic_quiz') {
     return 'DIAGNOSTIC_QUIZ';
+  }
+  if (payload is Map && payload['type'] == 'rich_closed_exercise') {
+    return 'RICH_CLOSED_EXERCISE';
   }
   return 'OPEN_QUESTION';
 }
@@ -288,5 +366,18 @@ Map<String, Object?> openQuestionPayloadJson() {
         },
       ],
     },
+  };
+}
+
+Map<String, Object?> richClosedPayloadJson() {
+  return {
+    'type': 'rich_closed_exercise',
+    'subjectId': 'subject-1',
+    'documentId': 'document-1',
+    'knowledgeUnitId': 'unit-1',
+    'knowledgeUnitTitle': 'Institutions politiques',
+    'reason': 'Questions riches recommandées.',
+    'estimatedMinutes': 8,
+    'preferredAction': 'rich_closed_exercise',
   };
 }

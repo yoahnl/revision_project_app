@@ -136,6 +136,42 @@ RevisionSessionResponse openQuestionRevisionSessionResponse() {
   );
 }
 
+RevisionSessionResponse richClosedRevisionSessionResponse() {
+  return RevisionSessionResponse(
+    session: revisionSession(knowledgeUnitId: 'unit-1'),
+    currentAction: const RevisionSessionAction(
+      id: 'action-rich-1',
+      kind: RevisionSessionActionKind.richClosedExercise,
+      status: RevisionSessionActionStatus.ready,
+      displayOrder: 0,
+      activitySessionId: null,
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      payload: RevisionSessionRichClosedExercisePayload(
+        subjectId: 'subject-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+        knowledgeUnitTitle: 'Institutions politiques',
+        reason: 'Questions riches recommandées.',
+        estimatedMinutes: 8,
+        preferredAction: 'rich_closed_exercise',
+      ),
+    ),
+    history: const [
+      RevisionSessionAction(
+        id: 'action-rich-1',
+        kind: RevisionSessionActionKind.richClosedExercise,
+        status: RevisionSessionActionStatus.ready,
+        displayOrder: 0,
+        activitySessionId: null,
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
+        payload: null,
+      ),
+    ],
+  );
+}
+
 RevisionSessionResponse minimalRevisionSessionResponse() {
   return RevisionSessionResponse(
     session: revisionSession(),

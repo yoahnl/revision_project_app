@@ -12,6 +12,7 @@ import 'package:revision_app/features/auth/domain/authenticated_user.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
+import 'package:revision_app/features/revision_sessions/data/revision_sessions_api.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
 import 'package:revision_app/features/today/application/today_controller.dart';
 import 'package:revision_app/features/today/domain/today_plan.dart';
@@ -168,6 +169,58 @@ void main() {
       expect(harness.revisionSessionsApi.startCount, 1);
       expect(harness.revisionSessionsApi.startedSubjectId, 'subject-1');
       expect(harness.revisionSessionsApi.startedKnowledgeUnitId, 'unit-1');
+      expect(harness.activityApi.startedDiagnosticQuizCount, 0);
+      expect(harness.activityApi.startedOpenQuestionCount, 0);
+    },
+  );
+
+  testWidgets(
+    'revision session rich closed action navigates to rich closed exercise',
+    (tester) async {
+      final harness = _RouterHarness();
+      harness.revisionSessionsApi.startResponse =
+          richClosedRevisionSessionResponse();
+      addTearDown(harness.dispose);
+
+      await tester.pumpWidget(harness.buildApp());
+      harness.router.go(
+        AppRoutes.revisionSession(
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+          preferredAction: 'rich_closed_exercise',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Révision IA'), findsOneWidget);
+      expect(find.text('Notion: Institutions politiques'), findsOneWidget);
+      expect(harness.revisionSessionsApi.startCount, 1);
+      expect(
+        harness.revisionSessionsApi.startedPreferredAction,
+        RevisionSessionPreferredAction.richClosedExercise,
+      );
+      expect(harness.activityApi.startedRichClosedCount, 0);
+      expect(harness.activityApi.startedDiagnosticQuizCount, 0);
+      expect(harness.activityApi.startedOpenQuestionCount, 0);
+
+      await tester.ensureVisible(
+        find.widgetWithText(RevisionButton, 'Commencer'),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(Scrollable).last, const Offset(0, -160));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(RevisionButton, 'Commencer'));
+      await tester.pumpAndSettle();
+
+      expect(
+        harness.router.routeInformationProvider.value.uri.toString(),
+        '/activities/rich-closed?subjectId=subject-1&documentId=document-1&knowledgeUnitId=unit-1',
+      );
+      expect(find.text('Questions riches'), findsOneWidget);
+      expect(harness.activityApi.startedRichClosedCount, 1);
+      expect(harness.activityApi.startedRichClosedSubjectId, 'subject-1');
+      expect(harness.activityApi.startedRichClosedDocumentId, 'document-1');
+      expect(harness.activityApi.startedRichClosedKnowledgeUnitId, 'unit-1');
       expect(harness.activityApi.startedDiagnosticQuizCount, 0);
       expect(harness.activityApi.startedOpenQuestionCount, 0);
     },

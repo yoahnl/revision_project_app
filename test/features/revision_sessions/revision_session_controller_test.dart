@@ -17,19 +17,43 @@ void main() {
     expect(api.startCount, 1);
   });
 
-  test('starts a revision session with knowledge unit and preferred action', () async {
+  test(
+    'starts a revision session with knowledge unit and preferred action',
+    () async {
+      final api = InMemoryRevisionSessionsApi();
+      final controller = RevisionSessionController(api);
+
+      await controller.startSession(
+        subjectId: 'subject-1',
+        knowledgeUnitId: 'unit-1',
+        preferredAction: RevisionSessionPreferredAction.openQuestion,
+      );
+
+      expect(api.startedSubjectId, 'subject-1');
+      expect(api.startedKnowledgeUnitId, 'unit-1');
+      expect(
+        api.startedPreferredAction,
+        RevisionSessionPreferredAction.openQuestion,
+      );
+    },
+  );
+
+  test('starts a revision session with rich closed preferred action', () async {
     final api = InMemoryRevisionSessionsApi();
     final controller = RevisionSessionController(api);
 
     await controller.startSession(
       subjectId: 'subject-1',
       knowledgeUnitId: 'unit-1',
-      preferredAction: RevisionSessionPreferredAction.openQuestion,
+      preferredAction: RevisionSessionPreferredAction.richClosedExercise,
     );
 
     expect(api.startedSubjectId, 'subject-1');
     expect(api.startedKnowledgeUnitId, 'unit-1');
-    expect(api.startedPreferredAction, RevisionSessionPreferredAction.openQuestion);
+    expect(
+      api.startedPreferredAction,
+      RevisionSessionPreferredAction.richClosedExercise,
+    );
   });
 
   test('loads a revision session by id', () async {

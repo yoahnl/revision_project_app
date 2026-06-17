@@ -1,6 +1,10 @@
 import '../domain/revision_session.dart';
 
-enum RevisionSessionPreferredAction { diagnosticQuiz, openQuestion }
+enum RevisionSessionPreferredAction {
+  diagnosticQuiz,
+  openQuestion,
+  richClosedExercise,
+}
 
 abstract interface class RevisionSessionsApi {
   Future<RevisionSessionResponse> startRevisionSession({

@@ -45,7 +45,12 @@ class RevisionSessionAction {
   final RevisionSessionActionPayload? payload;
 }
 
-enum RevisionSessionActionKind { diagnosticQuiz, openQuestion, unknown }
+enum RevisionSessionActionKind {
+  diagnosticQuiz,
+  openQuestion,
+  richClosedExercise,
+  unknown,
+}
 
 enum RevisionSessionActionStatus { ready, completed, failed, unknown }
 
@@ -76,6 +81,27 @@ class RevisionSessionOpenQuestionPayload extends RevisionSessionActionPayload {
   const RevisionSessionOpenQuestionPayload(this.activity);
 
   final OpenQuestionActivity activity;
+}
+
+class RevisionSessionRichClosedExercisePayload
+    extends RevisionSessionActionPayload {
+  const RevisionSessionRichClosedExercisePayload({
+    required this.subjectId,
+    required this.knowledgeUnitId,
+    required this.reason,
+    required this.estimatedMinutes,
+    this.documentId,
+    this.knowledgeUnitTitle,
+    this.preferredAction,
+  });
+
+  final String subjectId;
+  final String? documentId;
+  final String knowledgeUnitId;
+  final String? knowledgeUnitTitle;
+  final String reason;
+  final int estimatedMinutes;
+  final String? preferredAction;
 }
 
 class RevisionSessionMinimalPayload extends RevisionSessionActionPayload {

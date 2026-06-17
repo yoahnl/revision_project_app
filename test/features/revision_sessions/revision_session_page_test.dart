@@ -9,24 +9,27 @@ import '../../fakes/in_memory_activity_api.dart';
 import '../../fakes/in_memory_revision_sessions_api.dart';
 
 void main() {
-  testWidgets('start mode starts a revision session and renders open question', (
+  testWidgets(
+    'start mode starts a revision session and renders open question',
+    (tester) async {
+      final api = InMemoryRevisionSessionsApi();
+
+      await tester.pumpWidget(
+        _Harness(api: api, subjectId: 'subject-1', knowledgeUnitId: 'unit-1'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(api.startCount, 1);
+      expect(api.startedSubjectId, 'subject-1');
+      expect(find.text('Révision IA'), findsOneWidget);
+      expect(find.text('Question ouverte test'), findsOneWidget);
+      expect(find.text('Historique'), findsOneWidget);
+    },
+  );
+
+  testWidgets('start mode renders diagnostic quiz full payload', (
     tester,
   ) async {
-    final api = InMemoryRevisionSessionsApi();
-
-    await tester.pumpWidget(
-      _Harness(api: api, subjectId: 'subject-1', knowledgeUnitId: 'unit-1'),
-    );
-    await tester.pumpAndSettle();
-
-    expect(api.startCount, 1);
-    expect(api.startedSubjectId, 'subject-1');
-    expect(find.text('Révision IA'), findsOneWidget);
-    expect(find.text('Question ouverte test'), findsOneWidget);
-    expect(find.text('Historique'), findsOneWidget);
-  });
-
-  testWidgets('start mode renders diagnostic quiz full payload', (tester) async {
     final api = InMemoryRevisionSessionsApi()
       ..startResponse = diagnosticQuizRevisionSessionResponse();
 
@@ -37,6 +40,27 @@ void main() {
     expect(find.text('QCM de session'), findsOneWidget);
     expect(find.text('Question test'), findsOneWidget);
   });
+
+  testWidgets(
+    'start mode renders rich closed launcher without exercise content',
+    (tester) async {
+      final api = InMemoryRevisionSessionsApi()
+        ..startResponse = richClosedRevisionSessionResponse();
+
+      await tester.pumpWidget(
+        _Harness(api: api, subjectId: 'subject-1', knowledgeUnitId: 'unit-1'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(api.startCount, 1);
+      expect(find.text('Questions riches'), findsWidgets);
+      expect(find.text('Notion: Institutions politiques'), findsOneWidget);
+      expect(find.text('Questions riches recommandées.'), findsOneWidget);
+      expect(find.text('Commencer'), findsOneWidget);
+      expect(find.text('question-1'), findsNothing);
+      expect(find.text('correctChoiceId'), findsNothing);
+    },
+  );
 
   testWidgets('load mode loads existing session and renders minimal fallback', (
     tester,
@@ -50,11 +74,16 @@ void main() {
 
     expect(api.loadCount, 1);
     expect(api.loadedSessionId, 'revision-session-1');
-    expect(find.textContaining("détail complet n'est pas encore rechargeable"), findsOneWidget);
+    expect(
+      find.textContaining("détail complet n'est pas encore rechargeable"),
+      findsOneWidget,
+    );
     expect(find.textContaining('open-session-1'), findsOneWidget);
   });
 
-  testWidgets('empty state is shown without subject or session id', (tester) async {
+  testWidgets('empty state is shown without subject or session id', (
+    tester,
+  ) async {
     final api = InMemoryRevisionSessionsApi();
 
     await tester.pumpWidget(_Harness(api: api));
@@ -71,7 +100,10 @@ void main() {
     await tester.pumpWidget(_Harness(api: api, subjectId: 'subject-1'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Impossible de charger la session de révision.'), findsOneWidget);
+    expect(
+      find.text('Impossible de charger la session de révision.'),
+      findsOneWidget,
+    );
 
     api.startError = null;
     await tester.tap(find.widgetWithText(RevisionButton, 'Réessayer'));

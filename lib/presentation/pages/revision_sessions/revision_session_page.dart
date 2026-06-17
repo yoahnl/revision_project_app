@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
 import 'package:revision_app/features/revision_sessions/data/revision_sessions_api.dart';
 import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
+import 'package:revision_app/core/routing/route_paths.dart';
 import 'package:revision_app/presentation/pages/activities/diagnostic_quiz_page.dart';
 import 'package:revision_app/presentation/pages/activities/open_question_page.dart';
 import 'package:revision_app/presentation/theme/app_spacing.dart';
@@ -267,7 +269,10 @@ class _CurrentActionPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Action courante', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Action courante',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: AppSpacing.s),
           Wrap(
             spacing: AppSpacing.s,
@@ -339,10 +344,67 @@ class _CurrentActionRenderer extends StatelessWidget {
           },
         ),
       ),
+      RevisionSessionRichClosedExercisePayload() => _RichClosedLauncher(
+        payload: payload,
+      ),
       RevisionSessionMinimalPayload(:final type, :final sessionId) =>
         _MinimalPayloadFallback(type: type, sessionId: sessionId),
       RevisionSessionUnknownPayload() => const _UnknownPayloadFallback(),
     };
+  }
+}
+
+class _RichClosedLauncher extends StatelessWidget {
+  const _RichClosedLauncher({required this.payload});
+
+  final RevisionSessionRichClosedExercisePayload payload;
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Questions riches',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.s),
+          Text(_contextLabel),
+          const SizedBox(height: AppSpacing.s),
+          Text(payload.reason),
+          const SizedBox(height: AppSpacing.s),
+          RevisionStatusPill(
+            label: '${payload.estimatedMinutes} min',
+            color: Theme.of(context).colorScheme.tertiary,
+            icon: Icons.timer_outlined,
+          ),
+          const SizedBox(height: AppSpacing.m),
+          RevisionButton(
+            label: 'Commencer',
+            icon: Icons.play_arrow,
+            onPressed: () {
+              context.go(
+                richClosedExerciseRoutePathFor(
+                  subjectId: payload.subjectId,
+                  documentId: payload.documentId,
+                  knowledgeUnitId: payload.knowledgeUnitId,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  String get _contextLabel {
+    final title = payload.knowledgeUnitTitle?.trim();
+    if (title != null && title.isNotEmpty) {
+      return 'Notion: $title';
+    }
+
+    return 'Notion ${payload.knowledgeUnitId}';
   }
 }
 
@@ -358,7 +420,10 @@ class _MinimalPayloadFallback extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Action à reprendre', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Action à reprendre',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: AppSpacing.s),
           const Text(
             "Cette action existe déjà, mais son détail complet n'est pas encore rechargeable.",
@@ -437,6 +502,7 @@ String _actionKindLabel(RevisionSessionActionKind kind) {
   return switch (kind) {
     RevisionSessionActionKind.diagnosticQuiz => 'QCM',
     RevisionSessionActionKind.openQuestion => 'Question ouverte',
+    RevisionSessionActionKind.richClosedExercise => 'Questions riches',
     RevisionSessionActionKind.unknown => 'Action inconnue',
   };
 }
@@ -445,6 +511,7 @@ IconData _actionKindIcon(RevisionSessionActionKind kind) {
   return switch (kind) {
     RevisionSessionActionKind.diagnosticQuiz => Icons.quiz_outlined,
     RevisionSessionActionKind.openQuestion => Icons.rate_review_outlined,
+    RevisionSessionActionKind.richClosedExercise => Icons.extension_outlined,
     RevisionSessionActionKind.unknown => Icons.help_outline,
   };
 }
