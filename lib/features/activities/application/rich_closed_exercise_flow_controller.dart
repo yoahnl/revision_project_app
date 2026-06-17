@@ -247,6 +247,42 @@ class RichClosedExerciseFlowController {
       );
     }
 
+    if (question is RichClosedTimelineQuestion) {
+      return RichClosedTimelineAnswer(
+        questionId: question.id,
+        orderedEventIds: [for (final event in question.events) event.id],
+      );
+    }
+
+    if (question is RichClosedDateSliderQuestion) {
+      return RichClosedDateSliderAnswer(
+        questionId: question.id,
+        year: _initialYearFor(question),
+      );
+    }
+
     return null;
+  }
+
+  int _initialYearFor(RichClosedDateSliderQuestion question) {
+    final midpoint =
+        question.minYear + ((question.maxYear - question.minYear) / 2).round();
+
+    return _snapYear(question, midpoint);
+  }
+
+  int _snapYear(RichClosedDateSliderQuestion question, int year) {
+    final clamped = year.clamp(question.minYear, question.maxYear);
+    final offset = clamped - question.minYear;
+    final stepsFromMin = (offset / question.step).round();
+    final snapped = question.minYear + stepsFromMin * question.step;
+
+    if (snapped < question.minYear) {
+      return question.minYear;
+    }
+    if (snapped > question.maxYear) {
+      return question.maxYear;
+    }
+    return snapped;
   }
 }

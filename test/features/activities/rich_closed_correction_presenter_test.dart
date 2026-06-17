@@ -85,6 +85,41 @@ void main() {
     ]);
   });
 
+  test('mappe timeline et date_slider depuis les corrections backend', () {
+    final v1bExercise = RichClosedExercise.fromJson(
+      richClosedV1BExerciseJson(),
+    );
+    final v1bResult = RichClosedExerciseResult.fromJson(
+      richClosedV1BResultJson(),
+    );
+    final viewModel = presenter.present(
+      exercise: v1bExercise,
+      result: v1bResult,
+    );
+
+    expect(_item(viewModel, 'timeline-1').kindLabel, 'Chronologie');
+    expect(_item(viewModel, 'timeline-1').submittedAnswerLines, [
+      '1. Dépôt de la motion',
+      '2. Débat politique',
+      '3. Vote de la chambre',
+    ]);
+    expect(_item(viewModel, 'timeline-1').correctAnswerLines, [
+      '1. Dépôt de la motion',
+      '2. Débat politique',
+      '3. Vote de la chambre',
+    ]);
+
+    expect(_item(viewModel, 'date-slider-1').kindLabel, 'Curseur temporel');
+    expect(_item(viewModel, 'date-slider-1').submittedAnswerLines, [
+      'Année choisie : 1960',
+    ]);
+    expect(_item(viewModel, 'date-slider-1').correctAnswerLines, [
+      'Année correcte : 1958',
+      'Plage acceptée : 1958 - 1958',
+    ]);
+    expect(_item(viewModel, 'date-slider-1').isCorrect, isFalse);
+  });
+
   test('conserve isCorrect et partialScore backend sans recalcul', () {
     final json = richClosedResultJson();
     final single =

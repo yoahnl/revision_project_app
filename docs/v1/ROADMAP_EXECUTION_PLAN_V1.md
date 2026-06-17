@@ -40,7 +40,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-014 | Revision session integration V1 | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_014_REVISION_SESSION_INTEGRATION_V1.md |
 | V1-015 | Seed V1 rich demo fixtures | À faire | À créer |
 | V1-016 | E2E/smoke V1 rich questions | À faire | À créer |
-| V1-017 | Timeline/date slider V1-B | À faire | À créer |
+| V1-017 | Timeline/date slider V1-B | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_017_TIMELINE_DATE_SLIDER.md |
 | V1-018 | True/false grid + cause/consequence V1-B | À faire | À créer |
 | V1-019 | Institution matrix V1-C | À faire | À créer |
 | V1-020 | Diagram labeling V1-C | À faire | À créer |

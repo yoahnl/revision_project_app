@@ -223,6 +223,108 @@ Map<String, Object?> richClosedResultJson() {
   };
 }
 
+Map<String, Object?> richClosedV1BExerciseJson() {
+  final json = richClosedExerciseJson();
+  final questions = List<Object?>.from(json['questions']! as List<Object?>);
+  json['questions'] = questions;
+
+  questions.addAll([
+    {
+      'id': 'timeline-1',
+      'questionKind': 'timeline',
+      'prompt': 'Remets dans l’ordre ces étapes du contrôle parlementaire.',
+      'instruction': 'Classe les événements du début vers la fin.',
+      'difficulty': 'MEDIUM',
+      'cognitiveSkill': 'procedure',
+      'sourceChunkIds': ['chunk-6'],
+      'events': [
+        {
+          'id': 'event-1',
+          'label': 'Dépôt de la motion',
+          'description': 'Des parlementaires engagent la procédure.',
+        },
+        {
+          'id': 'event-2',
+          'label': 'Débat politique',
+          'description': 'La chambre débat de la responsabilité.',
+        },
+        {
+          'id': 'event-3',
+          'label': 'Vote de la chambre',
+          'description': 'La chambre adopte ou rejette la motion.',
+        },
+      ],
+    },
+    {
+      'id': 'date-slider-1',
+      'questionKind': 'date_slider',
+      'prompt':
+          'Place approximativement l’adoption de la Constitution de la Ve République.',
+      'instruction': 'Choisis une année entière.',
+      'difficulty': 'LOW',
+      'cognitiveSkill': 'comprehension',
+      'sourceChunkIds': ['chunk-7'],
+      'minYear': 1945,
+      'maxYear': 1970,
+      'step': 1,
+      'toleranceYears': 0,
+    },
+  ]);
+
+  return json;
+}
+
+Map<String, Object?> richClosedV1BResultJson() {
+  final json = richClosedResultJson();
+  final items = List<Object?>.from(json['items']! as List<Object?>);
+
+  json['correctAnswers'] = 7;
+  json['totalQuestions'] = 8;
+  json['score'] = 0.875;
+  json['items'] = items;
+  items.addAll([
+    {
+      'questionId': 'timeline-1',
+      'questionKind': 'timeline',
+      'prompt': 'Remets dans l’ordre ces étapes du contrôle parlementaire.',
+      'submittedAnswer': {
+        'questionId': 'timeline-1',
+        'questionKind': 'timeline',
+        'orderedEventIds': ['event-1', 'event-2', 'event-3'],
+      },
+      'isCorrect': true,
+      'partialScore': 1,
+      'explanation': 'La procédure suit initiative, débat puis vote.',
+      'sourceChunkIds': ['chunk-6'],
+      'correction': {
+        'correctOrder': ['event-1', 'event-2', 'event-3'],
+      },
+    },
+    {
+      'questionId': 'date-slider-1',
+      'questionKind': 'date_slider',
+      'prompt':
+          'Place approximativement l’adoption de la Constitution de la Ve République.',
+      'submittedAnswer': {
+        'questionId': 'date-slider-1',
+        'questionKind': 'date_slider',
+        'year': 1960,
+      },
+      'isCorrect': false,
+      'partialScore': 0,
+      'explanation': 'La Constitution de la Ve République est adoptée en 1958.',
+      'sourceChunkIds': ['chunk-7'],
+      'correction': {
+        'correctYear': 1958,
+        'minAcceptedYear': 1958,
+        'maxAcceptedYear': 1958,
+      },
+    },
+  ]);
+
+  return json;
+}
+
 Map<String, Object?> richClosedExerciseWithCorrectChoiceLeak() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
@@ -245,7 +347,7 @@ Map<String, Object?> richClosedExerciseWithUnknownKind() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
           as Map<String, Object?>)['questionKind'] =
-      'timeline';
+      'true_false_grid';
   return json;
 }
 

@@ -71,6 +71,8 @@ class RichClosedQuestionCard extends StatelessWidget {
       RichClosedQuestionKind.ordering => 'Ordonnancement',
       RichClosedQuestionKind.caseQualification => 'Qualification',
       RichClosedQuestionKind.errorDetection => 'Erreur à repérer',
+      RichClosedQuestionKind.timeline => 'Chronologie',
+      RichClosedQuestionKind.dateSlider => 'Curseur temporel',
     };
   }
 

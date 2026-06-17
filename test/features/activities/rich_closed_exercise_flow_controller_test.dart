@@ -86,6 +86,50 @@ void main() {
     }
   });
 
+  test(
+    'collecte timeline et date_slider avec réponses initiales typées',
+    () async {
+      final v1bExercise = RichClosedExercise.fromJson(
+        richClosedV1BExerciseJson(),
+      );
+      final v1bResult = RichClosedExerciseResult.fromJson(
+        richClosedV1BResultJson(),
+      );
+      final api = _FakeRichClosedActivityApi(
+        exercise: v1bExercise,
+        result: v1bResult,
+      );
+      final controller = RichClosedExerciseFlowController(
+        activityController: ActivityController(api),
+      );
+
+      await controller.start(subjectId: 'subject-1', knowledgeUnitId: 'unit-1');
+
+      expect(controller.state.answeredCount, 3);
+      _answerAllQuestions(controller);
+      expect(controller.state.answeredCount, 8);
+      expect(controller.state.canSubmit, isTrue);
+
+      await controller.submit();
+
+      expect(api.submittedAnswers, hasLength(8));
+      expect(
+        api.submittedAnswers!
+            .whereType<RichClosedTimelineAnswer>()
+            .single
+            .orderedEventIds,
+        ['event-1', 'event-2', 'event-3'],
+      );
+      expect(
+        api.submittedAnswers!
+            .whereType<RichClosedDateSliderAnswer>()
+            .single
+            .year,
+        1958,
+      );
+    },
+  );
+
   test('refuse submit si les réponses sont incomplètes', () async {
     final api = _FakeRichClosedActivityApi(exercise: exercise, result: result);
     final controller = RichClosedExerciseFlowController(
@@ -221,6 +265,10 @@ void _answerAllQuestions(RichClosedExerciseFlowController controller) {
           ),
         );
       case RichClosedOrderingQuestion():
+        break;
+      case RichClosedTimelineQuestion():
+        break;
+      case RichClosedDateSliderQuestion():
         break;
       case RichClosedCaseQualificationQuestion():
         controller.recordAnswer(

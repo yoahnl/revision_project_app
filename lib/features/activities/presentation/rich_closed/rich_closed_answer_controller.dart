@@ -5,6 +5,8 @@ class RichClosedCoreAnswerController {
   final Map<String, Set<String>> _multipleSelections = {};
   final Map<String, Map<String, String>> _matchingSelections = {};
   final Map<String, List<String>> _orderingSelections = {};
+  final Map<String, List<String>> _timelineSelections = {};
+  final Map<String, int> _dateSliderSelections = {};
 
   String? _message;
 
@@ -53,6 +55,23 @@ class RichClosedCoreAnswerController {
     }
 
     return orderedIds.toList(growable: false);
+  }
+
+  List<String> orderedEventIdsFor(RichClosedTimelineQuestion question) {
+    final orderedEventIds = _timelineSelections[question.id];
+    if (orderedEventIds == null ||
+        !_isCompleteTimeline(question, orderedEventIds)) {
+      return question.events.map((event) => event.id).toList(growable: false);
+    }
+
+    return orderedEventIds.toList(growable: false);
+  }
+
+  int selectedYearFor(RichClosedDateSliderQuestion question) {
+    return _dateSliderSelections.putIfAbsent(
+      question.id,
+      () => _initialYearFor(question),
+    );
   }
 
   void selectSingleChoice({
@@ -157,6 +176,28 @@ class RichClosedCoreAnswerController {
     _moveOrderingItem(question: question, itemId: itemId, delta: 1);
   }
 
+  void moveTimelineEventUp({
+    required RichClosedTimelineQuestion question,
+    required String eventId,
+  }) {
+    _moveTimelineEvent(question: question, eventId: eventId, delta: -1);
+  }
+
+  void moveTimelineEventDown({
+    required RichClosedTimelineQuestion question,
+    required String eventId,
+  }) {
+    _moveTimelineEvent(question: question, eventId: eventId, delta: 1);
+  }
+
+  void setDateSliderYear({
+    required RichClosedDateSliderQuestion question,
+    required int year,
+  }) {
+    _dateSliderSelections[question.id] = _snapYear(question, year);
+    _message = null;
+  }
+
   bool canSubmitQuestion(RichClosedQuestion question) {
     return switch (question) {
       RichClosedSingleChoiceQuestion() =>
@@ -168,6 +209,8 @@ class RichClosedCoreAnswerController {
         _singleSelections[question.id] != null,
       RichClosedMatchingQuestion() => _canSubmitMatching(question),
       RichClosedOrderingQuestion() => _canSubmitOrdering(question),
+      RichClosedTimelineQuestion() => _canSubmitTimeline(question),
+      RichClosedDateSliderQuestion() => true,
     };
   }
 
@@ -202,6 +245,14 @@ class RichClosedCoreAnswerController {
         questionId: question.id,
         orderedIds: orderedIdsFor(question),
       ),
+      RichClosedTimelineQuestion() => RichClosedTimelineAnswer(
+        questionId: question.id,
+        orderedEventIds: orderedEventIdsFor(question),
+      ),
+      RichClosedDateSliderQuestion() => RichClosedDateSliderAnswer(
+        questionId: question.id,
+        year: selectedYearFor(question),
+      ),
     };
   }
 
@@ -230,6 +281,10 @@ class RichClosedCoreAnswerController {
     return _isCompleteOrdering(question, orderedIdsFor(question));
   }
 
+  bool _canSubmitTimeline(RichClosedTimelineQuestion question) {
+    return _isCompleteTimeline(question, orderedEventIdsFor(question));
+  }
+
   void _moveOrderingItem({
     required RichClosedOrderingQuestion question,
     required String itemId,
@@ -253,6 +308,31 @@ class RichClosedCoreAnswerController {
     _message = null;
   }
 
+  void _moveTimelineEvent({
+    required RichClosedTimelineQuestion question,
+    required String eventId,
+    required int delta,
+  }) {
+    if (!_hasTimelineEvent(question.events, eventId)) {
+      return;
+    }
+
+    final orderedEventIds = orderedEventIdsFor(question).toList();
+    final currentIndex = orderedEventIds.indexOf(eventId);
+    final nextIndex = currentIndex + delta;
+
+    if (currentIndex < 0 ||
+        nextIndex < 0 ||
+        nextIndex >= orderedEventIds.length) {
+      return;
+    }
+
+    final movedId = orderedEventIds.removeAt(currentIndex);
+    orderedEventIds.insert(nextIndex, movedId);
+    _timelineSelections[question.id] = orderedEventIds;
+    _message = null;
+  }
+
   bool _isCompleteOrdering(
     RichClosedOrderingQuestion question,
     List<String> orderedIds,
@@ -266,11 +346,50 @@ class RichClosedCoreAnswerController {
         actualIds.every(expectedIds.contains);
   }
 
+  bool _isCompleteTimeline(
+    RichClosedTimelineQuestion question,
+    List<String> orderedEventIds,
+  ) {
+    final expectedIds = question.events.map((event) => event.id).toSet();
+    final actualIds = orderedEventIds.toSet();
+
+    return orderedEventIds.length == question.events.length &&
+        actualIds.length == orderedEventIds.length &&
+        actualIds.length == expectedIds.length &&
+        actualIds.every(expectedIds.contains);
+  }
+
+  int _initialYearFor(RichClosedDateSliderQuestion question) {
+    final midpoint =
+        question.minYear + ((question.maxYear - question.minYear) / 2).round();
+
+    return _snapYear(question, midpoint);
+  }
+
+  int _snapYear(RichClosedDateSliderQuestion question, int year) {
+    final clamped = year.clamp(question.minYear, question.maxYear);
+    final offset = clamped - question.minYear;
+    final stepsFromMin = (offset / question.step).round();
+    final snapped = question.minYear + stepsFromMin * question.step;
+
+    if (snapped < question.minYear) {
+      return question.minYear;
+    }
+    if (snapped > question.maxYear) {
+      return question.maxYear;
+    }
+    return snapped;
+  }
+
   bool _hasChoice(List<RichClosedChoice> choices, String choiceId) {
     return choices.any((choice) => choice.id == choiceId);
   }
 
   bool _hasLabelItem(List<RichClosedLabelItem> items, String itemId) {
     return items.any((item) => item.id == itemId);
+  }
+
+  bool _hasTimelineEvent(List<RichClosedTimelineEvent> events, String eventId) {
+    return events.any((event) => event.id == eventId);
   }
 }

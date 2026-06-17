@@ -16,7 +16,9 @@ enum RichClosedQuestionKind {
   matching('matching'),
   ordering('ordering'),
   caseQualification('case_qualification'),
-  errorDetection('error_detection');
+  errorDetection('error_detection'),
+  timeline('timeline'),
+  dateSlider('date_slider');
 
   const RichClosedQuestionKind(this.wireValue);
 
@@ -210,6 +212,22 @@ sealed class RichClosedQuestion {
         base: base,
         items: _labelItems(json['items'], 'Invalid ordering items'),
       ),
+      RichClosedQuestionKind.timeline => RichClosedTimelineQuestion(
+        base: base,
+        instruction: _readOptionalString(json['instruction']),
+        events: _timelineEvents(json['events']),
+      ).._validateEvents(),
+      RichClosedQuestionKind.dateSlider => RichClosedDateSliderQuestion(
+        base: base,
+        instruction: _readOptionalString(json['instruction']),
+        minYear: _readInt(json['minYear'], 'Invalid date slider min year'),
+        maxYear: _readInt(json['maxYear'], 'Invalid date slider max year'),
+        step: _readInt(json['step'], 'Invalid date slider step'),
+        toleranceYears: _readInt(
+          json['toleranceYears'],
+          'Invalid date slider tolerance',
+        ),
+      ).._validateBounds(),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationQuestion(
           base: base,
@@ -316,6 +334,63 @@ class RichClosedOrderingQuestion extends RichClosedQuestion {
        );
 
   final List<RichClosedLabelItem> items;
+}
+
+class RichClosedTimelineQuestion extends RichClosedQuestion {
+  RichClosedTimelineQuestion({
+    required RichClosedQuestionBase base,
+    required this.instruction,
+    required this.events,
+  }) : super(
+         id: base.id,
+         questionKind: RichClosedQuestionKind.timeline,
+         prompt: base.prompt,
+         difficulty: base.difficulty,
+         cognitiveSkill: base.cognitiveSkill,
+         sourceChunkIds: base.sourceChunkIds,
+       );
+
+  final String? instruction;
+  final List<RichClosedTimelineEvent> events;
+
+  void _validateEvents() {
+    final eventIds = events.map((event) => event.id).toSet();
+    if (events.length < 3 || eventIds.length != events.length) {
+      throw const RichClosedExerciseParseException('Invalid timeline events');
+    }
+  }
+}
+
+class RichClosedDateSliderQuestion extends RichClosedQuestion {
+  RichClosedDateSliderQuestion({
+    required RichClosedQuestionBase base,
+    required this.instruction,
+    required this.minYear,
+    required this.maxYear,
+    required this.step,
+    required this.toleranceYears,
+  }) : super(
+         id: base.id,
+         questionKind: RichClosedQuestionKind.dateSlider,
+         prompt: base.prompt,
+         difficulty: base.difficulty,
+         cognitiveSkill: base.cognitiveSkill,
+         sourceChunkIds: base.sourceChunkIds,
+       );
+
+  final String? instruction;
+  final int minYear;
+  final int maxYear;
+  final int step;
+  final int toleranceYears;
+
+  void _validateBounds() {
+    if (minYear >= maxYear || step < 1 || toleranceYears < 0) {
+      throw const RichClosedExerciseParseException(
+        'Invalid date slider bounds',
+      );
+    }
+  }
 }
 
 class RichClosedCaseQualificationQuestion extends RichClosedQuestion {
@@ -426,6 +501,31 @@ class RichClosedLabelItem {
   final String label;
 }
 
+class RichClosedTimelineEvent {
+  const RichClosedTimelineEvent({
+    required this.id,
+    required this.label,
+    required this.description,
+  });
+
+  factory RichClosedTimelineEvent.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid rich closed timeline event');
+
+    return RichClosedTimelineEvent(
+      id: _readString(json['id'], 'Invalid rich closed timeline event id'),
+      label: _readString(
+        json['label'],
+        'Invalid rich closed timeline event label',
+      ),
+      description: _readOptionalString(json['description']),
+    );
+  }
+
+  final String id;
+  final String label;
+  final String? description;
+}
+
 class RichClosedPair {
   const RichClosedPair({required this.leftId, required this.rightId});
 
@@ -482,6 +582,17 @@ sealed class RichClosedAnswer {
           json['orderedIds'],
           'Invalid ordering answer',
         ),
+      ),
+      RichClosedQuestionKind.timeline => RichClosedTimelineAnswer(
+        questionId: questionId,
+        orderedEventIds: _nonEmptyStringList(
+          json['orderedEventIds'],
+          'Invalid timeline answer',
+        ),
+      ),
+      RichClosedQuestionKind.dateSlider => RichClosedDateSliderAnswer(
+        questionId: questionId,
+        year: _readInt(json['year'], 'Invalid date slider answer'),
       ),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationAnswer(
@@ -565,6 +676,38 @@ class RichClosedOrderingAnswer extends RichClosedAnswer {
     'questionId': questionId,
     'questionKind': questionKind.wireValue,
     'orderedIds': orderedIds,
+  };
+}
+
+class RichClosedTimelineAnswer extends RichClosedAnswer {
+  const RichClosedTimelineAnswer({
+    required super.questionId,
+    required this.orderedEventIds,
+  }) : super(questionKind: RichClosedQuestionKind.timeline);
+
+  final List<String> orderedEventIds;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'questionId': questionId,
+    'questionKind': questionKind.wireValue,
+    'orderedEventIds': orderedEventIds,
+  };
+}
+
+class RichClosedDateSliderAnswer extends RichClosedAnswer {
+  const RichClosedDateSliderAnswer({
+    required super.questionId,
+    required this.year,
+  }) : super(questionKind: RichClosedQuestionKind.dateSlider);
+
+  final int year;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'questionId': questionId,
+    'questionKind': questionKind.wireValue,
+    'year': year,
   };
 }
 
@@ -762,6 +905,23 @@ sealed class RichClosedCorrectionPayload {
           'Invalid correct order',
         ),
       ),
+      RichClosedQuestionKind.timeline => RichClosedCorrectOrderCorrection(
+        correctOrder: _nonEmptyStringList(
+          json['correctOrder'],
+          'Invalid correct timeline order',
+        ),
+      ),
+      RichClosedQuestionKind.dateSlider => RichClosedCorrectYearCorrection(
+        correctYear: _readInt(json['correctYear'], 'Invalid correct year'),
+        minAcceptedYear: _readInt(
+          json['minAcceptedYear'],
+          'Invalid minimum accepted year',
+        ),
+        maxAcceptedYear: _readInt(
+          json['maxAcceptedYear'],
+          'Invalid maximum accepted year',
+        ),
+      ),
       RichClosedQuestionKind.errorDetection =>
         RichClosedCorrectErrorIdCorrection(
           correctErrorId: _readString(
@@ -797,6 +957,18 @@ class RichClosedCorrectOrderCorrection extends RichClosedCorrectionPayload {
   final List<String> correctOrder;
 }
 
+class RichClosedCorrectYearCorrection extends RichClosedCorrectionPayload {
+  const RichClosedCorrectYearCorrection({
+    required this.correctYear,
+    required this.minAcceptedYear,
+    required this.maxAcceptedYear,
+  });
+
+  final int correctYear;
+  final int minAcceptedYear;
+  final int maxAcceptedYear;
+}
+
 class RichClosedCorrectErrorIdCorrection extends RichClosedCorrectionPayload {
   const RichClosedCorrectErrorIdCorrection({required this.correctErrorId});
 
@@ -829,6 +1001,21 @@ List<RichClosedLabelItem> _labelItems(Object? value, String message) {
   }
 
   return items;
+}
+
+List<RichClosedTimelineEvent> _timelineEvents(Object? value) {
+  final events = _readList(
+    value,
+    'Invalid rich closed timeline events',
+  ).map(RichClosedTimelineEvent.fromJson).toList(growable: false);
+
+  if (events.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Rich closed timeline events cannot be empty',
+    );
+  }
+
+  return events;
 }
 
 List<RichClosedPair> _pairs(Object? value) {
@@ -971,6 +1158,7 @@ const _forbiddenPreSubmitKeys = {
   'score',
   'partialScore',
   'workedSteps',
+  'answersPayload',
   'expectedAnswer',
   'expectedAnswers',
 };
@@ -988,6 +1176,7 @@ const _forbiddenAnswerKeys = {
   'score',
   'partialScore',
   'workedSteps',
+  'answersPayload',
   'expectedAnswer',
   'expectedAnswers',
 };

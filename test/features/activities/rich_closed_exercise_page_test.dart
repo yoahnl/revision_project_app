@@ -71,6 +71,38 @@ void main() {
     expect(controller.canSubmitQuestion(exercise.questions.first), isTrue);
   });
 
+  testWidgets('renderer rend timeline et date_slider', (tester) async {
+    final controller = RichClosedCoreAnswerController();
+    final v1bExercise = RichClosedExercise.fromJson(
+      richClosedV1BExerciseJson(),
+    );
+    final changedQuestions = <String>[];
+
+    await tester.pumpWidget(
+      _TestHost(
+        scrollable: true,
+        child: Column(
+          children: [
+            for (final question in v1bExercise.questions.skip(6))
+              RichClosedQuestionRenderer(
+                question: question,
+                controller: controller,
+                enabled: true,
+                onChanged: (_) => changedQuestions.add(question.id),
+              ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Dépôt de la motion'), findsOneWidget);
+    expect(find.text('Année sélectionnée : 1958'), findsOneWidget);
+    expect(changedQuestions, containsAll(['timeline-1', 'date-slider-1']));
+    expect(find.text('correctOrder'), findsNothing);
+    expect(find.text('correctYear'), findsNothing);
+  });
+
   testWidgets('page démarre, collecte six réponses et affiche la correction', (
     tester,
   ) async {
@@ -136,6 +168,58 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Valider mes réponses'), findsNothing);
+  });
+
+  testWidgets('page submit et affiche les corrections V1-B', (tester) async {
+    final v1bExercise = RichClosedExercise.fromJson(
+      richClosedV1BExerciseJson(),
+    );
+    final v1bResult = RichClosedExerciseResult.fromJson(
+      richClosedV1BResultJson(),
+    );
+    final api = _FakeRichClosedActivityApi(
+      exercise: v1bExercise,
+      result: v1bResult,
+    );
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedExercisePage(
+          controller: ActivityController(api),
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 / 8 répondues'), findsOneWidget);
+
+    await _answerAllQuestions(tester);
+
+    expect(find.text('8 / 8 répondues'), findsOneWidget);
+    expect(_submitButton(tester).onPressed, isNotNull);
+
+    await _tapVisible(
+      tester,
+      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.submittedAnswers, hasLength(8));
+    expect(
+      api.submittedAnswers!
+          .whereType<RichClosedTimelineAnswer>()
+          .single
+          .orderedEventIds,
+      ['event-1', 'event-2', 'event-3'],
+    );
+    expect(
+      api.submittedAnswers!.whereType<RichClosedDateSliderAnswer>().single.year,
+      1958,
+    );
+    expect(find.text('Année correcte : 1958'), findsOneWidget);
+    expect(find.text('Plage acceptée : 1958 - 1958'), findsOneWidget);
   });
 
   testWidgets('page affiche une erreur contrôlée au démarrage', (tester) async {

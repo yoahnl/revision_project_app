@@ -54,6 +54,8 @@ class RichClosedCorrectionPresenter {
       ),
       RichClosedMatchingQuestion() => _presentMatching(question, item),
       RichClosedOrderingQuestion() => _presentOrdering(question, item),
+      RichClosedTimelineQuestion() => _presentTimeline(question, item),
+      RichClosedDateSliderQuestion() => _presentDateSlider(question, item),
       RichClosedCaseQualificationQuestion() => _presentCaseQualification(
         question,
         item,
@@ -132,6 +134,41 @@ class RichClosedCorrectionPresenter {
       item: item,
       submittedAnswerLines: _orderedLines(question, submitted.orderedIds),
       correctAnswerLines: _orderedLines(question, correction.correctOrder),
+    );
+  }
+
+  RichClosedCorrectionItemViewModel _presentTimeline(
+    RichClosedTimelineQuestion question,
+    RichClosedCorrectionItem item,
+  ) {
+    final submitted = _timelineAnswer(item);
+    final correction = _orderCorrection(item);
+
+    return _baseItem(
+      question: question,
+      item: item,
+      contextText: question.instruction,
+      submittedAnswerLines: _timelineLines(question, submitted.orderedEventIds),
+      correctAnswerLines: _timelineLines(question, correction.correctOrder),
+    );
+  }
+
+  RichClosedCorrectionItemViewModel _presentDateSlider(
+    RichClosedDateSliderQuestion question,
+    RichClosedCorrectionItem item,
+  ) {
+    final submitted = _dateSliderAnswer(item);
+    final correction = _yearCorrection(item);
+
+    return _baseItem(
+      question: question,
+      item: item,
+      contextText: question.instruction,
+      submittedAnswerLines: ['Année choisie : ${submitted.year}'],
+      correctAnswerLines: [
+        'Année correcte : ${correction.correctYear}',
+        'Plage acceptée : ${correction.minAcceptedYear} - ${correction.maxAcceptedYear}',
+      ],
     );
   }
 
@@ -279,6 +316,26 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedTimelineAnswer _timelineAnswer(RichClosedCorrectionItem item) {
+    final answer = item.submittedAnswer;
+    if (answer is RichClosedTimelineAnswer) {
+      return answer;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid timeline submitted answer for ${item.questionId}',
+    );
+  }
+
+  RichClosedDateSliderAnswer _dateSliderAnswer(RichClosedCorrectionItem item) {
+    final answer = item.submittedAnswer;
+    if (answer is RichClosedDateSliderAnswer) {
+      return answer;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid date slider submitted answer for ${item.questionId}',
+    );
+  }
+
   RichClosedCaseQualificationAnswer _caseQualificationAnswer(
     RichClosedCorrectionItem item,
   ) {
@@ -351,6 +408,18 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedCorrectYearCorrection _yearCorrection(
+    RichClosedCorrectionItem item,
+  ) {
+    final correction = item.correction;
+    if (correction is RichClosedCorrectYearCorrection) {
+      return correction;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid date slider correction for ${item.questionId}',
+    );
+  }
+
   RichClosedCorrectErrorIdCorrection _errorIdCorrection(
     RichClosedCorrectionItem item,
   ) {
@@ -360,6 +429,21 @@ class RichClosedCorrectionPresenter {
     }
     throw RichClosedCorrectionPresentationException(
       'Invalid error detection correction for ${item.questionId}',
+    );
+  }
+
+  String _timelineEventLabel(
+    List<RichClosedTimelineEvent> events,
+    String eventId,
+    String questionId,
+  ) {
+    for (final event in events) {
+      if (event.id == eventId) {
+        return event.label;
+      }
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Unknown timeline event $eventId for question $questionId',
     );
   }
 
@@ -414,6 +498,16 @@ class RichClosedCorrectionPresenter {
     ];
   }
 
+  List<String> _timelineLines(
+    RichClosedTimelineQuestion question,
+    List<String> orderedEventIds,
+  ) {
+    return [
+      for (var index = 0; index < orderedEventIds.length; index += 1)
+        '${index + 1}. ${_timelineEventLabel(question.events, orderedEventIds[index], question.id)}',
+    ];
+  }
+
   String _kindLabel(RichClosedQuestionKind kind) {
     return switch (kind) {
       RichClosedQuestionKind.singleChoice => 'Choix unique',
@@ -422,6 +516,8 @@ class RichClosedCorrectionPresenter {
       RichClosedQuestionKind.ordering => 'Ordonnancement',
       RichClosedQuestionKind.caseQualification => 'Qualification',
       RichClosedQuestionKind.errorDetection => 'Erreur à repérer',
+      RichClosedQuestionKind.timeline => 'Chronologie',
+      RichClosedQuestionKind.dateSlider => 'Curseur temporel',
     };
   }
 }

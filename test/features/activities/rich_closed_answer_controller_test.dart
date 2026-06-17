@@ -272,6 +272,78 @@ void main() {
     );
   });
 
+  test('timeline retourne l’ordre initial complet', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1bExercise = RichClosedExercise.fromJson(
+      richClosedV1BExerciseJson(),
+    );
+    final timeline = _question<RichClosedTimelineQuestion>(v1bExercise);
+
+    expect(controller.orderedEventIdsFor(timeline), [
+      'event-1',
+      'event-2',
+      'event-3',
+    ]);
+    expect(controller.canSubmitQuestion(timeline), isTrue);
+  });
+
+  test('timeline move down et move up déplacent les événements', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1bExercise = RichClosedExercise.fromJson(
+      richClosedV1BExerciseJson(),
+    );
+    final timeline = _question<RichClosedTimelineQuestion>(v1bExercise);
+
+    controller.moveTimelineEventDown(question: timeline, eventId: 'event-1');
+    expect(controller.orderedEventIdsFor(timeline), [
+      'event-2',
+      'event-1',
+      'event-3',
+    ]);
+
+    controller.moveTimelineEventUp(question: timeline, eventId: 'event-1');
+    expect(controller.orderedEventIdsFor(timeline), [
+      'event-1',
+      'event-2',
+      'event-3',
+    ]);
+  });
+
+  test('timeline produit une answer orderedEventIds complète', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1bExercise = RichClosedExercise.fromJson(
+      richClosedV1BExerciseJson(),
+    );
+    final timeline = _question<RichClosedTimelineQuestion>(v1bExercise);
+
+    controller.moveTimelineEventDown(question: timeline, eventId: 'event-1');
+
+    final answer = controller.answerFor(timeline);
+    expect(answer, isA<RichClosedTimelineAnswer>());
+    expect((answer! as RichClosedTimelineAnswer).orderedEventIds, [
+      'event-2',
+      'event-1',
+      'event-3',
+    ]);
+  });
+
+  test('date slider produit une année initiale puis mise à jour', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1bExercise = RichClosedExercise.fromJson(
+      richClosedV1BExerciseJson(),
+    );
+    final dateSlider = _question<RichClosedDateSliderQuestion>(v1bExercise);
+
+    expect(controller.canSubmitQuestion(dateSlider), isTrue);
+    expect(controller.selectedYearFor(dateSlider), 1958);
+
+    controller.setDateSliderYear(question: dateSlider, year: 1960);
+
+    final answer = controller.answerFor(dateSlider);
+    expect(answer, isA<RichClosedDateSliderAnswer>());
+    expect((answer! as RichClosedDateSliderAnswer).year, 1960);
+  });
+
   test('matching et ordering ne produisent jamais de correction', () {
     final controller = RichClosedCoreAnswerController();
     final matching = _question<RichClosedMatchingQuestion>(exercise);
@@ -297,6 +369,25 @@ void main() {
     final orderingJson = controller.answerFor(ordering)!.toJson();
 
     for (final json in [matchingJson, orderingJson]) {
+      expect(json.keys.any((key) => key.startsWith('correct')), isFalse);
+      expect(json.containsKey('correction'), isFalse);
+      expect(json.containsKey('score'), isFalse);
+      expect(json.containsKey('explanation'), isFalse);
+    }
+  });
+
+  test('timeline et date_slider ne produisent jamais de correction', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1bExercise = RichClosedExercise.fromJson(
+      richClosedV1BExerciseJson(),
+    );
+    final timeline = _question<RichClosedTimelineQuestion>(v1bExercise);
+    final dateSlider = _question<RichClosedDateSliderQuestion>(v1bExercise);
+
+    final timelineJson = controller.answerFor(timeline)!.toJson();
+    final dateSliderJson = controller.answerFor(dateSlider)!.toJson();
+
+    for (final json in [timelineJson, dateSliderJson]) {
       expect(json.keys.any((key) => key.startsWith('correct')), isFalse);
       expect(json.containsKey('correction'), isFalse);
       expect(json.containsKey('score'), isFalse);

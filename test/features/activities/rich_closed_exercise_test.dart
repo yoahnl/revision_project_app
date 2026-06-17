@@ -50,6 +50,29 @@ void main() {
       expect(error.errorOptions.first.id, 'error-a');
     });
 
+    test('parses timeline and date_slider public questions', () {
+      final questions = RichClosedExercise.fromJson(
+        richClosedV1BExerciseJson(),
+      ).questions;
+      final timeline = questions[6] as RichClosedTimelineQuestion;
+      final dateSlider = questions[7] as RichClosedDateSliderQuestion;
+
+      expect(questions, hasLength(8));
+      expect(timeline.questionKind, RichClosedQuestionKind.timeline);
+      expect(timeline.instruction, contains('événements'));
+      expect(timeline.events.map((event) => event.id), [
+        'event-1',
+        'event-2',
+        'event-3',
+      ]);
+      expect(timeline.events.first.description, contains('procédure'));
+      expect(dateSlider.questionKind, RichClosedQuestionKind.dateSlider);
+      expect(dateSlider.minYear, 1945);
+      expect(dateSlider.maxYear, 1970);
+      expect(dateSlider.step, 1);
+      expect(dateSlider.toleranceYears, 0);
+    });
+
     test('rejects unsupported question kinds', () {
       expectParseError(
         () => RichClosedExercise.fromJson(richClosedExerciseWithUnknownKind()),
@@ -69,16 +92,19 @@ void main() {
 
     test('rejects every forbidden pre-submit correction field', () {
       for (final field in [
+        'correctChoiceId',
         'correctChoiceIds',
         'correctPairs',
         'correctOrder',
         'correctErrorId',
+        'correctYear',
         'explanation',
         'score',
         'modelAnswer',
         'answerText',
         'freeTextAnswer',
         'textAnswer',
+        'answersPayload',
       ]) {
         final json = richClosedExerciseJson();
         ((json['questions']! as List<Object?>).first!
@@ -128,6 +154,26 @@ void main() {
           '';
       expectParseError(() => RichClosedExercise.fromJson(badLabel));
     });
+
+    test(
+      'rejects V1-B public questions carrying private correction fields',
+      () {
+        final timelineLeak = richClosedV1BExerciseJson();
+        ((timelineLeak['questions']! as List<Object?>)[6]!
+            as Map<String, Object?>)['correctOrder'] = [
+          'event-1',
+          'event-2',
+          'event-3',
+        ];
+        final dateLeak = richClosedV1BExerciseJson();
+        ((dateLeak['questions']! as List<Object?>)[7]!
+                as Map<String, Object?>)['correctYear'] =
+            1958;
+
+        expectParseError(() => RichClosedExercise.fromJson(timelineLeak));
+        expectParseError(() => RichClosedExercise.fromJson(dateLeak));
+      },
+    );
   });
 
   group('RichClosedAnswer submit DTO', () {
@@ -200,6 +246,28 @@ void main() {
           'errorId': 'error-a',
         },
       );
+      expect(
+        const RichClosedTimelineAnswer(
+          questionId: 'timeline-1',
+          orderedEventIds: ['event-1', 'event-2', 'event-3'],
+        ).toJson(),
+        {
+          'questionId': 'timeline-1',
+          'questionKind': 'timeline',
+          'orderedEventIds': ['event-1', 'event-2', 'event-3'],
+        },
+      );
+      expect(
+        const RichClosedDateSliderAnswer(
+          questionId: 'date-slider-1',
+          year: 1958,
+        ).toJson(),
+        {
+          'questionId': 'date-slider-1',
+          'questionKind': 'date_slider',
+          'year': 1958,
+        },
+      );
     });
 
     test('serializes submit wrapper without correction or free text', () {
@@ -268,6 +336,27 @@ void main() {
       expect(
         result.items[5].correction,
         isA<RichClosedCorrectErrorIdCorrection>(),
+      );
+    });
+
+    test('parses timeline and date_slider post-submit corrections', () {
+      final result = RichClosedExerciseResult.fromJson(
+        richClosedV1BResultJson(),
+      );
+      final timeline = result.items[6];
+      final dateSlider = result.items[7];
+
+      expect(timeline.submittedAnswer, isA<RichClosedTimelineAnswer>());
+      expect(timeline.correction, isA<RichClosedCorrectOrderCorrection>());
+      expect(
+        (timeline.correction as RichClosedCorrectOrderCorrection).correctOrder,
+        ['event-1', 'event-2', 'event-3'],
+      );
+      expect(dateSlider.submittedAnswer, isA<RichClosedDateSliderAnswer>());
+      expect(dateSlider.correction, isA<RichClosedCorrectYearCorrection>());
+      expect(
+        (dateSlider.correction as RichClosedCorrectYearCorrection).correctYear,
+        1958,
       );
     });
 
