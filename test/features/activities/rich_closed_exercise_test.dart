@@ -171,6 +171,76 @@ void main() {
       ]);
     });
 
+    test('parses calculation_mcq public questions', () {
+      final questions = RichClosedExercise.fromJson(
+        richClosedV1CCalculationExerciseJson(),
+      ).questions;
+      final calculation = questions[12] as RichClosedCalculationMcqQuestion;
+
+      expect(questions, hasLength(13));
+      expect(calculation.questionKind, RichClosedQuestionKind.calculationMcq);
+      expect(calculation.instruction, contains('résultat entier'));
+      expect(calculation.scenario, contains('577 suffrages'));
+      expect(
+        calculation.calculation,
+        isA<RichClosedAbsoluteMajorityThresholdCalculation>(),
+      );
+      expect(
+        (calculation.calculation
+                as RichClosedAbsoluteMajorityThresholdCalculation)
+            .validVotes,
+        577,
+      );
+      expect(
+        calculation.choices.map((choice) => '${choice.id}:${choice.value}'),
+        ['choice-288:288', 'choice-289:289', 'choice-290:290'],
+      );
+    });
+
+    test('parses largest remainder calculation data without scoring it', () {
+      final payload = richClosedExerciseJson();
+      payload['questions'] = [
+        richClosedCalculationLargestRemainderQuestionJson(),
+      ];
+
+      final question =
+          RichClosedExercise.fromJson(payload).questions.single
+              as RichClosedCalculationMcqQuestion;
+      final calculation =
+          question.calculation
+              as RichClosedLargestRemainderTargetPartySeatsCalculation;
+
+      expect(calculation.totalSeats, 10);
+      expect(calculation.targetPartyId, 'party-a');
+      expect(calculation.parties.map((party) => '${party.id}:${party.votes}'), [
+        'party-a:4300',
+        'party-b:3100',
+        'party-c:1600',
+        'party-d:1000',
+      ]);
+      expect(question.choices.map((choice) => choice.value), [3, 4, 5]);
+    });
+
+    test('accepts zero-vote parties in largest remainder calculation data', () {
+      final questionJson = richClosedCalculationLargestRemainderQuestionJson();
+      final calculationJson =
+          questionJson['calculation']! as Map<String, Object?>;
+      ((calculationJson['parties']! as List<Object?>).last!
+              as Map<String, Object?>)['votes'] =
+          0;
+      final payload = richClosedExerciseJson();
+      payload['questions'] = [questionJson];
+
+      final question =
+          RichClosedExercise.fromJson(payload).questions.single
+              as RichClosedCalculationMcqQuestion;
+      final calculation =
+          question.calculation
+              as RichClosedLargestRemainderTargetPartySeatsCalculation;
+
+      expect(calculation.parties.last.votes, 0);
+    });
+
     test('rejects cause_consequence with fewer consequences than causes', () {
       final payload = richClosedV1BFullExerciseJson();
       final question =
@@ -216,6 +286,20 @@ void main() {
         'freeTextAnswer',
         'textAnswer',
         'answersPayload',
+        'expectedValue',
+        'workedSteps',
+        'render',
+        'renderPayload',
+        'code',
+        'eval',
+        'Function',
+        'function',
+        'formula',
+        'expression',
+        'rawFormula',
+        'calculationCode',
+        'javascript',
+        'python',
       ]) {
         final json = richClosedExerciseJson();
         ((json['questions']! as List<Object?>).first!
@@ -341,6 +425,7 @@ void main() {
           'markdown',
           'widget',
           'component',
+          'render',
           'renderPayload',
           'style',
           'css',
@@ -349,6 +434,9 @@ void main() {
           'assetUrl',
           'canvas',
           'code',
+          'eval',
+          'Function',
+          'function',
           'markup',
         ]) {
           final payload = richClosedV1CFullExerciseJson();
@@ -366,6 +454,67 @@ void main() {
         }
       },
     );
+
+    test(
+      'rejects calculation_mcq public questions carrying private or formula fields',
+      () {
+        for (final field in [
+          'correctChoiceId',
+          'expectedValue',
+          'workedSteps',
+          'explanation',
+          'formula',
+          'expression',
+          'rawFormula',
+          'calculationCode',
+          'javascript',
+          'python',
+          'render',
+          'renderPayload',
+          'code',
+          'eval',
+          'Function',
+          'function',
+        ]) {
+          final payload = richClosedV1CCalculationExerciseJson();
+          ((payload['questions']! as List<Object?>)[12]!
+              as Map<String, Object?>)[field] = field == 'workedSteps'
+              ? [
+                  {'id': 'step-1', 'label': 'Étape', 'detail': 'Privé'},
+                ]
+              : 'forbidden';
+
+          expectParseError(() => RichClosedExercise.fromJson(payload));
+        }
+      },
+    );
+
+    test('rejects incoherent calculation_mcq public contracts', () {
+      final badMode = richClosedV1CCalculationExerciseJson();
+      final badModeQuestion =
+          (badMode['questions']! as List<Object?>)[12]! as Map<String, Object?>;
+      badModeQuestion['calculation'] = {'mode': 'dhondt_highest_average'};
+
+      final duplicateChoiceValue = richClosedV1CCalculationExerciseJson();
+      final duplicateQuestion =
+          (duplicateChoiceValue['questions']! as List<Object?>)[12]!
+              as Map<String, Object?>;
+      ((duplicateQuestion['choices']! as List<Object?>)[1]!
+              as Map<String, Object?>)['value'] =
+          288;
+
+      final badTarget = richClosedExerciseJson();
+      final remainderQuestion =
+          richClosedCalculationLargestRemainderQuestionJson();
+      final remainderCalculation =
+          remainderQuestion['calculation']! as Map<String, Object?>;
+      remainderCalculation['targetPartyId'] = 'party-unknown';
+      badTarget['questions'] = [remainderQuestion];
+
+      expectParseError(() => RichClosedExercise.fromJson(badMode));
+      expectParseError(() => RichClosedExercise.fromJson(duplicateChoiceValue));
+      expectParseError(() => RichClosedExercise.fromJson(badTarget));
+    });
 
     test('rejects diagram_labeling incoherent diagram references', () {
       final badEdge = richClosedV1CFullExerciseJson();
@@ -617,6 +766,17 @@ void main() {
           ],
         },
       );
+      expect(
+        const RichClosedCalculationMcqAnswer(
+          questionId: 'calculation-mcq-majority-1',
+          choiceId: 'choice-289',
+        ).toJson(),
+        {
+          'questionId': 'calculation-mcq-majority-1',
+          'questionKind': 'calculation_mcq',
+          'choiceId': 'choice-289',
+        },
+      );
     });
 
     test('serializes submit wrapper without correction or free text', () {
@@ -642,6 +802,35 @@ void main() {
       expect(serialized, isNot(contains('correct')));
       expect(serialized, isNot(contains('answerText')));
       expect(serialized, isNot(contains('feedback')));
+    });
+
+    test('rejects forbidden formula and render fields in parsed answers', () {
+      for (final field in [
+        'correctChoiceId',
+        'expectedValue',
+        'workedSteps',
+        'render',
+        'renderPayload',
+        'code',
+        'eval',
+        'Function',
+        'function',
+        'formula',
+        'expression',
+      ]) {
+        expectParseError(
+          () => RichClosedAnswer.fromJson({
+            'questionId': 'calculation-mcq-majority-1',
+            'questionKind': 'calculation_mcq',
+            'choiceId': 'choice-289',
+            field: field == 'workedSteps'
+                ? [
+                    {'id': 'step-1', 'label': 'Étape', 'detail': 'Privé'},
+                  ]
+                : 'forbidden',
+          }),
+        );
+      }
     });
   });
 
@@ -815,6 +1004,37 @@ void main() {
           'slot-nomination:option-nomination',
         ],
       );
+    });
+
+    test('parses calculation_mcq post-submit corrections', () {
+      final result = RichClosedExerciseResult.fromJson(
+        richClosedV1CCalculationResultJson(),
+      );
+      final calculation = result.items[12];
+
+      expect(
+        calculation.submittedAnswer,
+        isA<RichClosedCalculationMcqAnswer>(),
+      );
+      expect(
+        (calculation.submittedAnswer as RichClosedCalculationMcqAnswer)
+            .choiceId,
+        'choice-289',
+      );
+      expect(
+        calculation.correction,
+        isA<RichClosedCorrectCalculationMcqCorrection>(),
+      );
+
+      final correction =
+          calculation.correction as RichClosedCorrectCalculationMcqCorrection;
+      expect(correction.correctChoiceId, 'choice-289');
+      expect(correction.expectedValue, 289);
+      expect(correction.workedSteps.map((step) => step.id), [
+        'valid-votes',
+        'majority-rule',
+        'threshold',
+      ]);
     });
 
     test('rejects absent or incoherent correction payloads', () {

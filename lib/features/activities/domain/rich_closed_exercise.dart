@@ -22,7 +22,8 @@ enum RichClosedQuestionKind {
   trueFalseGrid('true_false_grid'),
   causeConsequence('cause_consequence'),
   institutionMatrix('institution_matrix'),
-  diagramLabeling('diagram_labeling');
+  diagramLabeling('diagram_labeling'),
+  calculationMcq('calculation_mcq');
 
   const RichClosedQuestionKind(this.wireValue);
 
@@ -131,6 +132,27 @@ enum RichClosedDiagramAnchorType {
 
     throw const RichClosedExerciseParseException(
       'Invalid rich closed diagram anchor type',
+    );
+  }
+}
+
+enum RichClosedCalculationMode {
+  absoluteMajorityThreshold('absolute_majority_threshold'),
+  largestRemainderTargetPartySeats('largest_remainder_target_party_seats');
+
+  const RichClosedCalculationMode(this.wireValue);
+
+  final String wireValue;
+
+  static RichClosedCalculationMode parse(Object? value) {
+    for (final mode in values) {
+      if (value == mode.wireValue) {
+        return mode;
+      }
+    }
+
+    throw const RichClosedExerciseParseException(
+      'Invalid rich closed calculation mode',
     );
   }
 }
@@ -316,6 +338,13 @@ sealed class RichClosedQuestion {
           diagram: RichClosedDiagram.fromJson(json['diagram']),
           slots: _diagramLabelingSlots(json['slots']),
         ).._validateDiagram(),
+      RichClosedQuestionKind.calculationMcq => RichClosedCalculationMcqQuestion(
+        base: base,
+        instruction: _readOptionalString(json['instruction']),
+        scenario: _readString(json['scenario'], 'Invalid calculation scenario'),
+        calculation: RichClosedCalculationData.fromJson(json['calculation']),
+        choices: _calculationChoices(json['choices']),
+      ).._validateCalculation(),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationQuestion(
           base: base,
@@ -675,6 +704,67 @@ class RichClosedDiagramLabelingQuestion extends RichClosedQuestion {
           'Invalid diagram labeling contract',
         );
       }
+    }
+  }
+}
+
+class RichClosedCalculationMcqQuestion extends RichClosedQuestion {
+  RichClosedCalculationMcqQuestion({
+    required RichClosedQuestionBase base,
+    required this.instruction,
+    required this.scenario,
+    required this.calculation,
+    required this.choices,
+  }) : super(
+         id: base.id,
+         questionKind: RichClosedQuestionKind.calculationMcq,
+         prompt: base.prompt,
+         difficulty: base.difficulty,
+         cognitiveSkill: base.cognitiveSkill,
+         sourceChunkIds: base.sourceChunkIds,
+       );
+
+  final String? instruction;
+  final String scenario;
+  final RichClosedCalculationData calculation;
+  final List<RichClosedCalculationChoice> choices;
+
+  void _validateCalculation() {
+    final choiceIds = choices.map((choice) => choice.id).toSet();
+    final choiceValues = choices.map((choice) => choice.value).toSet();
+
+    if (choices.length < 2 ||
+        choices.length > 6 ||
+        choiceIds.length != choices.length ||
+        choiceValues.length != choices.length) {
+      throw const RichClosedExerciseParseException(
+        'Invalid calculation choices',
+      );
+    }
+
+    switch (calculation) {
+      case RichClosedAbsoluteMajorityThresholdCalculation(:final validVotes):
+        if (validVotes < 1) {
+          throw const RichClosedExerciseParseException(
+            'Invalid calculation data',
+          );
+        }
+      case RichClosedLargestRemainderTargetPartySeatsCalculation(
+        :final totalSeats,
+        :final targetPartyId,
+        :final parties,
+      ):
+        final partyIds = parties.map((party) => party.id).toSet();
+        if (totalSeats < 1 ||
+            parties.length < 2 ||
+            parties.length > 8 ||
+            partyIds.length != parties.length ||
+            !partyIds.contains(targetPartyId) ||
+            parties.any((party) => party.votes < 0)) {
+          throw const RichClosedExerciseParseException(
+            'Invalid calculation data',
+          );
+        }
     }
   }
 }
@@ -1154,6 +1244,138 @@ class RichClosedDiagramLabelingValue {
   final String optionId;
 }
 
+sealed class RichClosedCalculationData {
+  const RichClosedCalculationData({required this.mode});
+
+  factory RichClosedCalculationData.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid rich closed calculation data');
+    final mode = RichClosedCalculationMode.parse(json['mode']);
+
+    return switch (mode) {
+      RichClosedCalculationMode.absoluteMajorityThreshold =>
+        RichClosedAbsoluteMajorityThresholdCalculation(
+          validVotes: _readInt(
+            json['validVotes'],
+            'Invalid calculation valid votes',
+          ),
+        ),
+      RichClosedCalculationMode.largestRemainderTargetPartySeats =>
+        RichClosedLargestRemainderTargetPartySeatsCalculation(
+          totalSeats: _readInt(
+            json['totalSeats'],
+            'Invalid calculation total seats',
+          ),
+          targetPartyId: _readString(
+            json['targetPartyId'],
+            'Invalid calculation target party',
+          ),
+          parties: _calculationParties(json['parties']),
+        ),
+    };
+  }
+
+  final RichClosedCalculationMode mode;
+}
+
+class RichClosedAbsoluteMajorityThresholdCalculation
+    extends RichClosedCalculationData {
+  const RichClosedAbsoluteMajorityThresholdCalculation({
+    required this.validVotes,
+  }) : super(mode: RichClosedCalculationMode.absoluteMajorityThreshold);
+
+  final int validVotes;
+}
+
+class RichClosedLargestRemainderTargetPartySeatsCalculation
+    extends RichClosedCalculationData {
+  const RichClosedLargestRemainderTargetPartySeatsCalculation({
+    required this.totalSeats,
+    required this.targetPartyId,
+    required this.parties,
+  }) : super(mode: RichClosedCalculationMode.largestRemainderTargetPartySeats);
+
+  final int totalSeats;
+  final String targetPartyId;
+  final List<RichClosedCalculationParty> parties;
+}
+
+class RichClosedCalculationParty {
+  const RichClosedCalculationParty({
+    required this.id,
+    required this.label,
+    required this.votes,
+  });
+
+  factory RichClosedCalculationParty.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid calculation party');
+
+    return RichClosedCalculationParty(
+      id: _readString(json['id'], 'Invalid calculation party id'),
+      label: _readString(json['label'], 'Invalid calculation party label'),
+      votes: _readInt(json['votes'], 'Invalid calculation party votes'),
+    );
+  }
+
+  final String id;
+  final String label;
+  final int votes;
+}
+
+class RichClosedCalculationChoice {
+  const RichClosedCalculationChoice({
+    required this.id,
+    required this.label,
+    required this.value,
+  });
+
+  factory RichClosedCalculationChoice.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid calculation choice');
+
+    return RichClosedCalculationChoice(
+      id: _readString(json['id'], 'Invalid calculation choice id'),
+      label: _readString(json['label'], 'Invalid calculation choice label'),
+      value: _readInt(json['value'], 'Invalid calculation choice value'),
+    );
+  }
+
+  final String id;
+  final String label;
+  final int value;
+}
+
+class RichClosedCalculationWorkedStep {
+  const RichClosedCalculationWorkedStep({
+    required this.id,
+    required this.label,
+    required this.detail,
+    required this.value,
+  });
+
+  factory RichClosedCalculationWorkedStep.fromJson(Object? value) {
+    final json = _readObject(value, 'Invalid calculation worked step');
+
+    return RichClosedCalculationWorkedStep(
+      id: _readString(json['id'], 'Invalid calculation worked step id'),
+      label: _readString(
+        json['label'],
+        'Invalid calculation worked step label',
+      ),
+      detail: _readString(
+        json['detail'],
+        'Invalid calculation worked step detail',
+      ),
+      value: json.containsKey('value')
+          ? _readInt(json['value'], 'Invalid calculation worked step value')
+          : null,
+    );
+  }
+
+  final String id;
+  final String label;
+  final String detail;
+  final int? value;
+}
+
 class RichClosedPair {
   const RichClosedPair({required this.leftId, required this.rightId});
 
@@ -1239,6 +1461,10 @@ sealed class RichClosedAnswer {
       RichClosedQuestionKind.diagramLabeling => RichClosedDiagramLabelingAnswer(
         questionId: questionId,
         values: _diagramLabelingValues(json['values']),
+      ),
+      RichClosedQuestionKind.calculationMcq => RichClosedCalculationMcqAnswer(
+        questionId: questionId,
+        choiceId: _readString(json['choiceId'], 'Invalid calculation answer'),
       ),
       RichClosedQuestionKind.caseQualification =>
         RichClosedCaseQualificationAnswer(
@@ -1418,6 +1644,22 @@ class RichClosedDiagramLabelingAnswer extends RichClosedAnswer {
     'questionId': questionId,
     'questionKind': questionKind.wireValue,
     'values': [for (final value in values) value.toJson()],
+  };
+}
+
+class RichClosedCalculationMcqAnswer extends RichClosedAnswer {
+  const RichClosedCalculationMcqAnswer({
+    required super.questionId,
+    required this.choiceId,
+  }) : super(questionKind: RichClosedQuestionKind.calculationMcq);
+
+  final String choiceId;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'questionId': questionId,
+    'questionKind': questionKind.wireValue,
+    'choiceId': choiceId,
   };
 }
 
@@ -1648,6 +1890,18 @@ sealed class RichClosedCorrectionPayload {
         RichClosedCorrectDiagramLabelingValuesCorrection(
           correctValues: _diagramLabelingValues(json['correctValues']),
         ),
+      RichClosedQuestionKind.calculationMcq =>
+        RichClosedCorrectCalculationMcqCorrection(
+          correctChoiceId: _readString(
+            json['correctChoiceId'],
+            'Invalid correct calculation choice id',
+          ),
+          expectedValue: _readInt(
+            json['expectedValue'],
+            'Invalid calculation expected value',
+          ),
+          workedSteps: _calculationWorkedSteps(json['workedSteps']),
+        ),
       RichClosedQuestionKind.errorDetection =>
         RichClosedCorrectErrorIdCorrection(
           correctErrorId: _readString(
@@ -1729,6 +1983,19 @@ class RichClosedCorrectDiagramLabelingValuesCorrection
   });
 
   final List<RichClosedDiagramLabelingValue> correctValues;
+}
+
+class RichClosedCorrectCalculationMcqCorrection
+    extends RichClosedCorrectionPayload {
+  const RichClosedCorrectCalculationMcqCorrection({
+    required this.correctChoiceId,
+    required this.expectedValue,
+    required this.workedSteps,
+  });
+
+  final String correctChoiceId;
+  final int expectedValue;
+  final List<RichClosedCalculationWorkedStep> workedSteps;
 }
 
 class RichClosedCorrectErrorIdCorrection extends RichClosedCorrectionPayload {
@@ -1954,6 +2221,51 @@ List<RichClosedDiagramLabelingValue> _diagramLabelingValues(Object? value) {
   return values;
 }
 
+List<RichClosedCalculationChoice> _calculationChoices(Object? value) {
+  final choices = _readList(
+    value,
+    'Invalid calculation choices',
+  ).map(RichClosedCalculationChoice.fromJson).toList(growable: false);
+
+  if (choices.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Calculation choices cannot be empty',
+    );
+  }
+
+  return choices;
+}
+
+List<RichClosedCalculationParty> _calculationParties(Object? value) {
+  final parties = _readList(
+    value,
+    'Invalid calculation parties',
+  ).map(RichClosedCalculationParty.fromJson).toList(growable: false);
+
+  if (parties.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Calculation parties cannot be empty',
+    );
+  }
+
+  return parties;
+}
+
+List<RichClosedCalculationWorkedStep> _calculationWorkedSteps(Object? value) {
+  final steps = _readList(
+    value,
+    'Invalid calculation worked steps',
+  ).map(RichClosedCalculationWorkedStep.fromJson).toList(growable: false);
+
+  if (steps.isEmpty) {
+    throw const RichClosedExerciseParseException(
+      'Calculation worked steps cannot be empty',
+    );
+  }
+
+  return steps;
+}
+
 List<RichClosedPair> _pairs(Object? value) {
   final pairs = _readList(
     value,
@@ -2094,6 +2406,7 @@ const _forbiddenPreSubmitKeys = {
   'score',
   'partialScore',
   'workedSteps',
+  'expectedValue',
   'answersPayload',
   'expectedAnswer',
   'expectedAnswers',
@@ -2104,6 +2417,7 @@ const _forbiddenPreSubmitKeys = {
   'markdown',
   'widget',
   'component',
+  'render',
   'renderPayload',
   'style',
   'css',
@@ -2112,6 +2426,15 @@ const _forbiddenPreSubmitKeys = {
   'assetUrl',
   'canvas',
   'code',
+  'eval',
+  'Function',
+  'function',
+  'formula',
+  'expression',
+  'rawFormula',
+  'calculationCode',
+  'javascript',
+  'python',
   'markup',
 };
 
@@ -2128,6 +2451,7 @@ const _forbiddenAnswerKeys = {
   'score',
   'partialScore',
   'workedSteps',
+  'expectedValue',
   'answersPayload',
   'expectedAnswer',
   'expectedAnswers',
@@ -2138,6 +2462,7 @@ const _forbiddenAnswerKeys = {
   'markdown',
   'widget',
   'component',
+  'render',
   'renderPayload',
   'style',
   'css',
@@ -2146,5 +2471,14 @@ const _forbiddenAnswerKeys = {
   'assetUrl',
   'canvas',
   'code',
+  'eval',
+  'Function',
+  'function',
+  'formula',
+  'expression',
+  'rawFormula',
+  'calculationCode',
+  'javascript',
+  'python',
   'markup',
 };

@@ -11,6 +11,7 @@ class RichClosedCoreAnswerController {
   final Map<String, Map<String, String>> _causeConsequenceSelections = {};
   final Map<String, Map<String, String>> _institutionMatrixSelections = {};
   final Map<String, Map<String, String>> _diagramLabelingSelections = {};
+  final Map<String, String> _calculationMcqSelections = {};
 
   String? _message;
 
@@ -167,6 +168,10 @@ class RichClosedCoreAnswerController {
             optionId: selections[slot.id]!,
           ),
     ];
+  }
+
+  String? selectedCalculationChoiceIdFor(String questionId) {
+    return _calculationMcqSelections[questionId];
   }
 
   void selectSingleChoice({
@@ -368,6 +373,18 @@ class RichClosedCoreAnswerController {
     _message = null;
   }
 
+  void selectCalculationChoice({
+    required RichClosedCalculationMcqQuestion question,
+    required String choiceId,
+  }) {
+    if (!_hasCalculationChoice(question.choices, choiceId)) {
+      return;
+    }
+
+    _calculationMcqSelections[question.id] = choiceId;
+    _message = null;
+  }
+
   bool canSubmitQuestion(RichClosedQuestion question) {
     return switch (question) {
       RichClosedSingleChoiceQuestion() =>
@@ -391,6 +408,8 @@ class RichClosedCoreAnswerController {
       RichClosedDiagramLabelingQuestion() => _canSubmitDiagramLabeling(
         question,
       ),
+      RichClosedCalculationMcqQuestion() =>
+        _calculationMcqSelections[question.id] != null,
     };
   }
 
@@ -449,6 +468,10 @@ class RichClosedCoreAnswerController {
       RichClosedDiagramLabelingQuestion() => RichClosedDiagramLabelingAnswer(
         questionId: question.id,
         values: diagramLabelingValuesFor(question),
+      ),
+      RichClosedCalculationMcqQuestion() => RichClosedCalculationMcqAnswer(
+        questionId: question.id,
+        choiceId: _calculationMcqSelections[question.id]!,
       ),
     };
   }
@@ -641,6 +664,13 @@ class RichClosedCoreAnswerController {
   }
 
   bool _hasChoice(List<RichClosedChoice> choices, String choiceId) {
+    return choices.any((choice) => choice.id == choiceId);
+  }
+
+  bool _hasCalculationChoice(
+    List<RichClosedCalculationChoice> choices,
+    String choiceId,
+  ) {
     return choices.any((choice) => choice.id == choiceId);
   }
 

@@ -323,6 +323,14 @@ void _answerAllQuestions(RichClosedExerciseFlowController controller) {
             ],
           ),
         );
+      case RichClosedCalculationMcqQuestion():
+        controller.recordAnswer(
+          question,
+          RichClosedCalculationMcqAnswer(
+            questionId: question.id,
+            choiceId: question.choices.first.id,
+          ),
+        );
       case RichClosedCaseQualificationQuestion():
         controller.recordAnswer(
           question,

@@ -216,6 +216,32 @@ void main() {
     expect(_item(viewModel, 'diagram-labeling-1').isCorrect, isTrue);
   });
 
+  test('mappe calculation_mcq depuis les corrections backend', () {
+    final v1cCalculationExercise = RichClosedExercise.fromJson(
+      richClosedV1CCalculationExerciseJson(),
+    );
+    final v1cCalculationResult = RichClosedExerciseResult.fromJson(
+      richClosedV1CCalculationResultJson(),
+    );
+    final viewModel = presenter.present(
+      exercise: v1cCalculationExercise,
+      result: v1cCalculationResult,
+    );
+
+    final item = _item(viewModel, 'calculation-mcq-majority-1');
+    expect(item.kindLabel, 'Calcul');
+    expect(item.contextText, contains('577 suffrages exprimés'));
+    expect(item.submittedAnswerLines, ['Choix envoyé : 289 voix']);
+    expect(item.correctAnswerLines, [
+      'Choix attendu : 289 voix',
+      'Valeur attendue : 289',
+      'Suffrages exprimés : Suffrages exprimés : 577.',
+      'Majorité absolue : Prendre la partie entière de 577 / 2, puis ajouter 1.',
+      'Seuil attendu : Seuil attendu : 289.',
+    ]);
+    expect(item.isCorrect, isTrue);
+  });
+
   test('rejette une correction diagram_labeling incomplète ou dupliquée', () {
     final exercise = RichClosedExercise.fromJson(
       richClosedV1CFullExerciseJson(),

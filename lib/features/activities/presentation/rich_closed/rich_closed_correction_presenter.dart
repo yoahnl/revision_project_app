@@ -72,6 +72,10 @@ class RichClosedCorrectionPresenter {
         question,
         item,
       ),
+      RichClosedCalculationMcqQuestion() => _presentCalculationMcq(
+        question,
+        item,
+      ),
       RichClosedCaseQualificationQuestion() => _presentCaseQualification(
         question,
         item,
@@ -258,6 +262,31 @@ class RichClosedCorrectionPresenter {
         question,
         correction.correctValues,
       ),
+    );
+  }
+
+  RichClosedCorrectionItemViewModel _presentCalculationMcq(
+    RichClosedCalculationMcqQuestion question,
+    RichClosedCorrectionItem item,
+  ) {
+    final submitted = _calculationMcqAnswer(item);
+    final correction = _calculationMcqCorrection(item);
+
+    return _baseItem(
+      question: question,
+      item: item,
+      contextText: question.instruction == null
+          ? question.scenario
+          : '${question.instruction}\n${question.scenario}',
+      submittedAnswerLines: [
+        'Choix envoyé : ${_calculationChoiceLabel(question.choices, submitted.choiceId, question.id)}',
+      ],
+      correctAnswerLines: [
+        'Choix attendu : ${_calculationChoiceLabel(question.choices, correction.correctChoiceId, question.id)}',
+        'Valeur attendue : ${correction.expectedValue}',
+        for (final step in correction.workedSteps)
+          '${step.label} : ${step.detail}',
+      ],
     );
   }
 
@@ -473,6 +502,18 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedCalculationMcqAnswer _calculationMcqAnswer(
+    RichClosedCorrectionItem item,
+  ) {
+    final answer = item.submittedAnswer;
+    if (answer is RichClosedCalculationMcqAnswer) {
+      return answer;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid calculation submitted answer for ${item.questionId}',
+    );
+  }
+
   RichClosedCaseQualificationAnswer _caseQualificationAnswer(
     RichClosedCorrectionItem item,
   ) {
@@ -602,6 +643,18 @@ class RichClosedCorrectionPresenter {
     );
   }
 
+  RichClosedCorrectCalculationMcqCorrection _calculationMcqCorrection(
+    RichClosedCorrectionItem item,
+  ) {
+    final correction = item.correction;
+    if (correction is RichClosedCorrectCalculationMcqCorrection) {
+      return correction;
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Invalid calculation correction for ${item.questionId}',
+    );
+  }
+
   RichClosedCorrectErrorIdCorrection _errorIdCorrection(
     RichClosedCorrectionItem item,
   ) {
@@ -641,6 +694,21 @@ class RichClosedCorrectionPresenter {
     }
     throw RichClosedCorrectionPresentationException(
       'Unknown choice $choiceId for question $questionId',
+    );
+  }
+
+  String _calculationChoiceLabel(
+    List<RichClosedCalculationChoice> choices,
+    String choiceId,
+    String questionId,
+  ) {
+    for (final choice in choices) {
+      if (choice.id == choiceId) {
+        return choice.label;
+      }
+    }
+    throw RichClosedCorrectionPresentationException(
+      'Unknown calculation choice $choiceId for question $questionId',
     );
   }
 
@@ -919,6 +987,7 @@ class RichClosedCorrectionPresenter {
       RichClosedQuestionKind.causeConsequence => 'Cause / conséquence',
       RichClosedQuestionKind.institutionMatrix => 'Matrice',
       RichClosedQuestionKind.diagramLabeling => 'Schéma',
+      RichClosedQuestionKind.calculationMcq => 'Calcul',
     };
   }
 }

@@ -775,6 +775,113 @@ Map<String, Object?> richClosedV1CFullResultJson() {
   return json;
 }
 
+Map<String, Object?> richClosedV1CCalculationExerciseJson() {
+  final json = richClosedV1CFullExerciseJson();
+  final questions = List<Object?>.from(json['questions']! as List<Object?>);
+  json['questions'] = questions;
+
+  questions.add({
+    'id': 'calculation-mcq-majority-1',
+    'questionKind': 'calculation_mcq',
+    'prompt': 'Calcule le seuil de majorité absolue.',
+    'instruction': 'Choisis le résultat entier parmi les options proposées.',
+    'difficulty': 'MEDIUM',
+    'cognitiveSkill': 'procedure',
+    'sourceChunkIds': ['chunk-12'],
+    'scenario':
+        'Une assemblée compte 577 suffrages exprimés pour une décision.',
+    'calculation': {'mode': 'absolute_majority_threshold', 'validVotes': 577},
+    'choices': [
+      {'id': 'choice-288', 'label': '288 voix', 'value': 288},
+      {'id': 'choice-289', 'label': '289 voix', 'value': 289},
+      {'id': 'choice-290', 'label': '290 voix', 'value': 290},
+    ],
+  });
+
+  return json;
+}
+
+Map<String, Object?> richClosedV1CCalculationResultJson() {
+  final json = richClosedV1CFullResultJson();
+  final items = List<Object?>.from(json['items']! as List<Object?>);
+
+  json['correctAnswers'] = 12;
+  json['totalQuestions'] = 13;
+  json['score'] = 0.923;
+  json['items'] = items;
+  items.add({
+    'questionId': 'calculation-mcq-majority-1',
+    'questionKind': 'calculation_mcq',
+    'prompt': 'Calcule le seuil de majorité absolue.',
+    'submittedAnswer': {
+      'questionId': 'calculation-mcq-majority-1',
+      'questionKind': 'calculation_mcq',
+      'choiceId': 'choice-289',
+    },
+    'isCorrect': true,
+    'partialScore': 1,
+    'explanation':
+        'La majorité absolue correspond à la moitié des suffrages exprimés, arrondie à l’entier inférieur, puis augmentée d’une voix.',
+    'sourceChunkIds': ['chunk-12'],
+    'correction': {
+      'correctChoiceId': 'choice-289',
+      'expectedValue': 289,
+      'workedSteps': [
+        {
+          'id': 'valid-votes',
+          'label': 'Suffrages exprimés',
+          'detail': 'Suffrages exprimés : 577.',
+          'value': 577,
+        },
+        {
+          'id': 'majority-rule',
+          'label': 'Majorité absolue',
+          'detail': 'Prendre la partie entière de 577 / 2, puis ajouter 1.',
+        },
+        {
+          'id': 'threshold',
+          'label': 'Seuil attendu',
+          'detail': 'Seuil attendu : 289.',
+          'value': 289,
+        },
+      ],
+    },
+  });
+
+  return json;
+}
+
+Map<String, Object?> richClosedCalculationLargestRemainderQuestionJson() {
+  return {
+    'id': 'calculation-mcq-remainder-1',
+    'questionKind': 'calculation_mcq',
+    'prompt': 'Calcule les sièges obtenus par le parti A.',
+    'instruction':
+        'Utilise les données fournies, puis choisis le résultat entier.',
+    'difficulty': 'HIGH',
+    'cognitiveSkill': 'procedure',
+    'sourceChunkIds': ['chunk-13'],
+    'scenario':
+        'Quatre partis se répartissent 10 sièges selon le plus fort reste.',
+    'calculation': {
+      'mode': 'largest_remainder_target_party_seats',
+      'totalSeats': 10,
+      'targetPartyId': 'party-a',
+      'parties': [
+        {'id': 'party-a', 'label': 'Parti A', 'votes': 4300},
+        {'id': 'party-b', 'label': 'Parti B', 'votes': 3100},
+        {'id': 'party-c', 'label': 'Parti C', 'votes': 1600},
+        {'id': 'party-d', 'label': 'Parti D', 'votes': 1000},
+      ],
+    },
+    'choices': [
+      {'id': 'choice-3', 'label': '3 sièges', 'value': 3},
+      {'id': 'choice-4', 'label': '4 sièges', 'value': 4},
+      {'id': 'choice-5', 'label': '5 sièges', 'value': 5},
+    ],
+  };
+}
+
 Map<String, Object?> richClosedExerciseWithCorrectChoiceLeak() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
@@ -797,7 +904,7 @@ Map<String, Object?> richClosedExerciseWithUnknownKind() {
   final json = richClosedExerciseJson();
   ((json['questions']! as List<Object?>).first!
           as Map<String, Object?>)['questionKind'] =
-      'calculation_mcq';
+      'image_choice';
   return json;
 }
 

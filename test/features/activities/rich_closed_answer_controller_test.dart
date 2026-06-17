@@ -625,6 +625,68 @@ void main() {
     expect(controller.canSubmitQuestion(diagram), isFalse);
   });
 
+  test('calculation_mcq commence incomplet puis produit choiceId', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1cCalculationExercise = RichClosedExercise.fromJson(
+      richClosedV1CCalculationExerciseJson(),
+    );
+    final calculation = _question<RichClosedCalculationMcqQuestion>(
+      v1cCalculationExercise,
+    );
+
+    expect(controller.canSubmitQuestion(calculation), isFalse);
+    expect(controller.answerFor(calculation), isNull);
+    expect(controller.selectedCalculationChoiceIdFor(calculation.id), isNull);
+
+    controller.selectCalculationChoice(
+      question: calculation,
+      choiceId: 'choice-289',
+    );
+
+    final answer = controller.answerFor(calculation);
+    expect(controller.canSubmitQuestion(calculation), isTrue);
+    expect(answer, isA<RichClosedCalculationMcqAnswer>());
+    expect((answer! as RichClosedCalculationMcqAnswer).choiceId, 'choice-289');
+    expect(answer.toJson(), {
+      'questionId': 'calculation-mcq-majority-1',
+      'questionKind': 'calculation_mcq',
+      'choiceId': 'choice-289',
+    });
+  });
+
+  test('calculation_mcq ignore ids inconnus et remplace une valeur', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1cCalculationExercise = RichClosedExercise.fromJson(
+      richClosedV1CCalculationExerciseJson(),
+    );
+    final calculation = _question<RichClosedCalculationMcqQuestion>(
+      v1cCalculationExercise,
+    );
+
+    controller.selectCalculationChoice(
+      question: calculation,
+      choiceId: 'choice-unknown',
+    );
+    controller.selectCalculationChoice(
+      question: calculation,
+      choiceId: 'choice-288',
+    );
+    controller.selectCalculationChoice(
+      question: calculation,
+      choiceId: 'choice-289',
+    );
+
+    expect(
+      controller.selectedCalculationChoiceIdFor(calculation.id),
+      'choice-289',
+    );
+    expect(
+      (controller.answerFor(calculation)! as RichClosedCalculationMcqAnswer)
+          .choiceId,
+      'choice-289',
+    );
+  });
+
   test('matching et ordering ne produisent jamais de correction', () {
     final controller = RichClosedCoreAnswerController();
     final matching = _question<RichClosedMatchingQuestion>(exercise);
@@ -764,6 +826,30 @@ void main() {
     expect(json.containsKey('score'), isFalse);
     expect(json.containsKey('explanation'), isFalse);
     expect(json.containsKey('renderPayload'), isFalse);
+  });
+
+  test('calculation_mcq ne produit jamais de correction', () {
+    final controller = RichClosedCoreAnswerController();
+    final v1cCalculationExercise = RichClosedExercise.fromJson(
+      richClosedV1CCalculationExerciseJson(),
+    );
+    final calculation = _question<RichClosedCalculationMcqQuestion>(
+      v1cCalculationExercise,
+    );
+
+    controller.selectCalculationChoice(
+      question: calculation,
+      choiceId: 'choice-289',
+    );
+
+    final json = controller.answerFor(calculation)!.toJson();
+    expect(json.keys.any((key) => key.startsWith('correct')), isFalse);
+    expect(json.containsKey('correction'), isFalse);
+    expect(json.containsKey('score'), isFalse);
+    expect(json.containsKey('explanation'), isFalse);
+    expect(json.containsKey('expectedValue'), isFalse);
+    expect(json.containsKey('workedSteps'), isFalse);
+    expect(json.containsKey('formula'), isFalse);
   });
 
   test('ne produit jamais de correction dans le JSON de réponse', () {

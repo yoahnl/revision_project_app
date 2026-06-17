@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
+import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_calculation_mcq_widget.dart';
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_case_qualification_widget.dart';
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_cause_consequence_widget.dart';
 import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_date_slider_widget.dart';
@@ -89,6 +90,12 @@ class RichClosedQuestionRenderer extends StatelessWidget {
           onAnswerChanged: onChanged,
         ),
       RichClosedDiagramLabelingQuestion() => RichClosedDiagramLabelingWidget(
+        question: currentQuestion,
+        controller: controller,
+        enabled: enabled,
+        onAnswerChanged: onChanged,
+      ),
+      RichClosedCalculationMcqQuestion() => RichClosedCalculationMcqWidget(
         question: currentQuestion,
         controller: controller,
         enabled: enabled,

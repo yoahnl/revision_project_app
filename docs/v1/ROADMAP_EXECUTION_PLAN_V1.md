@@ -44,7 +44,7 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 | V1-018 | True/false grid + cause/consequence V1-B | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_018_TRUE_FALSE_GRID_CAUSE_CONSEQUENCE.md |
 | V1-019 | Institution matrix V1-C | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_019_INSTITUTION_MATRIX.md |
 | V1-020 | Diagram labeling V1-C | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_020_DIAGRAM_LABELING.md |
-| V1-021 | Calculation MCQ modes de scrutin V1-C | À faire | À créer |
+| V1-021 | Calculation MCQ modes de scrutin V1-C | Réalisé | docs/v1/ROADMAP_EXECUTION_LOT_V1_021_CALCULATION_MCQ.md |
 | V1-022 | Image choice/personnages historiques V1-D | À faire | À créer |
 | V1-023 | Runbook demo V1 | À faire | À créer |
 | V1-024 | Polish UI/accessibilité/performance | À faire | À créer |
@@ -487,22 +487,22 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 
 ### V1-021 — Calculation MCQ modes de scrutin V1-C
 
-- Objectif : gérer des calculs fermés.
-- Pourquoi maintenant : utile mais nécessite validation forte.
-- Périmètre inclus : mini-données, choix, étapes post-submit.
-- Non-objectifs : réponse de calcul libre.
-- Fichiers probablement concernés : activities.
-- Backend : vérification déterministe si possible.
-- Frontend : tableau + choix.
-- Genkit : génération bornée.
+- Objectif : rendre le type fermé `calculation_mcq` côté Flutter sans calcul de score côté app.
+- Pourquoi maintenant : V1-020 a stabilisé le dernier type V1-C non calculatoire; le backend peut fournir un contrat fermé et déterministe.
+- Périmètre inclus : modèles discriminés, parser strict, réponse submit `choiceId`, widget minimal, correction UI, tests parser/controller/widget/page.
+- Non-objectifs : V1-022, `image_choice`, `fill_blank_dropdown`, réponse de calcul libre, formule libre, tableau de calcul avancé, nouveau flow UI global.
+- Fichiers probablement concernés : activities domain, controller, renderer, correction presenter, widgets et tests.
+- Backend : vérification déterministe côté API uniquement.
+- Frontend : scénario + données fermées + choix, sans recalcul du résultat attendu.
+- Genkit : génération bornée côté API uniquement.
 - GenUI : aucun libre.
-- Prisma : selon ADR.
-- API : type calculation_mcq.
-- Tests attendus : résultats déterministes.
-- Validations à lancer : tests unitaires calcul.
-- Critères d'acceptation : pas de calcul IA non vérifié.
+- Prisma : aucun.
+- API : type `calculation_mcq`.
+- Tests attendus : parser anti-fuite, answer controller, widget, page, correction presenter.
+- Validations à lancer : `dart analyze`, tests activities/today/revision_sessions/router/full.
+- Critères d'acceptation : aucune correction pré-submit, aucun score Flutter, aucun JSON arbitraire.
 - Critère de stop : impossibilité de valider les résultats.
-- Risques : erreurs de calcul.
+- Risques : UI provisoire volontairement simple avant refonte.
 - Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_021_CALCULATION_MCQ.md`.
 
 ### V1-022 — Image choice/personnages historiques V1-D

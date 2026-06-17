@@ -238,6 +238,45 @@ void main() {
     );
   });
 
+  testWidgets('renderer rend calculation_mcq', (tester) async {
+    final controller = RichClosedCoreAnswerController();
+    final v1cCalculationExercise = RichClosedExercise.fromJson(
+      richClosedV1CCalculationExerciseJson(),
+    );
+    final changedQuestions = <String>[];
+    final question = v1cCalculationExercise.questions.last;
+
+    await tester.pumpWidget(
+      _TestHost(
+        scrollable: true,
+        child: RichClosedQuestionRenderer(
+          question: question,
+          controller: controller,
+          enabled: true,
+          onChanged: (_) => changedQuestions.add(question.id),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('577 suffrages exprimés'), findsOneWidget);
+    expect(find.text('Suffrages exprimés : 577'), findsOneWidget);
+    expect(find.text('289 voix'), findsOneWidget);
+    expect(find.text('correctChoiceId'), findsNothing);
+    expect(find.text('expectedValue'), findsNothing);
+    expect(find.text('workedSteps'), findsNothing);
+    expect(find.text('formula'), findsNothing);
+
+    await _tapVisible(
+      tester,
+      find.byKey(
+        const ValueKey('calculation-mcq-calculation-mcq-majority-1-choice-289'),
+      ),
+    );
+
+    expect(changedQuestions, contains('calculation-mcq-majority-1'));
+    expect(controller.canSubmitQuestion(question), isTrue);
+  });
+
   testWidgets('page démarre, collecte six réponses et affiche la correction', (
     tester,
   ) async {
@@ -541,6 +580,54 @@ void main() {
     );
   });
 
+  testWidgets('page submit et affiche les corrections V1-021', (tester) async {
+    final v1cCalculationExercise = RichClosedExercise.fromJson(
+      richClosedV1CCalculationExerciseJson(),
+    );
+    final v1cCalculationResult = RichClosedExerciseResult.fromJson(
+      richClosedV1CCalculationResultJson(),
+    );
+    final api = _FakeRichClosedActivityApi(
+      exercise: v1cCalculationExercise,
+      result: v1cCalculationResult,
+    );
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedExercisePage(
+          controller: ActivityController(api),
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 / 13 répondues'), findsOneWidget);
+
+    await _answerAllQuestions(tester);
+
+    expect(find.text('13 / 13 répondues'), findsOneWidget);
+    expect(_submitButton(tester).onPressed, isNotNull);
+
+    await _tapVisible(
+      tester,
+      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.submittedAnswers, hasLength(13));
+    expect(
+      api.submittedAnswers!
+          .whereType<RichClosedCalculationMcqAnswer>()
+          .single
+          .choiceId,
+      'choice-289',
+    );
+    expect(find.text('Choix attendu : 289 voix'), findsWidgets);
+    expect(find.text('Valeur attendue : 289'), findsWidgets);
+  });
+
   testWidgets('page affiche une erreur contrôlée au démarrage', (tester) async {
     final api = _FakeRichClosedActivityApi(
       exercise: exercise,
@@ -671,6 +758,7 @@ Future<void> _answerAllQuestions(WidgetTester tester) async {
     slotId: 'slot-nomination',
     optionId: 'option-nomination',
   );
+  await _selectCalculationMcq(tester, choiceId: 'choice-289');
 }
 
 Future<void> _selectMatchingRight(
@@ -738,6 +826,20 @@ Future<void> _selectDiagramLabeling(
   final dropdown = tester.widget<DropdownButton<String>>(finder);
   dropdown.onChanged!(optionId);
   await tester.pumpAndSettle();
+}
+
+Future<void> _selectCalculationMcq(
+  WidgetTester tester, {
+  required String choiceId,
+}) async {
+  final finder = find.byKey(
+    ValueKey('calculation-mcq-calculation-mcq-majority-1-$choiceId'),
+  );
+  if (finder.evaluate().isEmpty) {
+    return;
+  }
+
+  await _tapVisible(tester, finder);
 }
 
 Future<void> _tapIfPresent(WidgetTester tester, Finder finder) async {
