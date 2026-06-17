@@ -1,3 +1,131 @@
+# LOT V1-023 — Runbook demo V1
+
+## 1. Resultat
+
+V1-023 est realise cote app/docs par reference au runbook canonique API `/Users/karim/Project/app-révision/api/docs/v1/DEMO_RUNBOOK_V1.md`. Aucun runbook app duplique n'a ete cree afin de garder une source principale claire. Le plan V1 app pointe vers ce rapport et V1-025 reste a faire.
+
+## 2. Sources inspectees
+
+- `docs/v1/ROADMAP_EXECUTION_PLAN_V1.md`
+- Rapports app V1-017 a V1-022
+- `docs/demo/DEMO_SEED_RUNBOOK.md`
+- `docs/demo/DEMO_SMOKE_CHECKS.md`
+- `docs/demo/DEMO_DEPLOYMENT_RUNBOOK.md`
+- `pubspec.yaml`, `README.md` si present
+- Router, page rich closed, controllers et tests Today/revision sessions
+
+## 3. Preflight Git
+
+### App
+
+- Branche: `main`
+- Status initial: clean au preflight.
+- Status courant lors de generation du rapport:
+
+```text
+ M docs/v1/ROADMAP_EXECUTION_PLAN_V1.md
+ M lib/features/activities/presentation/rich_closed/rich_closed_diagram_labeling_widget.dart
+ M lib/features/activities/presentation/rich_closed/rich_closed_image_choice_widget.dart
+ M lib/features/activities/presentation/rich_closed/rich_closed_institution_matrix_widget.dart
+ M test/features/activities/rich_closed_diagram_labeling_widget_test.dart
+ M test/features/activities/rich_closed_image_choice_widget_test.dart
+ M test/features/activities/rich_closed_institution_matrix_widget_test.dart
+?? docs/v1/ROADMAP_EXECUTION_LOT_V1_023_DEMO_RUNBOOK_V1.md
+?? docs/v1/ROADMAP_EXECUTION_LOT_V1_024_UI_ACCESSIBILITY_PERFORMANCE.md
+```
+
+- Derniers commits:
+
+```text
+fcf0da6 V1-022: Ajout du widget Image Choice et registre d'assets pour les exercices riches fermés
+82cd3ee V1-021: Ajout du widget Calculation MCQ pour les exercices riches fermés
+be1c3dd V1-020: Ajout du widget Diagram Labeling pour les exercices riches fermés
+1c5c384 V1-019: Ajout du widget Institution Matrix pour les exercices riches fermés
+0fe0583 V1-018: Ajout des widgets True/False Grid et Cause/Conséquence pour les exercices riches fermés
+```
+
+- Aucun commit effectue.
+
+### API
+
+- Branche: `main`
+- Runbook canonique cree cote API.
+
+## 4. Perimetre realise
+
+### API
+
+- Source principale: `api/docs/v1/DEMO_RUNBOOK_V1.md`.
+
+### App
+
+- Mise a jour du plan V1 app pour V1-023 realise et V1-025 a faire.
+
+### Docs
+
+- Rapport app expliquant l'organisation documentaire sans duplication massive.
+
+### Tests
+
+- Les validations app sont listees dans le rapport V1-024, car aucun code app n'est modifie par V1-023 seul.
+
+## 5. Changements realises
+
+- Pas de runbook app separe cree.
+- Le runbook canonique API documente lancement app, `API_BASE_URL`, routes rich closed, Today, revision sessions et fallback `image_choice`.
+- Le plan app indique V1-023 realise et V1-025 encore a faire.
+
+## 6. Non-objectifs respectes
+
+- Pas de V1-025.
+- Pas de nouveau type.
+- Pas de refonte UI massive.
+- Pas de provider IA reel.
+- Pas de deploiement.
+- Pas de migration.
+- Pas de secret.
+- Pas de widget libre.
+
+## 7. Tests ajoutes ou renforces
+
+Aucun test ajoute pour V1-023 cote app; V1-023 est documentaire.
+
+## 8. Validations lancees avec resultats
+
+Voir V1-024 pour les validations Flutter completes lancees dans le lot groupe. `git diff --check` est OK pour les diffs suivis apres generation finale des rapports; les fichiers docs non suivis sont listes dans le status courant et relus dans les passes de review.
+
+## 9. Validations non lancees avec justification
+
+- Lancement manuel simulateur non effectue: tests Flutter et runbook couvrent les commandes, et aucun device n'etait requis pour la modification documentaire.
+
+## 10. Risques restants
+
+- Le runbook canonique est cote API; un lecteur app doit suivre le lien vers le repo API. C'est volontaire pour eviter deux sources divergentes.
+
+## 11. Recommandation prochain lot
+
+V1-025 — Revue finale V1 et readiness audit.
+
+## 12. Passes de review
+
+- Documentation/runbook: source canonique API, chemins corriges, categories de commandes clarifiees.
+- Commandes non destructives: documentees dans le runbook API.
+- UI/accessibilite/performance: traite dans V1-024 app.
+- Anti-fuite: documentee dans le runbook API.
+- Tests/securite: aucun secret, aucun provider, aucun deploiement.
+- Reviewer final: pass read-only, aucun finding sur le diff final V1-023/V1-024.
+
+## 13. Critique honnete du prompt initial
+
+Le prompt demande un runbook principal clair tout en autorisant un runbook app si necessaire. Le choix de ne pas dupliquer est le plus robuste: l'app report pointe vers la source canonique API.
+
+## 14. Contenu complet des fichiers crees/modifies/supprimes
+
+Le present rapport est liste sans s'inclure lui-meme pour eviter une recursion infinie.
+
+### docs/v1/ROADMAP_EXECUTION_PLAN_V1.md
+
+```md
 # Plan d'exécution V1 — Questions riches fermées
 
 ## Introduction
@@ -584,3 +712,5 @@ Tous les rapports V1 doivent être créés dans `docs/v1`.
 - Critère de stop : fuite de correction, widget libre, tests critiques rouges.
 - Risques : dette non documentée.
 - Rapport attendu : `docs/v1/ROADMAP_EXECUTION_LOT_V1_025_READINESS_AUDIT.md`.
+
+```

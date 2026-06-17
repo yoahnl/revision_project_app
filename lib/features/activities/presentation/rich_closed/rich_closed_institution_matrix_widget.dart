@@ -202,7 +202,7 @@ class _MatrixCellSelector extends StatelessWidget {
                 for (final option in cell.options)
                   DropdownMenuItem<String>(
                     value: option.id,
-                    child: Text(option.label),
+                    child: _DropdownOptionLabel(label: option.label),
                   ),
               ],
               onChanged: enabled ? onChanged : null,
@@ -210,6 +210,20 @@ class _MatrixCellSelector extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DropdownOptionLabel extends StatelessWidget {
+  const _DropdownOptionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: label,
+      child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
     );
   }
 }

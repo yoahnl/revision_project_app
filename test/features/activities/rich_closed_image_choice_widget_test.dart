@@ -51,6 +51,32 @@ void main() {
       'choiceId': 'choice-image-a',
     });
   });
+
+  testWidgets('image_choice garde un fallback lisible sur petit écran', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(260, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final question = _question<RichClosedImageChoiceQuestion>(exercise);
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedImageChoiceWidget(
+          question: question,
+          onAnswerChanged: (_) {},
+        ),
+      ),
+    );
+
+    expect(find.text('Image non disponible'), findsWidgets);
+    expect(find.text('Charles de Gaulle'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _TestHost extends StatelessWidget {

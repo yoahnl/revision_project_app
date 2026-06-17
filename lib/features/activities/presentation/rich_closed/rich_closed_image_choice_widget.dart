@@ -134,45 +134,84 @@ class _ImageChoiceTile extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.m),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ImageChoicePreview(asset: asset),
-                const SizedBox(width: AppSpacing.m),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(choice.label),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        choice.caption ?? asset.fallbackLabel,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      if (choice.creditLabel != null) ...[
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          choice.creditLabel!,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.s),
-                Icon(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 300;
+                final marker = Icon(
                   selected
                       ? Icons.radio_button_checked
                       : Icons.radio_button_unchecked,
                   color: selected
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,
-                ),
-              ],
+                );
+                final copy = _ImageChoiceCopy(choice: choice, asset: asset);
+
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _ImageChoicePreview(asset: asset),
+                          const Spacer(),
+                          marker,
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.s),
+                      copy,
+                    ],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ImageChoicePreview(asset: asset),
+                    const SizedBox(width: AppSpacing.m),
+                    Expanded(child: copy),
+                    const SizedBox(width: AppSpacing.s),
+                    marker,
+                  ],
+                );
+              },
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ImageChoiceCopy extends StatelessWidget {
+  const _ImageChoiceCopy({required this.choice, required this.asset});
+
+  final RichClosedImageChoiceOption choice;
+  final RichClosedImageAssetView asset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(choice.label, maxLines: 2, overflow: TextOverflow.ellipsis),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          choice.caption ?? asset.fallbackLabel,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        if (choice.creditLabel != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            choice.creditLabel!,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ],
     );
   }
 }
@@ -211,12 +250,15 @@ class _ImageChoicePreview extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.person_outline, color: colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.image_not_supported_outlined,
+            color: colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: AppSpacing.xs),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
             child: Text(
-              asset.fallbackLabel,
+              'Image non disponible',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,

@@ -65,6 +65,47 @@ void main() {
       'cell-assembly-action:option-action-censure',
     ]);
   });
+
+  testWidgets('institution_matrix borne les longs libellés de menu', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    const longLabel =
+        'Responsabilité politique devant une assemblée parlementaire avec '
+        'un intitulé volontairement très long pour la démo';
+    final question = _withLongFirstOption(
+      _question<RichClosedInstitutionMatrixQuestion>(exercise),
+      longLabel,
+    );
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedInstitutionMatrixWidget(
+          question: question,
+          onAnswerChanged: (_) {},
+        ),
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey(
+          'institution-matrix-institution-matrix-1-cell-president-legitimacy',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip(longLabel), findsOneWidget);
+    expect(find.text('correctValues'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _TestHost extends StatelessWidget {
@@ -87,6 +128,39 @@ class _TestHost extends StatelessWidget {
 
 T _question<T extends RichClosedQuestion>(RichClosedExercise exercise) {
   return exercise.questions.whereType<T>().single;
+}
+
+RichClosedInstitutionMatrixQuestion _withLongFirstOption(
+  RichClosedInstitutionMatrixQuestion question,
+  String longLabel,
+) {
+  final firstCell = question.cells.first;
+
+  return RichClosedInstitutionMatrixQuestion(
+    base: RichClosedQuestionBase(
+      id: question.id,
+      prompt: question.prompt,
+      difficulty: question.difficulty,
+      cognitiveSkill: question.cognitiveSkill,
+      sourceChunkIds: question.sourceChunkIds,
+    ),
+    instruction: question.instruction,
+    rows: question.rows,
+    columns: question.columns,
+    cells: [
+      RichClosedInstitutionMatrixCell(
+        id: firstCell.id,
+        rowId: firstCell.rowId,
+        columnId: firstCell.columnId,
+        prompt: firstCell.prompt,
+        options: [
+          RichClosedChoice(id: firstCell.options.first.id, label: longLabel),
+          ...firstCell.options.skip(1),
+        ],
+      ),
+      ...question.cells.skip(1),
+    ],
+  );
 }
 
 void _selectDropdown(

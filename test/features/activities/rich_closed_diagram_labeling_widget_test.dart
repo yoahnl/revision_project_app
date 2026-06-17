@@ -70,6 +70,46 @@ void main() {
       'slot-nomination:option-nomination',
     ]);
   });
+
+  testWidgets('diagram_labeling borne les longs libellés de menu', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    const longLabel =
+        'Nomination institutionnelle décrite avec un intitulé très long '
+        'pour vérifier le comportement du menu avant la démo';
+    final question = _withLongFirstOption(
+      _question<RichClosedDiagramLabelingQuestion>(exercise),
+      longLabel,
+    );
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedDiagramLabelingWidget(
+          question: question,
+          onAnswerChanged: (_) {},
+        ),
+      ),
+    );
+
+    const dropdownKey = ValueKey(
+      'diagram-labeling-diagram-labeling-1-slot-government-role',
+    );
+    await tester.ensureVisible(find.byKey(dropdownKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(dropdownKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip(longLabel), findsOneWidget);
+    expect(find.text('correctValues'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _TestHost extends StatelessWidget {
@@ -92,6 +132,38 @@ class _TestHost extends StatelessWidget {
 
 T _question<T extends RichClosedQuestion>(RichClosedExercise exercise) {
   return exercise.questions.whereType<T>().single;
+}
+
+RichClosedDiagramLabelingQuestion _withLongFirstOption(
+  RichClosedDiagramLabelingQuestion question,
+  String longLabel,
+) {
+  final firstSlot = question.slots.first;
+
+  return RichClosedDiagramLabelingQuestion(
+    base: RichClosedQuestionBase(
+      id: question.id,
+      prompt: question.prompt,
+      difficulty: question.difficulty,
+      cognitiveSkill: question.cognitiveSkill,
+      sourceChunkIds: question.sourceChunkIds,
+    ),
+    instruction: question.instruction,
+    diagram: question.diagram,
+    slots: [
+      RichClosedDiagramLabelingSlot(
+        id: firstSlot.id,
+        anchorType: firstSlot.anchorType,
+        anchorId: firstSlot.anchorId,
+        prompt: firstSlot.prompt,
+        options: [
+          RichClosedChoice(id: firstSlot.options.first.id, label: longLabel),
+          ...firstSlot.options.skip(1),
+        ],
+      ),
+      ...question.slots.skip(1),
+    ],
+  );
 }
 
 void _selectDropdown(
