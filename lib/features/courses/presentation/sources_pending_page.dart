@@ -17,16 +17,16 @@ class SourcesPendingPage extends StatelessWidget {
         Text('Sources', style: RevisionTypography.pageTitle),
         const SizedBox(height: RevisionSpacing.xs),
         Text(
-          'Les PDF réels sont déjà gérés par l’ancien flow documents. Leur rattachement aux cours arrive après Course.',
+          'Les PDF se gèrent maintenant depuis le détail de chaque cours réel.',
           style: RevisionTypography.body,
         ),
         RevisionEmptyState(
-          title: 'Sources réelles en attente',
+          title: 'Sources depuis les cours',
           message:
-              'CORE-03 branchera l’ajout de PDF depuis un cours réel. Aucun fichier fictif n’est listé ici.',
+              'Ouvre un cours réel puis utilise Ajouter une source. Cette page globale deviendra un catalogue centralisé plus tard.',
           icon: Icons.description_outlined,
-          actionLabel: 'Ouvrir les matières',
-          onAction: () => context.go(AppRoutes.subjects),
+          actionLabel: 'Ouvrir les cours',
+          onAction: () => context.go(AppRoutes.home),
         ),
       ],
     );

@@ -23,7 +23,7 @@ class ProgressPendingPage extends StatelessWidget {
         RevisionEmptyState(
           title: 'Progression réelle en attente',
           message:
-              'Aucun pourcentage fictif n’est affiché. CORE-06 branchera coverage, mastery et estimatedGlobalMastery.',
+              'Aucun pourcentage fictif n’est affiché. Les métriques seront calculées depuis des résultats backend réels.',
           icon: Icons.trending_up_rounded,
           actionLabel: 'Retour à l’accueil',
           onAction: () => context.go(AppRoutes.home),

@@ -23,9 +23,9 @@ class RevisionSessionPendingPage extends StatelessWidget {
           style: RevisionTypography.body,
         ),
         RevisionEmptyState(
-          title: 'Session réelle indisponible',
+          title: 'Route V2 en attente',
           message:
-              'Aucune question locale n’est chargée. CORE-05 branchera cette route sur RevisionSession et advance.',
+              'Les sessions réelles du MVP Core passent par Activités. Cette route sera reprise plus tard pour le parcours V2.',
           icon: Icons.track_changes_rounded,
           actionLabel: 'Ouvrir les activités',
           onAction: () => context.go(AppRoutes.activities),

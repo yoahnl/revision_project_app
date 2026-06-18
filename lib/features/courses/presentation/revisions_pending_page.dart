@@ -18,18 +18,18 @@ class RevisionsPendingPage extends StatelessWidget {
         Text('Révisions', style: RevisionTypography.pageTitle),
         const SizedBox(height: RevisionSpacing.xs),
         Text(
-          'Les sessions réelles seront lancées depuis un cours réel. Aucun exercice local n’est utilisé ici.',
+          'La révision rapide existe maintenant dans le détail d’un cours dès qu’une source PDF est prête.',
           style: RevisionTypography.body,
         ),
         const RevisionEmptyState(
-          title: 'Révisions réelles en attente',
+          title: 'Révisions depuis tes cours',
           message:
-              'CORE-05 branchera la révision rapide sur RevisionSession et les résultats backend.',
+              'Ouvre un cours réel, ajoute une source si besoin, puis lance Révision rapide depuis sa page.',
           icon: Icons.track_changes_rounded,
         ),
         _ModeAvailabilityCard(
           title: 'Révision rapide',
-          label: 'MVP Core · à brancher en CORE-05',
+          label: 'Disponible depuis un cours prêt',
           icon: Icons.flash_on_rounded,
           accent: RevisionColors.blue,
         ),
@@ -46,12 +46,12 @@ class RevisionsPendingPage extends StatelessWidget {
           accent: RevisionColors.pink,
         ),
         RevisionEmptyState(
-          title: 'Besoin d’un flow réel maintenant ?',
+          title: 'Tu veux réviser maintenant ?',
           message:
-              'Les anciens exercices réels restent disponibles dans Activités.',
+              'Passe par l’accueil, ouvre un cours réel et démarre la révision rapide depuis le détail du cours.',
           icon: Icons.check_circle_outline_rounded,
-          actionLabel: 'Ouvrir les activités',
-          onAction: () => context.go(AppRoutes.activities),
+          actionLabel: 'Ouvrir les cours',
+          onAction: () => context.go(AppRoutes.home),
         ),
       ],
     );

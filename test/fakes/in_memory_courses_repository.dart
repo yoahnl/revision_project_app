@@ -180,7 +180,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
 
   @override
   Future<CourseProgress> getCourseProgress({required String courseId}) {
-    throw UnimplementedError('Progression course réelle hors CORE-02');
+    throw UnimplementedError('Progression course réelle hors MVP Core actuel');
   }
 }
 

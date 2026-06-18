@@ -114,17 +114,23 @@ void main() {
 
     expect(find.text('Progression réelle en attente'), findsOneWidget);
     expect(find.text('78%'), findsNothing);
+    expect(find.textContaining('CORE-06 branchera'), findsNothing);
 
     await tester.tap(find.text('Révisions'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Révisions réelles en attente'), findsOneWidget);
+    expect(find.text('Révisions depuis tes cours'), findsOneWidget);
+    expect(find.text('Disponible depuis un cours prêt'), findsOneWidget);
     expect(find.text('MVP+ · bientôt'), findsWidgets);
+    expect(find.textContaining('CORE-05 branchera'), findsNothing);
+    expect(find.textContaining('à brancher en CORE-05'), findsNothing);
 
     await tester.tap(find.text('Sources'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sources réelles en attente'), findsOneWidget);
+    expect(find.text('Sources depuis les cours'), findsOneWidget);
+    expect(find.textContaining('Ajouter une source'), findsOneWidget);
+    expect(find.textContaining('CORE-03 branchera'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
   });
 
@@ -254,7 +260,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Révisions'), findsWidgets);
-    expect(find.text('Révisions réelles en attente'), findsOneWidget);
+    expect(find.text('Révisions depuis tes cours'), findsOneWidget);
+    expect(find.textContaining('CORE-05 branchera'), findsNothing);
   });
 
   testWidgets('redirects signed-out users to the sign-in page', (tester) async {

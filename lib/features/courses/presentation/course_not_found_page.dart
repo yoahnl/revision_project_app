@@ -25,7 +25,7 @@ class CourseNotFoundPage extends StatelessWidget {
         RevisionNotFoundState(
           title: 'Aucun fallback vers un cours fictif',
           message:
-              'La route demandée ne peut pas afficher de fixture. CORE-02 branchera les vrais cours sur cette page.',
+              'La route demandée ne peut pas afficher de fixture. Retourne à l’accueil pour choisir un cours réel existant.',
           actionLabel: 'Retour à l’accueil',
           onAction: () => context.go(AppRoutes.home),
         ),

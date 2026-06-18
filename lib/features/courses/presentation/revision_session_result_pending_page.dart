@@ -25,7 +25,7 @@ class RevisionSessionResultPendingPage extends StatelessWidget {
         RevisionEmptyState(
           title: 'Résultat réel indisponible',
           message:
-              'Aucun score fictif n’est affiché tant que CORE-05 n’a pas branché le résultat de session.',
+              'Aucun score fictif n’est affiché ici. Les résultats course-level dédiés restent hors MVP Core actuel.',
           icon: Icons.emoji_events_outlined,
           actionLabel: 'Retour aux révisions',
           onAction: () => context.go(AppRoutes.revisions),

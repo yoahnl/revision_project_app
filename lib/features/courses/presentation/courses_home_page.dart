@@ -174,7 +174,7 @@ class _CourseList extends StatelessWidget {
       return RevisionEmptyState(
         title: 'Aucun cours réel',
         message:
-            'Crée un cours vide maintenant. L’ajout de PDF sous cours arrivera en CORE-03.',
+            'Crée un cours réel, puis ouvre-le pour ajouter un PDF, générer une fiche ou lancer une révision rapide.',
         icon: Icons.layers_outlined,
         actionLabel: 'Créer un cours',
         onAction: () => _showCreateCourseSheet(context, subject),
