@@ -177,6 +177,40 @@ void main() {
     },
   );
 
+  test('courseProgressProvider loads real course progress', () async {
+    final repository = InMemoryCoursesRepository()
+      ..progressByCourse['course-1'] = courseProgress();
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final progress = await container.read(
+      courseProgressProvider('course-1').future,
+    );
+
+    expect(progress.state, CourseProgressState.practiced);
+    expect(progress.estimatedGlobalMastery, 0.18);
+    expect(repository.getCourseProgressCount, 1);
+  });
+
+  test('subjectProgressProvider loads real subject progress', () async {
+    final repository = InMemoryCoursesRepository()
+      ..progressBySubject['subject-1'] = subjectProgress();
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final progress = await container.read(
+      subjectProgressProvider('subject-1').future,
+    );
+
+    expect(progress.courses.single.title, 'Droit constitutionnel');
+    expect(progress.readyCourseCount, 1);
+    expect(repository.getSubjectProgressCount, 1);
+  });
+
   test(
     'generateCourseRevisionSheetController generates and invalidates',
     () async {
@@ -314,6 +348,49 @@ RevisionSheet revisionSheet() {
     mustKnow: ['À savoir'],
     practiceSuggestions: ['S’entraîner'],
     errorCode: null,
+  );
+}
+
+CourseProgress courseProgress() {
+  return CourseProgress(
+    courseId: 'course-1',
+    subjectId: 'subject-1',
+    knowledgeUnitCount: 12,
+    practicedKnowledgeUnitCount: 3,
+    coverage: 0.25,
+    mastery: 0.72,
+    estimatedGlobalMastery: 0.18,
+    readySourceCount: 1,
+    processingSourceCount: 0,
+    failedSourceCount: 0,
+    lastPracticedAt: DateTime.utc(2026, 6, 18, 12),
+    state: CourseProgressState.practiced,
+  );
+}
+
+SubjectProgress subjectProgress() {
+  return SubjectProgress(
+    subjectId: 'subject-1',
+    knowledgeUnitCount: 12,
+    practicedKnowledgeUnitCount: 3,
+    coverage: 0.25,
+    mastery: 0.72,
+    estimatedGlobalMastery: 0.18,
+    courseCount: 1,
+    readyCourseCount: 1,
+    lastPracticedAt: DateTime.utc(2026, 6, 18, 12),
+    courses: const [
+      SubjectCourseProgressItem(
+        courseId: 'course-1',
+        title: 'Droit constitutionnel',
+        knowledgeUnitCount: 12,
+        practicedKnowledgeUnitCount: 3,
+        coverage: 0.25,
+        mastery: 0.72,
+        estimatedGlobalMastery: 0.18,
+        state: CourseProgressState.practiced,
+      ),
+    ],
   );
 }
 

@@ -83,20 +83,92 @@ class CourseDocument {
 
 class CourseProgress {
   const CourseProgress({
+    required this.courseId,
+    required this.subjectId,
     required this.coverage,
     required this.estimatedGlobalMastery,
     required this.knowledgeUnitCount,
     required this.practicedKnowledgeUnitCount,
+    required this.readySourceCount,
+    required this.processingSourceCount,
+    required this.failedSourceCount,
+    required this.state,
     this.mastery,
+    this.lastPracticedAt,
   });
 
+  final String courseId;
+  final String subjectId;
   final double coverage;
   final double? mastery;
   final double estimatedGlobalMastery;
   final int knowledgeUnitCount;
   final int practicedKnowledgeUnitCount;
+  final int readySourceCount;
+  final int processingSourceCount;
+  final int failedSourceCount;
+  final DateTime? lastPracticedAt;
+  final CourseProgressState state;
+}
+
+class SubjectProgress {
+  const SubjectProgress({
+    required this.subjectId,
+    required this.knowledgeUnitCount,
+    required this.practicedKnowledgeUnitCount,
+    required this.coverage,
+    required this.estimatedGlobalMastery,
+    required this.courseCount,
+    required this.readyCourseCount,
+    required this.courses,
+    this.mastery,
+    this.lastPracticedAt,
+  });
+
+  final String subjectId;
+  final int knowledgeUnitCount;
+  final int practicedKnowledgeUnitCount;
+  final double coverage;
+  final double? mastery;
+  final double estimatedGlobalMastery;
+  final int courseCount;
+  final int readyCourseCount;
+  final DateTime? lastPracticedAt;
+  final List<SubjectCourseProgressItem> courses;
+}
+
+class SubjectCourseProgressItem {
+  const SubjectCourseProgressItem({
+    required this.courseId,
+    required this.title,
+    required this.knowledgeUnitCount,
+    required this.practicedKnowledgeUnitCount,
+    required this.coverage,
+    required this.estimatedGlobalMastery,
+    required this.state,
+    this.mastery,
+  });
+
+  final String courseId;
+  final String title;
+  final int knowledgeUnitCount;
+  final int practicedKnowledgeUnitCount;
+  final double coverage;
+  final double? mastery;
+  final double estimatedGlobalMastery;
+  final CourseProgressState state;
 }
 
 enum CourseDifficulty { beginner, intermediate, advanced }
 
 enum CourseDocumentStatus { uploaded, processing, ready, failed, unknown }
+
+enum CourseProgressState {
+  noSource,
+  processing,
+  failedOnly,
+  noKnowledgeUnits,
+  readyNotPracticed,
+  practiced,
+  unknown,
+}

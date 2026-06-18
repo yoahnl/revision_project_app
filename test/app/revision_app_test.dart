@@ -112,7 +112,8 @@ void main() {
     await tester.tap(find.text('Progrès'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Progression réelle en attente'), findsOneWidget);
+    expect(find.text('Aucune matière réelle'), findsOneWidget);
+    expect(find.text('Progression réelle en attente'), findsNothing);
     expect(find.text('78%'), findsNothing);
     expect(find.textContaining('CORE-06 branchera'), findsNothing);
 

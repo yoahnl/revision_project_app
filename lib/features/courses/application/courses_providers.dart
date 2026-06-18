@@ -28,6 +28,24 @@ final courseDetailProvider = FutureProvider.family<CourseDetail, String>((
   return ref.read(coursesRepositoryProvider).getCourse(courseId: courseId);
 });
 
+final courseProgressProvider = FutureProvider.family<CourseProgress, String>((
+  ref,
+  courseId,
+) {
+  return ref
+      .read(coursesRepositoryProvider)
+      .getCourseProgress(courseId: courseId);
+});
+
+final subjectProgressProvider = FutureProvider.family<SubjectProgress, String>((
+  ref,
+  subjectId,
+) {
+  return ref
+      .read(coursesRepositoryProvider)
+      .getSubjectProgress(subjectId: subjectId);
+});
+
 final courseRevisionSheetProvider =
     FutureProvider.family<RevisionSheet?, String>((ref, courseId) {
       return ref

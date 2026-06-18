@@ -7,10 +7,10 @@ import '../../features/auth/application/auth_controller.dart';
 import '../../features/courses/presentation/course_detail_page.dart';
 import '../../features/courses/presentation/course_revision_sheet_page.dart';
 import '../../features/courses/presentation/courses_home_page.dart';
-import '../../features/courses/presentation/progress_pending_page.dart';
 import '../../features/courses/presentation/revision_session_pending_page.dart';
 import '../../features/courses/presentation/revision_session_result_pending_page.dart';
 import '../../features/courses/presentation/revisions_pending_page.dart';
+import '../../features/courses/presentation/subject_progress_page.dart';
 import '../../features/courses/presentation/sources_pending_page.dart';
 import '../../features/documents/application/documents_controller.dart';
 import '../../features/onboarding/application/revision_goals_controller.dart';
@@ -133,7 +133,7 @@ GoRouter createAppRouter({
             routes: [
               GoRoute(
                 path: AppRoutes.progress,
-                builder: (context, state) => const ProgressPendingPage(),
+                builder: (context, state) => const SubjectProgressPage(),
               ),
               GoRoute(
                 path: AppRoutes.today,

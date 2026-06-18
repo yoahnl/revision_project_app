@@ -307,6 +307,84 @@ void main() {
     );
   });
 
+  test('loads course progress from the course progress endpoint', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(courseProgressJson()),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final progress = await repository.getCourseProgress(courseId: 'course-1');
+
+    expect(progress.knowledgeUnitCount, 12);
+    expect(progress.practicedKnowledgeUnitCount, 3);
+    expect(progress.coverage, 0.25);
+    expect(progress.mastery, 0.72);
+    expect(progress.estimatedGlobalMastery, 0.18);
+    expect(progress.state, CourseProgressState.practiced);
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(adapter.lastOptions?.path, '/courses/course-1/progress');
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+  });
+
+  test('loads subject progress and maps unknown course state safely', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(
+        subjectProgressJson(
+          courses: [subjectCourseProgressJson(state: 'FUTURE_STATE')],
+        ),
+      ),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final progress = await repository.getSubjectProgress(
+      subjectId: 'subject-1',
+    );
+
+    expect(progress.courseCount, 1);
+    expect(progress.readyCourseCount, 1);
+    expect(progress.courses.single.state, CourseProgressState.unknown);
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(adapter.lastOptions?.path, '/subjects/subject-1/progress');
+  });
+
+  test('parses nullable mastery and progress 404 errors', () async {
+    final noMasteryRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse(courseProgressJson(mastery: null)),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final progress = await noMasteryRepository.getCourseProgress(
+      courseId: 'course-1',
+    );
+
+    expect(progress.mastery, isNull);
+
+    final missingCourseRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({'message': 'Course not found'}, statusCode: 404),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      missingCourseRepository.getCourseProgress(courseId: 'missing'),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
   test('maps course quick revision 404 and 409 to typed exceptions', () async {
     final missingCourseRepository = HttpCoursesRepository(
       dio: Dio()
@@ -426,6 +504,53 @@ Map<String, Object?> sourceJsonWith({required String status}) {
     'errorCode': null,
     'createdAt': '2026-06-18T10:00:00.000Z',
     'updatedAt': '2026-06-18T10:00:00.000Z',
+  };
+}
+
+Map<String, Object?> courseProgressJson({Object? mastery = 0.72}) {
+  return {
+    'courseId': 'course-1',
+    'subjectId': 'subject-1',
+    'knowledgeUnitCount': 12,
+    'practicedKnowledgeUnitCount': 3,
+    'coverage': 0.25,
+    'mastery': mastery,
+    'estimatedGlobalMastery': 0.18,
+    'readySourceCount': 1,
+    'processingSourceCount': 0,
+    'failedSourceCount': 0,
+    'lastPracticedAt': '2026-06-18T12:00:00.000Z',
+    'state': 'PRACTICED',
+  };
+}
+
+Map<String, Object?> subjectProgressJson({
+  List<Map<String, Object?>>? courses,
+}) {
+  return {
+    'subjectId': 'subject-1',
+    'knowledgeUnitCount': 12,
+    'practicedKnowledgeUnitCount': 3,
+    'coverage': 0.25,
+    'mastery': 0.72,
+    'estimatedGlobalMastery': 0.18,
+    'courseCount': 1,
+    'readyCourseCount': 1,
+    'lastPracticedAt': '2026-06-18T12:00:00.000Z',
+    'courses': courses ?? [subjectCourseProgressJson()],
+  };
+}
+
+Map<String, Object?> subjectCourseProgressJson({String state = 'PRACTICED'}) {
+  return {
+    'courseId': 'course-1',
+    'title': 'Droit constitutionnel',
+    'knowledgeUnitCount': 12,
+    'practicedKnowledgeUnitCount': 3,
+    'coverage': 0.25,
+    'mastery': 0.72,
+    'estimatedGlobalMastery': 0.18,
+    'state': state,
   };
 }
 

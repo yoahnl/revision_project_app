@@ -38,17 +38,24 @@ void main() {
     expect(find.text('870'), findsNothing);
     expect(find.text('7 jours'), findsNothing);
 
-    await tester.tap(find.text('Ajouter une source'));
+    final uploadButton = find.widgetWithText(
+      RevisionGradientButton,
+      'Ajouter une source',
+    );
+    await tester.scrollUntilVisible(uploadButton, 400);
+    await tester.tap(uploadButton);
     await tester.pump();
 
     expect(find.text('Upload en cours...'), findsOneWidget);
 
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.pump();
 
     expect(repository.uploadCount, 1);
     expect(repository.lastUploadedCourseId, 'course-1');
     expect(repository.lastUploadedFileName, 'cours.pdf');
     expect(find.text('Source ajoutée'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('cours.pdf'), 400);
     expect(find.text('cours.pdf'), findsOneWidget);
     expect(find.text('Téléversée'), findsOneWidget);
   });
@@ -73,9 +80,65 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(find.text('broken.pdf'), 400);
     expect(find.text('broken.pdf'), findsOneWidget);
     expect(find.text('Erreur'), findsOneWidget);
     expect(find.textContaining('PDF_PARSE_FAILED'), findsOneWidget);
+  });
+
+  testWidgets('course detail displays no-source progress state', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..progressByCourse['course-1'] = courseProgress(
+        state: CourseProgressState.noSource,
+        knowledgeUnitCount: 0,
+        practicedKnowledgeUnitCount: 0,
+        coverage: 0,
+        mastery: null,
+        estimatedGlobalMastery: 0,
+        readySourceCount: 0,
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Progression réelle'), findsOneWidget);
+    expect(find.text('0/0 notions travaillées'), findsOneWidget);
+    expect(find.text('Ajoute une source pour commencer.'), findsOneWidget);
+    expect(find.text('78%'), findsNothing);
+  });
+
+  testWidgets('course detail displays practiced real progress', (tester) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..progressByCourse['course-1'] = courseProgress();
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('3/12 notions travaillées'), findsOneWidget);
+    expect(find.text('Maîtrise sur notions travaillées : 72%'), findsOneWidget);
+    expect(find.text('Estimation globale : 18%'), findsOneWidget);
+    expect(
+      find.text('Progression réelle basée sur tes réponses.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('processing sources trigger bounded detail refresh polling', (
@@ -97,13 +160,15 @@ void main() {
     await tester.pumpWidget(
       testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
     expect(repository.getCourseCount, 1);
+    await tester.scrollUntilVisible(find.text('Traitement en cours'), 400);
     expect(find.text('Traitement en cours'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(repository.getCourseCount, greaterThanOrEqualTo(2));
   });
@@ -228,7 +293,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Révision rapide'));
+    final quickButton = find.widgetWithText(
+      RevisionGradientButton,
+      'Révision rapide',
+    );
+    final quickWidget = tester.widget<RevisionGradientButton>(quickButton);
+    quickWidget.onPressed!();
     await tester.pump();
 
     expect(find.text('Démarrage...'), findsOneWidget);
@@ -245,6 +315,8 @@ Widget testApp({
   required InMemoryCoursesRepository repository,
   required CoursePdfPicker picker,
 }) {
+  _ensureDefaultProgress(repository);
+
   return ProviderScope(
     overrides: [
       coursesRepositoryProvider.overrideWithValue(repository),
@@ -260,6 +332,8 @@ Widget routerTestApp({
   required InMemoryCoursesRepository repository,
   required CoursePdfPicker picker,
 }) {
+  _ensureDefaultProgress(repository);
+
   final router = GoRouter(
     initialLocation: '/',
     routes: [
@@ -290,6 +364,21 @@ Widget routerTestApp({
   );
 }
 
+void _ensureDefaultProgress(InMemoryCoursesRepository repository) {
+  repository.progressByCourse.putIfAbsent(
+    'course-1',
+    () => courseProgress(
+      state: CourseProgressState.noSource,
+      knowledgeUnitCount: 0,
+      practicedKnowledgeUnitCount: 0,
+      coverage: 0,
+      mastery: null,
+      estimatedGlobalMastery: 0,
+      readySourceCount: 0,
+    ),
+  );
+}
+
 CourseDetail courseDetail({List<CourseDocument> sources = const []}) {
   const course = CourseListItem(
     id: 'course-1',
@@ -304,6 +393,31 @@ CourseDetail courseDetail({List<CourseDocument> sources = const []}) {
     course: course,
     subject: const CourseSubjectSummary(id: 'subject-1', name: 'Droit'),
     sources: sources,
+  );
+}
+
+CourseProgress courseProgress({
+  CourseProgressState state = CourseProgressState.practiced,
+  int knowledgeUnitCount = 12,
+  int practicedKnowledgeUnitCount = 3,
+  double coverage = 0.25,
+  double? mastery = 0.72,
+  double estimatedGlobalMastery = 0.18,
+  int readySourceCount = 1,
+}) {
+  return CourseProgress(
+    courseId: 'course-1',
+    subjectId: 'subject-1',
+    knowledgeUnitCount: knowledgeUnitCount,
+    practicedKnowledgeUnitCount: practicedKnowledgeUnitCount,
+    coverage: coverage,
+    mastery: mastery,
+    estimatedGlobalMastery: estimatedGlobalMastery,
+    readySourceCount: readySourceCount,
+    processingSourceCount: 0,
+    failedSourceCount: 0,
+    lastPracticedAt: DateTime.utc(2026, 6, 18, 12),
+    state: state,
   );
 }
 

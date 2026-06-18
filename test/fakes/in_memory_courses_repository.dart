@@ -8,11 +8,15 @@ import 'package:revision_app/features/revision_sessions/domain/revision_session.
 class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, List<CourseListItem>> coursesBySubject = {};
   final Map<String, CourseDetail> detailsByCourse = {};
+  final Map<String, CourseProgress> progressByCourse = {};
+  final Map<String, SubjectProgress> progressBySubject = {};
   final Map<String, RevisionSheet?> revisionSheetsByCourse = {};
   final Map<String, RevisionSheet> generatedRevisionSheetsByCourse = {};
   final Map<String, Object> revisionSheetErrorsByCourse = {};
   int createCount = 0;
   int getCourseCount = 0;
+  int getCourseProgressCount = 0;
+  int getSubjectProgressCount = 0;
   int getRevisionSheetCount = 0;
   int generateRevisionSheetCount = 0;
   int uploadCount = 0;
@@ -180,7 +184,26 @@ class InMemoryCoursesRepository implements CoursesRepository {
 
   @override
   Future<CourseProgress> getCourseProgress({required String courseId}) {
-    throw UnimplementedError('Progression course réelle hors MVP Core actuel');
+    getCourseProgressCount += 1;
+    final progress = progressByCourse[courseId];
+
+    if (progress == null) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    return Future.value(progress);
+  }
+
+  @override
+  Future<SubjectProgress> getSubjectProgress({required String subjectId}) {
+    getSubjectProgressCount += 1;
+    final progress = progressBySubject[subjectId];
+
+    if (progress == null) {
+      throw const CourseNotFoundException('Course subject not found');
+    }
+
+    return Future.value(progress);
   }
 }
 

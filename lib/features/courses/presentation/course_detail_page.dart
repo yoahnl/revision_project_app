@@ -91,6 +91,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
   Widget build(BuildContext context) {
     final detail = widget.detail;
     final course = detail.course;
+    final progress = ref.watch(courseProgressProvider(course.id));
 
     return RevisionPageScaffold(
       children: [
@@ -126,6 +127,10 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
               ),
             ],
           ),
+        ),
+        _CourseProgressSection(
+          progress: progress,
+          onRetry: () => ref.invalidate(courseProgressProvider(course.id)),
         ),
         _CourseActions(detail: detail),
         if (_pollTimedOut)
@@ -178,6 +183,79 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
     if (resetTimeout && _pollTimedOut && mounted) {
       setState(() => _pollTimedOut = false);
     }
+  }
+}
+
+class _CourseProgressSection extends StatelessWidget {
+  const _CourseProgressSection({required this.progress, required this.onRetry});
+
+  final AsyncValue<CourseProgress> progress;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return progress.when(
+      loading: () =>
+          const RevisionLoadingState(label: 'Chargement de la progression'),
+      error: (error, stackTrace) => RevisionErrorState(
+        title: 'Progression indisponible',
+        message: 'Les métriques réelles ne sont pas disponibles pour ce cours.',
+        actionLabel: 'Réessayer',
+        onAction: onRetry,
+      ),
+      data: (progress) => RevisionGlassCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Progression réelle', style: RevisionTypography.sectionTitle),
+            const SizedBox(height: RevisionSpacing.m),
+            Row(
+              children: [
+                RevisionMasteryRing(
+                  value: progress.estimatedGlobalMastery,
+                  label: _percent(progress.estimatedGlobalMastery),
+                  caption: 'global',
+                  color: _progressColor(progress.state),
+                ),
+                const SizedBox(width: RevisionSpacing.l),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${progress.practicedKnowledgeUnitCount}/${progress.knowledgeUnitCount} notions travaillées',
+                        style: RevisionTypography.body,
+                      ),
+                      const SizedBox(height: RevisionSpacing.s),
+                      RevisionProgressLine(
+                        value: progress.coverage,
+                        color: _progressColor(progress.state),
+                        height: 7,
+                      ),
+                      const SizedBox(height: RevisionSpacing.s),
+                      Text(
+                        _masteryLabel(progress),
+                        style: RevisionTypography.caption,
+                      ),
+                      const SizedBox(height: RevisionSpacing.xs),
+                      Text(
+                        'Estimation globale : ${_percent(progress.estimatedGlobalMastery)}',
+                        style: RevisionTypography.caption,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: RevisionSpacing.m),
+            Text(
+              _progressStateLabel(progress.state),
+              style: RevisionTypography.body,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -359,6 +437,46 @@ String _quickRevisionErrorLabel(Object error) {
   }
 
   return 'Impossible de démarrer la révision rapide.';
+}
+
+String _masteryLabel(CourseProgress progress) {
+  if (progress.mastery == null) {
+    return 'Maîtrise sur notions travaillées : en attente';
+  }
+
+  return 'Maîtrise sur notions travaillées : ${_percent(progress.mastery!)}';
+}
+
+String _progressStateLabel(CourseProgressState state) {
+  return switch (state) {
+    CourseProgressState.noSource => 'Ajoute une source pour commencer.',
+    CourseProgressState.processing => 'Analyse du PDF en cours.',
+    CourseProgressState.failedOnly =>
+      'Les sources ont échoué. Ajoute ou corrige une source.',
+    CourseProgressState.noKnowledgeUnits =>
+      'Source prête, mais aucune notion exploitable.',
+    CourseProgressState.readyNotPracticed =>
+      'Notions prêtes, pas encore travaillées.',
+    CourseProgressState.practiced =>
+      'Progression réelle basée sur tes réponses.',
+    CourseProgressState.unknown => 'Progression réelle disponible.',
+  };
+}
+
+Color _progressColor(CourseProgressState state) {
+  return switch (state) {
+    CourseProgressState.practiced => RevisionColors.green,
+    CourseProgressState.readyNotPracticed => RevisionColors.blue,
+    CourseProgressState.processing => RevisionColors.amber,
+    CourseProgressState.failedOnly => RevisionColors.red,
+    CourseProgressState.noKnowledgeUnits => RevisionColors.violet,
+    CourseProgressState.noSource => RevisionColors.blue,
+    CourseProgressState.unknown => RevisionColors.mint,
+  };
+}
+
+String _percent(double value) {
+  return '${(value.clamp(0, 1) * 100).round()}%';
 }
 
 class _SourcesSection extends StatelessWidget {

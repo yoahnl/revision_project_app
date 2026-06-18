@@ -29,6 +29,8 @@ abstract interface class CoursesRepository {
   });
 
   Future<CourseProgress> getCourseProgress({required String courseId});
+
+  Future<SubjectProgress> getSubjectProgress({required String subjectId});
 }
 
 class CreateCourseInput {

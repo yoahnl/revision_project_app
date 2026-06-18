@@ -195,8 +195,39 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
-  Future<CourseProgress> getCourseProgress({required String courseId}) {
-    throw UnimplementedError('Progression course réelle hors MVP Core actuel');
+  Future<CourseProgress> getCourseProgress({required String courseId}) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/progress',
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseProgressJson(response.data).toProgress();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<SubjectProgress> getSubjectProgress({
+    required String subjectId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/subjects/${Uri.encodeComponent(subjectId)}/progress',
+        options: await _authorizedOptions(),
+      );
+
+      return _SubjectProgressJson(response.data).toProgress();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course subject not found');
+      }
+      rethrow;
+    }
   }
 
   Future<Options> _authorizedOptions() async {
@@ -354,6 +385,157 @@ class _CourseDocumentJson {
   }
 }
 
+class _CourseProgressJson {
+  const _CourseProgressJson(this.value);
+
+  final Object? value;
+
+  CourseProgress toProgress() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid course progress response');
+    }
+
+    final courseId = json['courseId'];
+    final subjectId = json['subjectId'];
+    final knowledgeUnitCount = json['knowledgeUnitCount'];
+    final practicedKnowledgeUnitCount = json['practicedKnowledgeUnitCount'];
+    final coverage = json['coverage'];
+    final mastery = json['mastery'];
+    final estimatedGlobalMastery = json['estimatedGlobalMastery'];
+    final readySourceCount = json['readySourceCount'];
+    final processingSourceCount = json['processingSourceCount'];
+    final failedSourceCount = json['failedSourceCount'];
+    final state = json['state'];
+
+    if (courseId is! String ||
+        subjectId is! String ||
+        knowledgeUnitCount is! int ||
+        practicedKnowledgeUnitCount is! int ||
+        coverage is! num ||
+        (mastery != null && mastery is! num) ||
+        estimatedGlobalMastery is! num ||
+        readySourceCount is! int ||
+        processingSourceCount is! int ||
+        failedSourceCount is! int ||
+        state is! String) {
+      throw const FormatException('Invalid course progress response');
+    }
+
+    return CourseProgress(
+      courseId: courseId,
+      subjectId: subjectId,
+      knowledgeUnitCount: knowledgeUnitCount,
+      practicedKnowledgeUnitCount: practicedKnowledgeUnitCount,
+      coverage: coverage.toDouble(),
+      mastery: mastery is num ? mastery.toDouble() : null,
+      estimatedGlobalMastery: estimatedGlobalMastery.toDouble(),
+      readySourceCount: readySourceCount,
+      processingSourceCount: processingSourceCount,
+      failedSourceCount: failedSourceCount,
+      lastPracticedAt: _parseOptionalDate(json['lastPracticedAt']),
+      state: _parseProgressState(state),
+    );
+  }
+}
+
+class _SubjectProgressJson {
+  const _SubjectProgressJson(this.value);
+
+  final Object? value;
+
+  SubjectProgress toProgress() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid subject progress response');
+    }
+
+    final subjectId = json['subjectId'];
+    final knowledgeUnitCount = json['knowledgeUnitCount'];
+    final practicedKnowledgeUnitCount = json['practicedKnowledgeUnitCount'];
+    final coverage = json['coverage'];
+    final mastery = json['mastery'];
+    final estimatedGlobalMastery = json['estimatedGlobalMastery'];
+    final courseCount = json['courseCount'];
+    final readyCourseCount = json['readyCourseCount'];
+    final courses = json['courses'];
+
+    if (subjectId is! String ||
+        knowledgeUnitCount is! int ||
+        practicedKnowledgeUnitCount is! int ||
+        coverage is! num ||
+        (mastery != null && mastery is! num) ||
+        estimatedGlobalMastery is! num ||
+        courseCount is! int ||
+        readyCourseCount is! int ||
+        courses is! List) {
+      throw const FormatException('Invalid subject progress response');
+    }
+
+    return SubjectProgress(
+      subjectId: subjectId,
+      knowledgeUnitCount: knowledgeUnitCount,
+      practicedKnowledgeUnitCount: practicedKnowledgeUnitCount,
+      coverage: coverage.toDouble(),
+      mastery: mastery is num ? mastery.toDouble() : null,
+      estimatedGlobalMastery: estimatedGlobalMastery.toDouble(),
+      courseCount: courseCount,
+      readyCourseCount: readyCourseCount,
+      lastPracticedAt: _parseOptionalDate(json['lastPracticedAt']),
+      courses: courses
+          .map((course) => _SubjectCourseProgressJson(course).toItem())
+          .toList(growable: false),
+    );
+  }
+}
+
+class _SubjectCourseProgressJson {
+  const _SubjectCourseProgressJson(this.value);
+
+  final Object? value;
+
+  SubjectCourseProgressItem toItem() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid subject course progress response');
+    }
+
+    final courseId = json['courseId'];
+    final title = json['title'];
+    final knowledgeUnitCount = json['knowledgeUnitCount'];
+    final practicedKnowledgeUnitCount = json['practicedKnowledgeUnitCount'];
+    final coverage = json['coverage'];
+    final mastery = json['mastery'];
+    final estimatedGlobalMastery = json['estimatedGlobalMastery'];
+    final state = json['state'];
+
+    if (courseId is! String ||
+        title is! String ||
+        knowledgeUnitCount is! int ||
+        practicedKnowledgeUnitCount is! int ||
+        coverage is! num ||
+        (mastery != null && mastery is! num) ||
+        estimatedGlobalMastery is! num ||
+        state is! String) {
+      throw const FormatException('Invalid subject course progress response');
+    }
+
+    return SubjectCourseProgressItem(
+      courseId: courseId,
+      title: title,
+      knowledgeUnitCount: knowledgeUnitCount,
+      practicedKnowledgeUnitCount: practicedKnowledgeUnitCount,
+      coverage: coverage.toDouble(),
+      mastery: mastery is num ? mastery.toDouble() : null,
+      estimatedGlobalMastery: estimatedGlobalMastery.toDouble(),
+      state: _parseProgressState(state),
+    );
+  }
+}
+
 CourseDocumentStatus _parseDocumentStatus(String value) {
   return switch (value) {
     'UPLOADED' => CourseDocumentStatus.uploaded,
@@ -361,6 +543,18 @@ CourseDocumentStatus _parseDocumentStatus(String value) {
     'READY' => CourseDocumentStatus.ready,
     'FAILED' => CourseDocumentStatus.failed,
     _ => throw const FormatException('Unknown course source status'),
+  };
+}
+
+CourseProgressState _parseProgressState(String value) {
+  return switch (value) {
+    'NO_SOURCE' => CourseProgressState.noSource,
+    'PROCESSING' => CourseProgressState.processing,
+    'FAILED_ONLY' => CourseProgressState.failedOnly,
+    'NO_KNOWLEDGE_UNITS' => CourseProgressState.noKnowledgeUnits,
+    'READY_NOT_PRACTICED' => CourseProgressState.readyNotPracticed,
+    'PRACTICED' => CourseProgressState.practiced,
+    _ => CourseProgressState.unknown,
   };
 }
 
