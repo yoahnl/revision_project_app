@@ -159,6 +159,49 @@ void main() {
   });
 
   test(
+    'deleteCourseDocumentController removes a source and refreshes detail',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'cours.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..progressByCourse['course-1'] = courseProgress();
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      expect(
+        (await container.read(courseDetailProvider('course-1').future)).sources,
+        hasLength(1),
+      );
+
+      await container
+          .read(deleteCourseDocumentControllerProvider.notifier)
+          .delete(
+            detail: repository.detailsByCourse['course-1']!,
+            documentId: 'document-1',
+          );
+
+      expect(repository.deleteDocumentCount, 1);
+      expect(repository.lastDeletedCourseId, 'course-1');
+      expect(repository.lastDeletedDocumentId, 'document-1');
+      expect(
+        (await container.read(courseDetailProvider('course-1').future)).sources,
+        isEmpty,
+      );
+    },
+  );
+
+  test(
     'courseRevisionSheetProvider loads an existing course-level sheet',
     () async {
       final repository = InMemoryCoursesRepository()
@@ -313,16 +356,16 @@ void main() {
   });
 }
 
-CourseDetail courseDetail() {
+CourseDetail courseDetail({List<CourseDocument> sources = const []}) {
   const course = CourseListItem(
     id: 'course-1',
     subjectId: 'subject-1',
     title: 'Droit constitutionnel',
   );
-  return const CourseDetail(
+  return CourseDetail(
     course: course,
-    subject: CourseSubjectSummary(id: 'subject-1', name: 'Droit'),
-    sources: [],
+    subject: const CourseSubjectSummary(id: 'subject-1', name: 'Droit'),
+    sources: sources,
   );
 }
 

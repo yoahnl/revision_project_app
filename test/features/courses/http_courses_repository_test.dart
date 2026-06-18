@@ -187,6 +187,47 @@ void main() {
     );
   });
 
+  test('deletes a course source through the course-scoped endpoint', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(null, statusCode: 204),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await repository.deleteCourseDocument(
+      courseId: 'course-1',
+      documentId: 'document-1',
+    );
+
+    expect(adapter.lastOptions?.method, 'DELETE');
+    expect(adapter.lastOptions?.path, '/courses/course-1/sources/document-1');
+    expect(adapter.lastOptions?.data, isNull);
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+  });
+
+  test('maps course source delete 404 to CourseNotFoundException', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({'message': 'Course source not found'}, statusCode: 404),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      repository.deleteCourseDocument(
+        courseId: 'course-1',
+        documentId: 'missing-document',
+      ),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
   test(
     'loads a course-level revision sheet from the course endpoint',
     () async {

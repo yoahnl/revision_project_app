@@ -115,6 +115,24 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<void> deleteCourseDocument({
+    required String courseId,
+    required String documentId,
+  }) async {
+    try {
+      await _dio.delete<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/sources/${Uri.encodeComponent(documentId)}',
+        options: await _authorizedOptions(),
+      );
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course source not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<RevisionSheet?> getCourseRevisionSheet({
     required String courseId,
   }) async {

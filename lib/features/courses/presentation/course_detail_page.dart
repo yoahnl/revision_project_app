@@ -141,7 +141,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
             ),
           ),
         _SourcesSection(
-          sources: detail.sources,
+          detail: detail,
           onRefresh: () => ref.invalidate(courseDetailProvider(course.id)),
         ),
       ],
@@ -479,14 +479,18 @@ String _percent(double value) {
   return '${(value.clamp(0, 1) * 100).round()}%';
 }
 
-class _SourcesSection extends StatelessWidget {
-  const _SourcesSection({required this.sources, required this.onRefresh});
+class _SourcesSection extends ConsumerWidget {
+  const _SourcesSection({required this.detail, required this.onRefresh});
 
-  final List<CourseDocument> sources;
+  final CourseDetail detail;
   final VoidCallback onRefresh;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sources = detail.sources;
+    final deleteState = ref.watch(deleteCourseDocumentControllerProvider);
+    final isDeleting = deleteState.isLoading;
+
     if (sources.isEmpty) {
       return const RevisionEmptyState(
         title: 'Aucune source attachée',
@@ -542,6 +546,53 @@ class _SourcesSection extends StatelessWidget {
                     ],
                   ),
                 ),
+                IconButton(
+                  tooltip: 'Supprimer la source ${source.fileName}',
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          final confirmed = await _confirmDeleteSource(
+                            context,
+                            source.fileName,
+                          );
+                          if (!confirmed || !context.mounted) {
+                            return;
+                          }
+
+                          try {
+                            await ref
+                                .read(
+                                  deleteCourseDocumentControllerProvider
+                                      .notifier,
+                                )
+                                .delete(
+                                  detail: detail,
+                                  documentId: source.documentId,
+                                );
+
+                            if (!context.mounted) {
+                              return;
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Source supprimée')),
+                            );
+                          } catch (_) {
+                            if (!context.mounted) {
+                              return;
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Impossible de supprimer cette source.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                  icon: const Icon(Icons.delete_outline_rounded),
+                ),
               ],
             ),
           ),
@@ -550,6 +601,30 @@ class _SourcesSection extends StatelessWidget {
       ],
     );
   }
+}
+
+Future<bool> _confirmDeleteSource(BuildContext context, String fileName) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Supprimer cette source ?'),
+      content: Text(
+        'Le PDF "$fileName" sera retiré de ce cours. Tu pourras le rajouter plus tard si besoin.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Annuler'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Supprimer'),
+        ),
+      ],
+    ),
+  );
+
+  return confirmed ?? false;
 }
 
 bool _isPendingSource(CourseDocument source) {

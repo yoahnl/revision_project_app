@@ -86,6 +86,44 @@ void main() {
     expect(find.textContaining('PDF_PARSE_FAILED'), findsOneWidget);
   });
 
+  testWidgets('course detail deletes a source after confirmation', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'cours.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('cours.pdf'), 400);
+    expect(find.text('cours.pdf'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Supprimer la source cours.pdf'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Supprimer cette source ?'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Supprimer'));
+    await tester.pumpAndSettle();
+
+    expect(repository.deleteDocumentCount, 1);
+    expect(repository.lastDeletedDocumentId, 'document-1');
+    expect(find.text('Source supprimée'), findsOneWidget);
+    expect(find.text('Aucune source attachée'), findsOneWidget);
+  });
+
   testWidgets('course detail displays no-source progress state', (
     tester,
   ) async {

@@ -20,6 +20,11 @@ abstract interface class CoursesRepository {
     required Uint8List bytes,
   });
 
+  Future<void> deleteCourseDocument({
+    required String courseId,
+    required String documentId,
+  });
+
   Future<RevisionSheet?> getCourseRevisionSheet({required String courseId});
 
   Future<RevisionSheet> generateCourseRevisionSheet({required String courseId});

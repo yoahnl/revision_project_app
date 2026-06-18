@@ -20,12 +20,16 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int getRevisionSheetCount = 0;
   int generateRevisionSheetCount = 0;
   int uploadCount = 0;
+  int deleteDocumentCount = 0;
   int startQuickRevisionCount = 0;
   String? lastUploadedCourseId;
   String? lastUploadedFileName;
   Uint8List? lastUploadedBytes;
+  String? lastDeletedCourseId;
+  String? lastDeletedDocumentId;
   String? lastQuickRevisionCourseId;
   Object? uploadError;
+  Object? deleteDocumentError;
   Object? quickRevisionError;
   RevisionSessionResponse? quickRevisionResponse;
   Duration uploadDelay = Duration.zero;
@@ -118,6 +122,39 @@ class InMemoryCoursesRepository implements CoursesRepository {
     );
 
     return document;
+  }
+
+  @override
+  Future<void> deleteCourseDocument({
+    required String courseId,
+    required String documentId,
+  }) async {
+    final error = deleteDocumentError;
+    if (error != null) {
+      throw error;
+    }
+
+    final detail = detailsByCourse[courseId];
+    if (detail == null) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    final remainingSources = detail.sources
+        .where((source) => source.documentId != documentId)
+        .toList(growable: false);
+    if (remainingSources.length == detail.sources.length) {
+      throw const CourseNotFoundException('Course source not found');
+    }
+
+    deleteDocumentCount += 1;
+    lastDeletedCourseId = courseId;
+    lastDeletedDocumentId = documentId;
+    detailsByCourse[courseId] = CourseDetail(
+      course: detail.course,
+      subject: detail.subject,
+      sources: remainingSources,
+      progress: detail.progress,
+    );
   }
 
   @override

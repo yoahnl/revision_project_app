@@ -64,6 +64,11 @@ final uploadCourseDocumentControllerProvider =
       AsyncValue<CourseDocument?>
     >(UploadCourseDocumentController.new);
 
+final deleteCourseDocumentControllerProvider =
+    NotifierProvider<DeleteCourseDocumentController, AsyncValue<void>>(
+      DeleteCourseDocumentController.new,
+    );
+
 final generateCourseRevisionSheetControllerProvider =
     NotifierProvider<
       GenerateCourseRevisionSheetController,
@@ -137,6 +142,35 @@ class UploadCourseDocumentController
     ref.invalidate(coursesProvider(detail.course.subjectId));
 
     return uploaded;
+  }
+}
+
+class DeleteCourseDocumentController extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncData(null);
+
+  Future<void> delete({
+    required CourseDetail detail,
+    required String documentId,
+  }) async {
+    state = const AsyncLoading();
+    final repository = ref.read(coursesRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.deleteCourseDocument(
+        courseId: detail.course.id,
+        documentId: documentId,
+      ),
+    );
+
+    state = result;
+
+    if (result.hasError) {
+      Error.throwWithStackTrace(result.error!, result.stackTrace!);
+    }
+
+    ref.invalidate(courseDetailProvider(detail.course.id));
+    ref.invalidate(courseProgressProvider(detail.course.id));
+    ref.invalidate(coursesProvider(detail.course.subjectId));
   }
 }
 
