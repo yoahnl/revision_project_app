@@ -52,3 +52,12 @@ class CourseRequestException implements Exception {
   @override
   String toString() => message;
 }
+
+class CourseUploadException implements Exception {
+  const CourseUploadException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}

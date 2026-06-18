@@ -84,8 +84,30 @@ class HttpCoursesRepository implements CoursesRepository {
     required String courseId,
     required String fileName,
     required Uint8List bytes,
-  }) {
-    throw UnimplementedError('CORE-03');
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/source/course-pdf',
+        data: FormData.fromMap({
+          'file': MultipartFile.fromBytes(
+            bytes,
+            filename: fileName,
+            contentType: DioMediaType('application', 'pdf'),
+          ),
+        }),
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseDocumentJson(response.data).toDocument();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 400) {
+        throw const CourseUploadException('Invalid course PDF upload');
+      }
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
   }
 
   @override

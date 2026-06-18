@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -49,13 +51,45 @@ class CourseDetailPage extends ConsumerWidget {
   }
 }
 
-class _CourseDetailContent extends StatelessWidget {
+class _CourseDetailContent extends ConsumerStatefulWidget {
   const _CourseDetailContent({required this.detail});
 
   final CourseDetail detail;
 
   @override
+  ConsumerState<_CourseDetailContent> createState() =>
+      _CourseDetailContentState();
+}
+
+class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
+  static const _pollInterval = Duration(seconds: 2);
+  static const _pollTimeout = Duration(minutes: 2);
+
+  Timer? _pollTimer;
+  DateTime? _pollStartedAt;
+  bool _pollTimedOut = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncPolling());
+  }
+
+  @override
+  void didUpdateWidget(covariant _CourseDetailContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncPolling();
+  }
+
+  @override
+  void dispose() {
+    _stopPolling(resetTimeout: false);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final detail = widget.detail;
     final course = detail.course;
 
     return RevisionPageScaffold(
@@ -93,18 +127,70 @@ class _CourseDetailContent extends StatelessWidget {
             ],
           ),
         ),
-        const _CourseActions(),
-        _SourcesSection(sources: detail.sources),
+        _CourseActions(detail: detail),
+        if (_pollTimedOut)
+          RevisionGlassCard(
+            child: Text(
+              'Le traitement continue en arrière-plan. Tu peux revenir plus tard.',
+              style: RevisionTypography.body,
+            ),
+          ),
+        _SourcesSection(
+          sources: detail.sources,
+          onRefresh: () => ref.invalidate(courseDetailProvider(course.id)),
+        ),
       ],
     );
   }
+
+  void _syncPolling() {
+    if (!mounted) {
+      return;
+    }
+
+    final hasPendingSource = widget.detail.sources.any(_isPendingSource);
+
+    if (!hasPendingSource) {
+      _stopPolling(resetTimeout: true);
+      return;
+    }
+
+    _pollStartedAt ??= DateTime.now();
+    _pollTimer ??= Timer.periodic(_pollInterval, (_) {
+      final startedAt = _pollStartedAt;
+      if (startedAt != null &&
+          DateTime.now().difference(startedAt) >= _pollTimeout) {
+        if (mounted) {
+          setState(() => _pollTimedOut = true);
+        }
+        _stopPolling(resetTimeout: false);
+        return;
+      }
+
+      ref.invalidate(courseDetailProvider(widget.detail.course.id));
+    });
+  }
+
+  void _stopPolling({required bool resetTimeout}) {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    _pollStartedAt = null;
+    if (resetTimeout && _pollTimedOut && mounted) {
+      setState(() => _pollTimedOut = false);
+    }
+  }
 }
 
-class _CourseActions extends StatelessWidget {
-  const _CourseActions();
+class _CourseActions extends ConsumerWidget {
+  const _CourseActions({required this.detail});
+
+  final CourseDetail detail;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final uploadState = ref.watch(uploadCourseDocumentControllerProvider);
+    final isUploading = uploadState.isLoading;
+
     return RevisionGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,10 +198,48 @@ class _CourseActions extends StatelessWidget {
           Text('Actions', style: RevisionTypography.sectionTitle),
           const SizedBox(height: RevisionSpacing.m),
           RevisionGradientButton(
-            label: 'Ajouter une source · CORE-03',
+            label: isUploading ? 'Upload en cours...' : 'Ajouter une source',
             icon: Icons.upload_file_rounded,
             expanded: true,
+            onPressed: isUploading
+                ? null
+                : () async {
+                    try {
+                      final uploaded = await ref
+                          .read(uploadCourseDocumentControllerProvider.notifier)
+                          .upload(detail: detail);
+
+                      if (!context.mounted || uploaded == null) {
+                        return;
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Source ajoutée')),
+                      );
+                    } catch (_) {
+                      if (!context.mounted) {
+                        return;
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Impossible d’ajouter cette source PDF.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
           ),
+          if (uploadState.hasError) ...[
+            const SizedBox(height: RevisionSpacing.s),
+            Text(
+              'Upload impossible pour le moment.',
+              style: RevisionTypography.caption.copyWith(
+                color: RevisionColors.red,
+              ),
+            ),
+          ],
           const SizedBox(height: RevisionSpacing.m),
           RevisionGradientButton(
             label: 'Fiche bientôt disponible',
@@ -142,9 +266,10 @@ class _CourseActions extends StatelessWidget {
 }
 
 class _SourcesSection extends StatelessWidget {
-  const _SourcesSection({required this.sources});
+  const _SourcesSection({required this.sources, required this.onRefresh});
 
   final List<CourseDocument> sources;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +277,7 @@ class _SourcesSection extends StatelessWidget {
       return const RevisionEmptyState(
         title: 'Aucune source attachée',
         message:
-            'Ce cours existe réellement, mais l’ajout de PDF sous cours arrive en CORE-03.',
+            'Ajoute un PDF réel pour lancer le traitement documentaire de ce cours.',
         icon: Icons.source_outlined,
       );
     }
@@ -162,6 +287,15 @@ class _SourcesSection extends StatelessWidget {
       children: [
         Text('Sources', style: RevisionTypography.sectionTitle),
         const SizedBox(height: RevisionSpacing.m),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Rafraîchir'),
+          ),
+        ),
+        const SizedBox(height: RevisionSpacing.s),
         for (final source in sources) ...[
           RevisionGlassCard(
             child: Row(
@@ -181,6 +315,16 @@ class _SourcesSection extends StatelessWidget {
                         _statusLabel(source.status),
                         style: RevisionTypography.caption,
                       ),
+                      if (source.status == CourseDocumentStatus.failed &&
+                          source.errorCode != null) ...[
+                        const SizedBox(height: RevisionSpacing.xs),
+                        Text(
+                          'Code erreur : ${source.errorCode}',
+                          style: RevisionTypography.caption.copyWith(
+                            color: RevisionColors.red,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -192,6 +336,11 @@ class _SourcesSection extends StatelessWidget {
       ],
     );
   }
+}
+
+bool _isPendingSource(CourseDocument source) {
+  return source.status == CourseDocumentStatus.uploaded ||
+      source.status == CourseDocumentStatus.processing;
 }
 
 class _InfoPill extends StatelessWidget {

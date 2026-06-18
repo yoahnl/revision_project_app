@@ -115,6 +115,78 @@ void main() {
     );
   });
 
+  test('uploads a course PDF as multipart without subjectId', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(sourceJsonWith(status: 'UPLOADED')),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final source = await repository.uploadCoursePdf(
+      courseId: 'course-1',
+      fileName: 'cours.pdf',
+      bytes: Uint8List.fromList('%PDF-1.7'.codeUnits),
+    );
+
+    expect(source.status, CourseDocumentStatus.uploaded);
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(adapter.lastOptions?.path, '/courses/course-1/source/course-pdf');
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+
+    final formData = adapter.lastOptions?.data as FormData;
+    expect(
+      formData.fields.map((field) => field.key),
+      isNot(contains('subjectId')),
+    );
+    expect(
+      formData.fields.map((field) => field.key),
+      isNot(contains('studentId')),
+    );
+    expect(formData.files.single.key, 'file');
+    expect(formData.files.single.value.filename, 'cours.pdf');
+  });
+
+  test('maps upload 400 and 404 to typed course exceptions', () async {
+    final badRequest = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({'message': 'Invalid file'}, statusCode: 400),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      badRequest.uploadCoursePdf(
+        courseId: 'course-1',
+        fileName: 'cours.txt',
+        bytes: Uint8List.fromList([1, 2, 3]),
+      ),
+      throwsA(isA<CourseUploadException>()),
+    );
+
+    final notFound = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({'message': 'Course not found'}, statusCode: 404),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      notFound.uploadCoursePdf(
+        courseId: 'missing',
+        fileName: 'cours.pdf',
+        bytes: Uint8List.fromList([1, 2, 3]),
+      ),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
   test('rejects unknown source status and invalid shapes', () async {
     final invalidStatus = sourceJson()..['status'] = 'ARCHIVED';
     final repository = HttpCoursesRepository(
@@ -158,13 +230,17 @@ Map<String, Object?> courseJson({
 }
 
 Map<String, Object?> sourceJson() {
+  return sourceJsonWith(status: 'READY');
+}
+
+Map<String, Object?> sourceJsonWith({required String status}) {
   return {
     'id': 'document-1',
     'courseId': 'course-1',
     'documentId': 'document-1',
     'fileName': 'cours.pdf',
     'kind': 'COURSE_PDF',
-    'status': 'READY',
+    'status': status,
     'errorCode': null,
     'createdAt': '2026-06-18T10:00:00.000Z',
     'updatedAt': '2026-06-18T10:00:00.000Z',

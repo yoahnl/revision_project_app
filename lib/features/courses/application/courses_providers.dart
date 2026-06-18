@@ -4,6 +4,7 @@ import '../../../app/di/providers.dart';
 import '../data/http_courses_repository.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
+import 'course_pdf_picker.dart';
 
 final coursesRepositoryProvider = Provider<CoursesRepository>((ref) {
   final dio = ref.read(dioProvider);
@@ -30,6 +31,12 @@ final createCourseControllerProvider =
       CreateCourseController.new,
     );
 
+final uploadCourseDocumentControllerProvider =
+    NotifierProvider<
+      UploadCourseDocumentController,
+      AsyncValue<CourseDocument?>
+    >(UploadCourseDocumentController.new);
+
 class CreateCourseController extends Notifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncData(null);
@@ -54,5 +61,42 @@ class CreateCourseController extends Notifier<AsyncValue<void>> {
     ref.invalidate(courseDetailProvider(course.id));
 
     return course;
+  }
+}
+
+class UploadCourseDocumentController
+    extends Notifier<AsyncValue<CourseDocument?>> {
+  @override
+  AsyncValue<CourseDocument?> build() => const AsyncData(null);
+
+  Future<CourseDocument?> upload({required CourseDetail detail}) async {
+    final picked = await ref.read(coursePdfPickerProvider).pickPdf();
+
+    if (picked == null) {
+      state = const AsyncData(null);
+      return null;
+    }
+
+    state = const AsyncLoading();
+    final repository = ref.read(coursesRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.uploadCoursePdf(
+        courseId: detail.course.id,
+        fileName: picked.fileName,
+        bytes: picked.bytes,
+      ),
+    );
+
+    state = result.whenData<CourseDocument?>((document) => document);
+
+    if (result.hasError) {
+      Error.throwWithStackTrace(result.error!, result.stackTrace!);
+    }
+
+    final uploaded = result.requireValue;
+    ref.invalidate(courseDetailProvider(detail.course.id));
+    ref.invalidate(coursesProvider(detail.course.subjectId));
+
+    return uploaded;
   }
 }

@@ -7,6 +7,13 @@ class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, List<CourseListItem>> coursesBySubject = {};
   final Map<String, CourseDetail> detailsByCourse = {};
   int createCount = 0;
+  int getCourseCount = 0;
+  int uploadCount = 0;
+  String? lastUploadedCourseId;
+  String? lastUploadedFileName;
+  Uint8List? lastUploadedBytes;
+  Object? uploadError;
+  Duration uploadDelay = Duration.zero;
 
   @override
   Future<List<CourseListItem>> listCourses({required String subjectId}) async {
@@ -15,6 +22,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
 
   @override
   Future<CourseDetail> getCourse({required String courseId}) async {
+    getCourseCount += 1;
     final detail = detailsByCourse[courseId];
 
     if (detail == null) {
@@ -57,8 +65,43 @@ class InMemoryCoursesRepository implements CoursesRepository {
     required String courseId,
     required String fileName,
     required Uint8List bytes,
-  }) {
-    throw UnimplementedError('CORE-03');
+  }) async {
+    if (uploadDelay > Duration.zero) {
+      await Future<void>.delayed(uploadDelay);
+    }
+
+    final error = uploadError;
+    if (error != null) {
+      throw error;
+    }
+
+    final detail = detailsByCourse[courseId];
+    if (detail == null) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    uploadCount += 1;
+    lastUploadedCourseId = courseId;
+    lastUploadedFileName = fileName;
+    lastUploadedBytes = bytes;
+
+    final document = CourseDocument(
+      id: 'document-$uploadCount',
+      courseId: courseId,
+      documentId: 'document-$uploadCount',
+      fileName: fileName,
+      status: CourseDocumentStatus.uploaded,
+      createdAt: DateTime.utc(2026, 6, 18, 12),
+      updatedAt: DateTime.utc(2026, 6, 18, 12),
+    );
+    detailsByCourse[courseId] = CourseDetail(
+      course: detail.course,
+      subject: detail.subject,
+      sources: [...detail.sources, document],
+      progress: detail.progress,
+    );
+
+    return document;
   }
 
   @override
