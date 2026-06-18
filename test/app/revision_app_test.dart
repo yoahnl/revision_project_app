@@ -9,9 +9,11 @@ import 'package:revision_app/features/auth/application/auth_controller.dart';
 import 'package:revision_app/features/auth/domain/auth_session.dart';
 import 'package:revision_app/features/auth/domain/authenticated_user.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
+import 'package:revision_app/features/mvp/application/mvp_study_controller.dart';
 import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
 import 'package:revision_app/features/today/application/today_controller.dart';
+import 'package:revision_app/presentation/design_system/components/revision_mvp_components.dart';
 import 'package:revision_app/presentation/widgets/revision_navigation.dart';
 
 import '../fakes/in_memory_activity_api.dart';
@@ -75,132 +77,96 @@ class FakeKvStorage implements KvStoragePort {
 }
 
 void main() {
-  testWidgets('shows the subject home as the first app screen', (tester) async {
+  setUp(() {
+    MvpStudyController.instance.resetForTests();
+  });
+
+  testWidgets('shows the MVP home as the first app screen', (tester) async {
     final testApp = _createTestApp();
 
     await tester.pumpWidget(testApp.widget);
     await tester.pumpAndSettle();
 
-    expect(find.text('Tes matieres'), findsOneWidget);
-    expect(find.text('Ajouter une matiere'), findsOneWidget);
+    expect(find.text('Math'), findsWidgets);
+    expect(find.text('Reprendre le cours'), findsOneWidget);
+    expect(find.text('Loi normale'), findsWidgets);
+    expect(find.text('Progrès'), findsOneWidget);
+    expect(find.text('Révisions'), findsOneWidget);
+    expect(find.text('Sources'), findsOneWidget);
     expect(find.byType(RevisionBottomNavigation), findsOneWidget);
     expect(testApp.authController.isSignedIn, isTrue);
   });
 
-  testWidgets('changes route when tapping bottom navigation', (tester) async {
-    await tester.pumpWidget(_createTestApp().widget);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Aujourd hui'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Plan du jour'), findsOneWidget);
-  });
-
-  testWidgets('keeps tab state when switching between destinations', (
-    tester,
-  ) async {
-    final testApp = _createTestApp();
-
-    await tester.pumpWidget(testApp.widget);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Aujourd hui'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Plan du jour'), findsOneWidget);
-    expect(testApp.todayRepository.getTodayPlanCalls, 1);
-
-    await tester.tap(find.text('Activites'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Aucune activite selectionnee'), findsOneWidget);
-
-    await tester.tap(find.text('Aujourd hui'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Plan du jour'), findsOneWidget);
-    expect(testApp.todayRepository.getTodayPlanCalls, 1);
-  });
-
-  testWidgets('opens onboarding from the add subject action', (tester) async {
-    await tester.pumpWidget(_createTestApp().widget);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Ajouter une matiere'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Prepare ton premier plan'), findsOneWidget);
-    expect(find.text('Matiere'), findsOneWidget);
-    expect(find.text('Minutes par semaine'), findsOneWidget);
-    expect(find.text('Creer mon plan'), findsOneWidget);
-  });
-
-  testWidgets('creates a subject from onboarding and returns home', (
-    tester,
-  ) async {
-    final testApp = _createTestApp();
-
-    await tester.pumpWidget(testApp.widget);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Ajouter une matiere'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Anatomie');
-    await tester.enterText(find.byType(TextField).last, '180');
-    await tester.tap(find.text('Creer mon plan'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Anatomie'), findsOneWidget);
-    expect(find.text('Priorite 4'), findsOneWidget);
-    expect(testApp.revisionGoalsRepository.goals.single.weeklyMinutes, 180);
-  });
-
-  testWidgets('keeps the home tab selected on subject detail and resets it', (
+  testWidgets('changes MVP routes when tapping bottom navigation', (
     tester,
   ) async {
     await tester.pumpWidget(_createTestApp().widget);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Ajouter une matiere'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Droit');
-    await tester.enterText(find.byType(TextField).last, '120');
-    await tester.tap(find.text('Creer mon plan'));
+    await tester.tap(find.text('Progrès'));
     await tester.pumpAndSettle();
 
-    final navigationBar = tester.widget<RevisionBottomNavigation>(
-      find.byType(RevisionBottomNavigation),
-    );
-    expect(navigationBar.selectedIndex, 0);
-    expect(find.text('Droit'), findsOneWidget);
+    expect(find.text('Ta progression en un coup d’œil'), findsOneWidget);
 
-    await tester.tap(find.text('Accueil'));
+    await tester.tap(find.text('Révisions'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Tes matieres'), findsOneWidget);
-    expect(find.text('Droit'), findsOneWidget);
+    expect(find.text('Choisis ton mode de travail'), findsOneWidget);
+
+    await tester.tap(find.text('Sources'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fichiers attachés aux cours de Math'), findsOneWidget);
   });
 
-  testWidgets('starts an activity with the selected subject id', (
-    tester,
-  ) async {
-    final testApp = _createTestApp();
-
-    await tester.pumpWidget(testApp.widget);
+  testWidgets('subject switcher changes active MVP subject', (tester) async {
+    await tester.pumpWidget(_createTestApp().widget);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Ajouter une matiere'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Constitutionnel');
-    await tester.enterText(find.byType(TextField).last, '90');
-    await tester.tap(find.text('Creer mon plan'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Lancer un diagnostic'));
+    await tester.tap(find.text('Math').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('Question test'), findsOneWidget);
-    expect(testApp.activityApi.startedSubjectId, 'subject-1');
+    await tester.tap(find.text('Philosophie').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kant'), findsWidgets);
+    expect(find.text('Tes cours de Philosophie'), findsOneWidget);
+  });
+
+  testWidgets('course flow opens detail, session and result', (tester) async {
+    await tester.pumpWidget(_createTestApp().widget);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(RevisionCourseCard, 'Loi normale'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Révision rapide'), findsOneWidget);
+
+    await tester.tap(find.text('Révision rapide'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Question 1 sur 2'), findsOneWidget);
+    await tester.tap(find.text('0,6826'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -280));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Valider'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bonne réponse, on continue.'), findsOneWidget);
+    await tester.tap(find.text('Continuer'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, 420));
+    await tester.pumpAndSettle();
+    expect(find.text('Question 2 sur 2'), findsOneWidget);
+    await tester.tap(find.text('Standardiser avec Z'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -280));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Valider'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continuer'));
+    await tester.pumpAndSettle();
+    expect(find.text('Belle progression !'), findsOneWidget);
   });
 
   testWidgets('uses route-driven navigation rail on wide layouts', (
@@ -218,11 +184,11 @@ void main() {
     expect(find.byType(RevisionNavigationRail), findsOneWidget);
     expect(find.byType(RevisionBottomNavigation), findsNothing);
 
-    await tester.tap(find.text('Activites'));
+    await tester.tap(find.text('Révisions'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Activites'), findsNWidgets(2));
-    expect(find.text('Aucune activite selectionnee'), findsOneWidget);
+    expect(find.text('Révisions'), findsWidgets);
+    expect(find.text('Choisis ton mode de travail'), findsOneWidget);
   });
 
   testWidgets('redirects signed-out users to the sign-in page', (tester) async {

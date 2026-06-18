@@ -88,10 +88,7 @@ void main() {
       final router = container.read(appRouterProvider);
 
       expect(router, isA<GoRouter>());
-      expect(
-        router.routeInformationProvider.value.uri.path,
-        AppRoutes.subjects,
-      );
+      expect(router.routeInformationProvider.value.uri.path, AppRoutes.home);
     },
   );
 

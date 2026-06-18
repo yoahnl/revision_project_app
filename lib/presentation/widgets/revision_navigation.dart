@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../design_system/tokens/revision_colors.dart';
 import 'revision_panel.dart';
 
 class RevisionNavigationDestination {
@@ -116,7 +117,7 @@ class _NavigationItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final activeColor = theme.colorScheme.primary;
+    const activeColor = RevisionColors.blue;
     final inactiveColor = theme.colorScheme.onSurface.withValues(alpha: 0.58);
     final foreground = isSelected ? activeColor : inactiveColor;
 

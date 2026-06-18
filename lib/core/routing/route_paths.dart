@@ -1,6 +1,10 @@
 import '../../app/router/app_routes.dart';
 
 const String subjectsRoutePath = AppRoutes.subjects;
+const String homeRoutePath = AppRoutes.home;
+const String progressRoutePath = AppRoutes.progress;
+const String revisionsRoutePath = AppRoutes.revisions;
+const String sourcesRoutePath = AppRoutes.sources;
 const String todayRoutePath = AppRoutes.today;
 const String activitiesRoutePath = AppRoutes.activities;
 const String revisionSessionRoutePath = AppRoutes.revisionSessionPath;
@@ -14,6 +18,14 @@ const String documentDetailRoutePattern =
 
 String subjectDetailRoutePath(String subjectId) {
   return AppRoutes.subjectDetail(subjectId);
+}
+
+String courseRoutePath(String courseId) {
+  return AppRoutes.course(courseId);
+}
+
+String courseSheetRoutePath(String courseId) {
+  return AppRoutes.courseSheet(courseId);
 }
 
 String documentDetailRoutePath({

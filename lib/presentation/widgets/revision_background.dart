@@ -16,10 +16,14 @@ class RevisionBackground extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.backgroundDark : AppColors.background,
         gradient: isDark
-            ? const RadialGradient(
-                center: Alignment.bottomCenter,
-                radius: 1.2,
-                colors: [AppColors.backgroundDarkEnd, AppColors.backgroundDark],
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF020A12),
+                  Color(0xFF06182A),
+                  Color(0xFF0B1028),
+                ],
               )
             : const LinearGradient(
                 begin: Alignment.topLeft,

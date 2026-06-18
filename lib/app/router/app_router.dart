@@ -5,6 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../features/activities/application/activity_controller.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/documents/application/documents_controller.dart';
+import '../../features/mvp/presentation/mvp_course_detail_page.dart';
+import '../../features/mvp/presentation/mvp_course_sheet_page.dart';
+import '../../features/mvp/presentation/mvp_home_page.dart';
+import '../../features/mvp/presentation/mvp_progress_page.dart';
+import '../../features/mvp/presentation/mvp_revision_session_page.dart';
+import '../../features/mvp/presentation/mvp_revisions_page.dart';
+import '../../features/mvp/presentation/mvp_session_result_page.dart';
+import '../../features/mvp/presentation/mvp_sources_page.dart';
 import '../../features/onboarding/application/revision_goals_controller.dart';
 import '../../features/revision_sessions/application/revision_session_controller.dart';
 import '../../features/revision_sessions/data/revision_sessions_api.dart';
@@ -51,7 +59,7 @@ GoRouter createAppRouter({
   VoidCallback? onSubjectCreated,
 }) {
   return GoRouter(
-    initialLocation: AppRoutes.subjects,
+    initialLocation: AppRoutes.home,
     refreshListenable: authController,
     redirect: (context, state) {
       return executeRevisionRedirect(authController, state);
@@ -59,7 +67,7 @@ GoRouter createAppRouter({
     routes: [
       GoRoute(
         path: AppRoutes.root,
-        redirect: (context, state) => AppRoutes.subjects,
+        redirect: (context, state) => AppRoutes.home,
       ),
       GoRoute(
         path: AppRoutes.signIn,
@@ -80,6 +88,22 @@ GoRouter createAppRouter({
         branches: [
           StatefulShellBranch(
             routes: [
+              GoRoute(
+                path: AppRoutes.home,
+                builder: (context, state) => const MvpHomePage(),
+              ),
+              GoRoute(
+                path: AppRoutes.coursePath,
+                builder: (context, state) => MvpCourseDetailPage(
+                  courseId: state.pathParameters['courseId'] ?? '',
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.courseSheetPath,
+                builder: (context, state) => MvpCourseSheetPage(
+                  courseId: state.pathParameters['courseId'] ?? '',
+                ),
+              ),
               GoRoute(
                 path: AppRoutes.subjects,
                 builder: (context, state) => const SubjectsHomePage(),
@@ -108,6 +132,10 @@ GoRouter createAppRouter({
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: AppRoutes.progress,
+                builder: (context, state) => const MvpProgressPage(),
+              ),
+              GoRoute(
                 path: AppRoutes.today,
                 builder: (context, state) => const TodayPage(),
               ),
@@ -115,6 +143,26 @@ GoRouter createAppRouter({
           ),
           StatefulShellBranch(
             routes: [
+              GoRoute(
+                path: AppRoutes.revisions,
+                builder: (context, state) => const MvpRevisionsPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.revisionSessionV2Path,
+                builder: (context, state) => MvpRevisionSessionPage(
+                  sessionId: state.pathParameters['sessionId'] ?? '',
+                  courseId: state.uri.queryParameters['courseId'],
+                  mode: state.uri.queryParameters['mode'],
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.revisionSessionResultV2Path,
+                builder: (context, state) => MvpSessionResultPage(
+                  sessionId: state.pathParameters['sessionId'] ?? '',
+                  courseId: state.uri.queryParameters['courseId'],
+                  mode: state.uri.queryParameters['mode'],
+                ),
+              ),
               GoRoute(
                 path: AppRoutes.activities,
                 builder: (context, state) => ActivitiesPage(
@@ -146,6 +194,14 @@ GoRouter createAppRouter({
                   documentId: state.uri.queryParameters['documentId'],
                   knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
                 ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.sources,
+                builder: (context, state) => const MvpSourcesPage(),
               ),
             ],
           ),
@@ -189,7 +245,7 @@ String? executeRevisionRedirect(
   }
 
   if (isSigningIn) {
-    return AppRoutes.subjects;
+    return AppRoutes.home;
   }
 
   return null;

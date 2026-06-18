@@ -88,22 +88,28 @@ class _WideHomeScaffold extends StatelessWidget {
 
 const List<_RevisionDestination> _destinations = [
   _RevisionDestination(
-    path: subjectsRoutePath,
+    path: homeRoutePath,
     label: 'Accueil',
     icon: Icons.home_outlined,
     selectedIcon: Icons.home,
   ),
   _RevisionDestination(
-    path: todayRoutePath,
-    label: 'Aujourd hui',
-    icon: Icons.today_outlined,
-    selectedIcon: Icons.today,
+    path: progressRoutePath,
+    label: 'Progrès',
+    icon: Icons.trending_up_rounded,
+    selectedIcon: Icons.trending_up_rounded,
   ),
   _RevisionDestination(
-    path: activitiesRoutePath,
-    label: 'Activites',
-    icon: Icons.local_activity_outlined,
-    selectedIcon: Icons.local_activity,
+    path: revisionsRoutePath,
+    label: 'Révisions',
+    icon: Icons.track_changes_rounded,
+    selectedIcon: Icons.track_changes_rounded,
+  ),
+  _RevisionDestination(
+    path: sourcesRoutePath,
+    label: 'Sources',
+    icon: Icons.description_outlined,
+    selectedIcon: Icons.description_rounded,
   ),
   _RevisionDestination(
     path: profileRoutePath,
