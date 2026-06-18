@@ -249,6 +249,19 @@ void main() {
         completion(isNull),
       );
 
+      final missingCourseRepository = HttpCoursesRepository(
+        dio: Dio()
+          ..httpClientAdapter = CapturingHttpClientAdapter(
+            jsonResponse({'message': 'Course not found'}, statusCode: 404),
+          ),
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await expectLater(
+        missingCourseRepository.getCourseRevisionSheet(courseId: 'course-1'),
+        throwsA(isA<CourseNotFoundException>()),
+      );
+
       final notReadyRepository = HttpCoursesRepository(
         dio: Dio()
           ..httpClientAdapter = CapturingHttpClientAdapter(

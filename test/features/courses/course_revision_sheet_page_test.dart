@@ -61,6 +61,21 @@ void main() {
     expect(find.text('Aucune source prête'), findsOneWidget);
     expect(find.textContaining('traitée avec succès'), findsOneWidget);
   });
+
+  testWidgets('course revision sheet page shows course not found errors', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..revisionSheetErrorsByCourse['course-1'] = const CourseNotFoundException(
+        'Course not found',
+      );
+
+    await tester.pumpWidget(testApp(repository));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cours introuvable'), findsOneWidget);
+    expect(find.text('Fiche non générée'), findsNothing);
+  });
 }
 
 Widget testApp(InMemoryCoursesRepository repository) {

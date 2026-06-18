@@ -125,7 +125,14 @@ class HttpCoursesRepository implements CoursesRepository {
       return RevisionSheetJson(response.data).toRevisionSheet();
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
-        return null;
+        final message = _responseMessage(error);
+        if (message == 'Revision sheet not found') {
+          return null;
+        }
+
+        // CORE-04-bis: an ambiguous 404 is safer as a missing course than as
+        // a missing sheet, otherwise a deleted/unknown course looks generatable.
+        throw const CourseNotFoundException('Course not found');
       }
       if (error.response?.statusCode == 409) {
         throw const CourseRevisionSheetNotReadyException(
@@ -173,6 +180,18 @@ class HttpCoursesRepository implements CoursesRepository {
     }
 
     return Options(headers: {'Authorization': 'Bearer $token'});
+  }
+
+  String? _responseMessage(DioException error) {
+    final data = error.response?.data;
+    if (data is Map<String, Object?>) {
+      final message = data['message'];
+      if (message is String) {
+        return message;
+      }
+    }
+
+    return null;
   }
 }
 
