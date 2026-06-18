@@ -6,6 +6,7 @@ import 'package:revision_app/features/courses/application/course_pdf_picker.dart
 import 'package:revision_app/features/courses/application/courses_providers.dart';
 import 'package:revision_app/features/courses/domain/course_models.dart';
 import 'package:revision_app/features/courses/domain/courses_repository.dart';
+import 'package:revision_app/features/documents/domain/revision_document.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 
@@ -156,6 +157,77 @@ void main() {
       true,
     );
   });
+
+  test(
+    'courseRevisionSheetProvider loads an existing course-level sheet',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..revisionSheetsByCourse['course-1'] = revisionSheet();
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      final sheet = await container.read(
+        courseRevisionSheetProvider('course-1').future,
+      );
+
+      expect(sheet?.title, 'Fiche de cours');
+      expect(repository.getRevisionSheetCount, 1);
+    },
+  );
+
+  test(
+    'generateCourseRevisionSheetController generates and invalidates',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..revisionSheetsByCourse['course-1'] = revisionSheet();
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(courseRevisionSheetProvider('course-1').future);
+
+      final sheet = await container
+          .read(generateCourseRevisionSheetControllerProvider.notifier)
+          .generate(courseId: 'course-1');
+
+      expect(sheet.title, 'Fiche de cours');
+      expect(repository.generateRevisionSheetCount, 1);
+      expect(
+        await container.read(courseRevisionSheetProvider('course-1').future),
+        isNotNull,
+      );
+    },
+  );
+
+  test(
+    'generateCourseRevisionSheetController exposes not-ready errors',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..revisionSheetErrorsByCourse['course-1'] =
+            const CourseRevisionSheetNotReadyException(
+              'Course has no ready source',
+            );
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await expectLater(
+        container
+            .read(generateCourseRevisionSheetControllerProvider.notifier)
+            .generate(courseId: 'course-1'),
+        throwsA(isA<CourseRevisionSheetNotReadyException>()),
+      );
+
+      expect(
+        container.read(generateCourseRevisionSheetControllerProvider).hasError,
+        true,
+      );
+    },
+  );
 }
 
 CourseDetail courseDetail() {
@@ -168,6 +240,31 @@ CourseDetail courseDetail() {
     course: course,
     subject: CourseSubjectSummary(id: 'subject-1', name: 'Droit'),
     sources: [],
+  );
+}
+
+RevisionSheet revisionSheet() {
+  return const RevisionSheet(
+    id: 'sheet-1',
+    documentId: 'document-1',
+    subjectId: 'subject-1',
+    status: 'READY',
+    title: 'Fiche de cours',
+    introduction: 'Introduction',
+    sections: [
+      RevisionSheetSection(
+        id: 'section-1',
+        displayOrder: 0,
+        title: 'Institutions',
+        content: 'Le Parlement contrôle le Gouvernement.',
+        sources: [],
+      ),
+    ],
+    keyPoints: ['Point clé'],
+    commonMistakes: ['Erreur fréquente'],
+    mustKnow: ['À savoir'],
+    practiceSuggestions: ['S’entraîner'],
+    errorCode: null,
   );
 }
 

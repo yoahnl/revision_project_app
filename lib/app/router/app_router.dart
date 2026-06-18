@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/activities/application/activity_controller.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/courses/presentation/course_detail_page.dart';
-import '../../features/courses/presentation/course_pending_page.dart';
+import '../../features/courses/presentation/course_revision_sheet_page.dart';
 import '../../features/courses/presentation/courses_home_page.dart';
 import '../../features/courses/presentation/progress_pending_page.dart';
 import '../../features/courses/presentation/revision_session_pending_page.dart';
@@ -100,10 +100,8 @@ GoRouter createAppRouter({
               ),
               GoRoute(
                 path: AppRoutes.courseSheetPath,
-                builder: (context, state) => const CoursePendingPage(
-                  title: 'Fiche de cours indisponible',
-                  message:
-                      'La fiche Core sera basée sur la source principale après l’intégration Course.',
+                builder: (context, state) => CourseRevisionSheetPage(
+                  courseId: state.pathParameters['courseId'] ?? '',
                 ),
               ),
               GoRoute(

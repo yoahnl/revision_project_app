@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../application/documents_controller.dart';
 import '../domain/revision_document.dart';
+import 'revision_sheet_json.dart';
 
 class HttpDocumentsApi implements DocumentsApi {
   HttpDocumentsApi({
@@ -154,7 +155,7 @@ class HttpDocumentsApi implements DocumentsApi {
         ),
       );
 
-      return _RevisionSheetJson(response.data).toRevisionSheet();
+      return RevisionSheetJson(response.data).toRevisionSheet();
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         return null;
@@ -175,7 +176,7 @@ class HttpDocumentsApi implements DocumentsApi {
         ),
       );
 
-      return _RevisionSheetJson(response.data).toRevisionSheet();
+      return RevisionSheetJson(response.data).toRevisionSheet();
     } on DioException catch (error) {
       _throwArtifactRequestException(error);
     }
@@ -399,109 +400,6 @@ class _DocumentSummaryJson {
       keyPoints: _stringList(keyPoints, 'Invalid document summary response'),
       limits: limits as String?,
       errorCode: errorCode as String?,
-      sources: sources
-          .map((source) => _DocumentArtifactSourceJson(source).toSource())
-          .toList(growable: false),
-    );
-  }
-}
-
-class _RevisionSheetJson {
-  const _RevisionSheetJson(this.value);
-
-  final Object? value;
-
-  RevisionSheet toRevisionSheet() {
-    final json = value;
-
-    if (json is! Map<String, Object?>) {
-      throw const FormatException('Invalid revision sheet response');
-    }
-
-    final id = json['id'];
-    final documentId = json['documentId'];
-    final subjectId = json['subjectId'];
-    final status = json['status'];
-    final title = json['title'];
-    final introduction = json['introduction'];
-    final sections = json['sections'];
-    final keyPoints = json['keyPoints'];
-    final commonMistakes = json['commonMistakes'];
-    final mustKnow = json['mustKnow'];
-    final practiceSuggestions = json['practiceSuggestions'];
-    final errorCode = json['errorCode'];
-
-    if (id is! String ||
-        documentId is! String ||
-        subjectId is! String ||
-        status is! String ||
-        title is! String ||
-        (introduction != null && introduction is! String) ||
-        sections is! List ||
-        keyPoints is! List ||
-        commonMistakes is! List ||
-        mustKnow is! List ||
-        practiceSuggestions is! List ||
-        (errorCode != null && errorCode is! String)) {
-      throw const FormatException('Invalid revision sheet response');
-    }
-
-    return RevisionSheet(
-      id: id,
-      documentId: documentId,
-      subjectId: subjectId,
-      status: status,
-      title: title,
-      introduction: introduction as String?,
-      sections: sections
-          .map((section) => _RevisionSheetSectionJson(section).toSection())
-          .toList(growable: false),
-      keyPoints: _stringList(keyPoints, 'Invalid revision sheet response'),
-      commonMistakes: _stringList(
-        commonMistakes,
-        'Invalid revision sheet response',
-      ),
-      mustKnow: _stringList(mustKnow, 'Invalid revision sheet response'),
-      practiceSuggestions: _stringList(
-        practiceSuggestions,
-        'Invalid revision sheet response',
-      ),
-      errorCode: errorCode as String?,
-    );
-  }
-}
-
-class _RevisionSheetSectionJson {
-  const _RevisionSheetSectionJson(this.value);
-
-  final Object? value;
-
-  RevisionSheetSection toSection() {
-    final json = value;
-
-    if (json is! Map<String, Object?>) {
-      throw const FormatException('Invalid revision sheet section response');
-    }
-
-    final id = json['id'];
-    final displayOrder = json['displayOrder'];
-    final title = json['title'];
-    final content = json['content'];
-    final sources = json['sources'];
-
-    if (id is! String ||
-        displayOrder is! int ||
-        title is! String ||
-        content is! String ||
-        sources is! List) {
-      throw const FormatException('Invalid revision sheet section response');
-    }
-
-    return RevisionSheetSection(
-      id: id,
-      displayOrder: displayOrder,
-      title: title,
-      content: content,
       sources: sources
           .map((source) => _DocumentArtifactSourceJson(source).toSource())
           .toList(growable: false),

@@ -6,7 +6,7 @@ class MvpStudyController extends ChangeNotifier {
   MvpStudyController._();
 
   // Adapter temporaire front-only : il donne une experience Course visible
-  // pendant que le modele backend Course/CourseSource est implemente.
+  // pendant que le modele backend Course + Document.courseId est implemente.
   static final MvpStudyController instance = MvpStudyController._();
 
   String _activeSubjectId = mvpSubjects.first.id;

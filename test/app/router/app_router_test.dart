@@ -11,6 +11,7 @@ import 'package:revision_app/features/auth/domain/auth_session.dart';
 import 'package:revision_app/features/auth/domain/authenticated_user.dart';
 import 'package:revision_app/features/courses/application/courses_providers.dart';
 import 'package:revision_app/features/courses/domain/course_models.dart';
+import 'package:revision_app/features/documents/domain/revision_document.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
@@ -234,6 +235,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('cours.pdf'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
+  });
+
+  testWidgets('course sheet route shows the real course-level revision sheet', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    harness.coursesRepository.revisionSheetsByCourse['course-1'] =
+        _revisionSheet();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    harness.router.go(AppRoutes.courseSheet('course-1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fiche de cours'), findsWidgets);
+    expect(find.text('Institutions'), findsOneWidget);
+    expect(find.text('Le Parlement contrôle le Gouvernement.'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
+    expect(find.text('78%'), findsNothing);
   });
 
   testWidgets('revision session result route hides static MVP score', (
@@ -562,6 +582,31 @@ const _signedInSession = AuthSession.signedIn(
     displayName: 'Karim',
   ),
 );
+
+RevisionSheet _revisionSheet() {
+  return const RevisionSheet(
+    id: 'sheet-1',
+    documentId: 'document-1',
+    subjectId: 'subject-1',
+    status: 'READY',
+    title: 'Fiche de cours',
+    introduction: 'Introduction',
+    sections: [
+      RevisionSheetSection(
+        id: 'section-1',
+        displayOrder: 0,
+        title: 'Institutions',
+        content: 'Le Parlement contrôle le Gouvernement.',
+        sources: [],
+      ),
+    ],
+    keyPoints: ['Point clé'],
+    commonMistakes: ['Erreur fréquente'],
+    mustKnow: ['À savoir'],
+    practiceSuggestions: ['S’entraîner'],
+    errorCode: null,
+  );
+}
 
 TodayPlan _todayPlanWithRichClosedAction() {
   return TodayPlan(

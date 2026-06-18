@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/di/providers.dart';
+import '../../documents/domain/revision_document.dart';
 import '../data/http_courses_repository.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
@@ -26,6 +27,13 @@ final courseDetailProvider = FutureProvider.family<CourseDetail, String>((
   return ref.read(coursesRepositoryProvider).getCourse(courseId: courseId);
 });
 
+final courseRevisionSheetProvider =
+    FutureProvider.family<RevisionSheet?, String>((ref, courseId) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getCourseRevisionSheet(courseId: courseId);
+    });
+
 final createCourseControllerProvider =
     NotifierProvider<CreateCourseController, AsyncValue<void>>(
       CreateCourseController.new,
@@ -36,6 +44,12 @@ final uploadCourseDocumentControllerProvider =
       UploadCourseDocumentController,
       AsyncValue<CourseDocument?>
     >(UploadCourseDocumentController.new);
+
+final generateCourseRevisionSheetControllerProvider =
+    NotifierProvider<
+      GenerateCourseRevisionSheetController,
+      AsyncValue<RevisionSheet?>
+    >(GenerateCourseRevisionSheetController.new);
 
 class CreateCourseController extends Notifier<AsyncValue<void>> {
   @override
@@ -98,5 +112,30 @@ class UploadCourseDocumentController
     ref.invalidate(coursesProvider(detail.course.subjectId));
 
     return uploaded;
+  }
+}
+
+class GenerateCourseRevisionSheetController
+    extends Notifier<AsyncValue<RevisionSheet?>> {
+  @override
+  AsyncValue<RevisionSheet?> build() => const AsyncData(null);
+
+  Future<RevisionSheet> generate({required String courseId}) async {
+    state = const AsyncLoading();
+    final repository = ref.read(coursesRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.generateCourseRevisionSheet(courseId: courseId),
+    );
+
+    state = result.whenData<RevisionSheet?>((sheet) => sheet);
+
+    if (result.hasError) {
+      Error.throwWithStackTrace(result.error!, result.stackTrace!);
+    }
+
+    final sheet = result.requireValue;
+    ref.invalidate(courseRevisionSheetProvider(courseId));
+
+    return sheet;
   }
 }

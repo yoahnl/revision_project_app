@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
+import '../../documents/data/revision_sheet_json.dart';
+import '../../documents/domain/revision_document.dart';
 
 class HttpCoursesRepository implements CoursesRepository {
   HttpCoursesRepository({
@@ -105,6 +107,54 @@ class HttpCoursesRepository implements CoursesRepository {
       }
       if (error.response?.statusCode == 404) {
         throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RevisionSheet?> getCourseRevisionSheet({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/revision-sheet',
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSheetJson(response.data).toRevisionSheet();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        return null;
+      }
+      if (error.response?.statusCode == 409) {
+        throw const CourseRevisionSheetNotReadyException(
+          'Course has no ready source',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RevisionSheet> generateCourseRevisionSheet({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/revision-sheet',
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSheetJson(response.data).toRevisionSheet();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      if (error.response?.statusCode == 409) {
+        throw const CourseRevisionSheetNotReadyException(
+          'Course has no ready source',
+        );
       }
       rethrow;
     }

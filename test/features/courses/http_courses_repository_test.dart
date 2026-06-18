@@ -187,6 +187,85 @@ void main() {
     );
   });
 
+  test(
+    'loads a course-level revision sheet from the course endpoint',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(revisionSheetJson()),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      final sheet = await repository.getCourseRevisionSheet(
+        courseId: 'course-1',
+      );
+
+      expect(sheet?.title, 'Fiche de cours');
+      expect(sheet?.sections.single.title, 'Institutions');
+      expect(adapter.lastOptions?.method, 'GET');
+      expect(adapter.lastOptions?.path, '/courses/course-1/revision-sheet');
+    },
+  );
+
+  test(
+    'generates a course-level revision sheet without documentId payload',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(revisionSheetJson()),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      final sheet = await repository.generateCourseRevisionSheet(
+        courseId: 'course-1',
+      );
+
+      expect(sheet.title, 'Fiche de cours');
+      expect(adapter.lastOptions?.method, 'POST');
+      expect(adapter.lastOptions?.path, '/courses/course-1/revision-sheet');
+      expect(adapter.lastOptions?.data, isNull);
+    },
+  );
+
+  test(
+    'maps course-level revision sheet 404 and 409 to typed outcomes',
+    () async {
+      final notFoundRepository = HttpCoursesRepository(
+        dio: Dio()
+          ..httpClientAdapter = CapturingHttpClientAdapter(
+            jsonResponse({
+              'message': 'Revision sheet not found',
+            }, statusCode: 404),
+          ),
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await expectLater(
+        notFoundRepository.getCourseRevisionSheet(courseId: 'course-1'),
+        completion(isNull),
+      );
+
+      final notReadyRepository = HttpCoursesRepository(
+        dio: Dio()
+          ..httpClientAdapter = CapturingHttpClientAdapter(
+            jsonResponse({
+              'message': 'Course has no ready source',
+            }, statusCode: 409),
+          ),
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await expectLater(
+        notReadyRepository.generateCourseRevisionSheet(courseId: 'course-1'),
+        throwsA(isA<CourseRevisionSheetNotReadyException>()),
+      );
+    },
+  );
+
   test('rejects unknown source status and invalid shapes', () async {
     final invalidStatus = sourceJson()..['status'] = 'ARCHIVED';
     final repository = HttpCoursesRepository(
@@ -244,6 +323,38 @@ Map<String, Object?> sourceJsonWith({required String status}) {
     'errorCode': null,
     'createdAt': '2026-06-18T10:00:00.000Z',
     'updatedAt': '2026-06-18T10:00:00.000Z',
+  };
+}
+
+Map<String, Object?> revisionSheetJson() {
+  return {
+    'id': 'sheet-1',
+    'documentId': 'document-1',
+    'subjectId': 'subject-1',
+    'status': 'READY',
+    'title': 'Fiche de cours',
+    'introduction': 'Introduction',
+    'keyPoints': ['Point clé'],
+    'commonMistakes': ['Erreur fréquente'],
+    'mustKnow': ['À savoir'],
+    'practiceSuggestions': ['S’entraîner'],
+    'errorCode': null,
+    'sections': [
+      {
+        'id': 'section-1',
+        'displayOrder': 0,
+        'title': 'Institutions',
+        'content': 'Le Parlement contrôle le Gouvernement.',
+        'sources': [
+          {
+            'chunkId': 'chunk-1',
+            'text': 'Extrait source',
+            'pageNumber': 1,
+            'index': 0,
+          },
+        ],
+      },
+    ],
   };
 }
 

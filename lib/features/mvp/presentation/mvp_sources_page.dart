@@ -47,9 +47,7 @@ class MvpSourcesPage extends StatelessWidget {
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'Ajout de source prévu avec l’API CourseSource.',
-                      ),
+                      content: Text('Ajout de source prévu avec l’API Course.'),
                     ),
                   );
                 },

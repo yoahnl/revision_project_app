@@ -190,6 +190,9 @@ class _CourseActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final uploadState = ref.watch(uploadCourseDocumentControllerProvider);
     final isUploading = uploadState.isLoading;
+    final hasReadySource = detail.sources.any(
+      (source) => source.status == CourseDocumentStatus.ready,
+    );
 
     return RevisionGlassCard(
       child: Column(
@@ -242,10 +245,12 @@ class _CourseActions extends ConsumerWidget {
           ],
           const SizedBox(height: RevisionSpacing.m),
           RevisionGradientButton(
-            label: 'Fiche bientôt disponible',
+            label: _sheetActionLabel(detail.sources),
             icon: Icons.article_outlined,
             expanded: true,
-            onPressed: null,
+            onPressed: hasReadySource
+                ? () => context.go(AppRoutes.courseSheet(detail.course.id))
+                : null,
           ),
           const SizedBox(height: RevisionSpacing.m),
           RevisionGradientButton(
@@ -263,6 +268,23 @@ class _CourseActions extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _sheetActionLabel(List<CourseDocument> sources) {
+  if (sources.any((source) => source.status == CourseDocumentStatus.ready)) {
+    return 'Fiche de cours';
+  }
+
+  if (sources.any(_isPendingSource)) {
+    return 'Fiche disponible après traitement';
+  }
+
+  if (sources.isNotEmpty &&
+      sources.every((source) => source.status == CourseDocumentStatus.failed)) {
+    return 'Aucune source prête';
+  }
+
+  return 'Ajoute une source pour créer une fiche';
 }
 
 class _SourcesSection extends StatelessWidget {

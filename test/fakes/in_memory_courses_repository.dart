@@ -2,12 +2,18 @@ import 'dart:typed_data';
 
 import 'package:revision_app/features/courses/domain/course_models.dart';
 import 'package:revision_app/features/courses/domain/courses_repository.dart';
+import 'package:revision_app/features/documents/domain/revision_document.dart';
 
 class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, List<CourseListItem>> coursesBySubject = {};
   final Map<String, CourseDetail> detailsByCourse = {};
+  final Map<String, RevisionSheet?> revisionSheetsByCourse = {};
+  final Map<String, RevisionSheet> generatedRevisionSheetsByCourse = {};
+  final Map<String, Object> revisionSheetErrorsByCourse = {};
   int createCount = 0;
   int getCourseCount = 0;
+  int getRevisionSheetCount = 0;
+  int generateRevisionSheetCount = 0;
   int uploadCount = 0;
   String? lastUploadedCourseId;
   String? lastUploadedFileName;
@@ -102,6 +108,45 @@ class InMemoryCoursesRepository implements CoursesRepository {
     );
 
     return document;
+  }
+
+  @override
+  Future<RevisionSheet?> getCourseRevisionSheet({
+    required String courseId,
+  }) async {
+    getRevisionSheetCount += 1;
+    final error = revisionSheetErrorsByCourse[courseId];
+    if (error != null) {
+      throw error;
+    }
+
+    return revisionSheetsByCourse[courseId];
+  }
+
+  @override
+  Future<RevisionSheet> generateCourseRevisionSheet({
+    required String courseId,
+  }) async {
+    generateRevisionSheetCount += 1;
+    final error = revisionSheetErrorsByCourse[courseId];
+    if (error != null) {
+      throw error;
+    }
+
+    final existing = revisionSheetsByCourse[courseId];
+    if (existing != null) {
+      return existing;
+    }
+
+    final generated = generatedRevisionSheetsByCourse[courseId];
+    if (generated != null) {
+      revisionSheetsByCourse[courseId] = generated;
+      return generated;
+    }
+
+    throw const CourseRevisionSheetNotReadyException(
+      'Course has no ready source',
+    );
   }
 
   @override

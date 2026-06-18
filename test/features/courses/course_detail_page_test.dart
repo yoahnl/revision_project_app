@@ -7,6 +7,7 @@ import 'package:revision_app/features/courses/application/course_pdf_picker.dart
 import 'package:revision_app/features/courses/application/courses_providers.dart';
 import 'package:revision_app/features/courses/domain/course_models.dart';
 import 'package:revision_app/features/courses/presentation/course_detail_page.dart';
+import 'package:revision_app/presentation/design_system/components/revision_mvp_components.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 
@@ -103,6 +104,91 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.getCourseCount, greaterThanOrEqualTo(2));
+  });
+
+  testWidgets('course sheet CTA asks for a source when none exists', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail();
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    final emptyButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(
+        RevisionGradientButton,
+        'Ajoute une source pour créer une fiche',
+      ),
+    );
+    expect(emptyButton.onPressed, isNull);
+  });
+
+  testWidgets('course sheet CTA waits while a source is processing', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'processing.pdf',
+            status: CourseDocumentStatus.processing,
+          ),
+        ],
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    final processingButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(
+        RevisionGradientButton,
+        'Fiche disponible après traitement',
+      ),
+    );
+    expect(processingButton.onPressed, isNull);
+  });
+
+  testWidgets('course sheet CTA is enabled when a READY source exists', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    final sheetButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(RevisionGradientButton, 'Fiche de cours'),
+    );
+    expect(sheetButton.onPressed, isNotNull);
+
+    final quickButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(
+        RevisionGradientButton,
+        'Révision rapide bientôt disponible',
+      ),
+    );
+    expect(quickButton.onPressed, isNull);
   });
 }
 
