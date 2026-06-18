@@ -296,20 +296,38 @@ class RevisionSubjectSwitcher extends StatelessWidget {
 }
 
 class RevisionTopCounters extends StatelessWidget {
-  const RevisionTopCounters({super.key});
+  const RevisionTopCounters({this.streakLabel, this.gemsLabel, super.key});
+
+  final String? streakLabel;
+  final String? gemsLabel;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _CounterPill(icon: Icons.local_fire_department_rounded, label: '12'),
-        SizedBox(width: RevisionSpacing.s),
+    final counters = <Widget>[
+      if (streakLabel != null)
+        _CounterPill(
+          icon: Icons.local_fire_department_rounded,
+          label: streakLabel!,
+        ),
+      if (gemsLabel != null)
         _CounterPill(
           icon: Icons.diamond_rounded,
-          label: '870',
+          label: gemsLabel!,
           accent: RevisionColors.cyan,
         ),
+    ];
+
+    if (counters.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final (index, counter) in counters.indexed) ...[
+          if (index > 0) const SizedBox(width: RevisionSpacing.s),
+          counter,
+        ],
       ],
     );
   }

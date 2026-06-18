@@ -279,6 +279,70 @@ void main() {
     },
   );
 
+  test('starts a course quick revision without client-owned ids', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(revisionSessionJson(courseId: 'course-1')),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await repository.startCourseQuickRevision(
+      courseId: 'course-1',
+    );
+
+    expect(response.session.id, 'revision-session-1');
+    expect(response.session.courseId, 'course-1');
+    expect(response.currentAction?.kind.name, 'diagnosticQuiz');
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/revision-sessions/quick',
+    );
+    expect(adapter.lastOptions?.data, isNull);
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+  });
+
+  test('maps course quick revision 404 and 409 to typed exceptions', () async {
+    final missingCourseRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({'message': 'Course not found'}, statusCode: 404),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      missingCourseRepository.startCourseQuickRevision(courseId: 'missing'),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+
+    final notReadyRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({
+            'message': 'Course has no ready knowledge unit',
+          }, statusCode: 409),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      notReadyRepository.startCourseQuickRevision(courseId: 'course-1'),
+      throwsA(
+        isA<CourseQuickRevisionUnavailableException>().having(
+          (error) => error.message,
+          'message',
+          'Course has no ready knowledge unit',
+        ),
+      ),
+    );
+  });
+
   test('rejects unknown source status and invalid shapes', () async {
     final invalidStatus = sourceJson()..['status'] = 'ARCHIVED';
     final repository = HttpCoursesRepository(
@@ -298,6 +362,32 @@ void main() {
       throwsFormatException,
     );
   });
+}
+
+Map<String, Object?> revisionSessionJson({required String courseId}) {
+  return {
+    'session': {
+      'id': 'revision-session-1',
+      'status': 'STARTED',
+      'subjectId': 'subject-1',
+      'courseId': courseId,
+      'documentId': 'document-1',
+      'knowledgeUnitId': 'knowledge-unit-1',
+      'createdAt': '2026-06-18T10:00:00.000Z',
+      'completedAt': null,
+    },
+    'currentAction': {
+      'id': 'action-1',
+      'kind': 'DIAGNOSTIC_QUIZ',
+      'status': 'READY',
+      'displayOrder': 0,
+      'activitySessionId': 'activity-session-1',
+      'documentId': 'document-1',
+      'knowledgeUnitId': 'knowledge-unit-1',
+      'payload': null,
+    },
+    'history': [],
+  };
 }
 
 Map<String, Object?> courseJson({

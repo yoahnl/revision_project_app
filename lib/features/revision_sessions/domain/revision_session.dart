@@ -6,6 +6,7 @@ class RevisionSession {
     required this.id,
     required this.status,
     required this.subjectId,
+    required this.courseId,
     required this.documentId,
     required this.knowledgeUnitId,
     required this.createdAt,
@@ -15,6 +16,7 @@ class RevisionSession {
   final String id;
   final RevisionSessionStatus status;
   final String subjectId;
+  final String? courseId;
   final String? documentId;
   final String? knowledgeUnitId;
   final DateTime createdAt;

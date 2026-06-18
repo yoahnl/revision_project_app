@@ -208,6 +208,7 @@ RevisionSession revisionSession({String? knowledgeUnitId}) {
     id: 'revision-session-1',
     status: RevisionSessionStatus.started,
     subjectId: 'subject-1',
+    courseId: null,
     documentId: null,
     knowledgeUnitId: knowledgeUnitId,
     createdAt: DateTime.parse('2026-06-15T12:00:00.000Z'),

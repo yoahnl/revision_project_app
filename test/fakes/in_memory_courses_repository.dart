@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:revision_app/features/courses/domain/course_models.dart';
 import 'package:revision_app/features/courses/domain/courses_repository.dart';
 import 'package:revision_app/features/documents/domain/revision_document.dart';
+import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
 
 class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, List<CourseListItem>> coursesBySubject = {};
@@ -15,11 +16,16 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int getRevisionSheetCount = 0;
   int generateRevisionSheetCount = 0;
   int uploadCount = 0;
+  int startQuickRevisionCount = 0;
   String? lastUploadedCourseId;
   String? lastUploadedFileName;
   Uint8List? lastUploadedBytes;
+  String? lastQuickRevisionCourseId;
   Object? uploadError;
+  Object? quickRevisionError;
+  RevisionSessionResponse? quickRevisionResponse;
   Duration uploadDelay = Duration.zero;
+  Duration quickRevisionDelay = Duration.zero;
 
   @override
   Future<List<CourseListItem>> listCourses({required String subjectId}) async {
@@ -150,7 +156,56 @@ class InMemoryCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<RevisionSessionResponse> startCourseQuickRevision({
+    required String courseId,
+  }) async {
+    if (quickRevisionDelay > Duration.zero) {
+      await Future<void>.delayed(quickRevisionDelay);
+    }
+
+    final error = quickRevisionError;
+    if (error != null) {
+      throw error;
+    }
+
+    if (!detailsByCourse.containsKey(courseId)) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    startQuickRevisionCount += 1;
+    lastQuickRevisionCourseId = courseId;
+
+    return quickRevisionResponse ?? quickRevisionSessionResponse(courseId);
+  }
+
+  @override
   Future<CourseProgress> getCourseProgress({required String courseId}) {
     throw UnimplementedError('Progression course réelle hors CORE-02');
   }
+}
+
+RevisionSessionResponse quickRevisionSessionResponse(String courseId) {
+  return RevisionSessionResponse(
+    session: RevisionSession(
+      id: 'revision-session-1',
+      status: RevisionSessionStatus.started,
+      subjectId: 'subject-1',
+      courseId: courseId,
+      documentId: 'document-1',
+      knowledgeUnitId: 'knowledge-unit-1',
+      createdAt: DateTime.utc(2026, 6, 18, 12),
+      completedAt: null,
+    ),
+    currentAction: const RevisionSessionAction(
+      id: 'action-1',
+      kind: RevisionSessionActionKind.diagnosticQuiz,
+      status: RevisionSessionActionStatus.ready,
+      displayOrder: 0,
+      activitySessionId: 'activity-session-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'knowledge-unit-1',
+      payload: null,
+    ),
+    history: const [],
+  );
 }

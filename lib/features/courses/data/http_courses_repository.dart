@@ -6,6 +6,8 @@ import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import '../../documents/data/revision_sheet_json.dart';
 import '../../documents/domain/revision_document.dart';
+import '../../revision_sessions/data/http_revision_sessions_api.dart';
+import '../../revision_sessions/domain/revision_session.dart';
 
 class HttpCoursesRepository implements CoursesRepository {
   HttpCoursesRepository({
@@ -161,6 +163,31 @@ class HttpCoursesRepository implements CoursesRepository {
       if (error.response?.statusCode == 409) {
         throw const CourseRevisionSheetNotReadyException(
           'Course has no ready source',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RevisionSessionResponse> startCourseQuickRevision({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/revision-sessions/quick',
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSessionResponseJson(response.data).toResponse();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      if (error.response?.statusCode == 409) {
+        final message = _responseMessage(error);
+        throw CourseQuickRevisionUnavailableException(
+          message ?? 'Course quick revision is not available',
         );
       }
       rethrow;

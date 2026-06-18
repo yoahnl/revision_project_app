@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/di/providers.dart';
 import '../../documents/domain/revision_document.dart';
+import '../../revision_sessions/domain/revision_session.dart';
 import '../data/http_courses_repository.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
@@ -50,6 +51,12 @@ final generateCourseRevisionSheetControllerProvider =
       GenerateCourseRevisionSheetController,
       AsyncValue<RevisionSheet?>
     >(GenerateCourseRevisionSheetController.new);
+
+final startCourseQuickRevisionControllerProvider =
+    NotifierProvider<
+      StartCourseQuickRevisionController,
+      AsyncValue<RevisionSessionResponse?>
+    >(StartCourseQuickRevisionController.new);
 
 class CreateCourseController extends Notifier<AsyncValue<void>> {
   @override
@@ -137,5 +144,27 @@ class GenerateCourseRevisionSheetController
     ref.invalidate(courseRevisionSheetProvider(courseId));
 
     return sheet;
+  }
+}
+
+class StartCourseQuickRevisionController
+    extends Notifier<AsyncValue<RevisionSessionResponse?>> {
+  @override
+  AsyncValue<RevisionSessionResponse?> build() => const AsyncData(null);
+
+  Future<RevisionSessionResponse> start({required CourseDetail detail}) async {
+    state = const AsyncLoading();
+    final repository = ref.read(coursesRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.startCourseQuickRevision(courseId: detail.course.id),
+    );
+
+    state = result.whenData<RevisionSessionResponse?>((response) => response);
+
+    if (result.hasError) {
+      Error.throwWithStackTrace(result.error!, result.stackTrace!);
+    }
+
+    return result.requireValue;
   }
 }

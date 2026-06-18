@@ -70,6 +70,28 @@ void main() {
     );
   });
 
+  test('parses courseId for course-level revision sessions', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(
+        revisionSessionJson(
+          payload: diagnosticQuizPayloadJson(),
+          courseId: 'course-1',
+        ),
+      ),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await api.getRevisionSession(
+      sessionId: 'revision-session-1',
+    );
+
+    expect(response.session.courseId, 'course-1');
+  });
+
   test('starts and parses a rich closed launcher payload', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse(revisionSessionJson(payload: richClosedPayloadJson())),
@@ -256,7 +278,10 @@ ResponseBody jsonResponse(Object? payload) {
   );
 }
 
-Map<String, Object?> revisionSessionJson({required Object? payload}) {
+Map<String, Object?> revisionSessionJson({
+  required Object? payload,
+  String? courseId,
+}) {
   final actionKind = payload == null ? 'OPEN_QUESTION' : actionKindFor(payload);
   final isRichClosed = actionKind == 'RICH_CLOSED_EXERCISE';
 
@@ -265,6 +290,7 @@ Map<String, Object?> revisionSessionJson({required Object? payload}) {
       'id': 'revision-session-1',
       'status': 'STARTED',
       'subjectId': 'subject-1',
+      'courseId': courseId,
       'documentId': null,
       'knowledgeUnitId': 'unit-1',
       'createdAt': '2026-06-15T12:00:00.000Z',

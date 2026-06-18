@@ -40,7 +40,7 @@ class HttpRevisionSessionsApi implements RevisionSessionsApi {
       options: await _authorizedOptions(),
     );
 
-    return _RevisionSessionResponseJson(response.data).toResponse();
+    return RevisionSessionResponseJson(response.data).toResponse();
   }
 
   @override
@@ -52,7 +52,7 @@ class HttpRevisionSessionsApi implements RevisionSessionsApi {
       options: await _authorizedOptions(),
     );
 
-    return _RevisionSessionResponseJson(response.data).toResponse();
+    return RevisionSessionResponseJson(response.data).toResponse();
   }
 
   Future<Options> _authorizedOptions() async {
@@ -75,8 +75,8 @@ class HttpRevisionSessionsApi implements RevisionSessionsApi {
   }
 }
 
-class _RevisionSessionResponseJson {
-  const _RevisionSessionResponseJson(this.value);
+class RevisionSessionResponseJson {
+  const RevisionSessionResponseJson(this.value);
 
   final Object? value;
 
@@ -124,6 +124,7 @@ class _RevisionSessionJson {
     final id = value['id'];
     final status = value['status'];
     final subjectId = value['subjectId'];
+    final courseId = value['courseId'];
     final documentId = value['documentId'];
     final knowledgeUnitId = value['knowledgeUnitId'];
     final createdAt = value['createdAt'];
@@ -140,6 +141,7 @@ class _RevisionSessionJson {
       id: id,
       status: _sessionStatus(status),
       subjectId: subjectId,
+      courseId: courseId is String ? courseId : null,
       documentId: documentId is String ? documentId : null,
       knowledgeUnitId: knowledgeUnitId is String ? knowledgeUnitId : null,
       createdAt: DateTime.parse(createdAt),

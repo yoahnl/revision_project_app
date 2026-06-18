@@ -228,6 +228,55 @@ void main() {
       );
     },
   );
+
+  test(
+    'startCourseQuickRevisionController starts a real course session',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail();
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      final response = await container
+          .read(startCourseQuickRevisionControllerProvider.notifier)
+          .start(detail: courseDetail());
+
+      expect(response.session.id, 'revision-session-1');
+      expect(response.session.courseId, 'course-1');
+      expect(repository.startQuickRevisionCount, 1);
+      expect(repository.lastQuickRevisionCourseId, 'course-1');
+      expect(
+        container.read(startCourseQuickRevisionControllerProvider).hasError,
+        false,
+      );
+    },
+  );
+
+  test('startCourseQuickRevisionController exposes readiness errors', () async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..quickRevisionError = const CourseQuickRevisionUnavailableException(
+        'Course has no ready knowledge unit',
+      );
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container
+          .read(startCourseQuickRevisionControllerProvider.notifier)
+          .start(detail: courseDetail()),
+      throwsA(isA<CourseQuickRevisionUnavailableException>()),
+    );
+
+    expect(
+      container.read(startCourseQuickRevisionControllerProvider).hasError,
+      true,
+    );
+  });
 }
 
 CourseDetail courseDetail() {

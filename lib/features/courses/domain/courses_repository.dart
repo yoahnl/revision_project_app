@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../documents/domain/revision_document.dart';
+import '../../revision_sessions/domain/revision_session.dart';
 import 'course_models.dart';
 
 abstract interface class CoursesRepository {
@@ -22,6 +23,10 @@ abstract interface class CoursesRepository {
   Future<RevisionSheet?> getCourseRevisionSheet({required String courseId});
 
   Future<RevisionSheet> generateCourseRevisionSheet({required String courseId});
+
+  Future<RevisionSessionResponse> startCourseQuickRevision({
+    required String courseId,
+  });
 
   Future<CourseProgress> getCourseProgress({required String courseId});
 }
@@ -69,6 +74,15 @@ class CourseUploadException implements Exception {
 
 class CourseRevisionSheetNotReadyException implements Exception {
   const CourseRevisionSheetNotReadyException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class CourseQuickRevisionUnavailableException implements Exception {
+  const CourseQuickRevisionUnavailableException(this.message);
 
   final String message;
 

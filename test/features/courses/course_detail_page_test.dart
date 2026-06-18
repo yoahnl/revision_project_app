@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:revision_app/app/router/app_routes.dart';
 import 'package:revision_app/features/courses/application/course_pdf_picker.dart';
 import 'package:revision_app/features/courses/application/courses_providers.dart';
 import 'package:revision_app/features/courses/domain/course_models.dart';
@@ -124,6 +126,14 @@ void main() {
       ),
     );
     expect(emptyButton.onPressed, isNull);
+
+    final emptyQuickButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(
+        RevisionGradientButton,
+        'Ajoute une source pour réviser',
+      ),
+    );
+    expect(emptyQuickButton.onPressed, isNull);
   });
 
   testWidgets('course sheet CTA waits while a source is processing', (
@@ -147,13 +157,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final processingButton = tester.widget<RevisionGradientButton>(
+    final processingSheetButton = tester.widget<RevisionGradientButton>(
       find.widgetWithText(
         RevisionGradientButton,
         'Fiche disponible après traitement',
       ),
     );
-    expect(processingButton.onPressed, isNull);
+    expect(processingSheetButton.onPressed, isNull);
+
+    final processingQuickButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(
+        RevisionGradientButton,
+        'Révision disponible après traitement',
+      ),
+    );
+    expect(processingQuickButton.onPressed, isNull);
   });
 
   testWidgets('course sheet CTA is enabled when a READY source exists', (
@@ -183,12 +201,43 @@ void main() {
     expect(sheetButton.onPressed, isNotNull);
 
     final quickButton = tester.widget<RevisionGradientButton>(
-      find.widgetWithText(
-        RevisionGradientButton,
-        'Révision rapide bientôt disponible',
-      ),
+      find.widgetWithText(RevisionGradientButton, 'Révision rapide'),
     );
-    expect(quickButton.onPressed, isNull);
+    expect(quickButton.onPressed, isNotNull);
+  });
+
+  testWidgets('ready quick revision starts the real revision session route', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..quickRevisionDelay = const Duration(milliseconds: 50);
+
+    await tester.pumpWidget(
+      routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Révision rapide'));
+    await tester.pump();
+
+    expect(find.text('Démarrage...'), findsOneWidget);
+
+    await tester.pumpAndSettle();
+
+    expect(repository.startQuickRevisionCount, 1);
+    expect(repository.lastQuickRevisionCourseId, 'course-1');
+    expect(find.text('Session réelle'), findsOneWidget);
   });
 }
 
@@ -204,6 +253,40 @@ Widget testApp({
     child: const MaterialApp(
       home: Scaffold(body: CourseDetailPage(courseId: 'course-1')),
     ),
+  );
+}
+
+Widget routerTestApp({
+  required InMemoryCoursesRepository repository,
+  required CoursePdfPicker picker,
+}) {
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) =>
+            const Scaffold(body: CourseDetailPage(courseId: 'course-1')),
+      ),
+      GoRoute(
+        path: AppRoutes.revisionSessionPath,
+        builder: (context, state) => Scaffold(
+          body: Text(
+            state.uri.queryParameters['sessionId'] == 'revision-session-1'
+                ? 'Session réelle'
+                : 'Session inconnue',
+          ),
+        ),
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      coursesRepositoryProvider.overrideWithValue(repository),
+      coursePdfPickerProvider.overrideWithValue(picker),
+    ],
+    child: MaterialApp.router(routerConfig: router),
   );
 }
 

@@ -189,7 +189,11 @@ class _CourseActions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final uploadState = ref.watch(uploadCourseDocumentControllerProvider);
+    final quickRevisionState = ref.watch(
+      startCourseQuickRevisionControllerProvider,
+    );
     final isUploading = uploadState.isLoading;
+    final isStartingQuickRevision = quickRevisionState.isLoading;
     final hasReadySource = detail.sources.any(
       (source) => source.status == CourseDocumentStatus.ready,
     );
@@ -254,11 +258,52 @@ class _CourseActions extends ConsumerWidget {
           ),
           const SizedBox(height: RevisionSpacing.m),
           RevisionGradientButton(
-            label: 'Révision rapide bientôt disponible',
+            label: isStartingQuickRevision
+                ? 'Démarrage...'
+                : _quickRevisionActionLabel(detail.sources),
             icon: Icons.flash_on_rounded,
             expanded: true,
-            onPressed: null,
+            onPressed: hasReadySource && !isStartingQuickRevision
+                ? () async {
+                    try {
+                      final response = await ref
+                          .read(
+                            startCourseQuickRevisionControllerProvider.notifier,
+                          )
+                          .start(detail: detail);
+
+                      if (!context.mounted) {
+                        return;
+                      }
+
+                      context.go(
+                        AppRoutes.revisionSession(
+                          sessionId: response.session.id,
+                        ),
+                      );
+                    } catch (error) {
+                      if (!context.mounted) {
+                        return;
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(_quickRevisionErrorLabel(error)),
+                        ),
+                      );
+                    }
+                  }
+                : null,
           ),
+          if (quickRevisionState.hasError) ...[
+            const SizedBox(height: RevisionSpacing.s),
+            Text(
+              'Révision rapide indisponible pour ce cours.',
+              style: RevisionTypography.caption.copyWith(
+                color: RevisionColors.red,
+              ),
+            ),
+          ],
           const SizedBox(height: RevisionSpacing.s),
           Text(
             'Révision approfondie et préparation examen restent MVP+.',
@@ -285,6 +330,35 @@ String _sheetActionLabel(List<CourseDocument> sources) {
   }
 
   return 'Ajoute une source pour créer une fiche';
+}
+
+String _quickRevisionActionLabel(List<CourseDocument> sources) {
+  if (sources.any((source) => source.status == CourseDocumentStatus.ready)) {
+    return 'Révision rapide';
+  }
+
+  if (sources.any(_isPendingSource)) {
+    return 'Révision disponible après traitement';
+  }
+
+  if (sources.isNotEmpty &&
+      sources.every((source) => source.status == CourseDocumentStatus.failed)) {
+    return 'Aucune source prête';
+  }
+
+  return 'Ajoute une source pour réviser';
+}
+
+String _quickRevisionErrorLabel(Object error) {
+  if (error is CourseQuickRevisionUnavailableException) {
+    return error.message;
+  }
+
+  if (error is CourseNotFoundException) {
+    return 'Cours introuvable.';
+  }
+
+  return 'Impossible de démarrer la révision rapide.';
 }
 
 class _SourcesSection extends StatelessWidget {
