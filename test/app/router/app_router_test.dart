@@ -9,16 +9,20 @@ import 'package:revision_app/features/activities/application/activity_controller
 import 'package:revision_app/features/auth/application/auth_controller.dart';
 import 'package:revision_app/features/auth/domain/auth_session.dart';
 import 'package:revision_app/features/auth/domain/authenticated_user.dart';
+import 'package:revision_app/features/courses/application/courses_providers.dart';
+import 'package:revision_app/features/courses/domain/course_models.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
 import 'package:revision_app/features/revision_sessions/data/revision_sessions_api.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
+import 'package:revision_app/features/subjects/domain/subject.dart';
 import 'package:revision_app/features/today/application/today_controller.dart';
 import 'package:revision_app/features/today/domain/today_plan.dart';
 import 'package:revision_app/presentation/widgets/revision_button.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
+import '../../fakes/in_memory_courses_repository.dart';
 import '../../fakes/in_memory_documents_api.dart';
 import '../../fakes/in_memory_revision_goals_repository.dart';
 import '../../fakes/in_memory_revision_sessions_api.dart';
@@ -156,7 +160,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Accueil'), findsWidgets);
-    expect(find.text('Aucun cours réel n’est encore branché'), findsOneWidget);
+    expect(find.text('Aucune matière réelle'), findsOneWidget);
     expect(find.text('Math'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);
@@ -176,6 +180,59 @@ void main() {
 
     expect(find.text('Cours introuvable'), findsOneWidget);
     expect(find.text('Aucun fallback vers un cours fictif'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
+  });
+
+  testWidgets('course route shows real course detail when available', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    harness.subjectsRepository.subjects.add(
+      const Subject(
+        id: 'subject-1',
+        name: 'Droit constitutionnel',
+        priority: 4,
+      ),
+    );
+    const course = CourseListItem(
+      id: 'course-1',
+      subjectId: 'subject-1',
+      title: 'Institutions de la Ve République',
+      chapterLabel: 'Chapitre 2',
+      estimatedMinutes: 35,
+      sourceCount: 1,
+      readySourceCount: 1,
+      processingSourceCount: 0,
+      failedSourceCount: 0,
+    );
+    harness.coursesRepository.coursesBySubject['subject-1'] = [course];
+    harness.coursesRepository.detailsByCourse['course-1'] = const CourseDetail(
+      course: course,
+      subject: CourseSubjectSummary(
+        id: 'subject-1',
+        name: 'Droit constitutionnel',
+      ),
+      sources: [
+        CourseDocument(
+          id: 'document-1',
+          courseId: 'course-1',
+          documentId: 'document-1',
+          fileName: 'cours.pdf',
+          status: CourseDocumentStatus.ready,
+        ),
+      ],
+    );
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    harness.router.go(AppRoutes.course('course-1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Institutions de la Ve République'), findsOneWidget);
+    expect(find.text('Droit constitutionnel'), findsOneWidget);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('cours.pdf'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
   });
 
@@ -420,6 +477,7 @@ class _RouterHarness {
       activityApi = InMemoryActivityApi(),
       revisionSessionsApi = InMemoryRevisionSessionsApi() {
     subjectsRepository = InMemorySubjectsRepository();
+    coursesRepository = InMemoryCoursesRepository();
     subjectsController = SubjectsController(subjectsRepository);
     todayRepository = InMemoryTodayRepository();
     todayController = TodayController(todayRepository);
@@ -438,6 +496,7 @@ class _RouterHarness {
 
   final AuthController authController;
   late final InMemorySubjectsRepository subjectsRepository;
+  late final InMemoryCoursesRepository coursesRepository;
   late final SubjectsController subjectsController;
   final RevisionGoalsController revisionGoalsController;
   final DocumentsController documentsController;
@@ -455,6 +514,7 @@ class _RouterHarness {
         authControllerProvider.overrideWithValue(authController),
         subjectsRepositoryProvider.overrideWithValue(subjectsRepository),
         subjectsControllerProvider.overrideWithValue(subjectsController),
+        coursesRepositoryProvider.overrideWithValue(coursesRepository),
         revisionGoalsControllerProvider.overrideWithValue(
           revisionGoalsController,
         ),

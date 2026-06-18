@@ -12,7 +12,7 @@ abstract interface class CoursesRepository {
     required CreateCourseInput input,
   });
 
-  Future<CourseSource> uploadCoursePdf({
+  Future<CourseDocument> uploadCoursePdf({
     required String courseId,
     required String fileName,
     required Uint8List bytes,
@@ -26,9 +26,29 @@ class CreateCourseInput {
     required this.title,
     this.description,
     this.chapterLabel,
+    this.estimatedMinutes,
   });
 
   final String title;
   final String? description;
   final String? chapterLabel;
+  final int? estimatedMinutes;
+}
+
+class CourseNotFoundException implements Exception {
+  const CourseNotFoundException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class CourseRequestException implements Exception {
+  const CourseRequestException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

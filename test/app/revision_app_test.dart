@@ -9,6 +9,8 @@ import 'package:revision_app/features/activities/application/activity_controller
 import 'package:revision_app/features/auth/application/auth_controller.dart';
 import 'package:revision_app/features/auth/domain/auth_session.dart';
 import 'package:revision_app/features/auth/domain/authenticated_user.dart';
+import 'package:revision_app/features/courses/application/courses_providers.dart';
+import 'package:revision_app/features/courses/domain/course_models.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
 import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
@@ -17,6 +19,7 @@ import 'package:revision_app/features/today/application/today_controller.dart';
 import 'package:revision_app/presentation/widgets/revision_navigation.dart';
 
 import '../fakes/in_memory_activity_api.dart';
+import '../fakes/in_memory_courses_repository.dart';
 import '../fakes/in_memory_documents_api.dart';
 import '../fakes/in_memory_revision_goals_repository.dart';
 import '../fakes/in_memory_subjects_repository.dart';
@@ -86,7 +89,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Accueil'), findsWidgets);
-    expect(find.text('Aucun cours réel n’est encore branché'), findsOneWidget);
+    expect(find.text('Aucune matière réelle'), findsOneWidget);
     expect(find.text('Math'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);
@@ -141,8 +144,73 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Droit constitutionnel'), findsOneWidget);
-    expect(find.text('Matière réelle · priorité 4'), findsOneWidget);
+    expect(find.text('Droit constitutionnel'), findsWidgets);
+    expect(find.text('Aucun cours réel'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
+  });
+
+  testWidgets('home can list real courses for the active subject', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _createTestApp(
+        seedSubjects: const [
+          Subject(
+            id: 'subject-real-1',
+            name: 'Droit constitutionnel',
+            priority: 4,
+          ),
+        ],
+        seedCourses: const [
+          CourseListItem(
+            id: 'course-real-1',
+            subjectId: 'subject-real-1',
+            title: 'Institutions de la Ve République',
+            chapterLabel: 'Chapitre 2',
+            estimatedMinutes: 35,
+            sourceCount: 1,
+            readySourceCount: 1,
+            processingSourceCount: 0,
+            failedSourceCount: 0,
+          ),
+        ],
+      ).widget,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Institutions de la Ve République'), findsOneWidget);
+    expect(find.text('Chapitre 2 · 35 min'), findsOneWidget);
+    expect(find.text('1 source · 1 prête'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
+  });
+
+  testWidgets('home can create a real course and open its detail', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _createTestApp(
+        seedSubjects: const [
+          Subject(
+            id: 'subject-real-1',
+            name: 'Droit constitutionnel',
+            priority: 4,
+          ),
+        ],
+      ).widget,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -180));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Créer un cours'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'Droit administratif');
+    await tester.tap(find.text('Créer le cours'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Droit administratif'), findsOneWidget);
+    expect(find.text('Cours introuvable'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
   });
 
@@ -210,10 +278,25 @@ AuthController signedInAuthController() {
 _RevisionTestApp _createTestApp({
   AuthController? authController,
   List<Subject> seedSubjects = const [],
+  List<CourseListItem> seedCourses = const [],
 }) {
   final resolvedAuthController = authController ?? signedInAuthController();
   final subjectsRepository = InMemorySubjectsRepository();
   subjectsRepository.subjects.addAll(seedSubjects);
+  final coursesRepository = InMemoryCoursesRepository();
+  for (final course in seedCourses) {
+    coursesRepository.coursesBySubject
+        .putIfAbsent(course.subjectId, () => [])
+        .add(course);
+    coursesRepository.detailsByCourse[course.id] = CourseDetail(
+      course: course,
+      subject: CourseSubjectSummary(
+        id: course.subjectId,
+        name: _subjectNameFor(seedSubjects, course.subjectId),
+      ),
+      sources: const [],
+    );
+  }
   final revisionGoalsRepository = InMemoryRevisionGoalsRepository();
   final documentsApi = InMemoryDocumentsApi();
   final activityApi = InMemoryActivityApi();
@@ -230,6 +313,7 @@ _RevisionTestApp _createTestApp({
       subjectsControllerProvider.overrideWithValue(
         SubjectsController(subjectsRepository),
       ),
+      coursesRepositoryProvider.overrideWithValue(coursesRepository),
       revisionGoalsControllerProvider.overrideWithValue(
         RevisionGoalsController(revisionGoalsRepository),
       ),
@@ -255,6 +339,16 @@ _RevisionTestApp _createTestApp({
     activityApi: activityApi,
     todayRepository: todayRepository,
   );
+}
+
+String _subjectNameFor(List<Subject> subjects, String subjectId) {
+  for (final subject in subjects) {
+    if (subject.id == subjectId) {
+      return subject.name;
+    }
+  }
+
+  return 'Matière réelle';
 }
 
 class _RevisionTestApp {
