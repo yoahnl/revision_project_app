@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:revision_app/app/app_root.dart';
 import 'package:revision_app/app/di/providers.dart';
 import 'package:revision_app/core/storage/kv_storage_port.dart';
@@ -9,11 +10,10 @@ import 'package:revision_app/features/auth/application/auth_controller.dart';
 import 'package:revision_app/features/auth/domain/auth_session.dart';
 import 'package:revision_app/features/auth/domain/authenticated_user.dart';
 import 'package:revision_app/features/documents/application/documents_controller.dart';
-import 'package:revision_app/features/mvp/application/mvp_study_controller.dart';
 import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
 import 'package:revision_app/features/subjects/application/subjects_controller.dart';
+import 'package:revision_app/features/subjects/domain/subject.dart';
 import 'package:revision_app/features/today/application/today_controller.dart';
-import 'package:revision_app/presentation/design_system/components/revision_mvp_components.dart';
 import 'package:revision_app/presentation/widgets/revision_navigation.dart';
 
 import '../fakes/in_memory_activity_api.dart';
@@ -77,19 +77,22 @@ class FakeKvStorage implements KvStoragePort {
 }
 
 void main() {
-  setUp(() {
-    MvpStudyController.instance.resetForTests();
-  });
-
-  testWidgets('shows the MVP home as the first app screen', (tester) async {
+  testWidgets('shows a real-ready home without fixture courses', (
+    tester,
+  ) async {
     final testApp = _createTestApp();
 
     await tester.pumpWidget(testApp.widget);
     await tester.pumpAndSettle();
 
-    expect(find.text('Math'), findsWidgets);
-    expect(find.text('Reprendre le cours'), findsOneWidget);
-    expect(find.text('Loi normale'), findsWidgets);
+    expect(find.text('Accueil'), findsWidgets);
+    expect(find.text('Aucun cours réel n’est encore branché'), findsOneWidget);
+    expect(find.text('Math'), findsNothing);
+    expect(find.text('Loi normale'), findsNothing);
+    expect(find.text('78%'), findsNothing);
+    expect(find.text('12'), findsNothing);
+    expect(find.text('870'), findsNothing);
+    expect(find.text('7 jours'), findsNothing);
     expect(find.text('Progrès'), findsOneWidget);
     expect(find.text('Révisions'), findsOneWidget);
     expect(find.text('Sources'), findsOneWidget);
@@ -97,7 +100,7 @@ void main() {
     expect(testApp.authController.isSignedIn, isTrue);
   });
 
-  testWidgets('changes MVP routes when tapping bottom navigation', (
+  testWidgets('bottom navigation opens honest real-ready pages', (
     tester,
   ) async {
     await tester.pumpWidget(_createTestApp().widget);
@@ -106,67 +109,62 @@ void main() {
     await tester.tap(find.text('Progrès'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Ta progression en un coup d’œil'), findsOneWidget);
+    expect(find.text('Progression réelle en attente'), findsOneWidget);
+    expect(find.text('78%'), findsNothing);
 
     await tester.tap(find.text('Révisions'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Choisis ton mode de travail'), findsOneWidget);
+    expect(find.text('Révisions réelles en attente'), findsOneWidget);
+    expect(find.text('MVP+ · bientôt'), findsWidgets);
 
     await tester.tap(find.text('Sources'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Fichiers attachés aux cours de Math'), findsOneWidget);
+    expect(find.text('Sources réelles en attente'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
   });
 
-  testWidgets('subject switcher changes active MVP subject', (tester) async {
+  testWidgets('home can list real subjects without inventing courses', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _createTestApp(
+        seedSubjects: const [
+          Subject(
+            id: 'subject-real-1',
+            name: 'Droit constitutionnel',
+            priority: 4,
+          ),
+        ],
+      ).widget,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Droit constitutionnel'), findsOneWidget);
+    expect(find.text('Matière réelle · priorité 4'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
+  });
+
+  testWidgets('course and result routes do not fallback to fixture data', (
+    tester,
+  ) async {
     await tester.pumpWidget(_createTestApp().widget);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Math').first);
+    final context = tester.element(find.byType(RevisionBottomNavigation));
+    GoRouter.of(context).go('/courses/unknown');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Philosophie').last);
+    expect(find.text('Cours introuvable'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
+
+    GoRouter.of(context).go('/revision-sessions/fake/result');
     await tester.pumpAndSettle();
 
-    expect(find.text('Kant'), findsWidgets);
-    expect(find.text('Tes cours de Philosophie'), findsOneWidget);
-  });
-
-  testWidgets('course flow opens detail, session and result', (tester) async {
-    await tester.pumpWidget(_createTestApp().widget);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(RevisionCourseCard, 'Loi normale'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Révision rapide'), findsOneWidget);
-
-    await tester.tap(find.text('Révision rapide'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Question 1 sur 2'), findsOneWidget);
-    await tester.tap(find.text('0,6826'));
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(Scrollable).last, const Offset(0, -280));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Valider'));
-    await tester.pumpAndSettle();
-    expect(find.text('Bonne réponse, on continue.'), findsOneWidget);
-    await tester.tap(find.text('Continuer'));
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(Scrollable).last, const Offset(0, 420));
-    await tester.pumpAndSettle();
-    expect(find.text('Question 2 sur 2'), findsOneWidget);
-    await tester.tap(find.text('Standardiser avec Z'));
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(Scrollable).last, const Offset(0, -280));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Valider'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Continuer'));
-    await tester.pumpAndSettle();
-    expect(find.text('Belle progression !'), findsOneWidget);
+    expect(find.text('Résultat réel indisponible'), findsOneWidget);
+    expect(find.text('78%'), findsNothing);
+    expect(find.text('4/5 bonnes'), findsNothing);
   });
 
   testWidgets('uses route-driven navigation rail on wide layouts', (
@@ -188,7 +186,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Révisions'), findsWidgets);
-    expect(find.text('Choisis ton mode de travail'), findsOneWidget);
+    expect(find.text('Révisions réelles en attente'), findsOneWidget);
   });
 
   testWidgets('redirects signed-out users to the sign-in page', (tester) async {
@@ -209,9 +207,13 @@ AuthController signedInAuthController() {
   return AuthController(SignedInAuthRepository());
 }
 
-_RevisionTestApp _createTestApp({AuthController? authController}) {
+_RevisionTestApp _createTestApp({
+  AuthController? authController,
+  List<Subject> seedSubjects = const [],
+}) {
   final resolvedAuthController = authController ?? signedInAuthController();
   final subjectsRepository = InMemorySubjectsRepository();
+  subjectsRepository.subjects.addAll(seedSubjects);
   final revisionGoalsRepository = InMemoryRevisionGoalsRepository();
   final documentsApi = InMemoryDocumentsApi();
   final activityApi = InMemoryActivityApi();

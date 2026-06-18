@@ -146,6 +146,73 @@ void main() {
     expect(activitiesRoute.routes, isEmpty);
   });
 
+  testWidgets('home route does not render MVP fixture course data', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Accueil'), findsWidgets);
+    expect(find.text('Aucun cours réel n’est encore branché'), findsOneWidget);
+    expect(find.text('Math'), findsNothing);
+    expect(find.text('Loi normale'), findsNothing);
+    expect(find.text('78%'), findsNothing);
+    expect(find.text('870'), findsNothing);
+    expect(find.text('7 jours'), findsNothing);
+  });
+
+  testWidgets('course route shows not found instead of fixture fallback', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    harness.router.go(AppRoutes.course('unknown'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cours introuvable'), findsOneWidget);
+    expect(find.text('Aucun fallback vers un cours fictif'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
+  });
+
+  testWidgets('revision session result route hides static MVP score', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    harness.router.go(AppRoutes.revisionSessionResultV2(sessionId: 'fake'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Résultat réel indisponible'), findsOneWidget);
+    expect(find.text('78%'), findsNothing);
+    expect(find.text('4/5 bonnes'), findsNothing);
+  });
+
+  testWidgets('legacy real routes stay accessible', (tester) async {
+    final harness = _RouterHarness();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+
+    harness.router.go(AppRoutes.subjects);
+    await tester.pumpAndSettle();
+    expect(find.text('Tes matieres'), findsOneWidget);
+
+    harness.router.go(AppRoutes.today);
+    await tester.pumpAndSettle();
+    expect(find.text('Plan du jour'), findsOneWidget);
+
+    harness.router.go(AppRoutes.activities);
+    await tester.pumpAndSettle();
+    expect(find.text('Activites'), findsWidgets);
+  });
+
   testWidgets(
     'revision session route starts a session without direct activity',
     (tester) async {
@@ -346,13 +413,14 @@ class _RouterHarness {
         _SignedInAuthRepository(),
         initialSession: _signedInSession,
       ),
-      subjectsController = SubjectsController(InMemorySubjectsRepository()),
       revisionGoalsController = RevisionGoalsController(
         InMemoryRevisionGoalsRepository(),
       ),
       documentsController = DocumentsController(InMemoryDocumentsApi()),
       activityApi = InMemoryActivityApi(),
       revisionSessionsApi = InMemoryRevisionSessionsApi() {
+    subjectsRepository = InMemorySubjectsRepository();
+    subjectsController = SubjectsController(subjectsRepository);
     todayRepository = InMemoryTodayRepository();
     todayController = TodayController(todayRepository);
     activityController = ActivityController(activityApi);
@@ -369,7 +437,8 @@ class _RouterHarness {
   }
 
   final AuthController authController;
-  final SubjectsController subjectsController;
+  late final InMemorySubjectsRepository subjectsRepository;
+  late final SubjectsController subjectsController;
   final RevisionGoalsController revisionGoalsController;
   final DocumentsController documentsController;
   final InMemoryActivityApi activityApi;
@@ -384,6 +453,7 @@ class _RouterHarness {
     return ProviderScope(
       overrides: [
         authControllerProvider.overrideWithValue(authController),
+        subjectsRepositoryProvider.overrideWithValue(subjectsRepository),
         subjectsControllerProvider.overrideWithValue(subjectsController),
         revisionGoalsControllerProvider.overrideWithValue(
           revisionGoalsController,

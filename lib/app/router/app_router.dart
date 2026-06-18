@@ -4,15 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/activities/application/activity_controller.dart';
 import '../../features/auth/application/auth_controller.dart';
+import '../../features/courses/presentation/course_not_found_page.dart';
+import '../../features/courses/presentation/course_pending_page.dart';
+import '../../features/courses/presentation/courses_home_page.dart';
+import '../../features/courses/presentation/progress_pending_page.dart';
+import '../../features/courses/presentation/revision_session_pending_page.dart';
+import '../../features/courses/presentation/revision_session_result_pending_page.dart';
+import '../../features/courses/presentation/revisions_pending_page.dart';
+import '../../features/courses/presentation/sources_pending_page.dart';
 import '../../features/documents/application/documents_controller.dart';
-import '../../features/mvp/presentation/mvp_course_detail_page.dart';
-import '../../features/mvp/presentation/mvp_course_sheet_page.dart';
-import '../../features/mvp/presentation/mvp_home_page.dart';
-import '../../features/mvp/presentation/mvp_progress_page.dart';
-import '../../features/mvp/presentation/mvp_revision_session_page.dart';
-import '../../features/mvp/presentation/mvp_revisions_page.dart';
-import '../../features/mvp/presentation/mvp_session_result_page.dart';
-import '../../features/mvp/presentation/mvp_sources_page.dart';
 import '../../features/onboarding/application/revision_goals_controller.dart';
 import '../../features/revision_sessions/application/revision_session_controller.dart';
 import '../../features/revision_sessions/data/revision_sessions_api.dart';
@@ -90,18 +90,20 @@ GoRouter createAppRouter({
             routes: [
               GoRoute(
                 path: AppRoutes.home,
-                builder: (context, state) => const MvpHomePage(),
+                builder: (context, state) => const CoursesHomePage(),
               ),
               GoRoute(
                 path: AppRoutes.coursePath,
-                builder: (context, state) => MvpCourseDetailPage(
+                builder: (context, state) => CourseNotFoundPage(
                   courseId: state.pathParameters['courseId'] ?? '',
                 ),
               ),
               GoRoute(
                 path: AppRoutes.courseSheetPath,
-                builder: (context, state) => MvpCourseSheetPage(
-                  courseId: state.pathParameters['courseId'] ?? '',
+                builder: (context, state) => const CoursePendingPage(
+                  title: 'Fiche de cours indisponible',
+                  message:
+                      'La fiche Core sera basée sur la source principale après l’intégration Course.',
                 ),
               ),
               GoRoute(
@@ -133,7 +135,7 @@ GoRouter createAppRouter({
             routes: [
               GoRoute(
                 path: AppRoutes.progress,
-                builder: (context, state) => const MvpProgressPage(),
+                builder: (context, state) => const ProgressPendingPage(),
               ),
               GoRoute(
                 path: AppRoutes.today,
@@ -145,22 +147,18 @@ GoRouter createAppRouter({
             routes: [
               GoRoute(
                 path: AppRoutes.revisions,
-                builder: (context, state) => const MvpRevisionsPage(),
+                builder: (context, state) => const RevisionsPendingPage(),
               ),
               GoRoute(
                 path: AppRoutes.revisionSessionV2Path,
-                builder: (context, state) => MvpRevisionSessionPage(
+                builder: (context, state) => RevisionSessionPendingPage(
                   sessionId: state.pathParameters['sessionId'] ?? '',
-                  courseId: state.uri.queryParameters['courseId'],
-                  mode: state.uri.queryParameters['mode'],
                 ),
               ),
               GoRoute(
                 path: AppRoutes.revisionSessionResultV2Path,
-                builder: (context, state) => MvpSessionResultPage(
+                builder: (context, state) => RevisionSessionResultPendingPage(
                   sessionId: state.pathParameters['sessionId'] ?? '',
-                  courseId: state.uri.queryParameters['courseId'],
-                  mode: state.uri.queryParameters['mode'],
                 ),
               ),
               GoRoute(
@@ -201,7 +199,7 @@ GoRouter createAppRouter({
             routes: [
               GoRoute(
                 path: AppRoutes.sources,
-                builder: (context, state) => const MvpSourcesPage(),
+                builder: (context, state) => const SourcesPendingPage(),
               ),
             ],
           ),
