@@ -108,6 +108,10 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(question.prompt, style: RevisionTypography.sectionTitle),
+                if (question.visuals.isNotEmpty) ...[
+                  const SizedBox(height: RevisionSpacing.m),
+                  _QuestionVisualsPreview(visuals: question.visuals),
+                ],
                 const SizedBox(height: RevisionSpacing.l),
                 for (final entry in question.choices.indexed) ...[
                   _AnswerChoiceCard(
@@ -433,6 +437,143 @@ class _QuestionProgress extends StatelessWidget {
       ],
     );
   }
+}
+
+class _QuestionVisualsPreview extends StatelessWidget {
+  const _QuestionVisualsPreview({required this.visuals});
+
+  final List<DiagnosticQuizVisual> visuals;
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...visuals]
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+
+    return Column(
+      children: [
+        for (final visual in sorted) ...[
+          _QuestionVisualPreview(visual: visual),
+          if (visual != sorted.last) const SizedBox(height: RevisionSpacing.s),
+        ],
+      ],
+    );
+  }
+}
+
+class _QuestionVisualPreview extends StatelessWidget {
+  const _QuestionVisualPreview({required this.visual});
+
+  final DiagnosticQuizVisual visual;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (visual) {
+      DiagnosticQuizChartVisual chart => _ChartVisualPreview(chart: chart),
+      DiagnosticQuizDiagramVisual diagram => _DiagramVisualPreview(
+        diagram: diagram,
+      ),
+      DiagnosticQuizUnsupportedVisual unsupported => _UnsupportedVisualPreview(
+        visual: unsupported,
+      ),
+    };
+  }
+}
+
+class _VisualPreviewFrame extends StatelessWidget {
+  const _VisualPreviewFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(RevisionSpacing.m),
+      decoration: BoxDecoration(
+        color: RevisionColors.ink2.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: RevisionColors.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ChartVisualPreview extends StatelessWidget {
+  const _ChartVisualPreview({required this.chart});
+
+  final DiagnosticQuizChartVisual chart;
+
+  @override
+  Widget build(BuildContext context) {
+    return _VisualPreviewFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(chart.title, style: RevisionTypography.sectionTitle),
+          if (chart.description != null) ...[
+            const SizedBox(height: RevisionSpacing.xs),
+            Text(chart.description!, style: RevisionTypography.caption),
+          ],
+          const SizedBox(height: RevisionSpacing.s),
+          for (final row in chart.data.take(4))
+            Text(_compactChartRow(row), style: RevisionTypography.caption),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiagramVisualPreview extends StatelessWidget {
+  const _DiagramVisualPreview({required this.diagram});
+
+  final DiagnosticQuizDiagramVisual diagram;
+
+  @override
+  Widget build(BuildContext context) {
+    return _VisualPreviewFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(diagram.title, style: RevisionTypography.sectionTitle),
+          if (diagram.description != null) ...[
+            const SizedBox(height: RevisionSpacing.xs),
+            Text(diagram.description!, style: RevisionTypography.caption),
+          ],
+          const SizedBox(height: RevisionSpacing.s),
+          for (final node in diagram.nodes.take(5))
+            Text('• ${node.label}', style: RevisionTypography.caption),
+          for (final edge in diagram.edges.take(5))
+            Text(
+              '${edge.from} → ${edge.to}${edge.label == null ? '' : ' · ${edge.label}'}',
+              style: RevisionTypography.caption,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UnsupportedVisualPreview extends StatelessWidget {
+  const _UnsupportedVisualPreview({required this.visual});
+
+  final DiagnosticQuizUnsupportedVisual visual;
+
+  @override
+  Widget build(BuildContext context) {
+    return _VisualPreviewFrame(
+      child: Text(
+        'Visuel non pris en charge',
+        style: RevisionTypography.caption.copyWith(color: RevisionColors.text),
+      ),
+    );
+  }
+}
+
+String _compactChartRow(Map<String, Object?> row) {
+  return row.entries
+      .map((entry) => '${entry.key}: ${entry.value ?? '-'}')
+      .join(' · ');
 }
 
 class _AnswerChoiceCard extends StatelessWidget {

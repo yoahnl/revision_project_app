@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:revision_app/app/router/app_routes.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
 import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
@@ -98,6 +99,11 @@ class _RevisionSessionPageState extends State<RevisionSessionPage> {
           );
         }
 
+        if (_isCompletedCourseQuickSession(response) ||
+            _isCompletedCourseQuickAction(response)) {
+          return _CompletedCourseQuickSessionRedirect(response: response);
+        }
+
         final premiumActivity = _premiumQuickActivity(response);
         if (premiumActivity != null) {
           return QuickRevisionQuizFlow(
@@ -164,9 +170,11 @@ DiagnosticQuizActivity? _premiumQuickActivity(
 ) {
   final action = response.currentAction;
   final payload = action?.payload;
-  if (response.session.mode != RevisionSessionMode.quick ||
+  if (response.session.status != RevisionSessionStatus.started ||
+      response.session.mode != RevisionSessionMode.quick ||
       response.session.courseId == null ||
       action?.kind != RevisionSessionActionKind.diagnosticQuiz ||
+      action?.status != RevisionSessionActionStatus.ready ||
       payload is! RevisionSessionDiagnosticQuizPayload) {
     return null;
   }
@@ -176,6 +184,60 @@ DiagnosticQuizActivity? _premiumQuickActivity(
   }
 
   return payload.activity;
+}
+
+bool _isCompletedCourseQuickSession(RevisionSessionResponse response) {
+  return response.session.status == RevisionSessionStatus.completed &&
+      response.session.mode == RevisionSessionMode.quick &&
+      response.session.courseId != null;
+}
+
+bool _isCompletedCourseQuickAction(RevisionSessionResponse response) {
+  final action = response.currentAction;
+  return response.session.mode == RevisionSessionMode.quick &&
+      response.session.courseId != null &&
+      action?.kind == RevisionSessionActionKind.diagnosticQuiz &&
+      action?.status == RevisionSessionActionStatus.completed;
+}
+
+class _CompletedCourseQuickSessionRedirect extends StatefulWidget {
+  const _CompletedCourseQuickSessionRedirect({required this.response});
+
+  final RevisionSessionResponse response;
+
+  @override
+  State<_CompletedCourseQuickSessionRedirect> createState() =>
+      _CompletedCourseQuickSessionRedirectState();
+}
+
+class _CompletedCourseQuickSessionRedirectState
+    extends State<_CompletedCourseQuickSessionRedirect> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      context.go(
+        AppRoutes.revisionSessionResultV2(
+          sessionId: widget.response.session.id,
+          courseId: widget.response.session.courseId,
+          mode: 'quick',
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const RevisionPage(
+      title: 'Révision terminée',
+      subtitle: 'Ouverture du résultat réel.',
+      children: [Center(child: CircularProgressIndicator())],
+    );
+  }
 }
 
 class _EmptyRevisionSessionState extends StatelessWidget {

@@ -4,9 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:revision_app/app/router/app_routes.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
+import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
 import 'package:revision_app/features/courses/application/courses_providers.dart';
 import 'package:revision_app/features/courses/domain/course_models.dart';
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
+import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
 import 'package:revision_app/presentation/pages/revision_sessions/revision_session_page.dart';
 import 'package:revision_app/presentation/widgets/revision_button.dart';
 
@@ -212,6 +214,289 @@ void main() {
       expect(find.text('Result route'), findsOneWidget);
     },
   );
+
+  testWidgets('course quick session renders diagnostic question visuals', (
+    tester,
+  ) async {
+    final revisionApi = InMemoryRevisionSessionsApi()
+      ..loadResponse = _courseQuickRevisionSessionWithVisuals();
+    final coursesRepository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = _courseDetail();
+    final router = _quickRouter(
+      revisionApi: revisionApi,
+      activityApi: InMemoryActivityApi(),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(coursesRepository),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Répartition des pouvoirs'), findsOneWidget);
+    expect(find.textContaining('Exécutif'), findsOneWidget);
+    expect(find.text('Visuel non pris en charge'), findsOneWidget);
+    expect(find.text('correctChoiceId'), findsNothing);
+  });
+
+  testWidgets('completed course quick session redirects to result route', (
+    tester,
+  ) async {
+    final revisionApi = InMemoryRevisionSessionsApi()
+      ..loadResponse = _completedCourseQuickRevisionSessionResponse();
+    final router = _quickRouter(
+      revisionApi: revisionApi,
+      activityApi: InMemoryActivityApi(),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(
+            InMemoryCoursesRepository()
+              ..detailsByCourse['course-1'] = _courseDetail(),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Result route'), findsOneWidget);
+    expect(find.text('Quel principe organise les pouvoirs ?'), findsNothing);
+  });
+
+  testWidgets('completed quick action does not reopen the premium quiz', (
+    tester,
+  ) async {
+    final revisionApi = InMemoryRevisionSessionsApi()
+      ..loadResponse = _courseQuickRevisionSessionWithCompletedAction();
+    final router = _quickRouter(
+      revisionApi: revisionApi,
+      activityApi: InMemoryActivityApi(),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(
+            InMemoryCoursesRepository()
+              ..detailsByCourse['course-1'] = _courseDetail(),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quel principe organise les pouvoirs ?'), findsNothing);
+    expect(find.text('Result route'), findsOneWidget);
+  });
+
+  testWidgets('multiple choice respects min and max selections', (
+    tester,
+  ) async {
+    _useTallSurface(tester);
+    final revisionApi = InMemoryRevisionSessionsApi()
+      ..loadResponse = _multipleChoiceQuickRevisionSession();
+    final activityApi = InMemoryActivityApi();
+    final router = _quickRouter(
+      revisionApi: revisionApi,
+      activityApi: activityApi,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(
+            InMemoryCoursesRepository()
+              ..detailsByCourse['course-1'] = _courseDetail(),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Contrôle parlementaire'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Terminer', skipOffstage: false));
+    await tester.tap(find.text('Terminer'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(activityApi.submittedDiagnosticQuizCount, 0);
+
+    await tester.tap(find.text('Responsabilité du gouvernement'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dissolution'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Motion de censure'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Terminer', skipOffstage: false));
+    await tester.tap(find.text('Terminer'));
+    await tester.pumpAndSettle();
+
+    expect(activityApi.submittedDiagnosticQuizCount, 1);
+    expect(activityApi.submittedAnswers, hasLength(1));
+    expect(activityApi.submittedAnswers!.single.choiceIds, [
+      'choice-a',
+      'choice-b',
+      'choice-c',
+    ]);
+    expect(revisionApi.completeCount, 1);
+  });
+
+  testWidgets('previous and next keep selected answers before submit', (
+    tester,
+  ) async {
+    final revisionApi = InMemoryRevisionSessionsApi()
+      ..loadResponse = courseQuickRevisionSessionResponse();
+    final activityApi = InMemoryActivityApi();
+    final router = _quickRouter(
+      revisionApi: revisionApi,
+      activityApi: activityApi,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(
+            InMemoryCoursesRepository()
+              ..detailsByCourse['course-1'] = _courseDetail(),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('La séparation des pouvoirs'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Suivant'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Le Parlement'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Précédent'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Suivant'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Terminer'));
+    await tester.pumpAndSettle();
+
+    expect(
+      activityApi.submittedAnswers
+          ?.map((answer) => '${answer.questionId}:${answer.choiceId}')
+          .toList(),
+      ['question-1:choice-1', 'question-2:choice-3'],
+    );
+  });
+
+  testWidgets(
+    'retry completion does not submit the diagnostic activity twice',
+    (tester) async {
+      _useTallSurface(tester);
+      final revisionApi = InMemoryRevisionSessionsApi()
+        ..loadResponse = courseQuickRevisionSessionResponse()
+        ..completeError = StateError('complete failed');
+      final activityApi = InMemoryActivityApi();
+      final router = _quickRouter(
+        revisionApi: revisionApi,
+        activityApi: activityApi,
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            coursesRepositoryProvider.overrideWithValue(
+              InMemoryCoursesRepository()
+                ..detailsByCourse['course-1'] = _courseDetail(),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('La séparation des pouvoirs'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Suivant'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Le Parlement'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Terminer'));
+      await tester.pumpAndSettle();
+
+      expect(activityApi.submittedDiagnosticQuizCount, 1);
+      expect(revisionApi.completeCount, 1);
+      expect(find.text('Finaliser la session'), findsOneWidget);
+
+      revisionApi.completeError = null;
+      await tester.ensureVisible(
+        find.text('Finaliser la session', skipOffstage: false),
+      );
+      await tester.tap(find.text('Finaliser la session'));
+      await tester.pumpAndSettle();
+
+      expect(activityApi.submittedDiagnosticQuizCount, 1);
+      expect(revisionApi.completeCount, 2);
+      expect(find.text('Result route'), findsOneWidget);
+    },
+  );
+
+  testWidgets('back button asks for confirmation before abandoning the quiz', (
+    tester,
+  ) async {
+    final revisionApi = InMemoryRevisionSessionsApi()
+      ..loadResponse = courseQuickRevisionSessionResponse();
+    final activityApi = InMemoryActivityApi();
+    final router = _quickRouter(
+      revisionApi: revisionApi,
+      activityApi: activityApi,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(
+            InMemoryCoursesRepository()
+              ..detailsByCourse['course-1'] = _courseDetail(),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quitter la session ?'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Continuer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quel principe organise les pouvoirs ?'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Quitter'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Course route'), findsOneWidget);
+    expect(activityApi.submittedDiagnosticQuizCount, 0);
+    expect(revisionApi.completeCount, 0);
+  });
 }
 
 class _Harness extends StatelessWidget {
@@ -241,6 +526,15 @@ class _Harness extends StatelessWidget {
   }
 }
 
+void _useTallSurface(WidgetTester tester) {
+  tester.view.physicalSize = const Size(900, 1200);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+}
+
 CourseDetail _courseDetail() {
   const course = CourseListItem(
     id: 'course-1',
@@ -262,5 +556,183 @@ CourseDetail _courseDetail() {
         status: CourseDocumentStatus.ready,
       ),
     ],
+  );
+}
+
+GoRouter _quickRouter({
+  required InMemoryRevisionSessionsApi revisionApi,
+  required InMemoryActivityApi activityApi,
+}) {
+  return GoRouter(
+    initialLocation: AppRoutes.revisionSessionV2(
+      sessionId: 'revision-session-1',
+    ),
+    routes: [
+      GoRoute(
+        path: AppRoutes.revisionSessionV2Path,
+        builder: (context, state) => RevisionSessionPage(
+          revisionSessionController: RevisionSessionController(revisionApi),
+          activityController: ActivityController(activityApi),
+          sessionId: state.pathParameters['sessionId'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.revisionSessionResultV2Path,
+        builder: (context, state) => const Text('Result route'),
+      ),
+      GoRoute(
+        path: AppRoutes.coursePath,
+        builder: (context, state) => const Text('Course route'),
+      ),
+    ],
+  );
+}
+
+RevisionSessionResponse _courseQuickRevisionSessionWithVisuals() {
+  final base = courseQuickRevisionSessionResponse();
+  return RevisionSessionResponse(
+    session: base.session,
+    currentAction: const RevisionSessionAction(
+      id: 'action-quiz-1',
+      kind: RevisionSessionActionKind.diagnosticQuiz,
+      status: RevisionSessionActionStatus.ready,
+      displayOrder: 0,
+      activitySessionId: 'quiz-session-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      payload: RevisionSessionDiagnosticQuizPayload(
+        DiagnosticQuizActivity(
+          sessionId: 'quiz-session-1',
+          title: 'Révision rapide réelle',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          questions: [
+            DiagnosticQuizQuestion(
+              id: 'question-1',
+              prompt: 'Quel principe organise les pouvoirs ?',
+              knowledgeUnitId: 'unit-1',
+              visuals: [
+                DiagnosticQuizChartVisual(
+                  id: 'visual-1',
+                  displayOrder: 0,
+                  chartType: DiagnosticQuizChartType.bar,
+                  title: 'Répartition des pouvoirs',
+                  description: 'Lecture synthétique du cours.',
+                  xKey: 'branche',
+                  yKeys: ['poids'],
+                  data: [
+                    {'branche': 'Exécutif', 'poids': 2},
+                    {'branche': 'Législatif', 'poids': 3},
+                  ],
+                ),
+                DiagnosticQuizUnsupportedVisual(
+                  id: 'visual-2',
+                  displayOrder: 1,
+                  type: 'MAP',
+                ),
+              ],
+              choices: [
+                DiagnosticQuizChoice(
+                  id: 'choice-1',
+                  label: 'La séparation des pouvoirs',
+                ),
+                DiagnosticQuizChoice(
+                  id: 'choice-2',
+                  label: 'La confusion des pouvoirs',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+    history: base.history,
+  );
+}
+
+RevisionSessionResponse _completedCourseQuickRevisionSessionResponse() {
+  final base = courseQuickRevisionSessionResponse();
+  return RevisionSessionResponse(
+    session: RevisionSession(
+      id: base.session.id,
+      status: RevisionSessionStatus.completed,
+      mode: RevisionSessionMode.quick,
+      subjectId: base.session.subjectId,
+      courseId: base.session.courseId,
+      documentId: base.session.documentId,
+      knowledgeUnitId: base.session.knowledgeUnitId,
+      createdAt: base.session.createdAt,
+      completedAt: DateTime.parse('2026-06-15T12:04:12.000Z'),
+    ),
+    currentAction: base.currentAction,
+    history: base.history,
+  );
+}
+
+RevisionSessionResponse _courseQuickRevisionSessionWithCompletedAction() {
+  final base = courseQuickRevisionSessionResponse();
+  return RevisionSessionResponse(
+    session: base.session,
+    currentAction: RevisionSessionAction(
+      id: base.currentAction!.id,
+      kind: base.currentAction!.kind,
+      status: RevisionSessionActionStatus.completed,
+      displayOrder: base.currentAction!.displayOrder,
+      activitySessionId: base.currentAction!.activitySessionId,
+      documentId: base.currentAction!.documentId,
+      knowledgeUnitId: base.currentAction!.knowledgeUnitId,
+      payload: base.currentAction!.payload,
+    ),
+    history: base.history,
+  );
+}
+
+RevisionSessionResponse _multipleChoiceQuickRevisionSession() {
+  final base = courseQuickRevisionSessionResponse();
+  return RevisionSessionResponse(
+    session: base.session,
+    currentAction: const RevisionSessionAction(
+      id: 'action-quiz-1',
+      kind: RevisionSessionActionKind.diagnosticQuiz,
+      status: RevisionSessionActionStatus.ready,
+      displayOrder: 0,
+      activitySessionId: 'quiz-session-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      payload: RevisionSessionDiagnosticQuizPayload(
+        DiagnosticQuizActivity(
+          sessionId: 'quiz-session-1',
+          title: 'Révision rapide réelle',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          questions: [
+            DiagnosticQuizQuestion(
+              id: 'question-multiple',
+              prompt: 'Quels mécanismes relèvent du contrôle parlementaire ?',
+              knowledgeUnitId: 'unit-1',
+              selectionMode: DiagnosticQuizSelectionMode.multiple,
+              minSelections: 2,
+              maxSelections: 3,
+              choices: [
+                DiagnosticQuizChoice(
+                  id: 'choice-a',
+                  label: 'Contrôle parlementaire',
+                ),
+                DiagnosticQuizChoice(
+                  id: 'choice-b',
+                  label: 'Responsabilité du gouvernement',
+                ),
+                DiagnosticQuizChoice(id: 'choice-c', label: 'Dissolution'),
+                DiagnosticQuizChoice(
+                  id: 'choice-d',
+                  label: 'Motion de censure',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+    history: base.history,
   );
 }
