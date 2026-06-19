@@ -24,21 +24,50 @@ class CoursesHomePage extends ConsumerWidget {
     final subjects = ref.watch(subjectsNotifierProvider);
     final notifier = ref.read(subjectsNotifierProvider.notifier);
 
-    return RevisionPageScaffold(
-      children: [
-        subjects.when(
-          loading: () =>
-              const RevisionLoadingState(label: 'Chargement des matières'),
-          error: (error, stackTrace) => RevisionErrorState(
-            title: 'Impossible de charger les matières',
-            message:
-                'Vérifie la connexion puis réessaie. Aucun cours fictif ne sera affiché.',
-            actionLabel: 'Réessayer',
-            onAction: notifier.reload,
-          ),
-          data: (subjects) => _CoursesHomeContent(subjects: subjects),
+    return _HomePageFrame(
+      child: subjects.when(
+        loading: () =>
+            const RevisionLoadingState(label: 'Chargement des matières'),
+        error: (error, stackTrace) => RevisionErrorState(
+          title: 'Impossible de charger les matières',
+          message:
+              'Vérifie la connexion puis réessaie. Aucun cours fictif ne sera affiché.',
+          actionLabel: 'Réessayer',
+          onAction: notifier.reload,
         ),
-      ],
+        data: (subjects) => _CoursesHomeContent(subjects: subjects),
+      ),
+    );
+  }
+}
+
+class _HomePageFrame extends StatelessWidget {
+  const _HomePageFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  RevisionSpacing.pageX,
+                  RevisionSpacing.pageTop,
+                  RevisionSpacing.pageX,
+                  110,
+                ),
+                child: child,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -77,20 +106,24 @@ class _CoursesHomeContent extends ConsumerWidget {
         const SizedBox(height: RevisionSpacing.xs),
         Text('Continue ton progrès', style: RevisionTypography.body),
         const SizedBox(height: RevisionSpacing.xl),
-        courses.when(
-          loading: () =>
-              const RevisionLoadingState(label: 'Chargement des cours'),
-          error: (error, stackTrace) => RevisionErrorState(
-            title: 'Impossible de charger les cours',
-            message:
-                'Aucun cours fictif ne sera affiché. Vérifie la connexion puis réessaie.',
-            actionLabel: 'Réessayer',
-            onAction: () => ref.invalidate(coursesProvider(activeSubject.id)),
-          ),
-          data: (courses) => _CourseList(
-            subject: activeSubject,
-            visual: visual,
-            courses: courses,
+        Expanded(
+          // The home header stays anchored like the mockups; only the course
+          // cards below the hero/section title scroll when the list grows.
+          child: courses.when(
+            loading: () =>
+                const RevisionLoadingState(label: 'Chargement des cours'),
+            error: (error, stackTrace) => RevisionErrorState(
+              title: 'Impossible de charger les cours',
+              message:
+                  'Aucun cours fictif ne sera affiché. Vérifie la connexion puis réessaie.',
+              actionLabel: 'Réessayer',
+              onAction: () => ref.invalidate(coursesProvider(activeSubject.id)),
+            ),
+            data: (courses) => _CourseList(
+              subject: activeSubject,
+              visual: visual,
+              courses: courses,
+            ),
           ),
         ),
       ],
@@ -143,8 +176,8 @@ class _CourseList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (courses.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      return ListView(
+        padding: EdgeInsets.zero,
         children: [
           RevisionEmptyState(
             title: 'Aucun cours réel',
@@ -162,48 +195,88 @@ class _CourseList extends StatelessWidget {
 
     final resumeCourse = courses.first;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RevisionResumeCourseCard(
-          title: resumeCourse.title,
-          subtitle: 'Reprendre le cours',
-          progressLabel: _courseProgressLabel(resumeCourse),
-          progress: _courseProgressValue(resumeCourse),
-          accent: visual.accent,
-          icon: visual.icon,
-          onContinue: () => context.push(AppRoutes.course(resumeCourse.id)),
-        ),
-        const SizedBox(height: RevisionSpacing.xl),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Tes cours de ${subject.name}',
-                style: RevisionTypography.sectionTitle,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: () => _showCreateCourseSheet(context, subject),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Créer'),
-            ),
-          ],
-        ),
-        const SizedBox(height: RevisionSpacing.m),
-        for (final course in courses) ...[
-          RevisionCourseCard(
-            title: course.title,
-            progressLabel: _courseProgressLabel(course),
-            durationLabel: _courseMeta(course),
-            progress: _courseProgressValue(course),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fixedHeader = <Widget>[
+          RevisionResumeCourseCard(
+            title: resumeCourse.title,
+            subtitle: 'Reprendre le cours',
+            progressLabel: _courseProgressLabel(resumeCourse),
+            progress: _courseProgressValue(resumeCourse),
             accent: visual.accent,
             icon: visual.icon,
-            onTap: () => context.push(AppRoutes.course(course.id)),
+            onContinue: () => context.push(AppRoutes.course(resumeCourse.id)),
+          ),
+          const SizedBox(height: RevisionSpacing.xl),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Tes cours de ${subject.name}',
+                  style: RevisionTypography.sectionTitle,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => _showCreateCourseSheet(context, subject),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Créer'),
+              ),
+            ],
           ),
           const SizedBox(height: RevisionSpacing.m),
-        ],
+        ];
+
+        if (constraints.maxHeight < 340) {
+          // On very short surfaces, preserving accessibility matters more than
+          // strict pinning: the whole course area scrolls to avoid clipping.
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              ...fixedHeader,
+              ..._courseCards(context),
+              const SizedBox(height: RevisionSpacing.l),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ...fixedHeader,
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.only(bottom: RevisionSpacing.l),
+                itemCount: courses.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: RevisionSpacing.m),
+                itemBuilder: (context, index) =>
+                    _courseCard(context, courses[index]),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  List<Widget> _courseCards(BuildContext context) {
+    return [
+      for (final course in courses) ...[
+        _courseCard(context, course),
+        const SizedBox(height: RevisionSpacing.m),
       ],
+    ];
+  }
+
+  Widget _courseCard(BuildContext context, CourseListItem course) {
+    return RevisionCourseCard(
+      title: course.title,
+      progressLabel: _courseProgressLabel(course),
+      durationLabel: _courseMeta(course),
+      progress: _courseProgressValue(course),
+      accent: visual.accent,
+      icon: visual.icon,
+      onTap: () => context.push(AppRoutes.course(course.id)),
     );
   }
 }

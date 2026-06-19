@@ -637,16 +637,22 @@ class RevisionResumeCourseCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
+                      flex: 3,
                       child: RevisionProgressLine(
                         value: progress,
                         color: RevisionColors.cyan,
                       ),
                     ),
                     const SizedBox(width: RevisionSpacing.s),
-                    Text(
-                      progressLabel,
-                      style: RevisionTypography.caption.copyWith(
-                        color: RevisionColors.text,
+                    Flexible(
+                      flex: 2,
+                      child: Text(
+                        progressLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: RevisionTypography.caption.copyWith(
+                          color: RevisionColors.text,
+                        ),
                       ),
                     ),
                   ],
@@ -707,10 +713,16 @@ class RevisionCourseCard extends StatelessWidget {
           RevisionIconTile(icon: icon, accent: accent, size: 48, iconSize: 27),
           const SizedBox(width: RevisionSpacing.m),
           Expanded(
+            flex: 5,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: RevisionTypography.sectionTitle),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: RevisionTypography.sectionTitle,
+                ),
                 const SizedBox(height: RevisionSpacing.s),
                 Row(
                   children: [
@@ -737,17 +749,27 @@ class RevisionCourseCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: RevisionSpacing.m),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.schedule_rounded,
-                color: RevisionColors.textMuted,
-                size: 15,
-              ),
-              const SizedBox(width: RevisionSpacing.xs),
-              Text(durationLabel, style: RevisionTypography.caption),
-            ],
+          Flexible(
+            flex: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  color: RevisionColors.textMuted,
+                  size: 15,
+                ),
+                const SizedBox(width: RevisionSpacing.xs),
+                Flexible(
+                  child: Text(
+                    durationLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: RevisionTypography.caption,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: RevisionSpacing.s),
           const Icon(

@@ -158,6 +158,12 @@ void main() {
   testWidgets('home can list real courses for the active subject', (
     tester,
   ) async {
+    final view = tester.view;
+    view.devicePixelRatio = 1;
+    view.physicalSize = const Size(430, 932);
+    addTearDown(view.resetDevicePixelRatio);
+    addTearDown(view.resetPhysicalSize);
+
     await tester.pumpWidget(
       _createTestApp(
         seedSubjects: const [
@@ -190,9 +196,67 @@ void main() {
     expect(find.text('Loi normale'), findsNothing);
   });
 
+  testWidgets('home keeps its premium header fixed while course cards scroll', (
+    tester,
+  ) async {
+    final view = tester.view;
+    view.devicePixelRatio = 1;
+    view.physicalSize = const Size(430, 932);
+    addTearDown(view.resetDevicePixelRatio);
+    addTearDown(view.resetPhysicalSize);
+
+    final courses = List<CourseListItem>.generate(
+      12,
+      (index) => CourseListItem(
+        id: 'course-real-${index + 1}',
+        subjectId: 'subject-real-1',
+        title: 'Cours ${index + 1}',
+        chapterLabel: 'Chapitre ${index + 1}',
+        estimatedMinutes: 20 + index,
+        sourceCount: 1,
+        readySourceCount: 1,
+        processingSourceCount: 0,
+        failedSourceCount: 0,
+      ),
+    );
+
+    await tester.pumpWidget(
+      _createTestApp(
+        seedSubjects: const [
+          Subject(id: 'subject-real-1', name: 'Droits', priority: 4),
+        ],
+        seedCourses: courses,
+      ).widget,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Droits'), findsWidgets);
+    expect(find.text('Continue ton progrès'), findsOneWidget);
+    expect(find.text('Reprendre le cours'), findsOneWidget);
+    expect(find.text('Cours 12'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.text('Cours 12'),
+      600,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Droits'), findsWidgets);
+    expect(find.text('Continue ton progrès'), findsOneWidget);
+    expect(find.text('Reprendre le cours'), findsOneWidget);
+    expect(find.text('Cours 12'), findsOneWidget);
+  });
+
   testWidgets('home can create a real course and open its detail', (
     tester,
   ) async {
+    final view = tester.view;
+    view.devicePixelRatio = 1;
+    view.physicalSize = const Size(430, 932);
+    addTearDown(view.resetDevicePixelRatio);
+    addTearDown(view.resetPhysicalSize);
+
     await tester.pumpWidget(
       _createTestApp(
         seedSubjects: const [
@@ -206,9 +270,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -180));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Créer un cours'));
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'Créer un cours'),
+    );
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Créer un cours').hitTestable(),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField).first, 'Droit administratif');
