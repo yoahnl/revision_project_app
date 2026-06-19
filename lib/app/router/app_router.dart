@@ -104,6 +104,12 @@ GoRouter createAppRouter({
                 ),
               ),
               GoRoute(
+                path: AppRoutes.courseSheetSourcesPath,
+                builder: (context, state) => CourseRevisionSheetSourcesPage(
+                  courseId: state.pathParameters['courseId'] ?? '',
+                ),
+              ),
+              GoRoute(
                 path: AppRoutes.subjects,
                 builder: (context, state) => const SubjectsHomePage(),
                 routes: [

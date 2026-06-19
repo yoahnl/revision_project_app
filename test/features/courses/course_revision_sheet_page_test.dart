@@ -19,9 +19,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Fiche de cours'), findsWidgets);
-    expect(find.text('Introduction'), findsOneWidget);
+    expect(find.text('Introduction destinée aux étudiants'), findsOneWidget);
     expect(find.text('Institutions'), findsOneWidget);
     expect(find.text('Le Parlement contrôle le Gouvernement.'), findsOneWidget);
+    expect(find.textContaining('étudiant.es'), findsNothing);
+    expect(find.textContaining('Cours mais à la disposition'), findsNothing);
+    expect(find.text('Sources >'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);
     expect(find.text('870'), findsNothing);
@@ -76,6 +79,35 @@ void main() {
     expect(find.text('Cours introuvable'), findsOneWidget);
     expect(find.text('Fiche non générée'), findsNothing);
   });
+
+  testWidgets(
+    'course revision sheet sources page shows long sources separately',
+    (tester) async {
+      final repository = InMemoryCoursesRepository()
+        ..revisionSheetsByCourse['course-1'] = revisionSheet();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: CourseRevisionSheetSourcesPage(courseId: 'course-1'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sources de la fiche'), findsOneWidget);
+      expect(find.text('Institutions'), findsOneWidget);
+      expect(
+        find.textContaining('Cours mais à la disposition'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('étudiant.es'), findsNothing);
+      expect(find.textContaining('étudiants'), findsOneWidget);
+    },
+  );
 }
 
 Widget testApp(InMemoryCoursesRepository repository) {
@@ -94,14 +126,22 @@ RevisionSheet revisionSheet() {
     subjectId: 'subject-1',
     status: 'READY',
     title: 'Fiche de cours',
-    introduction: 'Introduction',
+    introduction: 'Introduction destinée aux étudiant.es',
     sections: [
       RevisionSheetSection(
         id: 'section-1',
         displayOrder: 0,
         title: 'Institutions',
         content: 'Le Parlement contrôle le Gouvernement.',
-        sources: [],
+        sources: [
+          DocumentArtifactSource(
+            chunkId: 'chunk-1',
+            index: 0,
+            text:
+                'Cours mais à la disposition des étudiant.es de l’UFR 11. Table des matières très longue.',
+            pageNumber: 1,
+          ),
+        ],
       ),
     ],
     keyPoints: ['Point clé'],

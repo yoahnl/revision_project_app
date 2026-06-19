@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:revision_app/presentation/theme/app_spacing.dart';
 
 import '../../../app/router/app_routes.dart';
 import '../../../presentation/design_system/components/revision_mvp_components.dart';
@@ -73,7 +74,10 @@ class _CourseRevisionSheetPageState
               );
             }
 
-            return _RevisionSheetContent(sheet: sheet);
+            return _RevisionSheetContent(
+              courseId: widget.courseId,
+              sheet: sheet,
+            );
           },
         ),
       ],
@@ -158,15 +162,114 @@ class _SheetErrorState extends StatelessWidget {
   }
 }
 
-class _RevisionSheetContent extends StatelessWidget {
-  const _RevisionSheetContent({required this.sheet});
+class CourseRevisionSheetSourcesPage extends ConsumerWidget {
+  const CourseRevisionSheetSourcesPage({required this.courseId, super.key});
 
+  final String courseId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sheet = ref.watch(courseRevisionSheetProvider(courseId));
+
+    return RevisionPageScaffold(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Retour à la fiche',
+              onPressed: () =>
+                  _popOrGo(context, AppRoutes.courseSheet(courseId)),
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+          ],
+        ),
+        Text('Sources de la fiche', style: RevisionTypography.pageTitle),
+        Text(
+          'Les extraits longs sont séparés pour garder la fiche lisible.',
+          style: RevisionTypography.body,
+        ),
+        sheet.when(
+          loading: () =>
+              const RevisionLoadingState(label: 'Chargement des sources'),
+          error: (error, stackTrace) =>
+              _SheetErrorState(error: error, courseId: courseId),
+          data: (sheet) {
+            if (sheet == null) {
+              return RevisionEmptyState(
+                title: 'Fiche non générée',
+                message:
+                    'Génère la fiche avant de consulter ses sources détaillées.',
+                icon: Icons.article_outlined,
+                actionLabel: 'Retour à la fiche',
+                onAction: () => context.go(AppRoutes.courseSheet(courseId)),
+              );
+            }
+
+            final sections = sheet.sections
+                .where((section) => section.sources.isNotEmpty)
+                .toList(growable: false);
+
+            if (sections.isEmpty) {
+              return const RevisionEmptyState(
+                title: 'Aucune source détaillée',
+                message: 'Cette fiche ne contient pas d’extrait source long.',
+                icon: Icons.source_outlined,
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final section in sections)
+                  RevisionSheetSectionCard(
+                    title: _readableStudyText(section.title),
+                    icon: Icons.source_outlined,
+                    accent: RevisionColors.mint,
+                    children: [
+                      for (final source in section.sources)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: RevisionSpacing.m,
+                          ),
+                          child: RevisionGlassCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Page ${source.pageNumber ?? '-'}',
+                                  style: RevisionTypography.caption,
+                                ),
+                                const SizedBox(height: RevisionSpacing.xs),
+                                Text(
+                                  _readableStudyText(source.text),
+                                  style: RevisionTypography.body,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _RevisionSheetContent extends StatelessWidget {
+  const _RevisionSheetContent({required this.courseId, required this.sheet});
+
+  final String courseId;
   final RevisionSheet sheet;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacing.s,
       children: [
         RevisionGlassCard(
           gradient: LinearGradient(
@@ -194,7 +297,10 @@ class _RevisionSheetContent extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: RevisionSpacing.m),
-              Text(sheet.title, style: RevisionTypography.pageTitle),
+              Text(
+                _readableStudyText(sheet.title),
+                style: RevisionTypography.pageTitle,
+              ),
             ],
           ),
         ),
@@ -204,7 +310,10 @@ class _RevisionSheetContent extends StatelessWidget {
             icon: Icons.summarize_rounded,
             accent: RevisionColors.blue,
             children: [
-              Text(sheet.introduction!, style: RevisionTypography.body),
+              Text(
+                _readableStudyText(sheet.introduction!),
+                style: RevisionTypography.body,
+              ),
             ],
           ),
         if (sheet.keyPoints.isNotEmpty)
@@ -212,29 +321,30 @@ class _RevisionSheetContent extends StatelessWidget {
             title: 'Points clés',
             icon: Icons.check_circle_rounded,
             accent: RevisionColors.green,
-            items: sheet.keyPoints,
+            items: sheet.keyPoints.map(_readableStudyText).toList(),
           ),
         if (sheet.commonMistakes.isNotEmpty)
           _TextListCard(
             title: 'Pièges fréquents',
             icon: Icons.warning_amber_rounded,
             accent: RevisionColors.coral,
-            items: sheet.commonMistakes,
+            items: sheet.commonMistakes.map(_readableStudyText).toList(),
           ),
         if (sheet.mustKnow.isNotEmpty)
           _TextListCard(
             title: 'À connaître',
             icon: Icons.school_rounded,
             accent: RevisionColors.violet,
-            items: sheet.mustKnow,
+            items: sheet.mustKnow.map(_readableStudyText).toList(),
           ),
-        for (final section in sheet.sections) _SectionCard(section: section),
+        for (final section in sheet.sections)
+          _SectionCard(courseId: courseId, section: section),
         if (sheet.practiceSuggestions.isNotEmpty)
           _TextListCard(
             title: 'S’entraîner',
             icon: Icons.fitness_center_rounded,
             accent: RevisionColors.pink,
-            items: sheet.practiceSuggestions,
+            items: sheet.practiceSuggestions.map(_readableStudyText).toList(),
           ),
       ],
     );
@@ -276,8 +386,9 @@ class _TextListCard extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.section});
+  const _SectionCard({required this.courseId, required this.section});
 
+  final String courseId;
   final RevisionSheetSection section;
 
   @override
@@ -287,19 +398,49 @@ class _SectionCard extends StatelessWidget {
       icon: Icons.notes_rounded,
       accent: RevisionColors.mint,
       children: [
-        Text(section.content, style: RevisionTypography.body),
+        Text(
+          _readableStudyText(section.content),
+          style: RevisionTypography.body,
+        ),
         if (section.sources.isNotEmpty) ...[
           const SizedBox(height: RevisionSpacing.s),
-          Text('Sources', style: RevisionTypography.caption),
-          for (final source in section.sources)
-            Text(
-              'p. ${source.pageNumber ?? '-'} · ${source.text}',
-              style: RevisionTypography.caption,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () =>
+                  context.push(AppRoutes.courseSheetSources(courseId)),
+              icon: const Icon(Icons.source_outlined, size: 16),
+              label: const Text('Sources >'),
             ),
+          ),
         ],
       ],
     );
   }
+}
+
+String _readableStudyText(String value) {
+  return value
+      .replaceAllMapped(
+        RegExp(r'\b([A-Za-zÀ-ÖØ-öø-ÿ]+)[\.·-]e[\.·-]s\b'),
+        (match) => '${match.group(1)}s',
+      )
+      .replaceAllMapped(
+        RegExp(r'\b([A-Za-zÀ-ÖØ-öø-ÿ]+)[\.·-]es\b'),
+        (match) => '${match.group(1)}s',
+      )
+      .replaceAllMapped(
+        RegExp(r'\b([A-Za-zÀ-ÖØ-öø-ÿ]+)\(e\)s\b'),
+        (match) => '${match.group(1)}s',
+      )
+      .replaceAllMapped(
+        RegExp(r'\b([A-Za-zÀ-ÖØ-öø-ÿ]+)[\.·-]e\b'),
+        (match) => match.group(1)!,
+      )
+      .replaceAllMapped(
+        RegExp(r'\b([A-Za-zÀ-ÖØ-öø-ÿ]+)\(e\)\b'),
+        (match) => match.group(1)!,
+      );
 }
 
 enum _SheetMode { fast, complete, exam }
