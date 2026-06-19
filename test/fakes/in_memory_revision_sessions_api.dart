@@ -9,12 +9,20 @@ class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
   String? startedKnowledgeUnitId;
   RevisionSessionPreferredAction? startedPreferredAction;
   String? loadedSessionId;
+  String? completedSessionId;
+  String? loadedResultSessionId;
   int startCount = 0;
   int loadCount = 0;
+  int completeCount = 0;
+  int loadResultCount = 0;
   Object? startError;
   Object? loadError;
+  Object? completeError;
+  Object? loadResultError;
   RevisionSessionResponse startResponse = openQuestionRevisionSessionResponse();
   RevisionSessionResponse loadResponse = minimalRevisionSessionResponse();
+  RevisionSessionResult completeResponse = revisionSessionResult();
+  RevisionSessionResult resultResponse = revisionSessionResult();
 
   @override
   Future<RevisionSessionResponse> startRevisionSession({
@@ -46,6 +54,32 @@ class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
       throw error;
     }
     return loadResponse;
+  }
+
+  @override
+  Future<RevisionSessionResult> completeRevisionSession({
+    required String sessionId,
+  }) async {
+    completeCount += 1;
+    completedSessionId = sessionId;
+    final error = completeError;
+    if (error != null) {
+      throw error;
+    }
+    return completeResponse;
+  }
+
+  @override
+  Future<RevisionSessionResult> getRevisionSessionResult({
+    required String sessionId,
+  }) async {
+    loadResultCount += 1;
+    loadedResultSessionId = sessionId;
+    final error = loadResultError;
+    if (error != null) {
+      throw error;
+    }
+    return resultResponse;
   }
 }
 
@@ -87,6 +121,79 @@ RevisionSessionResponse diagnosticQuizRevisionSessionResponse() {
         activitySessionId: 'quiz-session-1',
         documentId: null,
         knowledgeUnitId: null,
+        payload: null,
+      ),
+    ],
+  );
+}
+
+RevisionSessionResponse courseQuickRevisionSessionResponse({
+  String courseId = 'course-1',
+}) {
+  return RevisionSessionResponse(
+    session: RevisionSession(
+      id: 'revision-session-1',
+      status: RevisionSessionStatus.started,
+      mode: RevisionSessionMode.quick,
+      subjectId: 'subject-1',
+      courseId: courseId,
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      createdAt: DateTime.parse('2026-06-15T12:00:00.000Z'),
+      completedAt: null,
+    ),
+    currentAction: const RevisionSessionAction(
+      id: 'action-quiz-1',
+      kind: RevisionSessionActionKind.diagnosticQuiz,
+      status: RevisionSessionActionStatus.ready,
+      displayOrder: 0,
+      activitySessionId: 'quiz-session-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      payload: RevisionSessionDiagnosticQuizPayload(
+        DiagnosticQuizActivity(
+          sessionId: 'quiz-session-1',
+          title: 'Révision rapide réelle',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          questions: [
+            DiagnosticQuizQuestion(
+              id: 'question-1',
+              prompt: 'Quel principe organise les pouvoirs ?',
+              knowledgeUnitId: 'unit-1',
+              choices: [
+                DiagnosticQuizChoice(
+                  id: 'choice-1',
+                  label: 'La séparation des pouvoirs',
+                ),
+                DiagnosticQuizChoice(
+                  id: 'choice-2',
+                  label: 'La confusion des pouvoirs',
+                ),
+              ],
+            ),
+            DiagnosticQuizQuestion(
+              id: 'question-2',
+              prompt: 'Quelle institution vote la loi ?',
+              knowledgeUnitId: 'unit-1',
+              choices: [
+                DiagnosticQuizChoice(id: 'choice-3', label: 'Le Parlement'),
+                DiagnosticQuizChoice(id: 'choice-4', label: 'Le Préfet'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+    history: const [
+      RevisionSessionAction(
+        id: 'action-quiz-1',
+        kind: RevisionSessionActionKind.diagnosticQuiz,
+        status: RevisionSessionActionStatus.ready,
+        displayOrder: 0,
+        activitySessionId: 'quiz-session-1',
+        documentId: 'document-1',
+        knowledgeUnitId: 'unit-1',
         payload: null,
       ),
     ],
@@ -207,11 +314,42 @@ RevisionSession revisionSession({String? knowledgeUnitId}) {
   return RevisionSession(
     id: 'revision-session-1',
     status: RevisionSessionStatus.started,
+    mode: RevisionSessionMode.quick,
     subjectId: 'subject-1',
     courseId: null,
     documentId: null,
     knowledgeUnitId: knowledgeUnitId,
     createdAt: DateTime.parse('2026-06-15T12:00:00.000Z'),
     completedAt: null,
+  );
+}
+
+RevisionSessionResult revisionSessionResult() {
+  return RevisionSessionResult(
+    session: RevisionSessionResultSession(
+      id: 'revision-session-1',
+      subjectId: 'subject-1',
+      courseId: 'course-1',
+      mode: RevisionSessionMode.quick,
+      status: RevisionSessionStatus.completed,
+      createdAt: DateTime.parse('2026-06-15T12:00:00.000Z'),
+      completedAt: DateTime.parse('2026-06-15T12:04:12.000Z'),
+    ),
+    summary: const RevisionSessionResultSummary(
+      correctAnswers: 4,
+      totalQuestions: 6,
+      score: 4 / 6,
+      durationSeconds: 252,
+    ),
+    knowledgeUnits: const [
+      RevisionSessionKnowledgeUnitResult(
+        knowledgeUnitId: 'unit-1',
+        title: 'Séparation des pouvoirs',
+        correctAnswers: 4,
+        totalQuestions: 6,
+        score: 4 / 6,
+        state: RevisionSessionKnowledgeUnitResultState.toReview,
+      ),
+    ],
   );
 }

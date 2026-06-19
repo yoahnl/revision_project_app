@@ -494,6 +494,7 @@ Map<String, Object?> revisionSessionJson({required String courseId}) {
     'session': {
       'id': 'revision-session-1',
       'status': 'STARTED',
+      'mode': 'QUICK',
       'subjectId': 'subject-1',
       'courseId': courseId,
       'documentId': 'document-1',

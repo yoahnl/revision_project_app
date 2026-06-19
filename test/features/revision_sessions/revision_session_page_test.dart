@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:revision_app/app/router/app_routes.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
+import 'package:revision_app/features/courses/application/courses_providers.dart';
+import 'package:revision_app/features/courses/domain/course_models.dart';
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
 import 'package:revision_app/presentation/pages/revision_sessions/revision_session_page.dart';
 import 'package:revision_app/presentation/widgets/revision_button.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
+import '../../fakes/in_memory_courses_repository.dart';
 import '../../fakes/in_memory_revision_sessions_api.dart';
 
 void main() {
@@ -127,6 +133,85 @@ void main() {
     expect(find.text('modelAnswer'), findsNothing);
     expect(find.text('score'), findsNothing);
   });
+
+  testWidgets(
+    'course quick session renders one question at a time and completes remotely',
+    (tester) async {
+      final revisionApi = InMemoryRevisionSessionsApi()
+        ..loadResponse = courseQuickRevisionSessionResponse();
+      final activityApi = InMemoryActivityApi();
+      final coursesRepository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = _courseDetail();
+      final router = GoRouter(
+        initialLocation: AppRoutes.revisionSessionV2(
+          sessionId: 'revision-session-1',
+        ),
+        routes: [
+          GoRoute(
+            path: AppRoutes.revisionSessionV2Path,
+            builder: (context, state) => RevisionSessionPage(
+              revisionSessionController: RevisionSessionController(revisionApi),
+              activityController: ActivityController(activityApi),
+              sessionId: state.pathParameters['sessionId'],
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.revisionSessionResultV2Path,
+            builder: (context, state) => const Text('Result route'),
+          ),
+          GoRoute(
+            path: AppRoutes.coursePath,
+            builder: (context, state) => const Text('Course route'),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            coursesRepositoryProvider.overrideWithValue(coursesRepository),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Révision rapide'), findsOneWidget);
+      expect(find.text('Question 1 sur 2'), findsOneWidget);
+      expect(
+        find.text('Quel principe organise les pouvoirs ?'),
+        findsOneWidget,
+      );
+      expect(find.text('Quelle institution vote la loi ?'), findsNothing);
+      expect(find.text('quiz-session-1'), findsNothing);
+      expect(find.text('correctChoiceId'), findsNothing);
+
+      await tester.tap(find.text('La séparation des pouvoirs'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Suivant'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Question 2 sur 2'), findsOneWidget);
+      expect(find.text('Quelle institution vote la loi ?'), findsOneWidget);
+
+      await tester.tap(find.text('Le Parlement'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Terminer'));
+      await tester.pumpAndSettle();
+
+      expect(activityApi.submittedDiagnosticQuizCount, 1);
+      expect(activityApi.submittedDiagnosticSessionId, 'quiz-session-1');
+      expect(activityApi.submittedAnswers, hasLength(2));
+      expect(revisionApi.completeCount, 1);
+      expect(revisionApi.completedSessionId, 'revision-session-1');
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        '/revision-sessions/revision-session-1/result',
+      );
+      expect(find.text('Result route'), findsOneWidget);
+    },
+  );
 }
 
 class _Harness extends StatelessWidget {
@@ -154,4 +239,28 @@ class _Harness extends StatelessWidget {
       ),
     );
   }
+}
+
+CourseDetail _courseDetail() {
+  const course = CourseListItem(
+    id: 'course-1',
+    subjectId: 'subject-1',
+    title: 'Droit constitutionnel',
+    sourceCount: 1,
+    readySourceCount: 1,
+  );
+
+  return const CourseDetail(
+    course: course,
+    subject: CourseSubjectSummary(id: 'subject-1', name: 'Droits'),
+    sources: [
+      CourseDocument(
+        id: 'document-1',
+        courseId: 'course-1',
+        documentId: 'document-1',
+        fileName: 'source.pdf',
+        status: CourseDocumentStatus.ready,
+      ),
+    ],
+  );
 }

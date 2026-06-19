@@ -335,7 +335,7 @@ void main() {
     expect(find.text('78%'), findsNothing);
   });
 
-  testWidgets('revision session result route hides static MVP score', (
+  testWidgets('revision session result route displays real backend result', (
     tester,
   ) async {
     final harness = _RouterHarness();
@@ -345,7 +345,8 @@ void main() {
     harness.router.go(AppRoutes.revisionSessionResultV2(sessionId: 'fake'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Résultat réel indisponible'), findsOneWidget);
+    expect(find.text('Session terminée'), findsOneWidget);
+    expect(find.text('4/6 bonnes réponses'), findsOneWidget);
     expect(find.text('78%'), findsNothing);
     expect(find.text('4/5 bonnes'), findsNothing);
   });

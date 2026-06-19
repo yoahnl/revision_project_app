@@ -18,10 +18,13 @@ class InMemoryActivityApi implements ActivityApi {
   int startedDiagnosticQuizCount = 0;
   int startedOpenQuestionCount = 0;
   int startedRichClosedCount = 0;
+  int submittedDiagnosticQuizCount = 0;
   int submittedRichClosedCount = 0;
+  String? submittedDiagnosticSessionId;
   List<DiagnosticQuizAnswer>? submittedAnswers;
   List<RichClosedAnswer>? submittedRichClosedAnswers;
   String? submittedOpenAnswerText;
+  Object? submitDiagnosticQuizError;
 
   @override
   Future<DiagnosticQuizActivity> startNextActivity({
@@ -53,7 +56,13 @@ class InMemoryActivityApi implements ActivityApi {
     required String sessionId,
     required List<DiagnosticQuizAnswer> answers,
   }) async {
+    submittedDiagnosticQuizCount += 1;
+    submittedDiagnosticSessionId = sessionId;
     submittedAnswers = answers;
+    final error = submitDiagnosticQuizError;
+    if (error != null) {
+      throw error;
+    }
 
     return const DiagnosticQuizResult(correctAnswers: 1, totalQuestions: 1);
   }

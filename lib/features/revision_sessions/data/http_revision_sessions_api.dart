@@ -47,12 +47,74 @@ class HttpRevisionSessionsApi implements RevisionSessionsApi {
   Future<RevisionSessionResponse> getRevisionSession({
     required String sessionId,
   }) async {
-    final response = await _dio.get<Object?>(
-      '/revision-sessions/$sessionId',
-      options: await _authorizedOptions(),
-    );
+    try {
+      final response = await _dio.get<Object?>(
+        '/revision-sessions/$sessionId',
+        options: await _authorizedOptions(),
+      );
 
-    return RevisionSessionResponseJson(response.data).toResponse();
+      return RevisionSessionResponseJson(response.data).toResponse();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const RevisionSessionNotFoundException(
+          'Revision session not found',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RevisionSessionResult> completeRevisionSession({
+    required String sessionId,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/revision-sessions/$sessionId/complete',
+        data: const <String, Object?>{},
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSessionResultJson(response.data).toResult();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const RevisionSessionNotFoundException(
+          'Revision session not found',
+        );
+      }
+      if (error.response?.statusCode == 409) {
+        throw RevisionSessionResultNotReadyException(
+          _responseMessage(error) ?? 'Revision session is not ready',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RevisionSessionResult> getRevisionSessionResult({
+    required String sessionId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/revision-sessions/$sessionId/result',
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSessionResultJson(response.data).toResult();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const RevisionSessionNotFoundException(
+          'Revision session not found',
+        );
+      }
+      if (error.response?.statusCode == 409) {
+        throw RevisionSessionResultNotReadyException(
+          _responseMessage(error) ?? 'Revision session result is not ready',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<Options> _authorizedOptions() async {
@@ -73,6 +135,18 @@ class HttpRevisionSessionsApi implements RevisionSessionsApi {
         'rich_closed_exercise',
     };
   }
+}
+
+String? _responseMessage(DioException error) {
+  final data = error.response?.data;
+  if (data is Map<String, Object?>) {
+    final message = data['message'];
+    if (message is String) {
+      return message;
+    }
+  }
+
+  return null;
 }
 
 class RevisionSessionResponseJson {
@@ -115,6 +189,167 @@ class RevisionSessionResponseJson {
   }
 }
 
+class RevisionSessionResultJson {
+  const RevisionSessionResultJson(this.value);
+
+  final Object? value;
+
+  RevisionSessionResult toResult() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid revision session result response');
+    }
+
+    final session = json['session'];
+    final summary = json['summary'];
+    final knowledgeUnits = json['knowledgeUnits'];
+
+    if (session is! Map<String, Object?> ||
+        summary is! Map<String, Object?> ||
+        knowledgeUnits is! List) {
+      throw const FormatException('Invalid revision session result response');
+    }
+
+    return RevisionSessionResult(
+      session: _RevisionSessionResultSessionJson(session).toSession(),
+      summary: _RevisionSessionResultSummaryJson(summary).toSummary(),
+      knowledgeUnits: knowledgeUnits
+          .map((unit) => _RevisionSessionKnowledgeUnitJson(unit).toResult())
+          .toList(growable: false),
+    );
+  }
+}
+
+class _RevisionSessionResultSessionJson {
+  const _RevisionSessionResultSessionJson(this.value);
+
+  final Map<String, Object?> value;
+
+  RevisionSessionResultSession toSession() {
+    final id = value['id'];
+    final subjectId = value['subjectId'];
+    final courseId = value['courseId'];
+    final mode = value['mode'];
+    final status = value['status'];
+    final createdAt = value['createdAt'];
+    final completedAt = value['completedAt'];
+
+    if (id is! String ||
+        subjectId is! String ||
+        mode is! String ||
+        status is! String ||
+        createdAt is! String ||
+        completedAt is! String) {
+      throw const FormatException('Invalid revision session result response');
+    }
+
+    return RevisionSessionResultSession(
+      id: id,
+      subjectId: subjectId,
+      courseId: courseId is String ? courseId : null,
+      mode: _revisionSessionMode(mode),
+      status: _revisionSessionStatus(status),
+      createdAt: DateTime.parse(createdAt),
+      completedAt: DateTime.parse(completedAt),
+    );
+  }
+}
+
+class _RevisionSessionResultSummaryJson {
+  const _RevisionSessionResultSummaryJson(this.value);
+
+  final Map<String, Object?> value;
+
+  RevisionSessionResultSummary toSummary() {
+    final correctAnswers = value['correctAnswers'];
+    final totalQuestions = value['totalQuestions'];
+    final score = value['score'];
+    final durationSeconds = value['durationSeconds'];
+
+    if (correctAnswers is! int ||
+        totalQuestions is! int ||
+        score is! num ||
+        durationSeconds is! int) {
+      throw const FormatException('Invalid revision session result response');
+    }
+
+    return RevisionSessionResultSummary(
+      correctAnswers: correctAnswers,
+      totalQuestions: totalQuestions,
+      score: score.toDouble(),
+      durationSeconds: durationSeconds,
+    );
+  }
+}
+
+class _RevisionSessionKnowledgeUnitJson {
+  const _RevisionSessionKnowledgeUnitJson(this.value);
+
+  final Object? value;
+
+  RevisionSessionKnowledgeUnitResult toResult() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid revision session result response');
+    }
+
+    final knowledgeUnitId = json['knowledgeUnitId'];
+    final title = json['title'];
+    final correctAnswers = json['correctAnswers'];
+    final totalQuestions = json['totalQuestions'];
+    final score = json['score'];
+    final state = json['state'];
+
+    if (knowledgeUnitId is! String ||
+        title is! String ||
+        correctAnswers is! int ||
+        totalQuestions is! int ||
+        score is! num ||
+        state is! String) {
+      throw const FormatException('Invalid revision session result response');
+    }
+
+    return RevisionSessionKnowledgeUnitResult(
+      knowledgeUnitId: knowledgeUnitId,
+      title: title,
+      correctAnswers: correctAnswers,
+      totalQuestions: totalQuestions,
+      score: score.toDouble(),
+      state: _knowledgeUnitResultState(state),
+    );
+  }
+}
+
+RevisionSessionStatus _revisionSessionStatus(String status) {
+  return switch (status) {
+    'STARTED' => RevisionSessionStatus.started,
+    'COMPLETED' => RevisionSessionStatus.completed,
+    'ABANDONED' => RevisionSessionStatus.abandoned,
+    _ => RevisionSessionStatus.unknown,
+  };
+}
+
+RevisionSessionMode _revisionSessionMode(String mode) {
+  return switch (mode) {
+    'QUICK' => RevisionSessionMode.quick,
+    'DEEP' => RevisionSessionMode.deep,
+    'EXAM' => RevisionSessionMode.exam,
+    _ => RevisionSessionMode.unknown,
+  };
+}
+
+RevisionSessionKnowledgeUnitResultState _knowledgeUnitResultState(
+  String state,
+) {
+  return switch (state) {
+    'MASTERED' => RevisionSessionKnowledgeUnitResultState.mastered,
+    'TO_REVIEW' => RevisionSessionKnowledgeUnitResultState.toReview,
+    _ => RevisionSessionKnowledgeUnitResultState.unknown,
+  };
+}
+
 class _RevisionSessionJson {
   const _RevisionSessionJson(this.value);
 
@@ -123,6 +358,7 @@ class _RevisionSessionJson {
   RevisionSession toSession() {
     final id = value['id'];
     final status = value['status'];
+    final mode = value['mode'];
     final subjectId = value['subjectId'];
     final courseId = value['courseId'];
     final documentId = value['documentId'];
@@ -132,6 +368,7 @@ class _RevisionSessionJson {
 
     if (id is! String ||
         status is! String ||
+        mode is! String ||
         subjectId is! String ||
         createdAt is! String) {
       throw const FormatException('Invalid revision session response');
@@ -140,6 +377,7 @@ class _RevisionSessionJson {
     return RevisionSession(
       id: id,
       status: _sessionStatus(status),
+      mode: _sessionMode(mode),
       subjectId: subjectId,
       courseId: courseId is String ? courseId : null,
       documentId: documentId is String ? documentId : null,
@@ -155,6 +393,15 @@ class _RevisionSessionJson {
       'COMPLETED' => RevisionSessionStatus.completed,
       'ABANDONED' => RevisionSessionStatus.abandoned,
       _ => RevisionSessionStatus.unknown,
+    };
+  }
+
+  RevisionSessionMode _sessionMode(String mode) {
+    return switch (mode) {
+      'QUICK' => RevisionSessionMode.quick,
+      'DEEP' => RevisionSessionMode.deep,
+      'EXAM' => RevisionSessionMode.exam,
+      _ => RevisionSessionMode.unknown,
     };
   }
 }

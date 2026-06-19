@@ -7,8 +7,6 @@ import '../../features/auth/application/auth_controller.dart';
 import '../../features/courses/presentation/course_detail_page.dart';
 import '../../features/courses/presentation/course_revision_sheet_page.dart';
 import '../../features/courses/presentation/courses_home_page.dart';
-import '../../features/courses/presentation/revision_session_pending_page.dart';
-import '../../features/courses/presentation/revision_session_result_pending_page.dart';
 import '../../features/courses/presentation/revisions_pending_page.dart';
 import '../../features/courses/presentation/subject_progress_page.dart';
 import '../../features/courses/presentation/sources_pending_page.dart';
@@ -26,6 +24,7 @@ import '../../presentation/pages/onboarding/onboarding_page.dart';
 import '../../presentation/pages/profile/profile_page.dart';
 import '../../presentation/pages/documents/document_detail_page.dart';
 import '../../presentation/pages/revision_sessions/revision_session_page.dart';
+import '../../presentation/pages/revision_sessions/revision_session_result_page.dart';
 import '../../presentation/pages/subjects/subject_detail_page.dart';
 import '../../presentation/pages/subjects/subjects_home_page.dart';
 import '../../presentation/pages/today/today_page.dart';
@@ -149,14 +148,17 @@ GoRouter createAppRouter({
               ),
               GoRoute(
                 path: AppRoutes.revisionSessionV2Path,
-                builder: (context, state) => RevisionSessionPendingPage(
+                builder: (context, state) => RevisionSessionPage(
+                  revisionSessionController: revisionSessionController,
+                  activityController: activityController,
                   sessionId: state.pathParameters['sessionId'] ?? '',
                 ),
               ),
               GoRoute(
                 path: AppRoutes.revisionSessionResultV2Path,
-                builder: (context, state) => RevisionSessionResultPendingPage(
+                builder: (context, state) => RevisionSessionResultPage(
                   sessionId: state.pathParameters['sessionId'] ?? '',
+                  controller: revisionSessionController,
                 ),
               ),
               GoRoute(

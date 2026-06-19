@@ -460,10 +460,10 @@ Widget routerTestApp({
             const Scaffold(body: CourseDetailPage(courseId: 'course-1')),
       ),
       GoRoute(
-        path: AppRoutes.revisionSessionPath,
+        path: AppRoutes.revisionSessionV2Path,
         builder: (context, state) => Scaffold(
           body: Text(
-            state.uri.queryParameters['sessionId'] == 'revision-session-1'
+            state.pathParameters['sessionId'] == 'revision-session-1'
                 ? 'Session réelle'
                 : 'Session inconnue',
           ),

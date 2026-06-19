@@ -38,6 +38,26 @@ class RevisionSessionController {
     return _api.getRevisionSession(sessionId: trimmedSessionId);
   }
 
+  Future<RevisionSessionResult> completeSession({required String sessionId}) {
+    final trimmedSessionId = sessionId.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Revision session id is required');
+    }
+
+    return _api.completeRevisionSession(sessionId: trimmedSessionId);
+  }
+
+  Future<RevisionSessionResult> loadResult({required String sessionId}) {
+    final trimmedSessionId = sessionId.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Revision session id is required');
+    }
+
+    return _api.getRevisionSessionResult(sessionId: trimmedSessionId);
+  }
+
   String? _trimOptionalId(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;

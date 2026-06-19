@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:revision_app/features/activities/application/activity_controller.dart';
+import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
 import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
 import 'package:revision_app/features/revision_sessions/data/revision_sessions_api.dart';
 import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
+import 'package:revision_app/features/revision_sessions/presentation/quick_revision_quiz_flow.dart';
 import 'package:revision_app/core/routing/route_paths.dart';
 import 'package:revision_app/presentation/pages/activities/diagnostic_quiz_page.dart';
 import 'package:revision_app/presentation/pages/activities/open_question_page.dart';
@@ -66,33 +68,58 @@ class _RevisionSessionPageState extends State<RevisionSessionPage> {
   Widget build(BuildContext context) {
     final session = _session;
 
-    return RevisionPage(
-      title: 'Révision IA',
-      subtitle: 'Une session contrôlée à partir de tes activités existantes.',
-      children: [
-        if (session == null)
-          const _EmptyRevisionSessionState()
-        else
-          FutureBuilder<RevisionSessionResponse>(
-            future: session,
-            builder: (context, snapshot) {
-              final response = snapshot.data;
+    if (session == null) {
+      return const RevisionPage(
+        title: 'Révision IA',
+        subtitle: 'Une session contrôlée à partir de tes activités existantes.',
+        children: [_EmptyRevisionSessionState()],
+      );
+    }
 
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
-              }
+    return FutureBuilder<RevisionSessionResponse>(
+      future: session,
+      builder: (context, snapshot) {
+        final response = snapshot.data;
 
-              if (snapshot.hasError || response == null) {
-                return _RevisionSessionErrorState(onRetry: _retry);
-              }
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const RevisionPage(
+            title: 'Révision rapide',
+            subtitle: 'Préparation de ta session.',
+            children: [Center(child: CircularProgressIndicator())],
+          );
+        }
 
-              return _RevisionSessionContent(
-                response: response,
-                activityController: widget.activityController,
-              );
-            },
-          ),
-      ],
+        if (snapshot.hasError || response == null) {
+          return RevisionPage(
+            title: 'Révision IA',
+            subtitle:
+                'Une session contrôlée à partir de tes activités existantes.',
+            children: [_RevisionSessionErrorState(onRetry: _retry)],
+          );
+        }
+
+        final premiumActivity = _premiumQuickActivity(response);
+        if (premiumActivity != null) {
+          return QuickRevisionQuizFlow(
+            response: response,
+            activity: premiumActivity,
+            activityController: widget.activityController,
+            revisionSessionController: widget.revisionSessionController,
+          );
+        }
+
+        return RevisionPage(
+          title: 'Révision IA',
+          subtitle:
+              'Une session contrôlée à partir de tes activités existantes.',
+          children: [
+            _RevisionSessionContent(
+              response: response,
+              activityController: widget.activityController,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -130,6 +157,25 @@ class _RevisionSessionPageState extends State<RevisionSessionPage> {
       _session = _loadFromParams();
     });
   }
+}
+
+DiagnosticQuizActivity? _premiumQuickActivity(
+  RevisionSessionResponse response,
+) {
+  final action = response.currentAction;
+  final payload = action?.payload;
+  if (response.session.mode != RevisionSessionMode.quick ||
+      response.session.courseId == null ||
+      action?.kind != RevisionSessionActionKind.diagnosticQuiz ||
+      payload is! RevisionSessionDiagnosticQuizPayload) {
+    return null;
+  }
+
+  if (payload.activity.questions.isEmpty) {
+    return null;
+  }
+
+  return payload.activity;
 }
 
 class _EmptyRevisionSessionState extends StatelessWidget {

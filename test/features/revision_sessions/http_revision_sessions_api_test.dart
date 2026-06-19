@@ -251,6 +251,88 @@ void main() {
     expect(adapter.fetchCallCount, 0);
   });
 
+  test('completes a revision session with an empty body', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(revisionSessionResultJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.completeRevisionSession(
+      sessionId: 'revision-session-1',
+    );
+
+    expect(
+      adapter.lastOptions?.path,
+      '/revision-sessions/revision-session-1/complete',
+    );
+    expect(adapter.lastOptions?.data, const <String, Object?>{});
+    expect(result.summary.correctAnswers, 4);
+    expect(result.summary.totalQuestions, 6);
+    expect(result.knowledgeUnits.single.state.name, 'toReview');
+  });
+
+  test('gets a revision session result', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(revisionSessionResultJson()),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.getRevisionSessionResult(
+      sessionId: 'revision-session-1',
+    );
+
+    expect(
+      adapter.lastOptions?.path,
+      '/revision-sessions/revision-session-1/result',
+    );
+    expect(result.session.courseId, 'course-1');
+    expect(result.session.mode, RevisionSessionMode.quick);
+    expect(result.summary.durationSeconds, 252);
+  });
+
+  test('maps result 404 and 409 responses', () async {
+    final adapter = CapturingHttpClientAdapter(
+      ResponseBody.fromString(
+        jsonEncode({'message': 'Revision session not found'}),
+        404,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      api.getRevisionSessionResult(sessionId: 'missing-session'),
+      throwsA(isA<RevisionSessionNotFoundException>()),
+    );
+
+    adapter.response = ResponseBody.fromString(
+      jsonEncode({'message': 'Revision session not completed'}),
+      409,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+
+    await expectLater(
+      api.completeRevisionSession(sessionId: 'revision-session-1'),
+      throwsA(isA<RevisionSessionResultNotReadyException>()),
+    );
+  });
+
   test('rejects invalid revision session responses', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({'session': null, 'currentAction': null, 'history': []}),
@@ -289,6 +371,7 @@ Map<String, Object?> revisionSessionJson({
     'session': {
       'id': 'revision-session-1',
       'status': 'STARTED',
+      'mode': 'QUICK',
       'subjectId': 'subject-1',
       'courseId': courseId,
       'documentId': null,
@@ -315,6 +398,39 @@ Map<String, Object?> revisionSessionJson({
         'activitySessionId': isRichClosed ? null : 'activity-session-1',
         'documentId': null,
         'knowledgeUnitId': 'unit-1',
+      },
+    ],
+  };
+}
+
+Map<String, Object?> revisionSessionResultJson({
+  String? state = 'TO_REVIEW',
+  String? courseId = 'course-1',
+}) {
+  return {
+    'session': {
+      'id': 'revision-session-1',
+      'subjectId': 'subject-1',
+      'courseId': courseId,
+      'mode': 'QUICK',
+      'status': 'COMPLETED',
+      'createdAt': '2026-06-15T12:00:00.000Z',
+      'completedAt': '2026-06-15T12:04:12.000Z',
+    },
+    'summary': {
+      'correctAnswers': 4,
+      'totalQuestions': 6,
+      'score': 0.6666666667,
+      'durationSeconds': 252,
+    },
+    'knowledgeUnits': [
+      {
+        'knowledgeUnitId': 'unit-1',
+        'title': 'Séparation des pouvoirs',
+        'correctAnswers': 4,
+        'totalQuestions': 6,
+        'score': 0.6666666667,
+        'state': state,
       },
     ],
   };

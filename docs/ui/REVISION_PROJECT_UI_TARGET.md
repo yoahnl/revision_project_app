@@ -122,15 +122,28 @@ Les onglets racine utilisent une navigation de branche. Les écrans de détail (
 
 Objectif : éviter qu’un retour utilisateur recrée une page ou laisse une entrée fantôme dans la stack.
 
-## Hors scope UI-01
+## Session quick et résultat
+
+La révision rapide course-level est le premier flow complet du MVP Core. La cible UI-02 est :
+
+- une question affichée à la fois ;
+- une progression claire `Question X sur Y` ;
+- aucune correction avant submit ;
+- pas d’ID technique visible ;
+- abandon contrôlé avec confirmation ;
+- résultat réel issu du backend ;
+- ring de score basé uniquement sur `ActivityResult`;
+- sections `Tu maîtrises` et `À retravailler` basées sur les KnowledgeUnits agrégées ;
+- CTA vers la fiche ou le cours réel.
+
+Le passage session -> résultat utilise une navigation de remplacement quand la session est terminée, pour éviter d’empiler un écran de résultat au-dessus d’une session déjà consommée.
+
+## Hors scope UI-01/UI-02
 
 À reporter :
 
-- écran session de révision premium ;
-- résultat session final ;
 - deep revision réelle ;
 - préparation examen réelle ;
 - gamification réelle ;
 - catalogue global de sources ;
 - points faibles avancés.
-

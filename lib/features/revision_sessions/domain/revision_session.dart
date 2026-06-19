@@ -5,6 +5,7 @@ class RevisionSession {
   const RevisionSession({
     required this.id,
     required this.status,
+    required this.mode,
     required this.subjectId,
     required this.courseId,
     required this.documentId,
@@ -15,6 +16,7 @@ class RevisionSession {
 
   final String id;
   final RevisionSessionStatus status;
+  final RevisionSessionMode mode;
   final String subjectId;
   final String? courseId;
   final String? documentId;
@@ -24,6 +26,8 @@ class RevisionSession {
 }
 
 enum RevisionSessionStatus { started, completed, abandoned, unknown }
+
+enum RevisionSessionMode { quick, deep, exam, unknown }
 
 class RevisionSessionAction {
   const RevisionSessionAction({
@@ -116,3 +120,69 @@ class RevisionSessionMinimalPayload extends RevisionSessionActionPayload {
 class RevisionSessionUnknownPayload extends RevisionSessionActionPayload {
   const RevisionSessionUnknownPayload();
 }
+
+class RevisionSessionResult {
+  const RevisionSessionResult({
+    required this.session,
+    required this.summary,
+    required this.knowledgeUnits,
+  });
+
+  final RevisionSessionResultSession session;
+  final RevisionSessionResultSummary summary;
+  final List<RevisionSessionKnowledgeUnitResult> knowledgeUnits;
+}
+
+class RevisionSessionResultSession {
+  const RevisionSessionResultSession({
+    required this.id,
+    required this.subjectId,
+    required this.mode,
+    required this.status,
+    required this.createdAt,
+    required this.completedAt,
+    this.courseId,
+  });
+
+  final String id;
+  final String subjectId;
+  final String? courseId;
+  final RevisionSessionMode mode;
+  final RevisionSessionStatus status;
+  final DateTime createdAt;
+  final DateTime completedAt;
+}
+
+class RevisionSessionResultSummary {
+  const RevisionSessionResultSummary({
+    required this.correctAnswers,
+    required this.totalQuestions,
+    required this.score,
+    required this.durationSeconds,
+  });
+
+  final int correctAnswers;
+  final int totalQuestions;
+  final double score;
+  final int durationSeconds;
+}
+
+class RevisionSessionKnowledgeUnitResult {
+  const RevisionSessionKnowledgeUnitResult({
+    required this.knowledgeUnitId,
+    required this.title,
+    required this.correctAnswers,
+    required this.totalQuestions,
+    required this.score,
+    required this.state,
+  });
+
+  final String knowledgeUnitId;
+  final String title;
+  final int correctAnswers;
+  final int totalQuestions;
+  final double score;
+  final RevisionSessionKnowledgeUnitResultState state;
+}
+
+enum RevisionSessionKnowledgeUnitResultState { mastered, toReview, unknown }

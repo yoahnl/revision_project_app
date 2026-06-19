@@ -17,4 +17,30 @@ abstract interface class RevisionSessionsApi {
   Future<RevisionSessionResponse> getRevisionSession({
     required String sessionId,
   });
+
+  Future<RevisionSessionResult> completeRevisionSession({
+    required String sessionId,
+  });
+
+  Future<RevisionSessionResult> getRevisionSessionResult({
+    required String sessionId,
+  });
+}
+
+class RevisionSessionNotFoundException implements Exception {
+  const RevisionSessionNotFoundException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class RevisionSessionResultNotReadyException implements Exception {
+  const RevisionSessionResultNotReadyException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

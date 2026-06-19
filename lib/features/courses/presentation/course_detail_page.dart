@@ -457,7 +457,13 @@ class _CourseModes extends ConsumerWidget {
         return;
       }
 
-      context.go(AppRoutes.revisionSession(sessionId: response.session.id));
+      context.go(
+        AppRoutes.revisionSessionV2(
+          sessionId: response.session.id,
+          courseId: detail.course.id,
+          mode: 'quick',
+        ),
+      );
     } catch (error) {
       if (!context.mounted) {
         return;

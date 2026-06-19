@@ -251,6 +251,7 @@ RevisionSessionResponse quickRevisionSessionResponse(String courseId) {
     session: RevisionSession(
       id: 'revision-session-1',
       status: RevisionSessionStatus.started,
+      mode: RevisionSessionMode.quick,
       subjectId: 'subject-1',
       courseId: courseId,
       documentId: 'document-1',
