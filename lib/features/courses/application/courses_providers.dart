@@ -139,7 +139,9 @@ class UploadCourseDocumentController
 
     final uploaded = result.requireValue;
     ref.invalidate(courseDetailProvider(detail.course.id));
+    ref.invalidate(courseProgressProvider(detail.course.id));
     ref.invalidate(coursesProvider(detail.course.subjectId));
+    ref.invalidate(subjectProgressProvider(detail.course.subjectId));
 
     return uploaded;
   }
@@ -171,6 +173,7 @@ class DeleteCourseDocumentController extends Notifier<AsyncValue<void>> {
     ref.invalidate(courseDetailProvider(detail.course.id));
     ref.invalidate(courseProgressProvider(detail.course.id));
     ref.invalidate(coursesProvider(detail.course.subjectId));
+    ref.invalidate(subjectProgressProvider(detail.course.subjectId));
   }
 }
 

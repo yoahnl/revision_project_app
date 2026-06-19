@@ -69,7 +69,9 @@ void main() {
   test(
     'uploadCourseDocumentController does nothing when picking is cancelled',
     () async {
-      final repository = InMemoryCoursesRepository();
+      final repository = InMemoryCoursesRepository()
+        ..progressByCourse['course-1'] = courseProgress()
+        ..progressBySubject['subject-1'] = subjectProgress();
       final picker = FakeCoursePdfPicker(null);
       final container = ProviderContainer(
         overrides: [
@@ -78,6 +80,11 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
+
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+      final initialCourseProgressReads = repository.getCourseProgressCount;
+      final initialSubjectProgressReads = repository.getSubjectProgressCount;
 
       final result = await container
           .read(uploadCourseDocumentControllerProvider.notifier)
@@ -90,14 +97,27 @@ void main() {
         container.read(uploadCourseDocumentControllerProvider).hasError,
         false,
       );
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+      expect(repository.getCourseProgressCount, initialCourseProgressReads);
+      expect(repository.getSubjectProgressCount, initialSubjectProgressReads);
     },
   );
 
   test(
-    'uploadCourseDocumentController uploads and invalidates course detail',
+    'uploadCourseDocumentController uploads and invalidates detail lists and progress',
     () async {
       final repository = InMemoryCoursesRepository()
-        ..detailsByCourse['course-1'] = courseDetail();
+        ..coursesBySubject['subject-1'] = const [
+          CourseListItem(
+            id: 'course-1',
+            subjectId: 'subject-1',
+            title: 'Droit constitutionnel',
+          ),
+        ]
+        ..detailsByCourse['course-1'] = courseDetail()
+        ..progressByCourse['course-1'] = courseProgress()
+        ..progressBySubject['subject-1'] = subjectProgress();
       final picker = FakeCoursePdfPicker(
         PickedCoursePdf(
           fileName: 'cours.pdf',
@@ -116,6 +136,14 @@ void main() {
         (await container.read(courseDetailProvider('course-1').future)).sources,
         isEmpty,
       );
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      final initialDetailReads = repository.getCourseCount;
+      final initialListReads = repository.listCoursesCount;
+      final initialCourseProgressReads = repository.getCourseProgressCount;
+      final initialSubjectProgressReads = repository.getSubjectProgressCount;
 
       final uploaded = await container
           .read(uploadCourseDocumentControllerProvider.notifier)
@@ -128,11 +156,27 @@ void main() {
         (await container.read(courseDetailProvider('course-1').future)).sources,
         hasLength(1),
       );
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      expect(repository.getCourseCount, greaterThan(initialDetailReads));
+      expect(repository.listCoursesCount, greaterThan(initialListReads));
+      expect(
+        repository.getCourseProgressCount,
+        greaterThan(initialCourseProgressReads),
+      );
+      expect(
+        repository.getSubjectProgressCount,
+        greaterThan(initialSubjectProgressReads),
+      );
     },
   );
 
   test('uploadCourseDocumentController exposes upload errors', () async {
     final repository = InMemoryCoursesRepository()
+      ..progressByCourse['course-1'] = courseProgress()
+      ..progressBySubject['subject-1'] = subjectProgress()
       ..uploadError = const CourseUploadException('Invalid PDF');
     final picker = FakeCoursePdfPicker(
       PickedCoursePdf(fileName: 'cours.pdf', bytes: Uint8List.fromList([1])),
@@ -145,6 +189,11 @@ void main() {
     );
     addTearDown(container.dispose);
 
+    await container.read(courseProgressProvider('course-1').future);
+    await container.read(subjectProgressProvider('subject-1').future);
+    final initialCourseProgressReads = repository.getCourseProgressCount;
+    final initialSubjectProgressReads = repository.getSubjectProgressCount;
+
     await expectLater(
       container
           .read(uploadCourseDocumentControllerProvider.notifier)
@@ -156,6 +205,10 @@ void main() {
       container.read(uploadCourseDocumentControllerProvider).hasError,
       true,
     );
+    await container.read(courseProgressProvider('course-1').future);
+    await container.read(subjectProgressProvider('subject-1').future);
+    expect(repository.getCourseProgressCount, initialCourseProgressReads);
+    expect(repository.getSubjectProgressCount, initialSubjectProgressReads);
   });
 
   test(

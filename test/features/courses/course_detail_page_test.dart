@@ -202,6 +202,7 @@ void main() {
     await tester.pump();
 
     expect(repository.getCourseCount, 1);
+    expect(repository.getCourseProgressCount, 1);
     await tester.scrollUntilVisible(find.text('Traitement en cours'), 400);
     expect(find.text('Traitement en cours'), findsOneWidget);
 
@@ -209,6 +210,52 @@ void main() {
     await tester.pump();
 
     expect(repository.getCourseCount, greaterThanOrEqualTo(2));
+    expect(repository.getCourseProgressCount, greaterThanOrEqualTo(2));
+  });
+
+  testWidgets('ready failed and empty sources do not trigger polling', (
+    tester,
+  ) async {
+    for (final sources in [
+      const <CourseDocument>[],
+      const [
+        CourseDocument(
+          id: 'document-ready',
+          courseId: 'course-1',
+          documentId: 'document-ready',
+          fileName: 'ready.pdf',
+          status: CourseDocumentStatus.ready,
+        ),
+      ],
+      const [
+        CourseDocument(
+          id: 'document-failed',
+          courseId: 'course-1',
+          documentId: 'document-failed',
+          fileName: 'failed.pdf',
+          status: CourseDocumentStatus.failed,
+          errorCode: 'KNOWLEDGE_EXTRACTION_FAILED',
+        ),
+      ],
+    ]) {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail(sources: sources);
+
+      await tester.pumpWidget(
+        testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final detailReads = repository.getCourseCount;
+      final progressReads = repository.getCourseProgressCount;
+
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+
+      expect(repository.getCourseCount, detailReads);
+      expect(repository.getCourseProgressCount, progressReads);
+    }
   });
 
   testWidgets('course sheet CTA asks for a source when none exists', (

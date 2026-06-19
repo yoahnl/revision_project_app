@@ -14,6 +14,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, RevisionSheet> generatedRevisionSheetsByCourse = {};
   final Map<String, Object> revisionSheetErrorsByCourse = {};
   int createCount = 0;
+  int listCoursesCount = 0;
   int getCourseCount = 0;
   int getCourseProgressCount = 0;
   int getSubjectProgressCount = 0;
@@ -37,6 +38,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
 
   @override
   Future<List<CourseListItem>> listCourses({required String subjectId}) async {
+    listCoursesCount += 1;
     return List.unmodifiable(coursesBySubject[subjectId] ?? const []);
   }
 

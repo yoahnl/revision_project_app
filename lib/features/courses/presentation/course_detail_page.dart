@@ -173,6 +173,8 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
       }
 
       ref.invalidate(courseDetailProvider(widget.detail.course.id));
+      ref.invalidate(courseProgressProvider(widget.detail.course.id));
+      ref.invalidate(subjectProgressProvider(widget.detail.course.subjectId));
     });
   }
 
