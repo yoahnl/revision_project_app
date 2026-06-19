@@ -187,28 +187,34 @@ void main() {
     );
   });
 
-  test('deletes a course source through the course-scoped endpoint', () async {
-    final adapter = CapturingHttpClientAdapter(
-      jsonResponse(null, statusCode: 204),
-    );
-    final repository = HttpCoursesRepository(
-      dio: Dio()..httpClientAdapter = adapter,
-      getIdToken: () async => 'firebase-id-token',
-    );
+  test(
+    'deletes a course source through the encoded course-scoped endpoint',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(null, statusCode: 204),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
 
-    await repository.deleteCourseDocument(
-      courseId: 'course-1',
-      documentId: 'document-1',
-    );
+      await repository.deleteCourseDocument(
+        courseId: 'course id/1',
+        documentId: 'document id/1',
+      );
 
-    expect(adapter.lastOptions?.method, 'DELETE');
-    expect(adapter.lastOptions?.path, '/courses/course-1/sources/document-1');
-    expect(adapter.lastOptions?.data, isNull);
-    expect(
-      adapter.lastOptions?.headers['Authorization'],
-      'Bearer firebase-id-token',
-    );
-  });
+      expect(adapter.lastOptions?.method, 'DELETE');
+      expect(
+        adapter.lastOptions?.path,
+        '/courses/course%20id%2F1/sources/document%20id%2F1',
+      );
+      expect(adapter.lastOptions?.data, isNull);
+      expect(
+        adapter.lastOptions?.headers['Authorization'],
+        'Bearer firebase-id-token',
+      );
+    },
+  );
 
   test('maps course source delete 404 to CourseNotFoundException', () async {
     final adapter = CapturingHttpClientAdapter(

@@ -1,3 +1,2019 @@
+# CORE-06C — Backend 06B alignment + source deletion contract hardening
+
+## 1. Résumé
+
+CORE-06C côté Flutter officialise et verrouille la suppression de source côté app sans refaire l'UI. L'implémentation existait déjà : `deleteCourseDocument` appelle l'endpoint course-scoped, le controller invalide détail/liste/progression cours/progression matière, et le détail cours affiche une confirmation. Le lot ajoute les tests manquants : path encodé + bearer + no body côté HTTP, invalidations et erreur côté provider, snackbar d'erreur côté widget. Le runbook frontend documente maintenant le parcours delete source.
+
+## 2. Audit initial
+
+- `CoursesRepository.deleteCourseDocument` existait déjà.
+- `HttpCoursesRepository.deleteCourseDocument` existait déjà et encode `courseId`/`documentId` avec `Uri.encodeComponent`.
+- Le test HTTP delete existait, mais utilisait seulement des IDs sûrs (`course-1`, `document-1`) : il ne verrouillait pas explicitement l'encodage.
+- `DeleteCourseDocumentController.delete` invalidait déjà `courseDetailProvider`, `courseProgressProvider`, `coursesProvider(subjectId)` et `subjectProgressProvider(subjectId)`.
+- Le test provider delete ne vérifiait que le refresh détail ; il ne prouvait pas liste/progression cours/progression matière.
+- Le test widget couvrait le succès avec confirmation, snackbar et empty state, mais pas l'erreur de suppression.
+- Le runbook frontend ne mentionnait pas encore la suppression de source ni ses refreshs.
+- Les valeurs fake `Loi normale`, `78%`, `870`, `7 jours` ne ressortent que dans des assertions `findsNothing`.
+- Aucune occurrence `CourseSource` dans `lib/features/courses`, `test/features/courses`, `test/fakes` ou `test/app`.
+
+## 3. Sub-agents/passes utilisées
+
+- Backend Contract Agent : audit read-only côté API, résultat intégré dans le rapport backend.
+- Frontend Contract Agent : audit read-only, identification des gaps HTTP/provider/widget.
+- Docs Agent : mise à jour runbook et rapport CORE-06B.
+- QA Agent : validations locales listées en section 7.
+- Reviewer Agent : auto-review finale en section 13.
+
+## 4. Modifications backend
+
+Non applicable dans ce repo. Les changements backend sont documentés dans le rapport API.
+
+## 5. Modifications frontend
+
+- `http_courses_repository_test.dart` : le test delete utilise maintenant des IDs avec espace et slash pour verrouiller l'encodage du path, le bearer token et l'absence de body.
+- `courses_providers_test.dart` : le test delete vérifie maintenant que le controller rafraîchit détail, liste de cours, progression cours et progression matière après succès.
+- `courses_providers_test.dart` : ajout d'un test d'erreur delete prouvant que l'état passe en erreur et que les providers ne sont pas invalidés comme si la suppression avait réussi.
+- `course_detail_page_test.dart` : ajout d'un test widget d'échec de suppression avec snackbar `Impossible de supprimer cette source.` et source toujours affichée.
+- `MVP_CORE_ACCEPTANCE_RUNBOOK.md` : ajout du parcours de suppression optionnelle d'une source de test et des règles de refresh associées.
+- `CORE_06B_PROGRESS_REFRESH_AND_ACCEPTANCE_HARDENING_REPORT.md` : suppression de la mention obsolète sur `git diff --check`, clarification du commit CORE-06B réalisé après autorisation.
+
+## 6. Tests ajoutés
+
+- HTTP : `deletes a course source through the encoded course-scoped endpoint`.
+- Provider : `deleteCourseDocumentController removes a source and refreshes course surfaces` renforcé.
+- Provider : `deleteCourseDocumentController exposes errors without refreshing`.
+- Widget : `course detail shows an error when source deletion fails`.
+
+## 7. Commandes exécutées et résultats exacts
+
+- `dart format test/features/courses/http_courses_repository_test.dart test/features/courses/courses_providers_test.dart test/features/courses/course_detail_page_test.dart` : OK.
+- Premier ciblé `flutter test test/features/courses/http_courses_repository_test.dart test/features/courses/courses_providers_test.dart test/features/courses/course_detail_page_test.dart --reporter compact` : rouge, import `CourseNotFoundException` manquant dans `course_detail_page_test.dart`.
+- `dart format test/features/courses/course_detail_page_test.dart` : OK.
+- Rerun ciblé `flutter test test/features/courses/http_courses_repository_test.dart test/features/courses/courses_providers_test.dart test/features/courses/course_detail_page_test.dart --reporter compact` : OK, 44 tests.
+- `dart analyze lib test` : OK, no issues found.
+- `flutter test test/features/courses --reporter compact` : OK, all tests passed.
+- `flutter test test/features/revision_sessions --reporter compact` : OK, all tests passed.
+- `flutter test test/app/router/app_router_test.dart --reporter compact` : OK, all tests passed.
+- `flutter test test/app/revision_app_test.dart --reporter compact` : OK, all tests passed.
+- `flutter test test/app --reporter compact` : OK, all tests passed.
+- `flutter test --reporter compact` : OK, all tests passed.
+- `rg -n "MvpStudyController\.instance|mvpSubjects|mvpSessionQuestions|courseOrFallback|Loi normale|78%|4/5 bonnes|870|7 jours" lib/app lib/features/courses lib/presentation/shell test/app test/features/courses || true` : occurrences uniquement dans des assertions `findsNothing` des tests.
+- `rg -n "CourseSource" lib/features/courses test/features/courses test/fakes test/app || true` : aucune occurrence.
+- `git diff --check` : OK, relancé après génération du rapport CORE-06C.
+
+## 8. Preuve anti-fixtures
+
+La commande anti-fixtures ne retourne aucune occurrence runtime dans `lib/app`, `lib/features/courses` ou `lib/presentation/shell`. Les occurrences restantes sont exclusivement des assertions négatives `findsNothing` dans les tests app/courses.
+
+## 9. Preuve anti-CourseSource
+
+Commande exécutée : `rg -n "CourseSource" lib/features/courses test/features/courses test/fakes test/app || true`.
+
+Résultat : aucune occurrence.
+
+## 10. Runbook créé ou mis à jour
+
+- `docs/core/MVP_CORE_ACCEPTANCE_RUNBOOK.md` mis à jour pour mentionner ajout source, attente processing, suppression optionnelle, fiche/quick seulement avec source `READY`, refresh après upload/delete/polling, absence de refresh au start quick et à la génération de fiche.
+
+## 11. Limites
+
+- Le lot ne change pas l'UX de suppression : confirmation + snackbar restent volontairement simples.
+- Pas de restore/undo de source supprimée.
+- Pas de refonte UI ni de page résultat session.
+
+## 12. Risques restants
+
+- Si la suppression devient fréquente, un undo ou une corbeille pourrait être utile plus tard.
+- L'invalidation `subjectProgressProvider` depuis un détail de cours reste un peu large, mais elle évite une progression stale visible en MVP.
+
+## 13. Auto-review
+
+- Delete source a un contrat HTTP frontend testé : oui, méthode/path encodé/bearer/no body/404.
+- Delete invalide toujours course/subject progress : oui, test provider renforcé.
+- Upload invalide toujours course/subject progress : inchangé et déjà couvert par CORE-06B.
+- Polling reste borné : inchangé, toujours testé.
+- Aucun nouvel endpoint : oui.
+- Aucun deep/exam : oui.
+- Aucun résultat session final : oui.
+- Aucun `CourseSource` : oui.
+- Aucune fixture production : oui.
+- `git diff --check` relancé après rapport : oui.
+- Pas de commit pendant CORE-06C : oui.
+
+## 14. Points discutables du prompt
+
+- CORE-06C est un micro-lot, mais il est justifié par la nécessité d'aligner la documentation et de tester officiellement une capacité déjà présente.
+- Le test d'encodage HTTP est plus strict que le bug actuel, mais il protège une classe réelle d'erreurs d'URL.
+- La suppression de source pourrait bénéficier d'un undo plus tard, mais ce serait hors périmètre.
+
+## 15. Fichiers créés/modifiés/supprimés
+
+Créés :
+- `docs/core/CORE_06C_BACKEND_ALIGNMENT_AND_SOURCE_DELETE_HARDENING_REPORT.md`
+
+Modifiés :
+- `test/features/courses/http_courses_repository_test.dart`
+- `test/features/courses/courses_providers_test.dart`
+- `test/features/courses/course_detail_page_test.dart`
+- `docs/core/MVP_CORE_ACCEPTANCE_RUNBOOK.md`
+- `docs/core/CORE_06B_PROGRESS_REFRESH_AND_ACCEPTANCE_HARDENING_REPORT.md`
+
+Supprimés : aucun.
+
+## 16. Contenu complet des fichiers créés/modifiés/supprimés
+
+Le rapport courant ne s'inclut pas lui-même pour éviter une récursion infinie.
+
+### test/features/courses/http_courses_repository_test.dart
+
+````````dart
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:revision_app/features/courses/data/http_courses_repository.dart';
+import 'package:revision_app/features/courses/domain/course_models.dart';
+import 'package:revision_app/features/courses/domain/courses_repository.dart';
+
+class CapturingHttpClientAdapter implements HttpClientAdapter {
+  CapturingHttpClientAdapter(this.response);
+
+  ResponseBody response;
+  int fetchCallCount = 0;
+  RequestOptions? lastOptions;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    fetchCallCount += 1;
+    lastOptions = options;
+    return response;
+  }
+}
+
+void main() {
+  test('lists real courses with source counts and bearer token', () async {
+    final adapter = CapturingHttpClientAdapter(jsonResponse([courseJson()]));
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final courses = await repository.listCourses(subjectId: 'subject-1');
+
+    expect(courses.single.title, 'Droit constitutionnel');
+    expect(courses.single.estimatedMinutes, 30);
+    expect(courses.single.sourceCount, 2);
+    expect(courses.single.readySourceCount, 1);
+    expect(adapter.lastOptions?.path, '/subjects/subject-1/courses');
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+  });
+
+  test('creates a real course with the CORE-02 payload', () async {
+    final adapter = CapturingHttpClientAdapter(jsonResponse(courseJson()));
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final course = await repository.createCourse(
+      subjectId: 'subject-1',
+      input: const CreateCourseInput(
+        title: 'Droit constitutionnel',
+        description: 'Institutions',
+        chapterLabel: 'Chapitre 1',
+        estimatedMinutes: 30,
+      ),
+    );
+
+    expect(course.id, 'course-1');
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(adapter.lastOptions?.path, '/subjects/subject-1/courses');
+    expect(adapter.lastOptions?.data, {
+      'title': 'Droit constitutionnel',
+      'description': 'Institutions',
+      'chapterLabel': 'Chapitre 1',
+      'estimatedMinutes': 30,
+    });
+  });
+
+  test('loads course detail with subject and sources', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({
+        'course': courseJson(sourceCount: 1, readySourceCount: 1),
+        'subject': {'id': 'subject-1', 'name': 'Droit'},
+        'sources': [sourceJson()],
+      }),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final detail = await repository.getCourse(courseId: 'course-1');
+
+    expect(detail.subject.name, 'Droit');
+    expect(detail.sources.single.status, CourseDocumentStatus.ready);
+    expect(detail.sources.single.errorCode, isNull);
+    expect(adapter.lastOptions?.path, '/courses/course-1');
+  });
+
+  test('maps backend 404 to CourseNotFoundException', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({'message': 'Course not found'}, statusCode: 404),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      repository.getCourse(courseId: 'unknown'),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
+  test('uploads a course PDF as multipart without subjectId', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(sourceJsonWith(status: 'UPLOADED')),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final source = await repository.uploadCoursePdf(
+      courseId: 'course-1',
+      fileName: 'cours.pdf',
+      bytes: Uint8List.fromList('%PDF-1.7'.codeUnits),
+    );
+
+    expect(source.status, CourseDocumentStatus.uploaded);
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(adapter.lastOptions?.path, '/courses/course-1/source/course-pdf');
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+
+    final formData = adapter.lastOptions?.data as FormData;
+    expect(
+      formData.fields.map((field) => field.key),
+      isNot(contains('subjectId')),
+    );
+    expect(
+      formData.fields.map((field) => field.key),
+      isNot(contains('studentId')),
+    );
+    expect(formData.files.single.key, 'file');
+    expect(formData.files.single.value.filename, 'cours.pdf');
+  });
+
+  test('maps upload 400 and 404 to typed course exceptions', () async {
+    final badRequest = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({'message': 'Invalid file'}, statusCode: 400),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      badRequest.uploadCoursePdf(
+        courseId: 'course-1',
+        fileName: 'cours.txt',
+        bytes: Uint8List.fromList([1, 2, 3]),
+      ),
+      throwsA(isA<CourseUploadException>()),
+    );
+
+    final notFound = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({'message': 'Course not found'}, statusCode: 404),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      notFound.uploadCoursePdf(
+        courseId: 'missing',
+        fileName: 'cours.pdf',
+        bytes: Uint8List.fromList([1, 2, 3]),
+      ),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
+  test(
+    'deletes a course source through the encoded course-scoped endpoint',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(null, statusCode: 204),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await repository.deleteCourseDocument(
+        courseId: 'course id/1',
+        documentId: 'document id/1',
+      );
+
+      expect(adapter.lastOptions?.method, 'DELETE');
+      expect(
+        adapter.lastOptions?.path,
+        '/courses/course%20id%2F1/sources/document%20id%2F1',
+      );
+      expect(adapter.lastOptions?.data, isNull);
+      expect(
+        adapter.lastOptions?.headers['Authorization'],
+        'Bearer firebase-id-token',
+      );
+    },
+  );
+
+  test('maps course source delete 404 to CourseNotFoundException', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({'message': 'Course source not found'}, statusCode: 404),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      repository.deleteCourseDocument(
+        courseId: 'course-1',
+        documentId: 'missing-document',
+      ),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
+  test(
+    'loads a course-level revision sheet from the course endpoint',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(revisionSheetJson()),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      final sheet = await repository.getCourseRevisionSheet(
+        courseId: 'course-1',
+      );
+
+      expect(sheet?.title, 'Fiche de cours');
+      expect(sheet?.sections.single.title, 'Institutions');
+      expect(adapter.lastOptions?.method, 'GET');
+      expect(adapter.lastOptions?.path, '/courses/course-1/revision-sheet');
+    },
+  );
+
+  test(
+    'generates a course-level revision sheet without documentId payload',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(revisionSheetJson()),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      final sheet = await repository.generateCourseRevisionSheet(
+        courseId: 'course-1',
+      );
+
+      expect(sheet.title, 'Fiche de cours');
+      expect(adapter.lastOptions?.method, 'POST');
+      expect(adapter.lastOptions?.path, '/courses/course-1/revision-sheet');
+      expect(adapter.lastOptions?.data, isNull);
+    },
+  );
+
+  test(
+    'maps course-level revision sheet 404 and 409 to typed outcomes',
+    () async {
+      final notFoundRepository = HttpCoursesRepository(
+        dio: Dio()
+          ..httpClientAdapter = CapturingHttpClientAdapter(
+            jsonResponse({
+              'message': 'Revision sheet not found',
+            }, statusCode: 404),
+          ),
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await expectLater(
+        notFoundRepository.getCourseRevisionSheet(courseId: 'course-1'),
+        completion(isNull),
+      );
+
+      final missingCourseRepository = HttpCoursesRepository(
+        dio: Dio()
+          ..httpClientAdapter = CapturingHttpClientAdapter(
+            jsonResponse({'message': 'Course not found'}, statusCode: 404),
+          ),
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await expectLater(
+        missingCourseRepository.getCourseRevisionSheet(courseId: 'course-1'),
+        throwsA(isA<CourseNotFoundException>()),
+      );
+
+      final notReadyRepository = HttpCoursesRepository(
+        dio: Dio()
+          ..httpClientAdapter = CapturingHttpClientAdapter(
+            jsonResponse({
+              'message': 'Course has no ready source',
+            }, statusCode: 409),
+          ),
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await expectLater(
+        notReadyRepository.generateCourseRevisionSheet(courseId: 'course-1'),
+        throwsA(isA<CourseRevisionSheetNotReadyException>()),
+      );
+    },
+  );
+
+  test('starts a course quick revision without client-owned ids', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(revisionSessionJson(courseId: 'course-1')),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await repository.startCourseQuickRevision(
+      courseId: 'course-1',
+    );
+
+    expect(response.session.id, 'revision-session-1');
+    expect(response.session.courseId, 'course-1');
+    expect(response.currentAction?.kind.name, 'diagnosticQuiz');
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/revision-sessions/quick',
+    );
+    expect(adapter.lastOptions?.data, isNull);
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+  });
+
+  test('loads course progress from the course progress endpoint', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(courseProgressJson()),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final progress = await repository.getCourseProgress(courseId: 'course-1');
+
+    expect(progress.knowledgeUnitCount, 12);
+    expect(progress.practicedKnowledgeUnitCount, 3);
+    expect(progress.coverage, 0.25);
+    expect(progress.mastery, 0.72);
+    expect(progress.estimatedGlobalMastery, 0.18);
+    expect(progress.state, CourseProgressState.practiced);
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(adapter.lastOptions?.path, '/courses/course-1/progress');
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+  });
+
+  test('loads subject progress and maps unknown course state safely', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(
+        subjectProgressJson(
+          courses: [subjectCourseProgressJson(state: 'FUTURE_STATE')],
+        ),
+      ),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final progress = await repository.getSubjectProgress(
+      subjectId: 'subject-1',
+    );
+
+    expect(progress.courseCount, 1);
+    expect(progress.readyCourseCount, 1);
+    expect(progress.courses.single.state, CourseProgressState.unknown);
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(adapter.lastOptions?.path, '/subjects/subject-1/progress');
+  });
+
+  test('parses nullable mastery and progress 404 errors', () async {
+    final noMasteryRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse(courseProgressJson(mastery: null)),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final progress = await noMasteryRepository.getCourseProgress(
+      courseId: 'course-1',
+    );
+
+    expect(progress.mastery, isNull);
+
+    final missingCourseRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({'message': 'Course not found'}, statusCode: 404),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      missingCourseRepository.getCourseProgress(courseId: 'missing'),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
+  test('maps course quick revision 404 and 409 to typed exceptions', () async {
+    final missingCourseRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({'message': 'Course not found'}, statusCode: 404),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      missingCourseRepository.startCourseQuickRevision(courseId: 'missing'),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+
+    final notReadyRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({
+            'message': 'Course has no ready knowledge unit',
+          }, statusCode: 409),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      notReadyRepository.startCourseQuickRevision(courseId: 'course-1'),
+      throwsA(
+        isA<CourseQuickRevisionUnavailableException>().having(
+          (error) => error.message,
+          'message',
+          'Course has no ready knowledge unit',
+        ),
+      ),
+    );
+  });
+
+  test('rejects unknown source status and invalid shapes', () async {
+    final invalidStatus = sourceJson()..['status'] = 'ARCHIVED';
+    final repository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({
+            'course': courseJson(),
+            'subject': {'id': 'subject-1', 'name': 'Droit'},
+            'sources': [invalidStatus],
+          }),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      repository.getCourse(courseId: 'course-1'),
+      throwsFormatException,
+    );
+  });
+}
+
+Map<String, Object?> revisionSessionJson({required String courseId}) {
+  return {
+    'session': {
+      'id': 'revision-session-1',
+      'status': 'STARTED',
+      'subjectId': 'subject-1',
+      'courseId': courseId,
+      'documentId': 'document-1',
+      'knowledgeUnitId': 'knowledge-unit-1',
+      'createdAt': '2026-06-18T10:00:00.000Z',
+      'completedAt': null,
+    },
+    'currentAction': {
+      'id': 'action-1',
+      'kind': 'DIAGNOSTIC_QUIZ',
+      'status': 'READY',
+      'displayOrder': 0,
+      'activitySessionId': 'activity-session-1',
+      'documentId': 'document-1',
+      'knowledgeUnitId': 'knowledge-unit-1',
+      'payload': null,
+    },
+    'history': [],
+  };
+}
+
+Map<String, Object?> courseJson({
+  int sourceCount = 2,
+  int readySourceCount = 1,
+}) {
+  return {
+    'id': 'course-1',
+    'subjectId': 'subject-1',
+    'title': 'Droit constitutionnel',
+    'description': 'Institutions',
+    'chapterLabel': 'Chapitre 1',
+    'estimatedMinutes': 30,
+    'displayOrder': 0,
+    'createdAt': '2026-06-18T10:00:00.000Z',
+    'updatedAt': '2026-06-18T10:00:00.000Z',
+    'sourceCount': sourceCount,
+    'readySourceCount': readySourceCount,
+    'processingSourceCount': 1,
+    'failedSourceCount': 0,
+  };
+}
+
+Map<String, Object?> sourceJson() {
+  return sourceJsonWith(status: 'READY');
+}
+
+Map<String, Object?> sourceJsonWith({required String status}) {
+  return {
+    'id': 'document-1',
+    'courseId': 'course-1',
+    'documentId': 'document-1',
+    'fileName': 'cours.pdf',
+    'kind': 'COURSE_PDF',
+    'status': status,
+    'errorCode': null,
+    'createdAt': '2026-06-18T10:00:00.000Z',
+    'updatedAt': '2026-06-18T10:00:00.000Z',
+  };
+}
+
+Map<String, Object?> courseProgressJson({Object? mastery = 0.72}) {
+  return {
+    'courseId': 'course-1',
+    'subjectId': 'subject-1',
+    'knowledgeUnitCount': 12,
+    'practicedKnowledgeUnitCount': 3,
+    'coverage': 0.25,
+    'mastery': mastery,
+    'estimatedGlobalMastery': 0.18,
+    'readySourceCount': 1,
+    'processingSourceCount': 0,
+    'failedSourceCount': 0,
+    'lastPracticedAt': '2026-06-18T12:00:00.000Z',
+    'state': 'PRACTICED',
+  };
+}
+
+Map<String, Object?> subjectProgressJson({
+  List<Map<String, Object?>>? courses,
+}) {
+  return {
+    'subjectId': 'subject-1',
+    'knowledgeUnitCount': 12,
+    'practicedKnowledgeUnitCount': 3,
+    'coverage': 0.25,
+    'mastery': 0.72,
+    'estimatedGlobalMastery': 0.18,
+    'courseCount': 1,
+    'readyCourseCount': 1,
+    'lastPracticedAt': '2026-06-18T12:00:00.000Z',
+    'courses': courses ?? [subjectCourseProgressJson()],
+  };
+}
+
+Map<String, Object?> subjectCourseProgressJson({String state = 'PRACTICED'}) {
+  return {
+    'courseId': 'course-1',
+    'title': 'Droit constitutionnel',
+    'knowledgeUnitCount': 12,
+    'practicedKnowledgeUnitCount': 3,
+    'coverage': 0.25,
+    'mastery': 0.72,
+    'estimatedGlobalMastery': 0.18,
+    'state': state,
+  };
+}
+
+Map<String, Object?> revisionSheetJson() {
+  return {
+    'id': 'sheet-1',
+    'documentId': 'document-1',
+    'subjectId': 'subject-1',
+    'status': 'READY',
+    'title': 'Fiche de cours',
+    'introduction': 'Introduction',
+    'keyPoints': ['Point clé'],
+    'commonMistakes': ['Erreur fréquente'],
+    'mustKnow': ['À savoir'],
+    'practiceSuggestions': ['S’entraîner'],
+    'errorCode': null,
+    'sections': [
+      {
+        'id': 'section-1',
+        'displayOrder': 0,
+        'title': 'Institutions',
+        'content': 'Le Parlement contrôle le Gouvernement.',
+        'sources': [
+          {
+            'chunkId': 'chunk-1',
+            'text': 'Extrait source',
+            'pageNumber': 1,
+            'index': 0,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+ResponseBody jsonResponse(Object? body, {int statusCode = 200}) {
+  return ResponseBody.fromString(
+    jsonEncode(body),
+    statusCode,
+    headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    },
+  );
+}
+
+````````
+
+### test/features/courses/courses_providers_test.dart
+
+````````dart
+import 'dart:typed_data';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:revision_app/features/courses/application/course_pdf_picker.dart';
+import 'package:revision_app/features/courses/application/courses_providers.dart';
+import 'package:revision_app/features/courses/domain/course_models.dart';
+import 'package:revision_app/features/courses/domain/courses_repository.dart';
+import 'package:revision_app/features/documents/domain/revision_document.dart';
+
+import '../../fakes/in_memory_courses_repository.dart';
+
+void main() {
+  test('coursesProvider loads real courses for a subject', () async {
+    final repository = InMemoryCoursesRepository()
+      ..coursesBySubject['subject-1'] = const [
+        CourseListItem(
+          id: 'course-1',
+          subjectId: 'subject-1',
+          title: 'Droit constitutionnel',
+          sourceCount: 0,
+          readySourceCount: 0,
+          processingSourceCount: 0,
+          failedSourceCount: 0,
+        ),
+      ];
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final courses = await container.read(coursesProvider('subject-1').future);
+
+    expect(courses.single.title, 'Droit constitutionnel');
+  });
+
+  test('createCourseController invalidates the subject course list', () async {
+    final repository = InMemoryCoursesRepository();
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    expect(await container.read(coursesProvider('subject-1').future), isEmpty);
+
+    final created = await container
+        .read(createCourseControllerProvider.notifier)
+        .create(
+          subjectId: 'subject-1',
+          input: const CreateCourseInput(title: 'Droit constitutionnel'),
+        );
+
+    expect(created.title, 'Droit constitutionnel');
+    expect(
+      await container.read(coursesProvider('subject-1').future),
+      hasLength(1),
+    );
+  });
+
+  test('course detail repository exposes typed not-found errors', () async {
+    final repository = InMemoryCoursesRepository();
+
+    await expectLater(
+      repository.getCourse(courseId: 'unknown'),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
+  test(
+    'uploadCourseDocumentController does nothing when picking is cancelled',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..progressByCourse['course-1'] = courseProgress()
+        ..progressBySubject['subject-1'] = subjectProgress();
+      final picker = FakeCoursePdfPicker(null);
+      final container = ProviderContainer(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(repository),
+          coursePdfPickerProvider.overrideWithValue(picker),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+      final initialCourseProgressReads = repository.getCourseProgressCount;
+      final initialSubjectProgressReads = repository.getSubjectProgressCount;
+
+      final result = await container
+          .read(uploadCourseDocumentControllerProvider.notifier)
+          .upload(detail: courseDetail());
+
+      expect(result, isNull);
+      expect(picker.pickCount, 1);
+      expect(repository.uploadCount, 0);
+      expect(
+        container.read(uploadCourseDocumentControllerProvider).hasError,
+        false,
+      );
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+      expect(repository.getCourseProgressCount, initialCourseProgressReads);
+      expect(repository.getSubjectProgressCount, initialSubjectProgressReads);
+    },
+  );
+
+  test(
+    'uploadCourseDocumentController uploads and invalidates detail lists and progress',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..coursesBySubject['subject-1'] = const [
+          CourseListItem(
+            id: 'course-1',
+            subjectId: 'subject-1',
+            title: 'Droit constitutionnel',
+          ),
+        ]
+        ..detailsByCourse['course-1'] = courseDetail()
+        ..progressByCourse['course-1'] = courseProgress()
+        ..progressBySubject['subject-1'] = subjectProgress();
+      final picker = FakeCoursePdfPicker(
+        PickedCoursePdf(
+          fileName: 'cours.pdf',
+          bytes: Uint8List.fromList('%PDF-1.7'.codeUnits),
+        ),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(repository),
+          coursePdfPickerProvider.overrideWithValue(picker),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(
+        (await container.read(courseDetailProvider('course-1').future)).sources,
+        isEmpty,
+      );
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      final initialDetailReads = repository.getCourseCount;
+      final initialListReads = repository.listCoursesCount;
+      final initialCourseProgressReads = repository.getCourseProgressCount;
+      final initialSubjectProgressReads = repository.getSubjectProgressCount;
+
+      final uploaded = await container
+          .read(uploadCourseDocumentControllerProvider.notifier)
+          .upload(detail: courseDetail());
+
+      expect(uploaded?.fileName, 'cours.pdf');
+      expect(repository.uploadCount, 1);
+      expect(repository.lastUploadedCourseId, 'course-1');
+      expect(
+        (await container.read(courseDetailProvider('course-1').future)).sources,
+        hasLength(1),
+      );
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      expect(repository.getCourseCount, greaterThan(initialDetailReads));
+      expect(repository.listCoursesCount, greaterThan(initialListReads));
+      expect(
+        repository.getCourseProgressCount,
+        greaterThan(initialCourseProgressReads),
+      );
+      expect(
+        repository.getSubjectProgressCount,
+        greaterThan(initialSubjectProgressReads),
+      );
+    },
+  );
+
+  test('uploadCourseDocumentController exposes upload errors', () async {
+    final repository = InMemoryCoursesRepository()
+      ..progressByCourse['course-1'] = courseProgress()
+      ..progressBySubject['subject-1'] = subjectProgress()
+      ..uploadError = const CourseUploadException('Invalid PDF');
+    final picker = FakeCoursePdfPicker(
+      PickedCoursePdf(fileName: 'cours.pdf', bytes: Uint8List.fromList([1])),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        coursesRepositoryProvider.overrideWithValue(repository),
+        coursePdfPickerProvider.overrideWithValue(picker),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(courseProgressProvider('course-1').future);
+    await container.read(subjectProgressProvider('subject-1').future);
+    final initialCourseProgressReads = repository.getCourseProgressCount;
+    final initialSubjectProgressReads = repository.getSubjectProgressCount;
+
+    await expectLater(
+      container
+          .read(uploadCourseDocumentControllerProvider.notifier)
+          .upload(detail: courseDetail()),
+      throwsA(isA<CourseUploadException>()),
+    );
+
+    expect(
+      container.read(uploadCourseDocumentControllerProvider).hasError,
+      true,
+    );
+    await container.read(courseProgressProvider('course-1').future);
+    await container.read(subjectProgressProvider('subject-1').future);
+    expect(repository.getCourseProgressCount, initialCourseProgressReads);
+    expect(repository.getSubjectProgressCount, initialSubjectProgressReads);
+  });
+
+  test(
+    'deleteCourseDocumentController removes a source and refreshes course surfaces',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..coursesBySubject['subject-1'] = const [
+          CourseListItem(
+            id: 'course-1',
+            subjectId: 'subject-1',
+            title: 'Droit constitutionnel',
+          ),
+        ]
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'cours.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..progressByCourse['course-1'] = courseProgress()
+        ..progressBySubject['subject-1'] = subjectProgress();
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      expect(
+        (await container.read(courseDetailProvider('course-1').future)).sources,
+        hasLength(1),
+      );
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      final initialDetailReads = repository.getCourseCount;
+      final initialListReads = repository.listCoursesCount;
+      final initialCourseProgressReads = repository.getCourseProgressCount;
+      final initialSubjectProgressReads = repository.getSubjectProgressCount;
+
+      await container
+          .read(deleteCourseDocumentControllerProvider.notifier)
+          .delete(
+            detail: repository.detailsByCourse['course-1']!,
+            documentId: 'document-1',
+          );
+
+      expect(repository.deleteDocumentCount, 1);
+      expect(repository.lastDeletedCourseId, 'course-1');
+      expect(repository.lastDeletedDocumentId, 'document-1');
+      expect(
+        (await container.read(courseDetailProvider('course-1').future)).sources,
+        isEmpty,
+      );
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      expect(repository.getCourseCount, greaterThan(initialDetailReads));
+      expect(repository.listCoursesCount, greaterThan(initialListReads));
+      expect(
+        repository.getCourseProgressCount,
+        greaterThan(initialCourseProgressReads),
+      );
+      expect(
+        repository.getSubjectProgressCount,
+        greaterThan(initialSubjectProgressReads),
+      );
+    },
+  );
+
+  test(
+    'deleteCourseDocumentController exposes errors without refreshing',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..coursesBySubject['subject-1'] = const [
+          CourseListItem(
+            id: 'course-1',
+            subjectId: 'subject-1',
+            title: 'Droit constitutionnel',
+          ),
+        ]
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'cours.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..progressByCourse['course-1'] = courseProgress()
+        ..progressBySubject['subject-1'] = subjectProgress()
+        ..deleteDocumentError = const CourseNotFoundException(
+          'Course source not found',
+        );
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(courseDetailProvider('course-1').future);
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      final initialDetailReads = repository.getCourseCount;
+      final initialListReads = repository.listCoursesCount;
+      final initialCourseProgressReads = repository.getCourseProgressCount;
+      final initialSubjectProgressReads = repository.getSubjectProgressCount;
+
+      await expectLater(
+        container
+            .read(deleteCourseDocumentControllerProvider.notifier)
+            .delete(
+              detail: repository.detailsByCourse['course-1']!,
+              documentId: 'document-1',
+            ),
+        throwsA(isA<CourseNotFoundException>()),
+      );
+
+      expect(
+        container.read(deleteCourseDocumentControllerProvider).hasError,
+        true,
+      );
+      await container.read(courseDetailProvider('course-1').future);
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+      expect(repository.getCourseCount, initialDetailReads);
+      expect(repository.listCoursesCount, initialListReads);
+      expect(repository.getCourseProgressCount, initialCourseProgressReads);
+      expect(repository.getSubjectProgressCount, initialSubjectProgressReads);
+    },
+  );
+
+  test(
+    'courseRevisionSheetProvider loads an existing course-level sheet',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..revisionSheetsByCourse['course-1'] = revisionSheet();
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      final sheet = await container.read(
+        courseRevisionSheetProvider('course-1').future,
+      );
+
+      expect(sheet?.title, 'Fiche de cours');
+      expect(repository.getRevisionSheetCount, 1);
+    },
+  );
+
+  test('courseProgressProvider loads real course progress', () async {
+    final repository = InMemoryCoursesRepository()
+      ..progressByCourse['course-1'] = courseProgress();
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final progress = await container.read(
+      courseProgressProvider('course-1').future,
+    );
+
+    expect(progress.state, CourseProgressState.practiced);
+    expect(progress.estimatedGlobalMastery, 0.18);
+    expect(repository.getCourseProgressCount, 1);
+  });
+
+  test('subjectProgressProvider loads real subject progress', () async {
+    final repository = InMemoryCoursesRepository()
+      ..progressBySubject['subject-1'] = subjectProgress();
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final progress = await container.read(
+      subjectProgressProvider('subject-1').future,
+    );
+
+    expect(progress.courses.single.title, 'Droit constitutionnel');
+    expect(progress.readyCourseCount, 1);
+    expect(repository.getSubjectProgressCount, 1);
+  });
+
+  test(
+    'generateCourseRevisionSheetController generates and invalidates',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..revisionSheetsByCourse['course-1'] = revisionSheet();
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(courseRevisionSheetProvider('course-1').future);
+
+      final sheet = await container
+          .read(generateCourseRevisionSheetControllerProvider.notifier)
+          .generate(courseId: 'course-1');
+
+      expect(sheet.title, 'Fiche de cours');
+      expect(repository.generateRevisionSheetCount, 1);
+      expect(
+        await container.read(courseRevisionSheetProvider('course-1').future),
+        isNotNull,
+      );
+    },
+  );
+
+  test(
+    'generateCourseRevisionSheetController exposes not-ready errors',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..revisionSheetErrorsByCourse['course-1'] =
+            const CourseRevisionSheetNotReadyException(
+              'Course has no ready source',
+            );
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await expectLater(
+        container
+            .read(generateCourseRevisionSheetControllerProvider.notifier)
+            .generate(courseId: 'course-1'),
+        throwsA(isA<CourseRevisionSheetNotReadyException>()),
+      );
+
+      expect(
+        container.read(generateCourseRevisionSheetControllerProvider).hasError,
+        true,
+      );
+    },
+  );
+
+  test(
+    'startCourseQuickRevisionController starts a real course session',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail();
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      final response = await container
+          .read(startCourseQuickRevisionControllerProvider.notifier)
+          .start(detail: courseDetail());
+
+      expect(response.session.id, 'revision-session-1');
+      expect(response.session.courseId, 'course-1');
+      expect(repository.startQuickRevisionCount, 1);
+      expect(repository.lastQuickRevisionCourseId, 'course-1');
+      expect(
+        container.read(startCourseQuickRevisionControllerProvider).hasError,
+        false,
+      );
+    },
+  );
+
+  test('startCourseQuickRevisionController exposes readiness errors', () async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..quickRevisionError = const CourseQuickRevisionUnavailableException(
+        'Course has no ready knowledge unit',
+      );
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container
+          .read(startCourseQuickRevisionControllerProvider.notifier)
+          .start(detail: courseDetail()),
+      throwsA(isA<CourseQuickRevisionUnavailableException>()),
+    );
+
+    expect(
+      container.read(startCourseQuickRevisionControllerProvider).hasError,
+      true,
+    );
+  });
+}
+
+CourseDetail courseDetail({List<CourseDocument> sources = const []}) {
+  const course = CourseListItem(
+    id: 'course-1',
+    subjectId: 'subject-1',
+    title: 'Droit constitutionnel',
+  );
+  return CourseDetail(
+    course: course,
+    subject: const CourseSubjectSummary(id: 'subject-1', name: 'Droit'),
+    sources: sources,
+  );
+}
+
+RevisionSheet revisionSheet() {
+  return const RevisionSheet(
+    id: 'sheet-1',
+    documentId: 'document-1',
+    subjectId: 'subject-1',
+    status: 'READY',
+    title: 'Fiche de cours',
+    introduction: 'Introduction',
+    sections: [
+      RevisionSheetSection(
+        id: 'section-1',
+        displayOrder: 0,
+        title: 'Institutions',
+        content: 'Le Parlement contrôle le Gouvernement.',
+        sources: [],
+      ),
+    ],
+    keyPoints: ['Point clé'],
+    commonMistakes: ['Erreur fréquente'],
+    mustKnow: ['À savoir'],
+    practiceSuggestions: ['S’entraîner'],
+    errorCode: null,
+  );
+}
+
+CourseProgress courseProgress() {
+  return CourseProgress(
+    courseId: 'course-1',
+    subjectId: 'subject-1',
+    knowledgeUnitCount: 12,
+    practicedKnowledgeUnitCount: 3,
+    coverage: 0.25,
+    mastery: 0.72,
+    estimatedGlobalMastery: 0.18,
+    readySourceCount: 1,
+    processingSourceCount: 0,
+    failedSourceCount: 0,
+    lastPracticedAt: DateTime.utc(2026, 6, 18, 12),
+    state: CourseProgressState.practiced,
+  );
+}
+
+SubjectProgress subjectProgress() {
+  return SubjectProgress(
+    subjectId: 'subject-1',
+    knowledgeUnitCount: 12,
+    practicedKnowledgeUnitCount: 3,
+    coverage: 0.25,
+    mastery: 0.72,
+    estimatedGlobalMastery: 0.18,
+    courseCount: 1,
+    readyCourseCount: 1,
+    lastPracticedAt: DateTime.utc(2026, 6, 18, 12),
+    courses: const [
+      SubjectCourseProgressItem(
+        courseId: 'course-1',
+        title: 'Droit constitutionnel',
+        knowledgeUnitCount: 12,
+        practicedKnowledgeUnitCount: 3,
+        coverage: 0.25,
+        mastery: 0.72,
+        estimatedGlobalMastery: 0.18,
+        state: CourseProgressState.practiced,
+      ),
+    ],
+  );
+}
+
+class FakeCoursePdfPicker implements CoursePdfPicker {
+  FakeCoursePdfPicker(this.result);
+
+  final PickedCoursePdf? result;
+  int pickCount = 0;
+
+  @override
+  Future<PickedCoursePdf?> pickPdf() async {
+    pickCount += 1;
+    return result;
+  }
+}
+
+````````
+
+### test/features/courses/course_detail_page_test.dart
+
+````````dart
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:revision_app/app/router/app_routes.dart';
+import 'package:revision_app/features/courses/application/course_pdf_picker.dart';
+import 'package:revision_app/features/courses/application/courses_providers.dart';
+import 'package:revision_app/features/courses/domain/course_models.dart';
+import 'package:revision_app/features/courses/domain/courses_repository.dart';
+import 'package:revision_app/features/courses/presentation/course_detail_page.dart';
+import 'package:revision_app/presentation/design_system/components/revision_mvp_components.dart';
+
+import '../../fakes/in_memory_courses_repository.dart';
+
+void main() {
+  testWidgets('course detail uploads a PDF source without fixture content', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..uploadDelay = const Duration(milliseconds: 50);
+    final picker = FakeCoursePdfPicker(
+      PickedCoursePdf(
+        fileName: 'cours.pdf',
+        bytes: Uint8List.fromList('%PDF-1.7'.codeUnits),
+      ),
+    );
+
+    await tester.pumpWidget(testApp(repository: repository, picker: picker));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Droit constitutionnel'), findsOneWidget);
+    expect(find.text('Ajouter une source'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
+    expect(find.text('78%'), findsNothing);
+    expect(find.text('870'), findsNothing);
+    expect(find.text('7 jours'), findsNothing);
+
+    final uploadButton = find.widgetWithText(
+      RevisionGradientButton,
+      'Ajouter une source',
+    );
+    await tester.scrollUntilVisible(uploadButton, 400);
+    await tester.tap(uploadButton);
+    await tester.pump();
+
+    expect(find.text('Upload en cours...'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.pump();
+
+    expect(repository.uploadCount, 1);
+    expect(repository.lastUploadedCourseId, 'course-1');
+    expect(repository.lastUploadedFileName, 'cours.pdf');
+    expect(find.text('Source ajoutée'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('cours.pdf'), 400);
+    expect(find.text('cours.pdf'), findsOneWidget);
+    expect(find.text('Téléversée'), findsOneWidget);
+  });
+
+  testWidgets('course detail displays failed source errors', (tester) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'broken.pdf',
+            status: CourseDocumentStatus.failed,
+            errorCode: 'PDF_PARSE_FAILED',
+          ),
+        ],
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('broken.pdf'), 400);
+    expect(find.text('broken.pdf'), findsOneWidget);
+    expect(find.text('Erreur'), findsOneWidget);
+    expect(find.textContaining('PDF_PARSE_FAILED'), findsOneWidget);
+  });
+
+  testWidgets('course detail deletes a source after confirmation', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'cours.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('cours.pdf'), 400);
+    expect(find.text('cours.pdf'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Supprimer la source cours.pdf'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Supprimer cette source ?'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Supprimer'));
+    await tester.pumpAndSettle();
+
+    expect(repository.deleteDocumentCount, 1);
+    expect(repository.lastDeletedDocumentId, 'document-1');
+    expect(find.text('Source supprimée'), findsOneWidget);
+    expect(find.text('Aucune source attachée'), findsOneWidget);
+  });
+
+  testWidgets('course detail shows an error when source deletion fails', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'cours.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..deleteDocumentError = const CourseNotFoundException(
+        'Course source not found',
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('cours.pdf'), 400);
+    await tester.tap(find.byTooltip('Supprimer la source cours.pdf'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'Supprimer'));
+    await tester.pumpAndSettle();
+
+    expect(repository.deleteDocumentCount, 0);
+    expect(find.text('Impossible de supprimer cette source.'), findsOneWidget);
+    expect(find.text('cours.pdf'), findsOneWidget);
+  });
+
+  testWidgets('course detail displays no-source progress state', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..progressByCourse['course-1'] = courseProgress(
+        state: CourseProgressState.noSource,
+        knowledgeUnitCount: 0,
+        practicedKnowledgeUnitCount: 0,
+        coverage: 0,
+        mastery: null,
+        estimatedGlobalMastery: 0,
+        readySourceCount: 0,
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Progression réelle'), findsOneWidget);
+    expect(find.text('0/0 notions travaillées'), findsOneWidget);
+    expect(find.text('Ajoute une source pour commencer.'), findsOneWidget);
+    expect(find.text('78%'), findsNothing);
+  });
+
+  testWidgets('course detail displays practiced real progress', (tester) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..progressByCourse['course-1'] = courseProgress();
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('3/12 notions travaillées'), findsOneWidget);
+    expect(find.text('Maîtrise sur notions travaillées : 72%'), findsOneWidget);
+    expect(find.text('Estimation globale : 18%'), findsOneWidget);
+    expect(
+      find.text('Progression réelle basée sur tes réponses.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('processing sources trigger bounded detail refresh polling', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'processing.pdf',
+            status: CourseDocumentStatus.processing,
+          ),
+        ],
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(repository.getCourseCount, 1);
+    expect(repository.getCourseProgressCount, 1);
+    await tester.scrollUntilVisible(find.text('Traitement en cours'), 400);
+    expect(find.text('Traitement en cours'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+
+    expect(repository.getCourseCount, greaterThanOrEqualTo(2));
+    expect(repository.getCourseProgressCount, greaterThanOrEqualTo(2));
+  });
+
+  testWidgets('ready failed and empty sources do not trigger polling', (
+    tester,
+  ) async {
+    for (final sources in [
+      const <CourseDocument>[],
+      const [
+        CourseDocument(
+          id: 'document-ready',
+          courseId: 'course-1',
+          documentId: 'document-ready',
+          fileName: 'ready.pdf',
+          status: CourseDocumentStatus.ready,
+        ),
+      ],
+      const [
+        CourseDocument(
+          id: 'document-failed',
+          courseId: 'course-1',
+          documentId: 'document-failed',
+          fileName: 'failed.pdf',
+          status: CourseDocumentStatus.failed,
+          errorCode: 'KNOWLEDGE_EXTRACTION_FAILED',
+        ),
+      ],
+    ]) {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail(sources: sources);
+
+      await tester.pumpWidget(
+        testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final detailReads = repository.getCourseCount;
+      final progressReads = repository.getCourseProgressCount;
+
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+
+      expect(repository.getCourseCount, detailReads);
+      expect(repository.getCourseProgressCount, progressReads);
+    }
+  });
+
+  testWidgets('course sheet CTA asks for a source when none exists', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail();
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    final emptyButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(
+        RevisionGradientButton,
+        'Ajoute une source pour créer une fiche',
+      ),
+    );
+    expect(emptyButton.onPressed, isNull);
+
+    final emptyQuickButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(
+        RevisionGradientButton,
+        'Ajoute une source pour réviser',
+      ),
+    );
+    expect(emptyQuickButton.onPressed, isNull);
+  });
+
+  testWidgets('course sheet CTA waits while a source is processing', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'processing.pdf',
+            status: CourseDocumentStatus.processing,
+          ),
+        ],
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    final processingSheetButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(
+        RevisionGradientButton,
+        'Fiche disponible après traitement',
+      ),
+    );
+    expect(processingSheetButton.onPressed, isNull);
+
+    final processingQuickButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(
+        RevisionGradientButton,
+        'Révision disponible après traitement',
+      ),
+    );
+    expect(processingQuickButton.onPressed, isNull);
+  });
+
+  testWidgets('course sheet CTA is enabled when a READY source exists', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    final sheetButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(RevisionGradientButton, 'Fiche de cours'),
+    );
+    expect(sheetButton.onPressed, isNotNull);
+
+    final quickButton = tester.widget<RevisionGradientButton>(
+      find.widgetWithText(RevisionGradientButton, 'Révision rapide'),
+    );
+    expect(quickButton.onPressed, isNotNull);
+  });
+
+  testWidgets('ready quick revision starts the real revision session route', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..quickRevisionDelay = const Duration(milliseconds: 50);
+
+    await tester.pumpWidget(
+      routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    final quickButton = find.widgetWithText(
+      RevisionGradientButton,
+      'Révision rapide',
+    );
+    final quickWidget = tester.widget<RevisionGradientButton>(quickButton);
+    quickWidget.onPressed!();
+    await tester.pump();
+
+    expect(find.text('Démarrage...'), findsOneWidget);
+
+    await tester.pumpAndSettle();
+
+    expect(repository.startQuickRevisionCount, 1);
+    expect(repository.lastQuickRevisionCourseId, 'course-1');
+    expect(find.text('Session réelle'), findsOneWidget);
+  });
+}
+
+Widget testApp({
+  required InMemoryCoursesRepository repository,
+  required CoursePdfPicker picker,
+}) {
+  _ensureDefaultProgress(repository);
+
+  return ProviderScope(
+    overrides: [
+      coursesRepositoryProvider.overrideWithValue(repository),
+      coursePdfPickerProvider.overrideWithValue(picker),
+    ],
+    child: const MaterialApp(
+      home: Scaffold(body: CourseDetailPage(courseId: 'course-1')),
+    ),
+  );
+}
+
+Widget routerTestApp({
+  required InMemoryCoursesRepository repository,
+  required CoursePdfPicker picker,
+}) {
+  _ensureDefaultProgress(repository);
+
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) =>
+            const Scaffold(body: CourseDetailPage(courseId: 'course-1')),
+      ),
+      GoRoute(
+        path: AppRoutes.revisionSessionPath,
+        builder: (context, state) => Scaffold(
+          body: Text(
+            state.uri.queryParameters['sessionId'] == 'revision-session-1'
+                ? 'Session réelle'
+                : 'Session inconnue',
+          ),
+        ),
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      coursesRepositoryProvider.overrideWithValue(repository),
+      coursePdfPickerProvider.overrideWithValue(picker),
+    ],
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
+
+void _ensureDefaultProgress(InMemoryCoursesRepository repository) {
+  repository.progressByCourse.putIfAbsent(
+    'course-1',
+    () => courseProgress(
+      state: CourseProgressState.noSource,
+      knowledgeUnitCount: 0,
+      practicedKnowledgeUnitCount: 0,
+      coverage: 0,
+      mastery: null,
+      estimatedGlobalMastery: 0,
+      readySourceCount: 0,
+    ),
+  );
+}
+
+CourseDetail courseDetail({List<CourseDocument> sources = const []}) {
+  const course = CourseListItem(
+    id: 'course-1',
+    subjectId: 'subject-1',
+    title: 'Droit constitutionnel',
+    sourceCount: 0,
+    readySourceCount: 0,
+    processingSourceCount: 0,
+    failedSourceCount: 0,
+  );
+  return CourseDetail(
+    course: course,
+    subject: const CourseSubjectSummary(id: 'subject-1', name: 'Droit'),
+    sources: sources,
+  );
+}
+
+CourseProgress courseProgress({
+  CourseProgressState state = CourseProgressState.practiced,
+  int knowledgeUnitCount = 12,
+  int practicedKnowledgeUnitCount = 3,
+  double coverage = 0.25,
+  double? mastery = 0.72,
+  double estimatedGlobalMastery = 0.18,
+  int readySourceCount = 1,
+}) {
+  return CourseProgress(
+    courseId: 'course-1',
+    subjectId: 'subject-1',
+    knowledgeUnitCount: knowledgeUnitCount,
+    practicedKnowledgeUnitCount: practicedKnowledgeUnitCount,
+    coverage: coverage,
+    mastery: mastery,
+    estimatedGlobalMastery: estimatedGlobalMastery,
+    readySourceCount: readySourceCount,
+    processingSourceCount: 0,
+    failedSourceCount: 0,
+    lastPracticedAt: DateTime.utc(2026, 6, 18, 12),
+    state: state,
+  );
+}
+
+class FakeCoursePdfPicker implements CoursePdfPicker {
+  FakeCoursePdfPicker(this.result);
+
+  final PickedCoursePdf? result;
+
+  @override
+  Future<PickedCoursePdf?> pickPdf() async => result;
+}
+
+````````
+
+### docs/core/MVP_CORE_ACCEPTANCE_RUNBOOK.md
+
+````````md
+# MVP Core acceptance runbook
+
+Ce runbook vérifie le parcours MVP Core réel côté Flutter, sans fixtures MVP dans le routing réel.
+
+## Parcours utilisateur
+
+1. Ouvrir l'app avec un utilisateur authentifié.
+2. Voir les matières réelles.
+3. Créer ou ouvrir un cours réel.
+4. Ouvrir le détail du cours.
+5. Cliquer sur `Ajouter une source`.
+6. Choisir un PDF réel.
+7. Attendre le traitement jusqu'au statut `Prête`.
+8. Supprimer optionnellement une source de test depuis le détail du cours, avec confirmation.
+9. Ajouter ou conserver une source `READY`.
+10. Ouvrir `Fiche de cours`.
+11. Revenir au cours.
+12. Démarrer `Révision rapide`.
+13. Répondre au QCM.
+14. Revenir sur le cours ou l'onglet `Progrès`.
+15. Vérifier la progression réelle.
+
+## Vérifications UI attendues
+
+- Le détail cours affiche uniquement les sources réelles de l'API.
+- Une source `UPLOADED` ou `PROCESSING` déclenche un polling borné.
+- Pendant ce polling, le détail et la progression sont rafraîchis.
+- La suppression d'une source demande confirmation, affiche un feedback, puis rafraîchit détail, liste de cours, progression cours et progression matière.
+- La fiche n'est activée que si une source `READY` existe.
+- La révision rapide n'est activée que si une source `READY` existe.
+- `/progress` affiche `SubjectProgressPage`, pas une page pending CORE-06.
+- Les compteurs fake `78%`, `870`, `7 jours` et `Loi normale` ne doivent pas apparaître dans le parcours réel.
+
+## Commandes de validation
+
+```bash
+dart analyze lib test
+flutter test test/features/courses --reporter compact
+flutter test test/features/revision_sessions --reporter compact
+flutter test test/app/router/app_router_test.dart --reporter compact
+flutter test test/app/revision_app_test.dart --reporter compact
+flutter test test/app --reporter compact
+flutter test --reporter compact
+git diff --check
+```
+
+## Hors MVP Core
+
+- Révision approfondie.
+- Préparation examen.
+- Résultat final dédié de session.
+- Gamification durable.
+- Multi-source avancé.
+- `CourseSource`.
+- WebSocket/SSE de progression.
+
+## Notes de cohérence
+
+- L'upload réussi invalide le détail, la liste de cours, la progression du cours et la progression matière.
+- L'annulation du picker ne déclenche aucun upload ni refresh artificiel.
+- L'échec d'upload ne simule pas une source réelle.
+- La suppression réussie invalide le détail, la liste de cours, la progression du cours et la progression matière.
+- L'échec de suppression affiche une erreur et ne rafraîchit pas la progression comme si la source avait disparu.
+- Le démarrage d'une révision rapide ne rafraîchit pas la progression : la mastery change après submit, pas au start.
+- La génération d'une fiche ne rafraîchit pas la progression : elle ne modifie ni `MasteryState` ni `Document.status`.
+
+````````
+
+### docs/core/CORE_06B_PROGRESS_REFRESH_AND_ACCEPTANCE_HARDENING_REPORT.md
+
+````````md
 # CORE-06B — Progress refresh coherence + MVP Core acceptance hardening
 
 ## 1. Résumé
@@ -2429,3 +4445,5 @@ git diff --check
 - La génération d'une fiche ne rafraîchit pas la progression : elle ne modifie ni `MasteryState` ni `Document.status`.
 
 ```
+
+````````

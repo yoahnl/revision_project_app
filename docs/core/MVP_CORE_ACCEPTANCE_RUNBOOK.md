@@ -11,18 +11,21 @@ Ce runbook vérifie le parcours MVP Core réel côté Flutter, sans fixtures MVP
 5. Cliquer sur `Ajouter une source`.
 6. Choisir un PDF réel.
 7. Attendre le traitement jusqu'au statut `Prête`.
-8. Ouvrir `Fiche de cours`.
-9. Revenir au cours.
-10. Démarrer `Révision rapide`.
-11. Répondre au QCM.
-12. Revenir sur le cours ou l'onglet `Progrès`.
-13. Vérifier la progression réelle.
+8. Supprimer optionnellement une source de test depuis le détail du cours, avec confirmation.
+9. Ajouter ou conserver une source `READY`.
+10. Ouvrir `Fiche de cours`.
+11. Revenir au cours.
+12. Démarrer `Révision rapide`.
+13. Répondre au QCM.
+14. Revenir sur le cours ou l'onglet `Progrès`.
+15. Vérifier la progression réelle.
 
 ## Vérifications UI attendues
 
 - Le détail cours affiche uniquement les sources réelles de l'API.
 - Une source `UPLOADED` ou `PROCESSING` déclenche un polling borné.
 - Pendant ce polling, le détail et la progression sont rafraîchis.
+- La suppression d'une source demande confirmation, affiche un feedback, puis rafraîchit détail, liste de cours, progression cours et progression matière.
 - La fiche n'est activée que si une source `READY` existe.
 - La révision rapide n'est activée que si une source `READY` existe.
 - `/progress` affiche `SubjectProgressPage`, pas une page pending CORE-06.
@@ -56,5 +59,7 @@ git diff --check
 - L'upload réussi invalide le détail, la liste de cours, la progression du cours et la progression matière.
 - L'annulation du picker ne déclenche aucun upload ni refresh artificiel.
 - L'échec d'upload ne simule pas une source réelle.
+- La suppression réussie invalide le détail, la liste de cours, la progression du cours et la progression matière.
+- L'échec de suppression affiche une erreur et ne rafraîchit pas la progression comme si la source avait disparu.
 - Le démarrage d'une révision rapide ne rafraîchit pas la progression : la mastery change après submit, pas au start.
 - La génération d'une fiche ne rafraîchit pas la progression : elle ne modifie ni `MasteryState` ni `Document.status`.

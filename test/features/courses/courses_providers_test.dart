@@ -212,9 +212,16 @@ void main() {
   });
 
   test(
-    'deleteCourseDocumentController removes a source and refreshes detail',
+    'deleteCourseDocumentController removes a source and refreshes course surfaces',
     () async {
       final repository = InMemoryCoursesRepository()
+        ..coursesBySubject['subject-1'] = const [
+          CourseListItem(
+            id: 'course-1',
+            subjectId: 'subject-1',
+            title: 'Droit constitutionnel',
+          ),
+        ]
         ..detailsByCourse['course-1'] = courseDetail(
           sources: const [
             CourseDocument(
@@ -226,7 +233,8 @@ void main() {
             ),
           ],
         )
-        ..progressByCourse['course-1'] = courseProgress();
+        ..progressByCourse['course-1'] = courseProgress()
+        ..progressBySubject['subject-1'] = subjectProgress();
       final container = ProviderContainer(
         overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
       );
@@ -236,6 +244,14 @@ void main() {
         (await container.read(courseDetailProvider('course-1').future)).sources,
         hasLength(1),
       );
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      final initialDetailReads = repository.getCourseCount;
+      final initialListReads = repository.listCoursesCount;
+      final initialCourseProgressReads = repository.getCourseProgressCount;
+      final initialSubjectProgressReads = repository.getSubjectProgressCount;
 
       await container
           .read(deleteCourseDocumentControllerProvider.notifier)
@@ -251,6 +267,87 @@ void main() {
         (await container.read(courseDetailProvider('course-1').future)).sources,
         isEmpty,
       );
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      expect(repository.getCourseCount, greaterThan(initialDetailReads));
+      expect(repository.listCoursesCount, greaterThan(initialListReads));
+      expect(
+        repository.getCourseProgressCount,
+        greaterThan(initialCourseProgressReads),
+      );
+      expect(
+        repository.getSubjectProgressCount,
+        greaterThan(initialSubjectProgressReads),
+      );
+    },
+  );
+
+  test(
+    'deleteCourseDocumentController exposes errors without refreshing',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..coursesBySubject['subject-1'] = const [
+          CourseListItem(
+            id: 'course-1',
+            subjectId: 'subject-1',
+            title: 'Droit constitutionnel',
+          ),
+        ]
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'cours.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..progressByCourse['course-1'] = courseProgress()
+        ..progressBySubject['subject-1'] = subjectProgress()
+        ..deleteDocumentError = const CourseNotFoundException(
+          'Course source not found',
+        );
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(courseDetailProvider('course-1').future);
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      final initialDetailReads = repository.getCourseCount;
+      final initialListReads = repository.listCoursesCount;
+      final initialCourseProgressReads = repository.getCourseProgressCount;
+      final initialSubjectProgressReads = repository.getSubjectProgressCount;
+
+      await expectLater(
+        container
+            .read(deleteCourseDocumentControllerProvider.notifier)
+            .delete(
+              detail: repository.detailsByCourse['course-1']!,
+              documentId: 'document-1',
+            ),
+        throwsA(isA<CourseNotFoundException>()),
+      );
+
+      expect(
+        container.read(deleteCourseDocumentControllerProvider).hasError,
+        true,
+      );
+      await container.read(courseDetailProvider('course-1').future);
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+      expect(repository.getCourseCount, initialDetailReads);
+      expect(repository.listCoursesCount, initialListReads);
+      expect(repository.getCourseProgressCount, initialCourseProgressReads);
+      expect(repository.getSubjectProgressCount, initialSubjectProgressReads);
     },
   );
 
