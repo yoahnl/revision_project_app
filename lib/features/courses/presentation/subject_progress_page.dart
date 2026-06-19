@@ -7,6 +7,7 @@ import '../../../presentation/design_system/components/revision_mvp_components.d
 import '../../../presentation/design_system/components/revision_states.dart';
 import '../../../presentation/design_system/tokens/revision_colors.dart';
 import '../../../presentation/design_system/tokens/revision_spacing.dart';
+import '../../../presentation/design_system/tokens/revision_subject_visuals.dart';
 import '../../../presentation/design_system/tokens/revision_typography.dart';
 import '../../subjects/application/subjects_notifier.dart';
 import '../../subjects/domain/subject.dart';
@@ -23,7 +24,7 @@ class SubjectProgressPage extends ConsumerWidget {
 
     return RevisionPageScaffold(
       children: [
-        Text('Progrès', style: RevisionTypography.pageTitle),
+        Text('Progrès', style: RevisionTypography.hero),
         Text(
           'Ta progression vient des notions générées depuis tes sources prêtes et de tes réponses.',
           style: RevisionTypography.body,
@@ -92,10 +93,22 @@ class _SubjectProgressLoaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visual = revisionSubjectVisualThemeFor(subject.name);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         RevisionGlassCard(
+          padding: const EdgeInsets.all(RevisionSpacing.xl),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              visual.accent.withValues(alpha: 0.26),
+              RevisionColors.glassStrong,
+            ],
+          ),
+          borderColor: visual.accent.withValues(alpha: 0.36),
           child: Row(
             children: [
               RevisionMasteryRing(
@@ -103,8 +116,9 @@ class _SubjectProgressLoaded extends StatelessWidget {
                 label: _percent(progress.estimatedGlobalMastery),
                 caption: 'global',
                 color: progress.mastery == null
-                    ? RevisionColors.blue
+                    ? visual.accent
                     : RevisionColors.green,
+                size: 104,
               ),
               const SizedBox(width: RevisionSpacing.l),
               Expanded(
@@ -115,13 +129,15 @@ class _SubjectProgressLoaded extends StatelessWidget {
                     const SizedBox(height: RevisionSpacing.s),
                     Text(
                       '${progress.practicedKnowledgeUnitCount}/${progress.knowledgeUnitCount} notions travaillées',
-                      style: RevisionTypography.body,
+                      style: RevisionTypography.sectionTitle.copyWith(
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: RevisionSpacing.s),
                     RevisionProgressLine(
                       value: progress.coverage,
-                      color: RevisionColors.blue,
-                      height: 7,
+                      color: visual.accent,
+                      height: 8,
                     ),
                     const SizedBox(height: RevisionSpacing.s),
                     Text(
@@ -140,24 +156,25 @@ class _SubjectProgressLoaded extends StatelessWidget {
           ),
         ),
         const SizedBox(height: RevisionSpacing.l),
-        _SubjectProgressMeta(progress: progress),
+        _SubjectProgressMeta(progress: progress, visual: visual),
         const SizedBox(height: RevisionSpacing.l),
         if (progress.courses.isEmpty)
           RevisionEmptyState(
             title: 'Aucun cours réel à suivre',
             message:
-                'Crée un cours réel, ajoute une source PDF, puis révise pour faire progresser ces métriques.',
+                'Crée un cours, ajoute une source PDF, puis révise pour faire progresser ces métriques.',
             icon: Icons.layers_outlined,
             actionLabel: 'Retour à l’accueil',
             onAction: () => context.go(AppRoutes.home),
           )
         else ...[
-          Text('Cours', style: RevisionTypography.sectionTitle),
+          Text('Tes cours', style: RevisionTypography.sectionTitle),
           const SizedBox(height: RevisionSpacing.m),
           for (final course in progress.courses) ...[
-            _SubjectCourseProgressCard(course: course),
+            _SubjectCourseProgressCard(course: course, visual: visual),
             const SizedBox(height: RevisionSpacing.m),
           ],
+          _WeakPointSummary(courses: progress.courses),
         ],
       ],
     );
@@ -165,44 +182,62 @@ class _SubjectProgressLoaded extends StatelessWidget {
 }
 
 class _SubjectProgressMeta extends StatelessWidget {
-  const _SubjectProgressMeta({required this.progress});
+  const _SubjectProgressMeta({required this.progress, required this.visual});
 
   final SubjectProgress progress;
+  final RevisionSubjectVisualTheme visual;
 
   @override
   Widget build(BuildContext context) {
-    return RevisionGlassCard(
-      child: Wrap(
-        spacing: RevisionSpacing.m,
-        runSpacing: RevisionSpacing.m,
-        children: [
-          _ProgressPill(label: '${progress.courseCount} cours'),
-          _ProgressPill(label: '${progress.readyCourseCount} prêts'),
-          _ProgressPill(
-            label: progress.lastPracticedAt == null
-                ? 'Pas encore pratiqué'
-                : 'Déjà pratiqué',
-          ),
-        ],
-      ),
+    return Wrap(
+      spacing: RevisionSpacing.s,
+      runSpacing: RevisionSpacing.s,
+      children: [
+        RevisionMetricPill(
+          label: '${progress.courseCount} cours',
+          icon: Icons.layers_rounded,
+          accent: visual.accent,
+        ),
+        RevisionMetricPill(
+          label: '${progress.readyCourseCount} prêts',
+          icon: Icons.check_circle_rounded,
+          accent: RevisionColors.green,
+        ),
+        RevisionMetricPill(
+          label: progress.lastPracticedAt == null
+              ? 'Pas encore pratiqué'
+              : 'Déjà pratiqué',
+          icon: Icons.history_rounded,
+          accent: RevisionColors.amber,
+        ),
+      ],
     );
   }
 }
 
 class _SubjectCourseProgressCard extends StatelessWidget {
-  const _SubjectCourseProgressCard({required this.course});
+  const _SubjectCourseProgressCard({
+    required this.course,
+    required this.visual,
+  });
 
   final SubjectCourseProgressItem course;
+  final RevisionSubjectVisualTheme visual;
 
   @override
   Widget build(BuildContext context) {
+    final color = _stateColor(course.state, visual);
+
     return RevisionGlassCard(
-      onTap: () => context.go(AppRoutes.course(course.courseId)),
+      onTap: () => context.push(AppRoutes.course(course.courseId)),
+      padding: const EdgeInsets.all(RevisionSpacing.m),
       child: Row(
         children: [
           RevisionIconTile(
-            icon: Icons.auto_stories_outlined,
-            accent: _stateColor(course.state),
+            icon: visual.icon,
+            accent: color,
+            size: 48,
+            iconSize: 26,
           ),
           const SizedBox(width: RevisionSpacing.m),
           Expanded(
@@ -218,7 +253,7 @@ class _SubjectCourseProgressCard extends StatelessWidget {
                 const SizedBox(height: RevisionSpacing.s),
                 RevisionProgressLine(
                   value: course.coverage,
-                  color: _stateColor(course.state),
+                  color: color,
                   height: 6,
                 ),
                 const SizedBox(height: RevisionSpacing.s),
@@ -232,9 +267,9 @@ class _SubjectCourseProgressCard extends StatelessWidget {
           const SizedBox(width: RevisionSpacing.s),
           Text(
             _percent(course.estimatedGlobalMastery),
-            style: RevisionTypography.caption.copyWith(
+            style: RevisionTypography.sectionTitle.copyWith(
               color: RevisionColors.text,
-              fontWeight: FontWeight.w800,
+              fontSize: 15,
             ),
           ),
         ],
@@ -243,26 +278,63 @@ class _SubjectCourseProgressCard extends StatelessWidget {
   }
 }
 
-class _ProgressPill extends StatelessWidget {
-  const _ProgressPill({required this.label});
+class _WeakPointSummary extends StatelessWidget {
+  const _WeakPointSummary({required this.courses});
 
-  final String label;
+  final List<SubjectCourseProgressItem> courses;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: RevisionColors.glassSoft,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: RevisionColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: RevisionSpacing.m,
-          vertical: RevisionSpacing.s,
-        ),
-        child: Text(label, style: RevisionTypography.caption),
-      ),
+    final weakCourses = courses
+        .where((course) => course.state != CourseProgressState.practiced)
+        .take(3)
+        .toList(growable: false);
+
+    if (weakCourses.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: RevisionSpacing.s),
+        Text('À surveiller', style: RevisionTypography.sectionTitle),
+        const SizedBox(height: RevisionSpacing.m),
+        for (final course in weakCourses) ...[
+          RevisionGlassCard(
+            onTap: () => context.push(AppRoutes.course(course.courseId)),
+            padding: const EdgeInsets.all(RevisionSpacing.m),
+            child: Row(
+              children: [
+                const RevisionIconTile(
+                  icon: Icons.priority_high_rounded,
+                  accent: RevisionColors.amber,
+                  size: 36,
+                  iconSize: 20,
+                ),
+                const SizedBox(width: RevisionSpacing.m),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        course.title,
+                        style: RevisionTypography.sectionTitle,
+                      ),
+                      const SizedBox(height: RevisionSpacing.xs),
+                      Text(
+                        _stateLabel(course.state),
+                        style: RevisionTypography.caption,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: RevisionSpacing.s),
+        ],
+      ],
     );
   }
 }
@@ -291,14 +363,17 @@ String _stateLabel(CourseProgressState state) {
   };
 }
 
-Color _stateColor(CourseProgressState state) {
+Color _stateColor(
+  CourseProgressState state,
+  RevisionSubjectVisualTheme visual,
+) {
   return switch (state) {
     CourseProgressState.practiced => RevisionColors.green,
-    CourseProgressState.readyNotPracticed => RevisionColors.blue,
+    CourseProgressState.readyNotPracticed => visual.accent,
     CourseProgressState.processing => RevisionColors.amber,
     CourseProgressState.failedOnly => RevisionColors.red,
     CourseProgressState.noKnowledgeUnits => RevisionColors.violet,
-    CourseProgressState.noSource => RevisionColors.blue,
+    CourseProgressState.noSource => visual.accent,
     CourseProgressState.unknown => RevisionColors.mint,
   };
 }

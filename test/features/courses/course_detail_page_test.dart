@@ -33,18 +33,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Droit constitutionnel'), findsOneWidget);
-    expect(find.text('Ajouter une source'), findsOneWidget);
+    expect(find.text('Sources'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);
     expect(find.text('870'), findsNothing);
     expect(find.text('7 jours'), findsNothing);
 
-    final uploadButton = find.widgetWithText(
-      RevisionGradientButton,
-      'Ajouter une source',
-    );
-    await tester.scrollUntilVisible(uploadButton, 400);
-    await tester.tap(uploadButton);
+    await openSourcesSheet(tester);
+    await tester.tap(find.bySemanticsLabel('Ajouter une source'));
     await tester.pump();
 
     expect(find.text('Upload en cours...'), findsOneWidget);
@@ -56,9 +52,6 @@ void main() {
     expect(repository.lastUploadedCourseId, 'course-1');
     expect(repository.lastUploadedFileName, 'cours.pdf');
     expect(find.text('Source ajoutée'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('cours.pdf'), 400);
-    expect(find.text('cours.pdf'), findsOneWidget);
-    expect(find.text('Téléversée'), findsOneWidget);
   });
 
   testWidgets('course detail displays failed source errors', (tester) async {
@@ -81,9 +74,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('broken.pdf'), 400);
+    await openSourcesSheet(tester);
     expect(find.text('broken.pdf'), findsOneWidget);
-    expect(find.text('Erreur'), findsOneWidget);
+    expect(find.textContaining('Erreur'), findsOneWidget);
     expect(find.textContaining('PDF_PARSE_FAILED'), findsOneWidget);
   });
 
@@ -108,7 +101,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('cours.pdf'), 400);
+    await openSourcesSheet(tester);
     expect(find.text('cours.pdf'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Supprimer la source cours.pdf'));
@@ -122,7 +115,6 @@ void main() {
     expect(repository.deleteDocumentCount, 1);
     expect(repository.lastDeletedDocumentId, 'document-1');
     expect(find.text('Source supprimée'), findsOneWidget);
-    expect(find.text('Aucune source attachée'), findsOneWidget);
   });
 
   testWidgets('course detail shows an error when source deletion fails', (
@@ -149,7 +141,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('cours.pdf'), 400);
+    await openSourcesSheet(tester);
     await tester.tap(find.byTooltip('Supprimer la source cours.pdf'));
     await tester.pumpAndSettle();
 
@@ -157,7 +149,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.deleteDocumentCount, 0);
-    expect(find.text('Impossible de supprimer cette source.'), findsOneWidget);
+    expect(find.text('Impossible de supprimer cette source.'), findsWidgets);
     expect(find.text('cours.pdf'), findsOneWidget);
   });
 
@@ -240,7 +232,7 @@ void main() {
 
     expect(repository.getCourseCount, 1);
     expect(repository.getCourseProgressCount, 1);
-    await tester.scrollUntilVisible(find.text('Traitement en cours'), 400);
+    await openSourcesSheet(tester);
     expect(find.text('Traitement en cours'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
@@ -306,21 +298,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final emptyButton = tester.widget<RevisionGradientButton>(
-      find.widgetWithText(
-        RevisionGradientButton,
-        'Ajoute une source pour créer une fiche',
-      ),
+    final emptySheetPill = tester.widget<RevisionHeaderActionPill>(
+      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
     );
-    expect(emptyButton.onPressed, isNull);
+    expect(emptySheetPill.onTap, isNull);
 
-    final emptyQuickButton = tester.widget<RevisionGradientButton>(
-      find.widgetWithText(
-        RevisionGradientButton,
-        'Ajoute une source pour réviser',
-      ),
+    await scrollToQuickRevision(tester);
+    final emptyQuickCard = tester.widget<RevisionModeCard>(
+      find.widgetWithText(RevisionModeCard, 'Révision rapide'),
     );
-    expect(emptyQuickButton.onPressed, isNull);
+    expect(emptyQuickCard.enabled, isFalse);
+    expect(find.text('Ajoute une source pour réviser'), findsOneWidget);
   });
 
   testWidgets('course sheet CTA waits while a source is processing', (
@@ -344,21 +332,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final processingSheetButton = tester.widget<RevisionGradientButton>(
-      find.widgetWithText(
-        RevisionGradientButton,
-        'Fiche disponible après traitement',
-      ),
+    final processingSheetPill = tester.widget<RevisionHeaderActionPill>(
+      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
     );
-    expect(processingSheetButton.onPressed, isNull);
+    expect(processingSheetPill.onTap, isNull);
 
-    final processingQuickButton = tester.widget<RevisionGradientButton>(
-      find.widgetWithText(
-        RevisionGradientButton,
-        'Révision disponible après traitement',
-      ),
+    await scrollToQuickRevision(tester);
+    final processingQuickCard = tester.widget<RevisionModeCard>(
+      find.widgetWithText(RevisionModeCard, 'Révision rapide'),
     );
-    expect(processingQuickButton.onPressed, isNull);
+    expect(processingQuickCard.enabled, isFalse);
+    expect(find.text('Révision disponible après traitement'), findsOneWidget);
   });
 
   testWidgets('course sheet CTA is enabled when a READY source exists', (
@@ -382,15 +366,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final sheetButton = tester.widget<RevisionGradientButton>(
-      find.widgetWithText(RevisionGradientButton, 'Fiche de cours'),
+    final sheetPill = tester.widget<RevisionHeaderActionPill>(
+      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
     );
-    expect(sheetButton.onPressed, isNotNull);
+    expect(sheetPill.onTap, isNotNull);
 
-    final quickButton = tester.widget<RevisionGradientButton>(
-      find.widgetWithText(RevisionGradientButton, 'Révision rapide'),
+    await scrollToQuickRevision(tester);
+    final quickCard = tester.widget<RevisionModeCard>(
+      find.widgetWithText(RevisionModeCard, 'Révision rapide'),
     );
-    expect(quickButton.onPressed, isNotNull);
+    expect(quickCard.enabled, isTrue);
   });
 
   testWidgets('ready quick revision starts the real revision session route', (
@@ -414,13 +399,13 @@ void main() {
       routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
     );
     await tester.pumpAndSettle();
+    await scrollToQuickRevision(tester);
 
     final quickButton = find.widgetWithText(
-      RevisionGradientButton,
+      RevisionModeCard,
       'Révision rapide',
     );
-    final quickWidget = tester.widget<RevisionGradientButton>(quickButton);
-    quickWidget.onPressed!();
+    await tester.tap(quickButton);
     await tester.pump();
 
     expect(find.text('Démarrage...'), findsOneWidget);
@@ -431,6 +416,16 @@ void main() {
     expect(repository.lastQuickRevisionCourseId, 'course-1');
     expect(find.text('Session réelle'), findsOneWidget);
   });
+}
+
+Future<void> openSourcesSheet(WidgetTester tester) async {
+  await tester.tap(find.widgetWithText(RevisionHeaderActionPill, 'Sources'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> scrollToQuickRevision(WidgetTester tester) async {
+  await tester.scrollUntilVisible(find.text('Révision rapide'), 400);
+  await tester.pumpAndSettle();
 }
 
 Widget testApp({

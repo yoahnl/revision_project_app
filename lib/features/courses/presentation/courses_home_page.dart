@@ -7,6 +7,7 @@ import '../../../presentation/design_system/components/revision_mvp_components.d
 import '../../../presentation/design_system/components/revision_states.dart';
 import '../../../presentation/design_system/tokens/revision_colors.dart';
 import '../../../presentation/design_system/tokens/revision_spacing.dart';
+import '../../../presentation/design_system/tokens/revision_subject_visuals.dart';
 import '../../../presentation/design_system/tokens/revision_typography.dart';
 import '../../subjects/application/subjects_notifier.dart';
 import '../../subjects/domain/subject.dart';
@@ -25,19 +26,13 @@ class CoursesHomePage extends ConsumerWidget {
 
     return RevisionPageScaffold(
       children: [
-        const _CoursesHeader(
-          title: 'Accueil',
-          subtitle:
-              'Tes vrais cours apparaissent ici dès qu’ils existent côté API.',
-        ),
         subjects.when(
-          loading: () => const RevisionLoadingState(
-            label: 'Chargement des matières réelles',
-          ),
+          loading: () =>
+              const RevisionLoadingState(label: 'Chargement des matières'),
           error: (error, stackTrace) => RevisionErrorState(
             title: 'Impossible de charger les matières',
             message:
-                'Le parcours réel ne bascule pas vers des fixtures. Réessaie ou ouvre les matières existantes.',
+                'Vérifie la connexion puis réessaie. Aucun cours fictif ne sera affiché.',
             actionLabel: 'Réessayer',
             onAction: notifier.reload,
           ),
@@ -59,7 +54,7 @@ class _CoursesHomeContent extends ConsumerWidget {
       return RevisionEmptyState(
         title: 'Aucune matière réelle',
         message:
-            'Crée une matière via le flow réel avant de rattacher des cours.',
+            'Crée une matière pour construire tes cours, ajouter tes PDF et suivre ta progression.',
         icon: Icons.school_outlined,
         actionLabel: 'Ouvrir les matières',
         onAction: () => context.go(AppRoutes.subjects),
@@ -70,125 +65,121 @@ class _CoursesHomeContent extends ConsumerWidget {
       subjects,
       ref.watch(activeSubjectIdProvider),
     );
+    final visual = revisionSubjectVisualThemeFor(activeSubject.name);
     final courses = ref.watch(coursesProvider(activeSubject.id));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SubjectSelector(subjects: subjects, activeSubject: activeSubject),
-        const SizedBox(height: RevisionSpacing.l),
-        _ActiveSubjectHeader(subject: activeSubject),
-        const SizedBox(height: RevisionSpacing.l),
+        _HomeTopBar(subject: activeSubject, visual: visual, subjects: subjects),
+        const SizedBox(height: RevisionSpacing.xl),
+        Text(activeSubject.name, style: RevisionTypography.hero),
+        const SizedBox(height: RevisionSpacing.xs),
+        Text('Continue ton progrès', style: RevisionTypography.body),
+        const SizedBox(height: RevisionSpacing.xl),
         courses.when(
           loading: () =>
-              const RevisionLoadingState(label: 'Chargement des cours réels'),
+              const RevisionLoadingState(label: 'Chargement des cours'),
           error: (error, stackTrace) => RevisionErrorState(
             title: 'Impossible de charger les cours',
             message:
-                'Aucun cours fictif ne sera affiché. Vérifie la connexion API puis réessaie.',
+                'Aucun cours fictif ne sera affiché. Vérifie la connexion puis réessaie.',
             actionLabel: 'Réessayer',
             onAction: () => ref.invalidate(coursesProvider(activeSubject.id)),
           ),
-          data: (courses) =>
-              _CourseList(subject: activeSubject, courses: courses),
+          data: (courses) => _CourseList(
+            subject: activeSubject,
+            visual: visual,
+            courses: courses,
+          ),
         ),
       ],
     );
   }
 }
 
-class _SubjectSelector extends ConsumerWidget {
-  const _SubjectSelector({required this.subjects, required this.activeSubject});
+class _HomeTopBar extends ConsumerWidget {
+  const _HomeTopBar({
+    required this.subject,
+    required this.visual,
+    required this.subjects,
+  });
 
+  final Subject subject;
+  final RevisionSubjectVisualTheme visual;
   final List<Subject> subjects;
-  final Subject activeSubject;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text('Matières réelles', style: RevisionTypography.sectionTitle),
-        const SizedBox(height: RevisionSpacing.m),
-        for (var index = 0; index < subjects.length; index++) ...[
-          _SubjectCard(
-            subject: subjects[index],
-            accent: _accentFor(index),
-            selected: subjects[index].id == activeSubject.id,
-            onTap: () {
-              ref
-                  .read(activeSubjectIdProvider.notifier)
-                  .select(subjects[index].id);
-            },
-          ),
-          const SizedBox(height: RevisionSpacing.m),
-        ],
+        RevisionSubjectSwitcher(
+          label: subject.name,
+          accent: visual.accent,
+          icon: visual.icon,
+          onTap: () => _showSubjectPicker(context, ref, subjects, subject.id),
+        ),
+        const Spacer(),
+        // No streak/gems are displayed here: the MVP Core has no real
+        // gamification counters yet, so the mockup slots intentionally remain
+        // empty instead of inventing production values.
+        const RevisionTopCounters(),
       ],
     );
   }
 }
 
-class _ActiveSubjectHeader extends StatelessWidget {
-  const _ActiveSubjectHeader({required this.subject});
-
-  final Subject subject;
-
-  @override
-  Widget build(BuildContext context) {
-    return RevisionGlassCard(
-      child: Row(
-        children: [
-          RevisionIconTile(
-            icon: Icons.menu_book_outlined,
-            accent: RevisionColors.blue,
-          ),
-          const SizedBox(width: RevisionSpacing.m),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(subject.name, style: RevisionTypography.sectionTitle),
-                const SizedBox(height: RevisionSpacing.xs),
-                Text(
-                  'Matière active · priorité ${subject.priority}',
-                  style: RevisionTypography.body,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CourseList extends StatelessWidget {
-  const _CourseList({required this.subject, required this.courses});
+  const _CourseList({
+    required this.subject,
+    required this.visual,
+    required this.courses,
+  });
 
   final Subject subject;
+  final RevisionSubjectVisualTheme visual;
   final List<CourseListItem> courses;
 
   @override
   Widget build(BuildContext context) {
     if (courses.isEmpty) {
-      return RevisionEmptyState(
-        title: 'Aucun cours réel',
-        message:
-            'Crée un cours réel, puis ouvre-le pour ajouter un PDF, générer une fiche ou lancer une révision rapide.',
-        icon: Icons.layers_outlined,
-        actionLabel: 'Créer un cours',
-        onAction: () => _showCreateCourseSheet(context, subject),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RevisionEmptyState(
+            title: 'Aucun cours réel',
+            message:
+                'Crée un cours, ajoute une source PDF, puis reviens ici pour reprendre ton apprentissage.',
+            icon: Icons.layers_outlined,
+            actionLabel: 'Créer un cours',
+            onAction: () => _showCreateCourseSheet(context, subject),
+          ),
+          const SizedBox(height: RevisionSpacing.l),
+          _CourseCreationHint(subject: subject, visual: visual),
+        ],
       );
     }
+
+    final resumeCourse = courses.first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        RevisionResumeCourseCard(
+          title: resumeCourse.title,
+          subtitle: 'Reprendre le cours',
+          progressLabel: _courseProgressLabel(resumeCourse),
+          progress: _courseProgressValue(resumeCourse),
+          accent: visual.accent,
+          icon: visual.icon,
+          onContinue: () => context.push(AppRoutes.course(resumeCourse.id)),
+        ),
+        const SizedBox(height: RevisionSpacing.xl),
         Row(
           children: [
             Expanded(
               child: Text(
-                'Cours réels',
+                'Tes cours de ${subject.name}',
                 style: RevisionTypography.sectionTitle,
               ),
             ),
@@ -201,7 +192,15 @@ class _CourseList extends StatelessWidget {
         ),
         const SizedBox(height: RevisionSpacing.m),
         for (final course in courses) ...[
-          _CourseCard(course: course),
+          RevisionCourseCard(
+            title: course.title,
+            progressLabel: _courseProgressLabel(course),
+            durationLabel: _courseMeta(course),
+            progress: _courseProgressValue(course),
+            accent: visual.accent,
+            icon: visual.icon,
+            onTap: () => context.push(AppRoutes.course(course.id)),
+          ),
           const SizedBox(height: RevisionSpacing.m),
         ],
       ],
@@ -209,74 +208,39 @@ class _CourseList extends StatelessWidget {
   }
 }
 
-class _CourseCard extends StatelessWidget {
-  const _CourseCard({required this.course});
-
-  final CourseListItem course;
-
-  @override
-  Widget build(BuildContext context) {
-    return RevisionGlassCard(
-      onTap: () => context.go(AppRoutes.course(course.id)),
-      child: Row(
-        children: [
-          const RevisionIconTile(
-            icon: Icons.auto_stories_outlined,
-            accent: RevisionColors.mint,
-          ),
-          const SizedBox(width: RevisionSpacing.m),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(course.title, style: RevisionTypography.sectionTitle),
-                const SizedBox(height: RevisionSpacing.xs),
-                Text(_courseMeta(course), style: RevisionTypography.body),
-                const SizedBox(height: RevisionSpacing.xs),
-                Text(_sourceMeta(course), style: RevisionTypography.caption),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: RevisionColors.textMuted,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SubjectCard extends StatelessWidget {
-  const _SubjectCard({
-    required this.subject,
-    required this.accent,
-    required this.selected,
-    required this.onTap,
-  });
+class _CourseCreationHint extends StatelessWidget {
+  const _CourseCreationHint({required this.subject, required this.visual});
 
   final Subject subject;
-  final Color accent;
-  final bool selected;
-  final VoidCallback onTap;
+  final RevisionSubjectVisualTheme visual;
 
   @override
   Widget build(BuildContext context) {
     return RevisionGlassCard(
-      selected: selected,
-      onTap: onTap,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          visual.accent.withValues(alpha: 0.28),
+          RevisionColors.glassStrong,
+        ],
+      ),
+      borderColor: visual.accent.withValues(alpha: 0.34),
       child: Row(
         children: [
-          RevisionIconTile(icon: Icons.school_outlined, accent: accent),
+          RevisionIconTile(icon: visual.icon, accent: visual.accent),
           const SizedBox(width: RevisionSpacing.m),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(subject.name, style: RevisionTypography.sectionTitle),
+                Text(
+                  'Prêt à structurer ${subject.name} ?',
+                  style: RevisionTypography.sectionTitle,
+                ),
                 const SizedBox(height: RevisionSpacing.xs),
                 Text(
-                  'Matière réelle · priorité ${subject.priority}',
+                  'Un cours devient utile dès qu’une source PDF est prête.',
                   style: RevisionTypography.body,
                 ),
               ],
@@ -318,67 +282,48 @@ class _CreateCourseSheetState extends ConsumerState<_CreateCourseSheet> {
     final createState = ref.watch(createCourseControllerProvider);
 
     return Padding(
-      padding: EdgeInsets.only(
-        left: RevisionSpacing.l,
-        right: RevisionSpacing.l,
-        top: RevisionSpacing.l,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + RevisionSpacing.l,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Créer un cours', style: RevisionTypography.sectionTitle),
-            const SizedBox(height: RevisionSpacing.s),
-            Text(widget.subject.name, style: RevisionTypography.body),
-            const SizedBox(height: RevisionSpacing.l),
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Titre'),
-              textInputAction: TextInputAction.next,
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: RevisionBottomSheetFrame(
+        title: 'Créer un cours',
+        subtitle: widget.subject.name,
+        children: [
+          TextField(
+            controller: _titleController,
+            decoration: const InputDecoration(labelText: 'Titre'),
+            textInputAction: TextInputAction.next,
+          ),
+          TextField(
+            controller: _descriptionController,
+            decoration: const InputDecoration(labelText: 'Description'),
+            textInputAction: TextInputAction.next,
+          ),
+          TextField(
+            controller: _chapterController,
+            decoration: const InputDecoration(labelText: 'Chapitre'),
+            textInputAction: TextInputAction.next,
+          ),
+          TextField(
+            controller: _minutesController,
+            decoration: const InputDecoration(labelText: 'Durée estimée'),
+            keyboardType: TextInputType.number,
+          ),
+          if (_localError != null)
+            Text(
+              _localError!,
+              style: const TextStyle(color: RevisionColors.red),
             ),
-            const SizedBox(height: RevisionSpacing.m),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
-              textInputAction: TextInputAction.next,
+          if (createState.hasError)
+            const Text(
+              'Impossible de créer le cours.',
+              style: TextStyle(color: RevisionColors.red),
             ),
-            const SizedBox(height: RevisionSpacing.m),
-            TextField(
-              controller: _chapterController,
-              decoration: const InputDecoration(labelText: 'Chapitre'),
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: RevisionSpacing.m),
-            TextField(
-              controller: _minutesController,
-              decoration: const InputDecoration(labelText: 'Durée estimée'),
-              keyboardType: TextInputType.number,
-            ),
-            if (_localError != null) ...[
-              const SizedBox(height: RevisionSpacing.m),
-              Text(
-                _localError!,
-                style: const TextStyle(color: RevisionColors.red),
-              ),
-            ],
-            if (createState.hasError) ...[
-              const SizedBox(height: RevisionSpacing.m),
-              const Text(
-                'Impossible de créer le cours réel.',
-                style: TextStyle(color: RevisionColors.red),
-              ),
-            ],
-            const SizedBox(height: RevisionSpacing.l),
-            RevisionGradientButton(
-              label: createState.isLoading ? 'Création...' : 'Créer le cours',
-              icon: Icons.add_rounded,
-              expanded: true,
-              onPressed: createState.isLoading ? null : _submit,
-            ),
-          ],
-        ),
+          RevisionGradientButton(
+            label: createState.isLoading ? 'Création...' : 'Créer le cours',
+            icon: Icons.add_rounded,
+            expanded: true,
+            onPressed: createState.isLoading ? null : _submit,
+          ),
+        ],
       ),
     );
   }
@@ -425,32 +370,14 @@ class _CreateCourseSheetState extends ConsumerState<_CreateCourseSheet> {
         return;
       }
 
+      final router = GoRouter.of(context);
       Navigator.of(context).pop();
-      context.go(AppRoutes.course(course.id));
+      router.push(AppRoutes.course(course.id));
     } on CourseRequestException {
       setState(() {
         _localError = 'Les informations du cours sont invalides.';
       });
     }
-  }
-}
-
-class _CoursesHeader extends StatelessWidget {
-  const _CoursesHeader({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: RevisionTypography.pageTitle),
-        const SizedBox(height: RevisionSpacing.xs),
-        Text(subtitle, style: RevisionTypography.body),
-      ],
-    );
   }
 }
 
@@ -464,13 +391,97 @@ Subject _activeSubject(List<Subject> subjects, String? activeSubjectId) {
   return subjects.first;
 }
 
+void _showSubjectPicker(
+  BuildContext context,
+  WidgetRef ref,
+  List<Subject> subjects,
+  String activeSubjectId,
+) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => RevisionBottomSheetFrame(
+      title: 'Choisir une matière',
+      subtitle: 'La page reste centrée sur une seule matière active.',
+      children: [
+        for (final subject in subjects)
+          _SubjectChoiceCard(
+            subject: subject,
+            selected: subject.id == activeSubjectId,
+            onTap: () {
+              ref.read(activeSubjectIdProvider.notifier).select(subject.id);
+              Navigator.of(context).pop();
+            },
+          ),
+      ],
+    ),
+  );
+}
+
 void _showCreateCourseSheet(BuildContext context, Subject subject) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: RevisionColors.ink2,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
     builder: (context) => _CreateCourseSheet(subject: subject),
   );
+}
+
+class _SubjectChoiceCard extends StatelessWidget {
+  const _SubjectChoiceCard({
+    required this.subject,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Subject subject;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final visual = revisionSubjectVisualThemeFor(subject.name);
+
+    return RevisionGlassCard(
+      selected: selected,
+      onTap: onTap,
+      child: Row(
+        children: [
+          RevisionIconTile(icon: visual.icon, accent: visual.accent),
+          const SizedBox(width: RevisionSpacing.m),
+          Expanded(
+            child: Text(subject.name, style: RevisionTypography.sectionTitle),
+          ),
+          if (selected) Icon(Icons.check_circle_rounded, color: visual.accent),
+        ],
+      ),
+    );
+  }
+}
+
+double _courseProgressValue(CourseListItem course) {
+  final progress = course.progress;
+  if (progress != null) {
+    return progress.estimatedGlobalMastery;
+  }
+
+  if (course.sourceCount <= 0) {
+    return 0;
+  }
+
+  return course.readySourceCount / course.sourceCount;
+}
+
+String _courseProgressLabel(CourseListItem course) {
+  final progress = course.progress;
+  if (progress != null) {
+    return 'Global ${_percent(progress.estimatedGlobalMastery)}';
+  }
+
+  return _sourceMeta(course);
 }
 
 String _courseMeta(CourseListItem course) {
@@ -479,7 +490,7 @@ String _courseMeta(CourseListItem course) {
     if (course.estimatedMinutes != null) '${course.estimatedMinutes} min',
   ];
 
-  return parts.isEmpty ? 'Cours réel' : parts.join(' · ');
+  return parts.isEmpty ? 'Durée à préciser' : parts.join(' · ');
 }
 
 String _sourceMeta(CourseListItem course) {
@@ -489,20 +500,12 @@ String _sourceMeta(CourseListItem course) {
   return '${course.sourceCount} $sourceLabel · ${course.readySourceCount} $readyLabel';
 }
 
+String _percent(double value) {
+  return '${(value.clamp(0, 1) * 100).round()}%';
+}
+
 String? _optionalText(String value) {
   final trimmed = value.trim();
 
   return trimmed.isEmpty ? null : trimmed;
-}
-
-Color _accentFor(int index) {
-  const accents = [
-    RevisionColors.blue,
-    RevisionColors.pink,
-    RevisionColors.mint,
-    RevisionColors.violet,
-    RevisionColors.amber,
-  ];
-
-  return accents[index % accents.length];
 }

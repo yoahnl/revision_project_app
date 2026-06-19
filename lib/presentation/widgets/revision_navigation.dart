@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../design_system/tokens/revision_colors.dart';
-import 'revision_panel.dart';
+import '../design_system/tokens/revision_shadows.dart';
 
 class RevisionNavigationDestination {
   const RevisionNavigationDestination({
@@ -36,23 +35,31 @@ class RevisionBottomNavigation extends StatelessWidget {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-        child: RevisionPanel(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.s,
-            vertical: AppSpacing.s,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: RevisionColors.glassStrong,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: RevisionColors.borderBright),
+            boxShadow: RevisionShadows.nav,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              for (var index = 0; index < destinations.length; index++)
-                Expanded(
-                  child: _NavigationItem(
-                    destination: destinations[index],
-                    isSelected: selectedIndex == index,
-                    onTap: () => onDestinationSelected(index),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s,
+              vertical: AppSpacing.s,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                for (var index = 0; index < destinations.length; index++)
+                  Expanded(
+                    child: _NavigationItem(
+                      destination: destinations[index],
+                      isSelected: selectedIndex == index,
+                      onTap: () => onDestinationSelected(index),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -76,25 +83,33 @@ class RevisionNavigationRail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.l),
-      child: RevisionPanel(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s,
-          vertical: AppSpacing.l,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: RevisionColors.glassStrong,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: RevisionColors.borderBright),
+          boxShadow: RevisionShadows.nav,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var index = 0; index < destinations.length; index++) ...[
-              _NavigationItem(
-                destination: destinations[index],
-                isSelected: selectedIndex == index,
-                onTap: () => onDestinationSelected(index),
-                isRail: true,
-              ),
-              if (index != destinations.length - 1)
-                const SizedBox(height: AppSpacing.s),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s,
+            vertical: AppSpacing.l,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var index = 0; index < destinations.length; index++) ...[
+                _NavigationItem(
+                  destination: destinations[index],
+                  isSelected: selectedIndex == index,
+                  onTap: () => onDestinationSelected(index),
+                  isRail: true,
+                ),
+                if (index != destinations.length - 1)
+                  const SizedBox(height: AppSpacing.s),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -128,10 +143,16 @@ class _NavigationItem extends StatelessWidget {
         vertical: AppSpacing.s,
       ),
       decoration: BoxDecoration(
-        color: isSelected
-            ? activeColor.withValues(alpha: 0.12)
-            : Colors.transparent,
+        gradient: isSelected
+            ? LinearGradient(
+                colors: [
+                  activeColor.withValues(alpha: 0.26),
+                  RevisionColors.blueDeep.withValues(alpha: 0.18),
+                ],
+              )
+            : null,
         borderRadius: AppRadius.radiusPill,
+        boxShadow: isSelected ? RevisionShadows.soft(activeColor) : null,
       ),
       child: isRail
           ? Column(
@@ -210,7 +231,7 @@ class _NavigationIcon extends StatelessWidget {
         boxShadow: [
           if (glow)
             BoxShadow(
-              color: AppColors.mintGlow.withValues(alpha: 0.45),
+              color: RevisionColors.blue.withValues(alpha: 0.38),
               blurRadius: 18,
               spreadRadius: 1,
             ),

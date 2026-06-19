@@ -225,6 +225,126 @@ class RevisionIconTile extends StatelessWidget {
   }
 }
 
+class RevisionHeaderActionPill extends StatelessWidget {
+  const RevisionHeaderActionPill({
+    required this.label,
+    required this.icon,
+    this.onTap,
+    this.accent = RevisionColors.blue,
+    this.selected = false,
+    super.key,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Color accent;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 160),
+          opacity: enabled ? 1 : 0.58,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 38),
+            padding: const EdgeInsets.symmetric(
+              horizontal: RevisionSpacing.m,
+              vertical: RevisionSpacing.s,
+            ),
+            decoration: BoxDecoration(
+              color: selected
+                  ? accent.withValues(alpha: 0.18)
+                  : RevisionColors.glassSoft,
+              borderRadius: RevisionRadius.pill,
+              border: Border.all(
+                color: selected
+                    ? accent.withValues(alpha: 0.68)
+                    : RevisionColors.border,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: selected ? accent : RevisionColors.textMuted,
+                  size: 17,
+                ),
+                const SizedBox(width: RevisionSpacing.xs),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected
+                        ? RevisionColors.text
+                        : RevisionColors.textMuted,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class RevisionMetricPill extends StatelessWidget {
+  const RevisionMetricPill({
+    required this.label,
+    required this.icon,
+    this.accent = RevisionColors.blue,
+    super.key,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: RevisionSpacing.m,
+        vertical: RevisionSpacing.s,
+      ),
+      decoration: BoxDecoration(
+        color: RevisionColors.glassSoft,
+        borderRadius: RevisionRadius.pill,
+        border: Border.all(color: accent.withValues(alpha: 0.32)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: accent, size: 16),
+          const SizedBox(width: RevisionSpacing.xs),
+          Text(
+            label,
+            style: RevisionTypography.caption.copyWith(
+              color: RevisionColors.text,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class RevisionSubjectSwitcher extends StatelessWidget {
   const RevisionSubjectSwitcher({
     required this.label,
@@ -594,9 +714,15 @@ class RevisionCourseCard extends StatelessWidget {
                 const SizedBox(height: RevisionSpacing.s),
                 Row(
                   children: [
-                    Text(
-                      progressLabel,
-                      style: RevisionTypography.caption.copyWith(color: accent),
+                    Flexible(
+                      child: Text(
+                        progressLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: RevisionTypography.caption.copyWith(
+                          color: accent,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: RevisionSpacing.m),
                     Expanded(
@@ -640,7 +766,9 @@ class RevisionModeCard extends StatelessWidget {
     required this.description,
     required this.icon,
     required this.accent,
-    required this.onTap,
+    this.onTap,
+    this.enabled = true,
+    this.trailingLabel,
     super.key,
   });
 
@@ -648,17 +776,22 @@ class RevisionModeCard extends StatelessWidget {
   final String description;
   final IconData icon;
   final Color accent;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool enabled;
+  final String? trailingLabel;
 
   @override
   Widget build(BuildContext context) {
     return RevisionGlassCard(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       padding: const EdgeInsets.all(RevisionSpacing.m),
       gradient: LinearGradient(
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
-        colors: [accent.withValues(alpha: 0.78), RevisionColors.glassStrong],
+        colors: [
+          accent.withValues(alpha: enabled ? 0.78 : 0.28),
+          RevisionColors.glassStrong,
+        ],
       ),
       borderColor: accent.withValues(alpha: 0.30),
       child: Row(
@@ -675,7 +808,31 @@ class RevisionModeCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: RevisionColors.text),
+          if (trailingLabel != null)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: RevisionSpacing.s,
+                vertical: RevisionSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: RevisionColors.ink.withValues(alpha: 0.28),
+                borderRadius: RevisionRadius.pill,
+              ),
+              child: Text(
+                trailingLabel!,
+                style: RevisionTypography.caption.copyWith(
+                  color: enabled
+                      ? RevisionColors.text
+                      : RevisionColors.textMuted,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            )
+          else
+            Icon(
+              Icons.chevron_right_rounded,
+              color: enabled ? RevisionColors.text : RevisionColors.textFaint,
+            ),
         ],
       ),
     );
@@ -685,15 +842,19 @@ class RevisionModeCard extends StatelessWidget {
 class RevisionSourceFileCard extends StatelessWidget {
   const RevisionSourceFileCard({
     required this.fileName,
-    required this.sizeLabel,
     required this.statusLabel,
+    this.sizeLabel,
+    this.statusColor = RevisionColors.red,
+    this.trailing,
     this.onTap,
     super.key,
   });
 
   final String fileName;
-  final String sizeLabel;
+  final String? sizeLabel;
   final String statusLabel;
+  final Color statusColor;
+  final Widget? trailing;
   final VoidCallback? onTap;
 
   @override
@@ -703,9 +864,9 @@ class RevisionSourceFileCard extends StatelessWidget {
       padding: const EdgeInsets.all(RevisionSpacing.m),
       child: Row(
         children: [
-          const RevisionIconTile(
+          RevisionIconTile(
             icon: Icons.picture_as_pdf_rounded,
-            accent: RevisionColors.red,
+            accent: statusColor,
             size: 42,
             iconSize: 23,
           ),
@@ -720,13 +881,138 @@ class RevisionSourceFileCard extends StatelessWidget {
                 ),
                 const SizedBox(height: RevisionSpacing.xs),
                 Text(
-                  '$sizeLabel · $statusLabel',
+                  sizeLabel == null ? statusLabel : '$sizeLabel · $statusLabel',
                   style: RevisionTypography.caption,
                 ),
               ],
             ),
           ),
-          const Icon(Icons.more_vert_rounded, color: RevisionColors.textMuted),
+          trailing ??
+              const Icon(
+                Icons.more_vert_rounded,
+                color: RevisionColors.textMuted,
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+class RevisionBottomSheetFrame extends StatelessWidget {
+  const RevisionBottomSheetFrame({
+    required this.title,
+    required this.children,
+    this.subtitle,
+    this.floatingAction,
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final List<Widget> children;
+  final Widget? floatingAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: RevisionColors.ink2,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                RevisionSpacing.xl,
+                RevisionSpacing.m,
+                RevisionSpacing.xl,
+                floatingAction == null ? RevisionSpacing.xl : 112,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 52,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: RevisionColors.borderBright,
+                        borderRadius: RevisionRadius.pill,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: RevisionSpacing.xl),
+                  Text(title, style: RevisionTypography.pageTitle),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: RevisionSpacing.s),
+                    Text(subtitle!, style: RevisionTypography.body),
+                  ],
+                  const SizedBox(height: RevisionSpacing.l),
+                  for (final child in children) ...[
+                    child,
+                    if (child != children.last)
+                      const SizedBox(height: RevisionSpacing.m),
+                  ],
+                ],
+              ),
+            ),
+            if (floatingAction != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: RevisionSpacing.l,
+                child: Center(child: floatingAction),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class RevisionSheetSectionCard extends StatelessWidget {
+  const RevisionSheetSectionCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+    this.accent = RevisionColors.blue,
+    super.key,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color accent;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              RevisionIconTile(
+                icon: icon,
+                accent: accent,
+                size: 28,
+                iconSize: 16,
+              ),
+              const SizedBox(width: RevisionSpacing.s),
+              Expanded(
+                child: Text(title, style: RevisionTypography.sectionTitle),
+              ),
+            ],
+          ),
+          const SizedBox(height: RevisionSpacing.m),
+          for (final child in children) ...[
+            child,
+            if (child != children.last)
+              const SizedBox(height: RevisionSpacing.s),
+          ],
         ],
       ),
     );

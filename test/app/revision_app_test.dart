@@ -120,9 +120,8 @@ void main() {
     await tester.tap(find.text('Révisions'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Révisions depuis tes cours'), findsOneWidget);
-    expect(find.text('Disponible depuis un cours prêt'), findsOneWidget);
-    expect(find.text('MVP+ · bientôt'), findsWidgets);
+    expect(find.text('Choisis ton mode de travail'), findsOneWidget);
+    expect(find.text('Aucune matière disponible'), findsOneWidget);
     expect(find.textContaining('CORE-05 branchera'), findsNothing);
     expect(find.textContaining('à brancher en CORE-05'), findsNothing);
 
@@ -185,9 +184,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Institutions de la Ve République'), findsOneWidget);
+    expect(find.text('Institutions de la Ve République'), findsWidgets);
     expect(find.text('Chapitre 2 · 35 min'), findsOneWidget);
-    expect(find.text('1 source · 1 prête'), findsOneWidget);
+    expect(find.text('1 source · 1 prête'), findsWidgets);
     expect(find.text('Loi normale'), findsNothing);
   });
 
@@ -261,7 +260,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Révisions'), findsWidgets);
-    expect(find.text('Révisions depuis tes cours'), findsOneWidget);
+    expect(find.text('Choisis ton mode de travail'), findsOneWidget);
+    expect(find.text('Aucune matière disponible'), findsOneWidget);
     expect(find.textContaining('CORE-05 branchera'), findsNothing);
   });
 

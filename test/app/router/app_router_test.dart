@@ -20,6 +20,7 @@ import 'package:revision_app/features/subjects/application/subjects_controller.d
 import 'package:revision_app/features/subjects/domain/subject.dart';
 import 'package:revision_app/features/today/application/today_controller.dart';
 import 'package:revision_app/features/today/domain/today_plan.dart';
+import 'package:revision_app/presentation/design_system/components/revision_mvp_components.dart';
 import 'package:revision_app/presentation/widgets/revision_button.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
@@ -231,10 +232,88 @@ void main() {
 
     expect(find.text('Institutions de la Ve République'), findsOneWidget);
     expect(find.text('Droit constitutionnel'), findsOneWidget);
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.tap(find.widgetWithText(RevisionHeaderActionPill, 'Sources'));
     await tester.pumpAndSettle();
     expect(find.text('cours.pdf'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
+  });
+
+  testWidgets('course detail back pops to home without forward history', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    _seedReadyCourse(harness);
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    expect(
+      harness.router.routeInformationProvider.value.uri.path,
+      AppRoutes.home,
+    );
+    expect(harness.router.canPop(), isFalse);
+
+    harness.router.push(AppRoutes.course('course-1'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
+      findsOneWidget,
+    );
+    expect(harness.router.canPop(), isTrue);
+
+    await tester.tap(find.byTooltip('Retour'));
+    await tester.pumpAndSettle();
+
+    expect(
+      harness.router.routeInformationProvider.value.uri.path,
+      AppRoutes.home,
+    );
+    expect(harness.router.canPop(), isFalse);
+    expect(
+      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('course sheet back pops to detail without duplicating home', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    _seedReadyCourse(harness);
+    harness.coursesRepository.revisionSheetsByCourse['course-1'] =
+        _revisionSheet();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    harness.router.push(AppRoutes.course('course-1'));
+    await tester.pumpAndSettle();
+    harness.router.push(AppRoutes.courseSheet('course-1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fiche de cours'), findsWidgets);
+    expect(harness.router.canPop(), isTrue);
+
+    await tester.tap(find.byTooltip('Retour au cours'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
+      findsOneWidget,
+    );
+    expect(harness.router.canPop(), isTrue);
+
+    await tester.tap(find.byTooltip('Retour'));
+    await tester.pumpAndSettle();
+
+    expect(
+      harness.router.routeInformationProvider.value.uri.path,
+      AppRoutes.home,
+    );
+    expect(harness.router.canPop(), isFalse);
   });
 
   testWidgets('course sheet route shows the real course-level revision sheet', (
@@ -606,6 +685,79 @@ RevisionSheet _revisionSheet() {
     practiceSuggestions: ['S’entraîner'],
     errorCode: null,
   );
+}
+
+CourseListItem _seedReadyCourse(_RouterHarness harness) {
+  harness.subjectsRepository.subjects.add(
+    const Subject(id: 'subject-1', name: 'Droit constitutionnel', priority: 4),
+  );
+
+  const course = CourseListItem(
+    id: 'course-1',
+    subjectId: 'subject-1',
+    title: 'Institutions de la Ve République',
+    chapterLabel: 'Chapitre 2',
+    estimatedMinutes: 35,
+    sourceCount: 1,
+    readySourceCount: 1,
+    processingSourceCount: 0,
+    failedSourceCount: 0,
+  );
+  harness.coursesRepository.coursesBySubject['subject-1'] = [course];
+  harness.coursesRepository.detailsByCourse['course-1'] = const CourseDetail(
+    course: course,
+    subject: CourseSubjectSummary(
+      id: 'subject-1',
+      name: 'Droit constitutionnel',
+    ),
+    sources: [
+      CourseDocument(
+        id: 'document-1',
+        courseId: 'course-1',
+        documentId: 'document-1',
+        fileName: 'cours.pdf',
+        status: CourseDocumentStatus.ready,
+      ),
+    ],
+  );
+  harness.coursesRepository.progressByCourse['course-1'] = const CourseProgress(
+    courseId: 'course-1',
+    subjectId: 'subject-1',
+    coverage: 0,
+    mastery: null,
+    estimatedGlobalMastery: 0,
+    knowledgeUnitCount: 3,
+    practicedKnowledgeUnitCount: 0,
+    readySourceCount: 1,
+    processingSourceCount: 0,
+    failedSourceCount: 0,
+    state: CourseProgressState.readyNotPracticed,
+  );
+  harness.coursesRepository.progressBySubject['subject-1'] =
+      const SubjectProgress(
+        subjectId: 'subject-1',
+        knowledgeUnitCount: 3,
+        practicedKnowledgeUnitCount: 0,
+        coverage: 0,
+        mastery: null,
+        estimatedGlobalMastery: 0,
+        courseCount: 1,
+        readyCourseCount: 1,
+        courses: [
+          SubjectCourseProgressItem(
+            courseId: 'course-1',
+            title: 'Institutions de la Ve République',
+            knowledgeUnitCount: 3,
+            practicedKnowledgeUnitCount: 0,
+            coverage: 0,
+            mastery: null,
+            estimatedGlobalMastery: 0,
+            state: CourseProgressState.readyNotPracticed,
+          ),
+        ],
+      );
+
+  return course;
 }
 
 TodayPlan _todayPlanWithRichClosedAction() {
