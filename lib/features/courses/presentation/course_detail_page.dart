@@ -475,7 +475,10 @@ class _CourseModes extends ConsumerWidget {
     CourseDetail detail, {
     required int questionCount,
   }) async {
+    var loadingDialogShown = false;
     try {
+      loadingDialogShown = true;
+      unawaited(_showQuickRevisionLoadingDialog(context, questionCount));
       final response = await ref
           .read(startCourseQuickRevisionControllerProvider.notifier)
           .start(detail: detail, questionCount: questionCount);
@@ -484,6 +487,10 @@ class _CourseModes extends ConsumerWidget {
         return;
       }
 
+      if (loadingDialogShown) {
+        Navigator.of(context, rootNavigator: true).pop();
+        loadingDialogShown = false;
+      }
       context.go(
         AppRoutes.revisionSessionV2(
           sessionId: response.session.id,
@@ -496,11 +503,58 @@ class _CourseModes extends ConsumerWidget {
         return;
       }
 
+      if (loadingDialogShown) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(_quickRevisionErrorLabel(error))));
     }
   }
+}
+
+Future<void> _showQuickRevisionLoadingDialog(
+  BuildContext context,
+  int questionCount,
+) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => PopScope(
+      canPop: false,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(RevisionSpacing.xl),
+        child: RevisionGlassCard(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 42,
+                height: 42,
+                child: CircularProgressIndicator(
+                  color: RevisionColors.blue,
+                  strokeWidth: 4,
+                ),
+              ),
+              const SizedBox(height: RevisionSpacing.l),
+              Text(
+                'Préparation des questions',
+                textAlign: TextAlign.center,
+                style: RevisionTypography.sectionTitle,
+              ),
+              const SizedBox(height: RevisionSpacing.s),
+              Text(
+                '$questionCount questions sont chargées depuis la banque du cours.',
+                textAlign: TextAlign.center,
+                style: RevisionTypography.body,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 void _showSourcesSheet(

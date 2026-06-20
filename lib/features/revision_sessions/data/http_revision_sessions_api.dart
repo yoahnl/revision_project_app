@@ -238,6 +238,7 @@ class RevisionSessionResultJson {
     final session = json['session'];
     final summary = json['summary'];
     final knowledgeUnits = json['knowledgeUnits'];
+    final corrections = json['corrections'];
 
     if (session is! Map<String, Object?> ||
         summary is! Map<String, Object?> ||
@@ -251,6 +252,14 @@ class RevisionSessionResultJson {
       knowledgeUnits: knowledgeUnits
           .map((unit) => _RevisionSessionKnowledgeUnitJson(unit).toResult())
           .toList(growable: false),
+      corrections: corrections is List
+          ? corrections
+                .map(
+                  (item) =>
+                      _RevisionSessionQuestionCorrectionJson(item).toResult(),
+                )
+                .toList(growable: false)
+          : const [],
     );
   }
 }
@@ -354,6 +363,45 @@ class _RevisionSessionKnowledgeUnitJson {
       state: _knowledgeUnitResultState(state),
     );
   }
+}
+
+class _RevisionSessionQuestionCorrectionJson {
+  const _RevisionSessionQuestionCorrectionJson(this.value);
+
+  final Object? value;
+
+  RevisionSessionQuestionCorrection toResult() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid revision session result response');
+    }
+
+    final prompt = json['prompt'];
+    final isCorrect = json['isCorrect'];
+    final selectedAnswers = json['selectedAnswers'];
+    final correctAnswers = json['correctAnswers'];
+    final explanation = json['explanation'];
+
+    if (prompt is! String ||
+        isCorrect is! bool ||
+        selectedAnswers is! List ||
+        correctAnswers is! List) {
+      throw const FormatException('Invalid revision session result response');
+    }
+
+    return RevisionSessionQuestionCorrection(
+      prompt: prompt,
+      isCorrect: isCorrect,
+      selectedAnswers: _stringList(selectedAnswers),
+      correctAnswers: _stringList(correctAnswers),
+      explanation: explanation is String ? explanation : null,
+    );
+  }
+}
+
+List<String> _stringList(List<Object?> values) {
+  return values.whereType<String>().toList(growable: false);
 }
 
 RevisionSessionStatus _revisionSessionStatus(String status) {

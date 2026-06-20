@@ -417,6 +417,11 @@ void main() {
     await tester.tap(find.text('Démarrer'));
     await tester.pump();
 
+    expect(find.text('Préparation des questions'), findsOneWidget);
+    expect(
+      find.text('20 questions sont chargées depuis la banque du cours.'),
+      findsOneWidget,
+    );
     expect(find.text('Démarrage...'), findsOneWidget);
 
     await tester.pumpAndSettle();

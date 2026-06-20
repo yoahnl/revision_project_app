@@ -126,11 +126,29 @@ class RevisionSessionResult {
     required this.session,
     required this.summary,
     required this.knowledgeUnits,
+    this.corrections = const [],
   });
 
   final RevisionSessionResultSession session;
   final RevisionSessionResultSummary summary;
   final List<RevisionSessionKnowledgeUnitResult> knowledgeUnits;
+  final List<RevisionSessionQuestionCorrection> corrections;
+}
+
+class RevisionSessionQuestionCorrection {
+  const RevisionSessionQuestionCorrection({
+    required this.prompt,
+    required this.isCorrect,
+    required this.selectedAnswers,
+    required this.correctAnswers,
+    required this.explanation,
+  });
+
+  final String prompt;
+  final bool isCorrect;
+  final List<String> selectedAnswers;
+  final List<String> correctAnswers;
+  final String? explanation;
 }
 
 class RevisionSessionResultSession {

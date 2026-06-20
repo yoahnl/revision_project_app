@@ -27,26 +27,34 @@ class RevisionPageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: padding,
-              sliver: SliverList.list(
-                children: [
-                  for (final child in children) ...[
-                    child,
-                    if (child != children.last)
-                      const SizedBox(height: RevisionSpacing.l),
-                  ],
-                ],
-              ),
-            ),
+    final content = Padding(
+      padding: padding,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final child in children) ...[
+            child,
+            if (child != children.last)
+              const SizedBox(height: RevisionSpacing.l),
           ],
-        ),
+        ],
       ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            // Keep the premium screens visually fixed when their content fits,
+            // but still allow overflow content to move on shorter panes. This
+            // avoids the "web page" feeling on normal screens without risking
+            // clipped cards when a course has more state to show.
+            child: SingleChildScrollView(child: content),
+          ),
+        );
+      },
     );
   }
 }
@@ -1223,11 +1231,56 @@ class RevisionFloatingAddButton extends StatelessWidget {
   }
 }
 
-class RevisionConfettiStrip extends StatelessWidget {
+class RevisionConfettiStrip extends StatefulWidget {
   const RevisionConfettiStrip({super.key});
 
   @override
+  State<RevisionConfettiStrip> createState() => _RevisionConfettiStripState();
+}
+
+class _RevisionConfettiStripState extends State<RevisionConfettiStrip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return CustomPaint(
+            painter: _RevisionConfettiPainter(_controller.value),
+            child: const SizedBox.expand(),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _RevisionConfettiPainter extends CustomPainter {
+  const _RevisionConfettiPainter(this.progress);
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
     const colors = [
       RevisionColors.blue,
       RevisionColors.green,
@@ -1237,25 +1290,39 @@ class RevisionConfettiStrip extends StatelessWidget {
       RevisionColors.mint,
     ];
 
-    return SizedBox(
-      height: 36,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          for (var index = 0; index < 18; index++)
-            Transform.rotate(
-              angle: (index % 5 - 2) * math.pi / 8,
-              child: Container(
-                width: index.isEven ? 4 : 3,
-                height: index.isEven ? 8 : 6,
-                decoration: BoxDecoration(
-                  color: colors[index % colors.length],
-                  borderRadius: RevisionRadius.radiusS,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+    for (var index = 0; index < 22; index++) {
+      final baseX = size.width * ((index + 0.5) / 22);
+      final wave = math.sin((progress * math.pi * 2) + index) * 5;
+      final y = 8 + (progress * 20 * ((index % 3) + 1) / 3);
+      final opacity = (1 - (progress * 0.45)).clamp(0.45, 1.0);
+      final paint = Paint()
+        ..color = colors[index % colors.length].withValues(alpha: opacity);
+      final rect = Rect.fromCenter(
+        center: Offset(baseX + wave, y),
+        width: index.isEven ? 4 : 3,
+        height: index.isEven ? 10 : 7,
+      );
+
+      canvas.save();
+      canvas.translate(rect.center.dx, rect.center.dy);
+      canvas.rotate((index % 5 - 2) * math.pi / 7 + progress);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: rect.width,
+            height: rect.height,
+          ),
+          const Radius.circular(2),
+        ),
+        paint,
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RevisionConfettiPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

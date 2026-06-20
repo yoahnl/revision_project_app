@@ -372,5 +372,14 @@ RevisionSessionResult revisionSessionResult() {
         state: RevisionSessionKnowledgeUnitResultState.toReview,
       ),
     ],
+    corrections: const [
+      RevisionSessionQuestionCorrection(
+        prompt: 'Quelle institution vote la loi ?',
+        isCorrect: false,
+        selectedAnswers: ['Le préfet'],
+        correctAnswers: ['Le Parlement'],
+        explanation: 'Le Parlement vote la loi dans ce régime.',
+      ),
+    ],
   );
 }

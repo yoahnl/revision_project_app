@@ -103,11 +103,14 @@ class _ResultContent extends StatelessWidget {
               unit.state == RevisionSessionKnowledgeUnitResultState.toReview,
         )
         .toList(growable: false);
+    final missedCorrections = result.corrections
+        .where((correction) => !correction.isCorrect)
+        .toList(growable: false);
     final courseId = result.session.courseId;
 
     return RevisionPageScaffold(
       children: [
-        const RevisionConfettiStrip(),
+        if (result.summary.score > 0.70) const RevisionConfettiStrip(),
         Text(
           'Session terminée',
           textAlign: TextAlign.center,
@@ -150,6 +153,8 @@ class _ResultContent extends StatelessWidget {
             color: RevisionColors.amber,
             units: toReview,
           ),
+        if (missedCorrections.isNotEmpty)
+          _MissedCorrectionsSection(corrections: missedCorrections),
         RevisionGlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -182,6 +187,113 @@ class _ResultContent extends StatelessWidget {
                   onPressed: () => context.go(AppRoutes.revisions),
                 ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MissedCorrectionsSection extends StatelessWidget {
+  const _MissedCorrectionsSection({required this.corrections});
+
+  final List<RevisionSessionQuestionCorrection> corrections;
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.school_rounded, color: RevisionColors.blue),
+              const SizedBox(width: RevisionSpacing.s),
+              Text(
+                'Ce que tu as loupé',
+                style: RevisionTypography.sectionTitle,
+              ),
+            ],
+          ),
+          const SizedBox(height: RevisionSpacing.m),
+          for (final correction in corrections) ...[
+            Text(
+              correction.prompt,
+              style: RevisionTypography.body.copyWith(
+                color: RevisionColors.text,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: RevisionSpacing.s),
+            _CorrectionLine(
+              label: 'Ta réponse',
+              value: _answersLabel(correction.selectedAnswers),
+              color: RevisionColors.red,
+            ),
+            const SizedBox(height: RevisionSpacing.xs),
+            _CorrectionLine(
+              label: 'Correction',
+              value: _answersLabel(correction.correctAnswers),
+              color: RevisionColors.green,
+            ),
+            if (correction.explanation != null) ...[
+              const SizedBox(height: RevisionSpacing.s),
+              Text(correction.explanation!, style: RevisionTypography.caption),
+            ],
+            if (correction != corrections.last)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: RevisionSpacing.m),
+                child: Divider(color: RevisionColors.border),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CorrectionLine extends StatelessWidget {
+  const _CorrectionLine({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.only(top: 7),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: RevisionSpacing.s),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '$label : ',
+                  style: RevisionTypography.caption.copyWith(
+                    color: RevisionColors.textMuted,
+                  ),
+                ),
+                TextSpan(
+                  text: value,
+                  style: RevisionTypography.body.copyWith(
+                    color: RevisionColors.text,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -254,6 +366,14 @@ String _resultMessage(double score) {
   }
 
   return 'Cette notion mérite une nouvelle passe.';
+}
+
+String _answersLabel(List<String> answers) {
+  if (answers.isEmpty) {
+    return 'Aucune réponse';
+  }
+
+  return answers.join(', ');
 }
 
 Color _scoreColor(double score) {

@@ -296,6 +296,12 @@ void main() {
     expect(result.session.courseId, 'course-1');
     expect(result.session.mode, RevisionSessionMode.quick);
     expect(result.summary.durationSeconds, 252);
+    expect(
+      result.corrections.single.prompt,
+      'Quelle institution vote la loi ?',
+    );
+    expect(result.corrections.single.selectedAnswers, ['Le préfet']);
+    expect(result.corrections.single.correctAnswers, ['Le Parlement']);
   });
 
   test('flags a revision session question', () async {
@@ -458,6 +464,15 @@ Map<String, Object?> revisionSessionResultJson({
         'totalQuestions': 6,
         'score': 0.6666666667,
         'state': state,
+      },
+    ],
+    'corrections': [
+      {
+        'prompt': 'Quelle institution vote la loi ?',
+        'isCorrect': false,
+        'selectedAnswers': ['Le préfet'],
+        'correctAnswers': ['Le Parlement'],
+        'explanation': 'Le Parlement vote la loi.',
       },
     ],
   };
