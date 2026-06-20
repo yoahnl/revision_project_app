@@ -2,6 +2,18 @@
 
 Ce document décrit la cible UX/UI future de Revision Project. Il ne remplace pas les rapports UI existants ; il sert de boussole pour les prochains lots.
 
+## 0. Référence visuelle canonique
+
+La planche UI V2 doit vivre à terme ici :
+
+```text
+docs/roadmap/v2/assets/revision_project_ui_v2_board.png
+```
+
+Statut actuel : asset manquant. La direction visuelle reste décrite par ce document et par les rapports UI existants, mais aucune image ne doit être inventée.
+
+La planche, une fois ajoutée, définit palette, surfaces, gradients, densité, navigation, matière active, hiérarchie des CTA, bottom sheets, sessions immersives, résultats et progression. Elle n'autorise jamais l'ajout de chiffres, streaks, gems, cours ou scores fictifs.
+
 ## 1. Principes de navigation
 
 - Une matière active à la fois.
@@ -227,3 +239,33 @@ Ce document décrit la cible UX/UI future de Revision Project. Il ne remplace pa
 - GenUI contrôlé.
 - Bibliothèque globale Sources.
 
+## 8. Matrice de capacités UX/API
+
+Statuts autorisés :
+
+- `AVAILABLE_NOW` : contrat backend et écran ou flow déjà disponibles.
+- `NEEDS_API` : l'UX souhaitée nécessite un lot backend avant d'afficher l'action comme disponible.
+- `FUTURE` : capacité hors MVP stable ou horizon ultérieur.
+
+| Capacité | Statut | Lot associé | Règle UX |
+| --- | --- | --- | --- |
+| Créer une matière | AVAILABLE_NOW | STAB-01C | Doit être découvrable depuis le sélecteur matière. |
+| Supprimer une matière | AVAILABLE_NOW | STAB-01C | Afficher les conflits réels, pas de suppression silencieuse. |
+| Renommer une matière | NEEDS_API | CORE-09C | Ne pas afficher comme action active avant l'API. |
+| Archiver une matière | NEEDS_API | CORE-09C | Ne pas simuler côté front. |
+| Créer un cours | AVAILABLE_NOW | STAB-01B | Action principale si une matière existe. |
+| Supprimer un cours vide | AVAILABLE_NOW | STAB-01B | Garder les erreurs 409 lisibles. |
+| Renommer ou modifier un cours | NEEDS_API | CORE-09C | Ne pas créer de bouton actif sans endpoint. |
+| Ajouter une source | AVAILABLE_NOW | CORE-09A | Disponible depuis le cours. |
+| Supprimer une source inutilisée | AVAILABLE_NOW mais à durcir | CORE-09A | Le wording doit rester prudent jusqu'au lifecycle final. |
+| Archiver une source utilisée | NEEDS_API | CORE-09A | Prioritaire avant les historiques avancés. |
+| Révision rapide | AVAILABLE_NOW | CORE-10A, CORE-11A | Disponible si source prête et questions préparées. |
+| Révision approfondie | FUTURE | PLUS-01A | Masquer ou verrouiller clairement. |
+| Préparation examen | FUTURE | PLUS-03 | Masquer ou verrouiller clairement. |
+| Fiche rapide | AVAILABLE_NOW | STAB-01C | Ne pas afficher de contenu fictif si absente. |
+| Fiche complète | FUTURE | PLUS-02 | Onglet masqué ou verrouillé tant que non livré. |
+| Fiche examen | FUTURE | PLUS-02 | Onglet masqué ou verrouillé tant que non livré. |
+
+Un lot frontend ne doit pas créer un bouton utilisateur pour une capacité `NEEDS_API` sans lot backend correspondant.
+
+Le renommage et l'archive de matière/cours sont reliés à `CORE-09C`.

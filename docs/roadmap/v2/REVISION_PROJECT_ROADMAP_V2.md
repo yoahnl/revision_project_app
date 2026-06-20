@@ -247,6 +247,106 @@ Roadmap trop détaillée et difficile à maintenir.
 
 Réponse finale du lot + documents V2.
 
+## STAB-00B — Roadmap V2 hardening, execution slicing & governance
+
+### Objectif
+
+Durcir la Roadmap V2 sans la réécrire : ajouter les horizons, séparer macro-lots et lots exécutables, introduire `QUALITY-00`, créer un journal de décisions et synchroniser les trackers app/API.
+
+### Pourquoi maintenant
+
+Les macro-lots restent utiles pour la stratégie, mais ils sont trop gros pour être exécutés proprement en un seul prompt.
+
+### Repos concernés
+
+App + API.
+
+### Dépendances
+
+STAB-00.
+
+### Backend scope
+
+Créer la couche d'exécution API alignée et pointer vers le journal de décisions canonique côté app.
+
+### Frontend scope
+
+Créer le plan d'exécution canonique, la matrice UX/API, le journal de décisions et le tracker exécutable.
+
+### UX scope
+
+Clarifier quelles capacités sont disponibles maintenant, lesquelles nécessitent une API, et lesquelles sont futures.
+
+### Tests attendus
+
+Validations documentaires uniquement.
+
+### Critères d'acceptation
+
+`EXECUTION_PLAN_V2.md`, `EXECUTION_LOT_TRACKER_V2.md`, `DECISIONS_V2.md`, `QUALITY-00`, les horizons et les règles `REPLACED` existent.
+
+### Non-objectifs
+
+Aucune modification runtime, aucune CI réelle.
+
+### Risques
+
+Dupliquer trop d'information entre app et API.
+
+### Rapport attendu
+
+`docs/roadmap/v2/STAB_00B_ROADMAP_V2_HARDENING_REPORT.md`.
+
+## QUALITY-00 — CI baseline
+
+### Objectif
+
+Ajouter une baseline CI avant les gros refactors : analyse Flutter, tests Flutter, build/lint/tests API, e2e critiques, Prisma validate et vérification de format/diff.
+
+### Pourquoi maintenant
+
+La stabilisation UX et les refactors de lifecycle doivent être protégés par une preuve reproductible avant d'avancer.
+
+### Repos concernés
+
+App + API.
+
+### Dépendances
+
+STAB-00B.
+
+### Backend scope
+
+CI API minimale : Prisma validate, build, lint, tests Jest et e2e critiques.
+
+### Frontend scope
+
+CI Flutter minimale : analyse, tests ciblés, routeur/app smoke.
+
+### UX scope
+
+Aucun changement runtime.
+
+### Tests attendus
+
+La CI doit exécuter les commandes retenues sur pull request ou branche de validation.
+
+### Critères d'acceptation
+
+Un lot futur peut citer une preuve CI au lieu de dépendre seulement d'un run local.
+
+### Non-objectifs
+
+Monitoring, release pipeline, secrets production complets.
+
+### Risques
+
+Une baseline trop ambitieuse peut devenir instable ; une baseline trop faible ne protège pas assez.
+
+### Rapport attendu
+
+Rapport QUALITY-00 dans les repos touchés.
+
 ## STAB-01 — Product navigation & UX coherence
 
 ### Objectif
@@ -801,19 +901,71 @@ Temps d'infrastructure sous-estimé.
 
 ```text
 STAB-00
--> STAB-01
--> STAB-02
+-> STAB-00B
 
-STAB-01 -> CORE-09 -> CORE-10 -> CORE-11
-STAB-02 + CORE-11 -> PLUS-01 -> PLUS-02 -> PLUS-03
-CORE-11 -> ADAPT-01
-STAB-02 + ADAPT-01 -> GENUI-01
-Lots MVP validés -> RELEASE-01
+STAB-00B
+-> QUALITY-00
+-> STAB-01A
+
+STAB-01A
+-> STAB-01B
+-> CORE-09A
+
+STAB-01B -> STAB-01C -> STAB-02A -> STAB-02B
+
+CORE-09A
+-> CORE-09B
+-> CORE-09C
+-> CORE-10A
+
+CORE-10A
+-> CORE-10B
+-> CORE-11A
+-> PLUS-01A
+
+CORE-10B
+-> CORE-10C
+-> ADAPT-01
+
+CORE-11A
+-> CORE-11B
+-> PLUS-01B
+
+PLUS-01A -> PLUS-01B
+STAB-02B + CORE-09A -> PLUS-02
+PLUS-01B + PLUS-02 + CORE-11B -> PLUS-03
+STAB-02B + ADAPT-01 + PLUS-01A -> GENUI-01
+QUALITY-00 + lots MVP_STABLE requis -> RELEASE-01
 ```
 
-Le prochain lot recommandé est STAB-01.
+Ce graphe n'est pas strictement linéaire. `QUALITY-00` peut avancer en parallèle de `STAB-01A`, et `PLUS-01A` ne dépend plus de tout `CORE-11`.
+
+Le détail exécutable vit dans `EXECUTION_PLAN_V2.md`.
+
+Le prochain lot recommandé est `QUALITY-00` en parallèle de `STAB-01A`.
 
 ## 11. Critères de sortie MVP
+
+### MVP_STABLE
+
+`MVP_STABLE` est atteint lorsque :
+
+- `QUALITY-00` est terminé ;
+- `STAB-01A`, `STAB-01B`, `STAB-01C` sont terminés ;
+- `STAB-02A`, `STAB-02B` sont terminés ;
+- `CORE-09A` est terminé ;
+- `CORE-10A` est terminé ;
+- `CORE-11A` est terminé ;
+- le quick flow reste vert ;
+- la suppression de source ne casse pas l'historique ;
+- les sessions peuvent être reprises ;
+- aucun onglet principal ne mène à une impasse ;
+- aucun mode visible ne ment à l'utilisateur ;
+- les validations CI sont reproductibles.
+
+Deep, fiche complète, Exam, Today adaptatif et GenUI ne sont pas nécessaires pour déclarer le `MVP_STABLE`.
+
+### Critères fonctionnels MVP Core déjà attendus
 
 - Créer matière, cours et source PDF.
 - Source traitée avec statut lisible.
@@ -884,4 +1036,3 @@ Avis : seulement s'ils ont une valeur actuelle. Sinon, les isoler ou les dépré
 ### Faut-il intégrer GenUI maintenant ou plus tard ?
 
 Avis : plus tard. GenUI doit revenir après stabilisation des contrats et du design system.
-

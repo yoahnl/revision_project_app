@@ -26,6 +26,38 @@ Le tracker n'a pas de statut `PARTIAL` pour rester simple. Si un lot est partiel
 - utiliser `DEFERRED` si une partie est volontairement repoussée ;
 - documenter précisément ce qui est vrai et ce qui reste faux.
 
+## Définition de `REPLACED`
+
+`REPLACED` signifie :
+
+- le lot ne sera pas exécuté sous sa forme initiale ;
+- il est remplacé par un ou plusieurs lots identifiés ;
+- l'entrée historique reste dans le tracker ;
+- les IDs remplaçants sont indiqués ;
+- le motif du remplacement est documenté ;
+- aucun travail réellement livré n'est effacé.
+
+Exemple :
+
+```text
+STAB-01 macro
+-> reste le parent stratégique
+-> ses travaux sont exécutés par STAB-01A, STAB-01B et STAB-01C
+```
+
+Un macro-lot ne doit pas être automatiquement marqué `REPLACED` quand il reçoit des enfants exécutables. Il reste un parent stratégique.
+
+## Agrégation des macro-lots
+
+- `TODO` : aucun lot enfant commencé.
+- `IN_PROGRESS` : au moins un enfant commencé et au moins un enfant requis non terminé.
+- `DONE` : tous les enfants requis sont `DONE`.
+- `BLOCKED` : l'ensemble du macro-lot est bloqué par une dépendance externe.
+- `DEFERRED` : le macro-lot est volontairement repoussé.
+- `REPLACED` : réservé aux lots abandonnés au profit d'une autre structure.
+
+Les macro-lots doivent pointer vers `EXECUTION_LOT_TRACKER_V2.md` plutôt que dupliquer tout le détail exécutable.
+
 ## Template de mise à jour
 
 ```md
@@ -56,4 +88,7 @@ Le tracker n'a pas de statut `PARTIAL` pour rester simple. Si un lot est partiel
 - Une validation manuelle doit être décrite avec contexte, appareil, environnement et résultat.
 - Une commande échouée doit rester visible avec sa cause probable.
 - Un lot documentation ne doit pas lancer de suites applicatives lourdes s'il ne modifie aucun code runtime.
-
+- Après chaque lot exécutable, mettre à jour `LOT_TRACKER_V2.md` seulement si le statut agrégé du macro-lot change.
+- Après chaque lot exécutable, mettre à jour `EXECUTION_LOT_TRACKER_V2.md` dans tous les repos concernés.
+- Les deux repos doivent conserver les mêmes IDs et statuts pour les lots communs.
+- Un lot app-only peut être référencé côté API avec `Impact API : Aucun`, sans rapport backend artificiel.
