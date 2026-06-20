@@ -406,6 +406,15 @@ void main() {
       'Révision rapide',
     );
     await tester.tap(quickButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Choisis le nombre de questions pour cette session.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('20 questions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Démarrer'));
     await tester.pump();
 
     expect(find.text('Démarrage...'), findsOneWidget);
@@ -414,6 +423,7 @@ void main() {
 
     expect(repository.startQuickRevisionCount, 1);
     expect(repository.lastQuickRevisionCourseId, 'course-1');
+    expect(repository.lastQuickRevisionQuestionCount, 20);
     expect(find.text('Session réelle'), findsOneWidget);
   });
 }

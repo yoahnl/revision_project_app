@@ -298,6 +298,33 @@ void main() {
     expect(result.summary.durationSeconds, 252);
   });
 
+  test('flags a revision session question', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({'status': 'flagged'}),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await api.flagRevisionSessionQuestion(
+      sessionId: 'revision-session-1',
+      questionId: 'question-1',
+      reason: 'ambiguë',
+    );
+
+    expect(
+      adapter.lastOptions?.path,
+      '/revision-sessions/revision-session-1/questions/question-1/flag',
+    );
+    expect(adapter.lastOptions?.data, {'reason': 'ambiguë'});
+    expect(
+      adapter.lastOptions?.headers['Authorization'],
+      'Bearer firebase-id-token',
+    );
+  });
+
   test('maps result 404 and 409 responses', () async {
     final adapter = CapturingHttpClientAdapter(
       ResponseBody.fromString(

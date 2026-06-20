@@ -31,6 +31,7 @@ abstract interface class CoursesRepository {
 
   Future<RevisionSessionResponse> startCourseQuickRevision({
     required String courseId,
+    int questionCount = 10,
   });
 
   Future<CourseProgress> getCourseProgress({required String courseId});

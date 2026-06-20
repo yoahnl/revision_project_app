@@ -326,33 +326,37 @@ void main() {
     },
   );
 
-  test('starts a course quick revision without client-owned ids', () async {
-    final adapter = CapturingHttpClientAdapter(
-      jsonResponse(revisionSessionJson(courseId: 'course-1')),
-    );
-    final repository = HttpCoursesRepository(
-      dio: Dio()..httpClientAdapter = adapter,
-      getIdToken: () async => 'firebase-id-token',
-    );
+  test(
+    'starts a course quick revision with the selected question count',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(revisionSessionJson(courseId: 'course-1')),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
 
-    final response = await repository.startCourseQuickRevision(
-      courseId: 'course-1',
-    );
+      final response = await repository.startCourseQuickRevision(
+        courseId: 'course-1',
+        questionCount: 20,
+      );
 
-    expect(response.session.id, 'revision-session-1');
-    expect(response.session.courseId, 'course-1');
-    expect(response.currentAction?.kind.name, 'diagnosticQuiz');
-    expect(adapter.lastOptions?.method, 'POST');
-    expect(
-      adapter.lastOptions?.path,
-      '/courses/course-1/revision-sessions/quick',
-    );
-    expect(adapter.lastOptions?.data, isNull);
-    expect(
-      adapter.lastOptions?.headers['Authorization'],
-      'Bearer firebase-id-token',
-    );
-  });
+      expect(response.session.id, 'revision-session-1');
+      expect(response.session.courseId, 'course-1');
+      expect(response.currentAction?.kind.name, 'diagnosticQuiz');
+      expect(adapter.lastOptions?.method, 'POST');
+      expect(
+        adapter.lastOptions?.path,
+        '/courses/course-1/revision-sessions/quick',
+      );
+      expect(adapter.lastOptions?.data, {'questionCount': 20});
+      expect(
+        adapter.lastOptions?.headers['Authorization'],
+        'Bearer firebase-id-token',
+      );
+    },
+  );
 
   test('loads course progress from the course progress endpoint', () async {
     final adapter = CapturingHttpClientAdapter(

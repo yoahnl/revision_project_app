@@ -8,6 +8,7 @@ import '../../../app/router/app_routes.dart';
 import '../../../presentation/design_system/components/revision_mvp_components.dart';
 import '../../../presentation/design_system/components/revision_states.dart';
 import '../../../presentation/design_system/tokens/revision_colors.dart';
+import '../../../presentation/design_system/tokens/revision_radius.dart';
 import '../../../presentation/design_system/tokens/revision_spacing.dart';
 import '../../../presentation/design_system/tokens/revision_subject_visuals.dart';
 import '../../../presentation/design_system/tokens/revision_typography.dart';
@@ -410,7 +411,7 @@ class _CourseModes extends ConsumerWidget {
           accent: RevisionColors.blue,
           trailingLabel: hasReadySource ? null : 'Bientôt',
           enabled: hasReadySource && !isStartingQuickRevision,
-          onTap: () => _startQuickRevision(context, ref, detail),
+          onTap: () => _showQuickRevisionSheet(context, ref, detail),
         ),
         const SizedBox(height: RevisionSpacing.m),
         RevisionModeCard(
@@ -443,15 +444,41 @@ class _CourseModes extends ConsumerWidget {
     );
   }
 
-  Future<void> _startQuickRevision(
+  Future<void> _showQuickRevisionSheet(
     BuildContext context,
     WidgetRef ref,
     CourseDetail detail,
   ) async {
+    final questionCount = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _QuickRevisionQuestionCountSheet(),
+    );
+
+    if (!context.mounted || questionCount == null) {
+      return;
+    }
+
+    await _startQuickRevision(
+      context,
+      ref,
+      detail,
+      questionCount: questionCount,
+    );
+  }
+
+  Future<void> _startQuickRevision(
+    BuildContext context,
+    WidgetRef ref,
+    CourseDetail detail, {
+    required int questionCount,
+  }) async {
     try {
       final response = await ref
           .read(startCourseQuickRevisionControllerProvider.notifier)
-          .start(detail: detail);
+          .start(detail: detail, questionCount: questionCount);
 
       if (!context.mounted) {
         return;
@@ -488,6 +515,103 @@ void _showSourcesSheet(
     backgroundColor: Colors.transparent,
     builder: (context) => _SourcesBottomSheet(detail: detail),
   );
+}
+
+class _QuickRevisionQuestionCountSheet extends StatefulWidget {
+  const _QuickRevisionQuestionCountSheet();
+
+  @override
+  State<_QuickRevisionQuestionCountSheet> createState() =>
+      _QuickRevisionQuestionCountSheetState();
+}
+
+class _QuickRevisionQuestionCountSheetState
+    extends State<_QuickRevisionQuestionCountSheet> {
+  static const _choices = [5, 10, 20, 30];
+
+  int _selectedQuestionCount = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionBottomSheetFrame(
+      title: 'Révision rapide',
+      subtitle: 'Choisis le nombre de questions pour cette session.',
+      children: [
+        Wrap(
+          spacing: RevisionSpacing.s,
+          runSpacing: RevisionSpacing.s,
+          children: [
+            for (final choice in _choices)
+              _QuestionCountChip(
+                count: choice,
+                selected: choice == _selectedQuestionCount,
+                onTap: () => setState(() {
+                  _selectedQuestionCount = choice;
+                }),
+              ),
+          ],
+        ),
+        const SizedBox(height: RevisionSpacing.l),
+        RevisionGradientButton(
+          label: 'Démarrer',
+          icon: Icons.play_arrow_rounded,
+          expanded: true,
+          onPressed: () => Navigator.of(context).pop(_selectedQuestionCount),
+        ),
+        const SizedBox(height: RevisionSpacing.s),
+        Text(
+          'Les questions réutilisées viennent de la banque du cours. Si elle manque de questions, le backend en prépare par petits lots.',
+          style: RevisionTypography.caption,
+        ),
+      ],
+    );
+  }
+}
+
+class _QuestionCountChip extends StatelessWidget {
+  const _QuestionCountChip({
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: RevisionRadius.pill,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(
+          horizontal: RevisionSpacing.l,
+          vertical: RevisionSpacing.s,
+        ),
+        decoration: BoxDecoration(
+          gradient: selected
+              ? const LinearGradient(
+                  colors: [RevisionColors.blue, RevisionColors.blueDeep],
+                )
+              : null,
+          color: selected ? null : RevisionColors.glassSoft,
+          borderRadius: RevisionRadius.pill,
+          border: Border.all(
+            color: selected ? RevisionColors.blue : RevisionColors.border,
+          ),
+        ),
+        child: Text(
+          '$count questions',
+          style: RevisionTypography.body.copyWith(
+            color: selected ? RevisionColors.text : RevisionColors.textMuted,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _SourcesBottomSheet extends ConsumerWidget {
@@ -677,6 +801,10 @@ String _quickRevisionActionLabel(List<CourseDocument> sources) {
 
 String _quickRevisionErrorLabel(Object error) {
   if (error is CourseQuickRevisionUnavailableException) {
+    if (error.message == 'Course quick revision questions are being prepared') {
+      return 'Les questions sont en préparation. Réessaie dans un instant.';
+    }
+
     return error.message;
   }
 

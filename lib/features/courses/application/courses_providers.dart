@@ -207,11 +207,17 @@ class StartCourseQuickRevisionController
   @override
   AsyncValue<RevisionSessionResponse?> build() => const AsyncData(null);
 
-  Future<RevisionSessionResponse> start({required CourseDetail detail}) async {
+  Future<RevisionSessionResponse> start({
+    required CourseDetail detail,
+    int questionCount = 10,
+  }) async {
     state = const AsyncLoading();
     final repository = ref.read(coursesRepositoryProvider);
     final result = await AsyncValue.guard(
-      () => repository.startCourseQuickRevision(courseId: detail.course.id),
+      () => repository.startCourseQuickRevision(
+        courseId: detail.course.id,
+        questionCount: questionCount,
+      ),
     );
 
     state = result.whenData<RevisionSessionResponse?>((response) => response);

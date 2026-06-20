@@ -25,6 +25,12 @@ abstract interface class RevisionSessionsApi {
   Future<RevisionSessionResult> getRevisionSessionResult({
     required String sessionId,
   });
+
+  Future<void> flagRevisionSessionQuestion({
+    required String sessionId,
+    required String questionId,
+    String? reason,
+  });
 }
 
 class RevisionSessionNotFoundException implements Exception {

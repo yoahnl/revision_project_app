@@ -58,6 +58,32 @@ class RevisionSessionController {
     return _api.getRevisionSessionResult(sessionId: trimmedSessionId);
   }
 
+  Future<void> flagQuestion({
+    required String sessionId,
+    required String questionId,
+    String? reason,
+  }) {
+    final trimmedSessionId = sessionId.trim();
+    final trimmedQuestionId = questionId.trim();
+    final trimmedReason = reason?.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Revision session id is required');
+    }
+
+    if (trimmedQuestionId.isEmpty) {
+      throw ArgumentError('Question id is required');
+    }
+
+    return _api.flagRevisionSessionQuestion(
+      sessionId: trimmedSessionId,
+      questionId: trimmedQuestionId,
+      reason: trimmedReason == null || trimmedReason.isEmpty
+          ? null
+          : trimmedReason,
+    );
+  }
+
   String? _trimOptionalId(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;

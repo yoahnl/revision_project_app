@@ -117,6 +117,40 @@ class HttpRevisionSessionsApi implements RevisionSessionsApi {
     }
   }
 
+  @override
+  Future<void> flagRevisionSessionQuestion({
+    required String sessionId,
+    required String questionId,
+    String? reason,
+  }) async {
+    final data = <String, Object?>{};
+    final trimmedReason = reason?.trim();
+    if (trimmedReason != null && trimmedReason.isNotEmpty) {
+      data['reason'] = trimmedReason;
+    }
+
+    try {
+      await _dio.post<Object?>(
+        '/revision-sessions/${Uri.encodeComponent(sessionId)}/questions/${Uri.encodeComponent(questionId)}/flag',
+        data: data,
+        options: await _authorizedOptions(),
+      );
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const RevisionSessionNotFoundException(
+          'Revision session question not found',
+        );
+      }
+      if (error.response?.statusCode == 409) {
+        throw RevisionSessionResultNotReadyException(
+          _responseMessage(error) ??
+              'Revision session question cannot be flagged',
+        );
+      }
+      rethrow;
+    }
+  }
+
   Future<Options> _authorizedOptions() async {
     final token = (await _getIdToken()).trim();
 

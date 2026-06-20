@@ -29,6 +29,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastDeletedCourseId;
   String? lastDeletedDocumentId;
   String? lastQuickRevisionCourseId;
+  int? lastQuickRevisionQuestionCount;
   Object? uploadError;
   Object? deleteDocumentError;
   Object? quickRevisionError;
@@ -201,6 +202,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   @override
   Future<RevisionSessionResponse> startCourseQuickRevision({
     required String courseId,
+    int questionCount = 10,
   }) async {
     if (quickRevisionDelay > Duration.zero) {
       await Future<void>.delayed(quickRevisionDelay);
@@ -217,6 +219,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
 
     startQuickRevisionCount += 1;
     lastQuickRevisionCourseId = courseId;
+    lastQuickRevisionQuestionCount = questionCount;
 
     return quickRevisionResponse ?? quickRevisionSessionResponse(courseId);
   }

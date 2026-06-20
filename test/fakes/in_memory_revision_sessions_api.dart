@@ -11,14 +11,19 @@ class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
   String? loadedSessionId;
   String? completedSessionId;
   String? loadedResultSessionId;
+  String? flaggedSessionId;
+  String? flaggedQuestionId;
+  String? flaggedReason;
   int startCount = 0;
   int loadCount = 0;
   int completeCount = 0;
   int loadResultCount = 0;
+  int flagCount = 0;
   Object? startError;
   Object? loadError;
   Object? completeError;
   Object? loadResultError;
+  Object? flagError;
   RevisionSessionResponse startResponse = openQuestionRevisionSessionResponse();
   RevisionSessionResponse loadResponse = minimalRevisionSessionResponse();
   RevisionSessionResult completeResponse = revisionSessionResult();
@@ -80,6 +85,22 @@ class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
       throw error;
     }
     return resultResponse;
+  }
+
+  @override
+  Future<void> flagRevisionSessionQuestion({
+    required String sessionId,
+    required String questionId,
+    String? reason,
+  }) async {
+    flagCount += 1;
+    flaggedSessionId = sessionId;
+    flaggedQuestionId = questionId;
+    flaggedReason = reason;
+    final error = flagError;
+    if (error != null) {
+      throw error;
+    }
   }
 }
 

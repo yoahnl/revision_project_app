@@ -190,10 +190,12 @@ class HttpCoursesRepository implements CoursesRepository {
   @override
   Future<RevisionSessionResponse> startCourseQuickRevision({
     required String courseId,
+    int questionCount = 10,
   }) async {
     try {
       final response = await _dio.post<Object?>(
         '/courses/${Uri.encodeComponent(courseId)}/revision-sessions/quick',
+        data: {'questionCount': questionCount},
         options: await _authorizedOptions(),
       );
 

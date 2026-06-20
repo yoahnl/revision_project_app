@@ -38,7 +38,10 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
   int _questionIndex = 0;
   bool _isSubmitting = false;
   bool _activitySubmitted = false;
+  bool _isFlaggingQuestion = false;
+  final Set<String> _flaggedQuestionIds = {};
   Object? _submitError;
+  Object? _flagError;
 
   List<DiagnosticQuizQuestion> get _questions => widget.activity.questions;
 
@@ -108,6 +111,21 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(question.prompt, style: RevisionTypography.sectionTitle),
+                const SizedBox(height: RevisionSpacing.s),
+                _QuestionFlagAction(
+                  flagged: _flaggedQuestionIds.contains(question.id),
+                  isLoading: _isFlaggingQuestion,
+                  onPressed: () => _flagQuestion(question),
+                ),
+                if (_flagError != null) ...[
+                  const SizedBox(height: RevisionSpacing.xs),
+                  Text(
+                    'Signalement impossible pour le moment.',
+                    style: RevisionTypography.caption.copyWith(
+                      color: RevisionColors.red,
+                    ),
+                  ),
+                ],
                 if (question.visuals.isNotEmpty) ...[
                   const SizedBox(height: RevisionSpacing.m),
                   _QuestionVisualsPreview(visuals: question.visuals),
@@ -232,6 +250,46 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
     }
 
     _submit();
+  }
+
+  Future<void> _flagQuestion(DiagnosticQuizQuestion question) async {
+    if (_isFlaggingQuestion || _flaggedQuestionIds.contains(question.id)) {
+      return;
+    }
+
+    setState(() {
+      _isFlaggingQuestion = true;
+      _flagError = null;
+    });
+
+    try {
+      await widget.revisionSessionController.flagQuestion(
+        sessionId: widget.response.session.id,
+        questionId: question.id,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _flaggedQuestionIds.add(question.id);
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _flagError = error;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFlaggingQuestion = false;
+        });
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -435,6 +493,50 @@ class _QuestionProgress extends StatelessWidget {
           color: RevisionColors.blue,
         ),
       ],
+    );
+  }
+}
+
+class _QuestionFlagAction extends StatelessWidget {
+  const _QuestionFlagAction({
+    required this.flagged,
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool flagged;
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (flagged) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 16,
+            color: RevisionColors.green,
+          ),
+          const SizedBox(width: RevisionSpacing.xs),
+          Text('Question signalée', style: RevisionTypography.caption),
+        ],
+      );
+    }
+
+    return TextButton.icon(
+      onPressed: isLoading ? null : onPressed,
+      icon: Icon(
+        isLoading ? Icons.hourglass_empty_rounded : Icons.flag_outlined,
+        size: 18,
+      ),
+      label: Text(isLoading ? 'Signalement...' : 'Signaler'),
+      style: TextButton.styleFrom(
+        foregroundColor: RevisionColors.textMuted,
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+      ),
     );
   }
 }

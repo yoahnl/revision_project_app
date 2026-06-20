@@ -244,6 +244,43 @@ void main() {
     expect(find.text('correctChoiceId'), findsNothing);
   });
 
+  testWidgets(
+    'course quick session flags the current question without submit',
+    (tester) async {
+      final revisionApi = InMemoryRevisionSessionsApi()
+        ..loadResponse = courseQuickRevisionSessionResponse();
+      final activityApi = InMemoryActivityApi();
+      final router = _quickRouter(
+        revisionApi: revisionApi,
+        activityApi: activityApi,
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            coursesRepositoryProvider.overrideWithValue(
+              InMemoryCoursesRepository()
+                ..detailsByCourse['course-1'] = _courseDetail(),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Signaler'));
+      await tester.pumpAndSettle();
+
+      expect(revisionApi.flagCount, 1);
+      expect(revisionApi.flaggedSessionId, 'revision-session-1');
+      expect(revisionApi.flaggedQuestionId, 'question-1');
+      expect(find.text('Question signalée'), findsOneWidget);
+      expect(activityApi.submittedDiagnosticQuizCount, 0);
+      expect(revisionApi.completeCount, 0);
+    },
+  );
+
   testWidgets('completed course quick session redirects to result route', (
     tester,
   ) async {
