@@ -44,7 +44,8 @@ class RevisionPageScaffold extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Center(
+        return Align(
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
             // Keep the premium screens visually fixed when their content fits,
