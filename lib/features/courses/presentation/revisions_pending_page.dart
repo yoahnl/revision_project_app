@@ -21,9 +21,11 @@ class RevisionsPendingPage extends ConsumerWidget {
     final activeSubject = ref.watch(activeSubjectProvider);
 
     return RevisionPageScaffold(
-      children: [
+      headerChildren: [
         Text('Révisions', style: RevisionTypography.hero),
         Text('Choisis ton mode de travail', style: RevisionTypography.body),
+      ],
+      children: [
         activeSubject.when(
           loading: () =>
               const RevisionLoadingState(label: 'Chargement des matières'),

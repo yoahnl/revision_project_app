@@ -32,7 +32,7 @@ class _CourseRevisionSheetPageState
     final sheet = ref.watch(courseRevisionSheetProvider(widget.courseId));
 
     return RevisionPageScaffold(
-      children: [
+      headerChildren: [
         Row(
           children: [
             IconButton(
@@ -55,6 +55,8 @@ class _CourseRevisionSheetPageState
           labelOf: _sheetModeLabel,
           onChanged: (mode) => setState(() => _mode = mode),
         ),
+      ],
+      children: [
         sheet.when(
           loading: () =>
               const RevisionLoadingState(label: 'Chargement de la fiche'),

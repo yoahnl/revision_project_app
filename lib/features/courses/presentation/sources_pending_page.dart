@@ -13,13 +13,15 @@ class SourcesPendingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RevisionPageScaffold(
-      children: [
+      headerChildren: [
         Text('Sources', style: RevisionTypography.pageTitle),
         const SizedBox(height: RevisionSpacing.xs),
         Text(
           'Les PDF se gèrent maintenant depuis le détail de chaque cours réel.',
           style: RevisionTypography.body,
         ),
+      ],
+      children: [
         RevisionEmptyState(
           title: 'Sources depuis les cours',
           message:

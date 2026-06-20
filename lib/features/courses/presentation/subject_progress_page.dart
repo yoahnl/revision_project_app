@@ -23,12 +23,14 @@ class SubjectProgressPage extends ConsumerWidget {
     final activeSubject = ref.watch(activeSubjectProvider);
 
     return RevisionPageScaffold(
-      children: [
+      headerChildren: [
         Text('Progrès', style: RevisionTypography.hero),
         Text(
           'Ta progression vient des notions générées depuis tes sources prêtes et de tes réponses.',
           style: RevisionTypography.body,
         ),
+      ],
+      children: [
         activeSubject.when(
           loading: () =>
               const RevisionLoadingState(label: 'Chargement des matières'),

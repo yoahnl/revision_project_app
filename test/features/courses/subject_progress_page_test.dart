@@ -66,6 +66,38 @@ void main() {
     expect(find.text('Loi normale'), findsNothing);
   });
 
+  testWidgets('progress page keeps its header fixed while content scrolls', (
+    tester,
+  ) async {
+    final subjectsRepository = InMemorySubjectsRepository()
+      ..subjects.add(
+        const Subject(
+          id: 'subject-1',
+          name: 'Droit constitutionnel',
+          priority: 4,
+        ),
+      );
+    final coursesRepository = InMemoryCoursesRepository()
+      ..progressBySubject['subject-1'] = subjectProgressWithManyCourses();
+
+    await tester.pumpWidget(
+      progressTestApp(
+        subjectsRepository: subjectsRepository,
+        coursesRepository: coursesRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final title = find.text('Progrès');
+    final before = tester.getTopLeft(title);
+
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -360));
+    await tester.pumpAndSettle();
+
+    final after = tester.getTopLeft(title);
+    expect(after.dy, before.dy);
+  });
+
   testWidgets('progress page opens a course from the real progress list', (
     tester,
   ) async {
@@ -152,5 +184,33 @@ SubjectProgress subjectProgress() {
         state: CourseProgressState.practiced,
       ),
     ],
+  );
+}
+
+SubjectProgress subjectProgressWithManyCourses() {
+  return SubjectProgress(
+    subjectId: 'subject-1',
+    knowledgeUnitCount: 100,
+    practicedKnowledgeUnitCount: 20,
+    coverage: 0.2,
+    mastery: 0.5,
+    estimatedGlobalMastery: 0.1,
+    courseCount: 16,
+    readyCourseCount: 16,
+    courses: List.generate(
+      16,
+      (index) => SubjectCourseProgressItem(
+        courseId: 'course-$index',
+        title: 'Cours ${index + 1}',
+        knowledgeUnitCount: 10,
+        practicedKnowledgeUnitCount: index.isEven ? 2 : 0,
+        coverage: index.isEven ? 0.2 : 0,
+        mastery: index.isEven ? 0.5 : null,
+        estimatedGlobalMastery: index.isEven ? 0.1 : 0,
+        state: index.isEven
+            ? CourseProgressState.practiced
+            : CourseProgressState.readyNotPracticed,
+      ),
+    ),
   );
 }

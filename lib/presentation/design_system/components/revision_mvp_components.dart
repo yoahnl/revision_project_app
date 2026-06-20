@@ -11,6 +11,7 @@ import '../tokens/revision_typography.dart';
 class RevisionPageScaffold extends StatelessWidget {
   const RevisionPageScaffold({
     required this.children,
+    this.headerChildren = const [],
     this.padding = const EdgeInsets.fromLTRB(
       RevisionSpacing.pageX,
       RevisionSpacing.pageTop,
@@ -22,40 +23,91 @@ class RevisionPageScaffold extends StatelessWidget {
   });
 
   final List<Widget> children;
+  final List<Widget> headerChildren;
   final EdgeInsetsGeometry padding;
   final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
-    final content = Padding(
-      padding: padding,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final child in children) ...[
-            child,
-            if (child != children.last)
-              const SizedBox(height: RevisionSpacing.l),
-          ],
-        ],
-      ),
-    );
-
     return LayoutBuilder(
       builder: (context, constraints) {
+        final resolvedPadding = padding.resolve(Directionality.of(context));
+        final hasFixedHeader = headerChildren.isNotEmpty;
+        final supportsFixedHeader =
+            hasFixedHeader && constraints.hasBoundedHeight;
+
+        final scrollableContent = _SpacedColumn(children: children);
+
+        if (!supportsFixedHeader) {
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              // Keep the premium screens visually fixed when their content
+              // fits, but still allow overflow content to move on shorter
+              // panes. This avoids the "web page" feeling on normal screens
+              // without risking clipped cards when a course has more state.
+              child: SingleChildScrollView(
+                child: Padding(padding: padding, child: scrollableContent),
+              ),
+            ),
+          );
+        }
+
         return Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
-            // Keep the premium screens visually fixed when their content fits,
-            // but still allow overflow content to move on shorter panes. This
-            // avoids the "web page" feeling on normal screens without risking
-            // clipped cards when a course has more state to show.
-            child: SingleChildScrollView(child: content),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    resolvedPadding.left,
+                    resolvedPadding.top,
+                    resolvedPadding.right,
+                    0,
+                  ),
+                  child: _SpacedColumn(children: headerChildren),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        resolvedPadding.left,
+                        RevisionSpacing.l,
+                        resolvedPadding.right,
+                        resolvedPadding.bottom,
+                      ),
+                      child: scrollableContent,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+class _SpacedColumn extends StatelessWidget {
+  const _SpacedColumn({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final child in children) ...[
+          child,
+          if (child != children.last) const SizedBox(height: RevisionSpacing.l),
+        ],
+      ],
     );
   }
 }

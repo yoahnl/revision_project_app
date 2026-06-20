@@ -20,35 +20,54 @@ class RevisionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: padding,
+    final resolvedPadding = padding.resolve(Directionality.of(context));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: AppSpacing.xs),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            resolvedPadding.left,
+            resolvedPadding.top,
+            resolvedPadding.right,
+            0,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      subtitle!,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      title,
+                      style: Theme.of(context).textTheme.headlineMedium,
                     ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            ?trailing,
-          ],
+              ?trailing,
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.xl),
-        ...children,
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              resolvedPadding.left,
+              AppSpacing.xl,
+              resolvedPadding.right,
+              resolvedPadding.bottom,
+            ),
+            children: children,
+          ),
+        ),
       ],
     );
   }

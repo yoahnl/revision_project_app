@@ -102,13 +102,15 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
     );
 
     return RevisionPageScaffold(
-      children: [
+      headerChildren: [
         _CourseTopBar(
           detail: detail,
           visual: visual,
           hasReadySource: hasReadySource,
         ),
         _CourseHero(detail: detail, visual: visual),
+      ],
+      children: [
         _StatsStrip(course: course, progress: progress, visual: visual),
         _CourseProgressSection(
           progress: progress,
