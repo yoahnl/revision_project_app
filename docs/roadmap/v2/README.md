@@ -14,6 +14,7 @@ La roadmap V2 existe pour remplacer mentalement les anciennes roadmaps dispersé
 - `DECISIONS_V2.md` : journal canonique des décisions produit.
 - `ROADMAP_UPDATE_PROTOCOL.md` : protocole de mise à jour après chaque lot.
 - `STAB_00B_ROADMAP_V2_HARDENING_REPORT.md` : rapport du durcissement de la roadmap.
+- `QUALITY_00_CI_BASELINE_REPORT.md` : rapport de la baseline CI GitHub Actions.
 
 Le backend possède une roadmap alignée dans `revision_project_api/docs/roadmap/v2/`, mais la vision produit complète vit ici pour éviter deux narrations divergentes.
 

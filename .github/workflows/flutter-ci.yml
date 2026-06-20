@@ -1,0 +1,55 @@
+name: Flutter CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: flutter-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Analyze and test Flutter app
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.0"
+          channel: stable
+          cache: true
+
+      - name: Show Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: dart analyze lib test
+
+      - name: Test router
+        run: flutter test test/app/router/app_router_test.dart --reporter compact
+
+      - name: Test app shell
+        run: flutter test test/app/revision_app_test.dart --reporter compact
+
+      - name: Test courses feature
+        run: flutter test test/features/courses --reporter compact
+
+      - name: Test revision sessions feature
+        run: flutter test test/features/revision_sessions --reporter compact
+
+      - name: Test full Flutter suite
+        run: flutter test --reporter compact
+
+      - name: Check whitespace
+        run: git diff --check
