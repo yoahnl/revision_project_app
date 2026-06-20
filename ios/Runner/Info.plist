@@ -26,6 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Neralune peut utiliser l’appareil photo pour importer des photos de cours ou de documents.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Neralune peut utiliser votre position uniquement si iOS la demande lors de l’import de contenus depuis l’appareil.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Neralune peut accéder à votre photothèque pour importer des images de cours ou de documents.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
