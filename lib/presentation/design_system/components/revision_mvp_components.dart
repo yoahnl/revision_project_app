@@ -17,7 +17,7 @@ class RevisionPageScaffold extends StatelessWidget {
       RevisionSpacing.pageX,
       110,
     ),
-    this.maxWidth = 520,
+    this.maxWidth = 1280,
     super.key,
   });
 

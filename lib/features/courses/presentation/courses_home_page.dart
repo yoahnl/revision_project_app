@@ -52,7 +52,7 @@ class _HomePageFrame extends StatelessWidget {
       builder: (context, constraints) {
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
+            constraints: const BoxConstraints(maxWidth: 1280),
             child: SizedBox(
               height: constraints.maxHeight,
               child: Padding(
