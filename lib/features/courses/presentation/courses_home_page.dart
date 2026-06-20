@@ -150,7 +150,7 @@ class _HomeTopBar extends ConsumerWidget {
           label: subject.name,
           accent: visual.accent,
           icon: visual.icon,
-          onTap: () => _showSubjectPicker(context, ref, subjects, subject.id),
+          onTap: () => _showSubjectPicker(context, subjects, subject.id),
         ),
         const Spacer(),
         // No streak/gems are displayed here: the MVP Core has no real
@@ -179,6 +179,11 @@ class _CourseList extends StatelessWidget {
       return ListView(
         padding: EdgeInsets.zero,
         children: [
+          Text(
+            'Tes cours de ${subject.name}',
+            style: RevisionTypography.sectionTitle,
+          ),
+          const SizedBox(height: RevisionSpacing.m),
           RevisionEmptyState(
             title: 'Aucun cours réel',
             message:
@@ -454,6 +459,109 @@ class _CreateCourseSheetState extends ConsumerState<_CreateCourseSheet> {
   }
 }
 
+class _CreateSubjectSheet extends ConsumerStatefulWidget {
+  const _CreateSubjectSheet();
+
+  @override
+  ConsumerState<_CreateSubjectSheet> createState() =>
+      _CreateSubjectSheetState();
+}
+
+class _CreateSubjectSheetState extends ConsumerState<_CreateSubjectSheet> {
+  final _nameController = TextEditingController();
+  String? _localError;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: RevisionBottomSheetFrame(
+        title: 'Créer une matière',
+        subtitle: 'Elle deviendra la matière active de l’accueil.',
+        children: [
+          TextField(
+            controller: _nameController,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Nom de la matière'),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              if (!_submitting) {
+                _submit();
+              }
+            },
+          ),
+          if (_localError != null)
+            Text(
+              _localError!,
+              style: const TextStyle(color: RevisionColors.red),
+            ),
+          RevisionGradientButton(
+            label: _submitting ? 'Création...' : 'Créer la matière',
+            icon: Icons.add_rounded,
+            expanded: true,
+            onPressed: _submitting ? null : _submit,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    final name = _nameController.text.trim();
+
+    if (name.length < 2) {
+      setState(() {
+        _localError = 'Le nom doit contenir au moins 2 caractères.';
+      });
+      return;
+    }
+
+    setState(() {
+      _localError = null;
+      _submitting = true;
+    });
+
+    try {
+      final subject = await ref
+          .read(subjectsNotifierProvider.notifier)
+          .createSubject(name: name);
+
+      ref.read(activeSubjectIdProvider.notifier).select(subject.id);
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pop();
+    } on ArgumentError {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _localError = 'Le nom doit contenir au moins 2 caractères.';
+        _submitting = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _localError = 'Impossible de créer la matière.';
+        _submitting = false;
+      });
+    }
+  }
+}
+
 Subject _activeSubject(List<Subject> subjects, String? activeSubjectId) {
   for (final subject in subjects) {
     if (subject.id == activeSubjectId) {
@@ -466,7 +574,6 @@ Subject _activeSubject(List<Subject> subjects, String? activeSubjectId) {
 
 void _showSubjectPicker(
   BuildContext context,
-  WidgetRef ref,
   List<Subject> subjects,
   String activeSubjectId,
 ) {
@@ -475,7 +582,28 @@ void _showSubjectPicker(
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => RevisionBottomSheetFrame(
+    builder: (sheetContext) => _SubjectPickerSheet(
+      parentContext: context,
+      subjects: subjects,
+      activeSubjectId: activeSubjectId,
+    ),
+  );
+}
+
+class _SubjectPickerSheet extends ConsumerWidget {
+  const _SubjectPickerSheet({
+    required this.parentContext,
+    required this.subjects,
+    required this.activeSubjectId,
+  });
+
+  final BuildContext parentContext;
+  final List<Subject> subjects;
+  final String activeSubjectId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return RevisionBottomSheetFrame(
       title: 'Choisir une matière',
       subtitle: 'La page reste centrée sur une seule matière active.',
       children: [
@@ -488,9 +616,24 @@ void _showSubjectPicker(
               Navigator.of(context).pop();
             },
           ),
+        RevisionGradientButton(
+          label: 'Créer une matière',
+          icon: Icons.add_rounded,
+          expanded: true,
+          onPressed: () {
+            Navigator.of(context).pop();
+            Future<void>.microtask(() {
+              if (!parentContext.mounted) {
+                return;
+              }
+
+              _showCreateSubjectSheet(parentContext);
+            });
+          },
+        ),
       ],
-    ),
-  );
+    );
+  }
 }
 
 void _showCreateCourseSheet(BuildContext context, Subject subject) {
@@ -500,6 +643,16 @@ void _showCreateCourseSheet(BuildContext context, Subject subject) {
     useSafeArea: true,
     backgroundColor: Colors.transparent,
     builder: (context) => _CreateCourseSheet(subject: subject),
+  );
+}
+
+void _showCreateSubjectSheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => const _CreateSubjectSheet(),
   );
 }
 

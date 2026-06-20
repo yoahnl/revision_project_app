@@ -19,6 +19,17 @@ class SubjectsNotifier extends _$SubjectsNotifier {
     );
   }
 
+  Future<Subject> createSubject({
+    required String name,
+    int priority = 3,
+  }) async {
+    final created = await ref
+        .read(subjectsRepositoryProvider)
+        .createSubject(name: name, priority: priority);
+    await reload();
+    return created;
+  }
+
   Future<void> deleteSubject(String id) async {
     await ref.read(subjectsRepositoryProvider).deleteSubject(id);
     await reload();

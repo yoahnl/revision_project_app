@@ -155,6 +155,47 @@ void main() {
     expect(find.text('Loi normale'), findsNothing);
   });
 
+  testWidgets('home can create and select a subject from the subject picker', (
+    tester,
+  ) async {
+    final view = tester.view;
+    view.devicePixelRatio = 1;
+    view.physicalSize = const Size(430, 932);
+    addTearDown(view.resetDevicePixelRatio);
+    addTearDown(view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      _createTestApp(
+        seedSubjects: const [
+          Subject(id: 'subject-real-1', name: 'Droits', priority: 4),
+        ],
+      ).widget,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Droits').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choisir une matière'), findsOneWidget);
+    expect(find.text('Créer une matière'), findsOneWidget);
+
+    await tester.tap(find.text('Créer une matière'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Créer une matière'), findsOneWidget);
+    expect(find.text('Nom de la matière'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).last, 'Histoire');
+    await tester.tap(find.text('Créer la matière'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Histoire'), findsWidgets);
+    expect(find.text('Tes cours de Histoire'), findsOneWidget);
+    expect(find.text('Aucun cours réel'), findsOneWidget);
+    expect(find.text('Loi normale'), findsNothing);
+    expect(find.text('78%'), findsNothing);
+  });
+
   testWidgets('home can list real courses for the active subject', (
     tester,
   ) async {
