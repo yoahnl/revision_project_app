@@ -45,3 +45,5 @@ app.*.map.json
 /android/app/release
 /lib/generate_project_overview.sh
 /lib/project_overview.txt
+/generate_project_overview.sh
+/project_overview.txt
