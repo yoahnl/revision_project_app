@@ -33,14 +33,47 @@ Keep the app split by responsibility:
 | `lib/app/router` | `go_router` route definitions and route-level wiring. |
 | `lib/core` | Stable cross-feature helpers, config, routing paths, storage ports. |
 | `lib/features/<feature>/domain` | Pure models and contracts. No Flutter UI. |
-| `lib/features/<feature>/application` | Controllers, notifiers, use cases, providers. |
-| `lib/features/<feature>/data` | HTTP/Firebase/local adapters. |
-| `lib/presentation/pages` | Page widgets only. |
+| `lib/features/<feature>/application` | Controllers, notifiers, use cases, providers. No widgets. |
+| `lib/features/<feature>/data` | HTTP/Firebase/local adapters. No widgets. |
+| `lib/presentation/<area>/pages` | User-facing page widgets, grouped by product area. |
+| `lib/presentation/<area>/widgets` | Area-specific presentation widgets that are not reusable globally. |
+| `lib/presentation/<area>/providers` | UI-only presentation providers when an area needs them. |
 | `lib/presentation/widgets` | Reusable UI primitives and shared components. |
 | `lib/presentation/theme` | Color, spacing, radius, typography, theme tokens. |
 | `test` | Focused widget, application, notifier, and adapter tests. |
 
-Compatibility exports under `lib/features/**/presentation` may remain for stable imports, but new UI belongs under `lib/presentation`.
+### Grimaldi-aligned presentation boundary
+
+Revision App follows the same architectural boundary as the Grimaldi mobile app:
+
+```text
+lib/features/<feature>/
+  application/
+  data/
+  domain/
+
+lib/presentation/
+  <area>/
+    pages/
+    providers/
+    widgets/
+  widgets/
+  theme/
+```
+
+Hard rules:
+
+- Do not create new real UI under `lib/features/**/presentation`.
+- Do not create reusable widgets inside a feature folder.
+- Reusable widgets belong in `lib/presentation/widgets`.
+- Area-specific pages and widgets belong under `lib/presentation/<area>/pages` and `lib/presentation/<area>/widgets`.
+- Feature folders may expose domain/application/data only.
+- Existing `lib/features/**/presentation` files are technical debt. When touching one for a product change, migrate it to `lib/presentation/...` or leave only a tiny compatibility export shim.
+- Compatibility shims must contain exports only. They must not contain widget implementation, layout, styling, stateful UI, or business logic.
+- Router imports should point to `lib/presentation/...`, not to feature presentation files.
+- Tests should be migrated with the presentation file they cover.
+
+This boundary is important enough to reject future work that adds presentation implementation under `features`.
 
 ## 3. Routing
 
