@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -29,6 +29,7 @@ import '../../presentation/pages/subjects/subject_detail_page.dart';
 import '../../presentation/pages/subjects/subjects_home_page.dart';
 import '../../presentation/pages/today/today_page.dart';
 import '../../presentation/shell/revision_home_shell.dart';
+import '../../presentation/widgets/revision_background.dart';
 import '../di/providers.dart';
 import 'app_routes.dart';
 
@@ -153,59 +154,12 @@ GoRouter createAppRouter({
                 builder: (context, state) => const RevisionsPendingPage(),
               ),
               GoRoute(
-                path: AppRoutes.revisionSessionV2Path,
-                builder: (context, state) => RevisionSessionPage(
-                  revisionSessionController: revisionSessionController,
-                  activityController: activityController,
-                  sessionId: state.pathParameters['sessionId'] ?? '',
-                ),
-              ),
-              GoRoute(
-                path: AppRoutes.revisionSessionResultV2Path,
-                builder: (context, state) => RevisionSessionResultPage(
-                  sessionId: state.pathParameters['sessionId'] ?? '',
-                  controller: revisionSessionController,
-                ),
-              ),
-              GoRoute(
                 path: AppRoutes.activities,
                 builder: (context, state) => ActivitiesPage(
                   controller: activityController,
                   subjectId: state.uri.queryParameters['subjectId'],
                   knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
                 ),
-              ),
-              GoRoute(
-                path: AppRoutes.revisionSessionPath,
-                builder: (context, state) => RevisionSessionPage(
-                  revisionSessionController: revisionSessionController,
-                  activityController: activityController,
-                  sessionId: state.uri.queryParameters['sessionId'],
-                  subjectId: state.uri.queryParameters['subjectId'],
-                  documentId: state.uri.queryParameters['documentId'],
-                  knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
-                  preferredAction: _preferredActionFromQuery(
-                    state.uri.queryParameters['preferredAction'],
-                  ),
-                ),
-              ),
-              GoRoute(
-                path: AppRoutes.richClosedExercisePath,
-                builder: (context, state) => RichClosedExercisePage(
-                  controller: activityController,
-                  sessionId: state.uri.queryParameters['sessionId'],
-                  subjectId: state.uri.queryParameters['subjectId'],
-                  documentId: state.uri.queryParameters['documentId'],
-                  knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
-                ),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.sources,
-                builder: (context, state) => const SourcesPendingPage(),
               ),
             ],
           ),
@@ -220,8 +174,73 @@ GoRouter createAppRouter({
           ),
         ],
       ),
+      GoRoute(
+        path: AppRoutes.sources,
+        builder: (context, state) =>
+            const _ImmersiveRouteScaffold(child: SourcesPendingPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.revisionSessionV2Path,
+        builder: (context, state) => _ImmersiveRouteScaffold(
+          child: RevisionSessionPage(
+            revisionSessionController: revisionSessionController,
+            activityController: activityController,
+            sessionId: state.pathParameters['sessionId'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.revisionSessionResultV2Path,
+        builder: (context, state) => _ImmersiveRouteScaffold(
+          child: RevisionSessionResultPage(
+            sessionId: state.pathParameters['sessionId'] ?? '',
+            controller: revisionSessionController,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.revisionSessionPath,
+        builder: (context, state) => _ImmersiveRouteScaffold(
+          child: RevisionSessionPage(
+            revisionSessionController: revisionSessionController,
+            activityController: activityController,
+            sessionId: state.uri.queryParameters['sessionId'],
+            subjectId: state.uri.queryParameters['subjectId'],
+            documentId: state.uri.queryParameters['documentId'],
+            knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
+            preferredAction: _preferredActionFromQuery(
+              state.uri.queryParameters['preferredAction'],
+            ),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.richClosedExercisePath,
+        builder: (context, state) => _ImmersiveRouteScaffold(
+          child: RichClosedExercisePage(
+            controller: activityController,
+            sessionId: state.uri.queryParameters['sessionId'],
+            subjectId: state.uri.queryParameters['subjectId'],
+            documentId: state.uri.queryParameters['documentId'],
+            knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
+          ),
+        ),
+      ),
     ],
   );
+}
+
+class _ImmersiveRouteScaffold extends StatelessWidget {
+  const _ImmersiveRouteScaffold({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: RevisionBackground(child: SafeArea(child: child)),
+    );
+  }
 }
 
 RevisionSessionPreferredAction? _preferredActionFromQuery(String? value) {

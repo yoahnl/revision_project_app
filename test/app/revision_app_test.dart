@@ -97,8 +97,8 @@ void main() {
     expect(find.text('870'), findsNothing);
     expect(find.text('7 jours'), findsNothing);
     expect(find.text('Progrès'), findsOneWidget);
-    expect(find.text('Révisions'), findsOneWidget);
-    expect(find.text('Sources'), findsOneWidget);
+    expect(find.text('Réviser'), findsOneWidget);
+    expect(find.text('Sources'), findsNothing);
     expect(find.byType(RevisionBottomNavigation), findsOneWidget);
     expect(testApp.authController.isSignedIn, isTrue);
   });
@@ -117,19 +117,15 @@ void main() {
     expect(find.text('78%'), findsNothing);
     expect(find.textContaining('CORE-06 branchera'), findsNothing);
 
-    await tester.tap(find.text('Révisions'));
+    await tester.tap(find.text('Réviser'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Révisions'), findsWidgets);
     expect(find.text('Choisis ton mode de travail'), findsOneWidget);
     expect(find.text('Aucune matière disponible'), findsOneWidget);
     expect(find.textContaining('CORE-05 branchera'), findsNothing);
     expect(find.textContaining('à brancher en CORE-05'), findsNothing);
-
-    await tester.tap(find.text('Sources'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Sources depuis les cours'), findsOneWidget);
-    expect(find.textContaining('Ajouter une source'), findsOneWidget);
+    expect(find.text('Sources'), findsNothing);
     expect(find.textContaining('CORE-03 branchera'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
   });
@@ -364,7 +360,7 @@ void main() {
     expect(find.byType(RevisionNavigationRail), findsOneWidget);
     expect(find.byType(RevisionBottomNavigation), findsNothing);
 
-    await tester.tap(find.text('Révisions'));
+    await tester.tap(find.text('Réviser'));
     await tester.pumpAndSettle();
 
     expect(find.text('Révisions'), findsWidgets);

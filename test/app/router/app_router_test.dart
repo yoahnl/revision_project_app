@@ -22,6 +22,7 @@ import 'package:revision_app/features/today/application/today_controller.dart';
 import 'package:revision_app/features/today/domain/today_plan.dart';
 import 'package:revision_app/presentation/design_system/components/revision_mvp_components.dart';
 import 'package:revision_app/presentation/widgets/revision_button.dart';
+import 'package:revision_app/presentation/widgets/revision_navigation.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
 import '../../fakes/in_memory_courses_repository.dart';
@@ -124,32 +125,41 @@ void main() {
     );
   });
 
-  test('revision session route is a sibling of activities route', () {
+  test('shell keeps only primary destinations and sessions outside shell', () {
     final harness = _RouterHarness();
     addTearDown(harness.dispose);
 
     final shellRoute = harness.router.configuration.routes
         .whereType<StatefulShellRoute>()
         .single;
-    final activitiesBranch = shellRoute.branches.singleWhere((branch) {
-      return branch.routes.whereType<GoRoute>().any(
-        (route) => route.path == AppRoutes.activities,
-      );
-    });
-    final activitiesRoutes = activitiesBranch.routes.whereType<GoRoute>();
-    final activitiesRoute = activitiesRoutes.singleWhere(
-      (route) => route.path == AppRoutes.activities,
-    );
+    final branchRoots = shellRoute.branches
+        .map((branch) => branch.routes.whereType<GoRoute>().first.path)
+        .toList(growable: false);
+    final shellPaths = shellRoute.branches
+        .expand((branch) => branch.routes.whereType<GoRoute>())
+        .map((route) => route.path)
+        .toSet();
+    final topLevelPaths = harness.router.configuration.routes
+        .whereType<GoRoute>()
+        .map((route) => route.path)
+        .toSet();
 
-    expect(
-      activitiesRoutes.map((route) => route.path),
-      containsAll([
-        AppRoutes.activities,
-        AppRoutes.revisionSessionPath,
-        AppRoutes.richClosedExercisePath,
-      ]),
-    );
-    expect(activitiesRoute.routes, isEmpty);
+    expect(branchRoots, [
+      AppRoutes.home,
+      AppRoutes.progress,
+      AppRoutes.revisions,
+      AppRoutes.profile,
+    ]);
+    expect(shellPaths, isNot(contains(AppRoutes.sources)));
+    expect(shellPaths, isNot(contains(AppRoutes.revisionSessionV2Path)));
+    expect(shellPaths, isNot(contains(AppRoutes.revisionSessionResultV2Path)));
+    expect(shellPaths, isNot(contains(AppRoutes.revisionSessionPath)));
+    expect(shellPaths, isNot(contains(AppRoutes.richClosedExercisePath)));
+    expect(topLevelPaths, contains(AppRoutes.sources));
+    expect(topLevelPaths, contains(AppRoutes.revisionSessionV2Path));
+    expect(topLevelPaths, contains(AppRoutes.revisionSessionResultV2Path));
+    expect(topLevelPaths, contains(AppRoutes.revisionSessionPath));
+    expect(topLevelPaths, contains(AppRoutes.richClosedExercisePath));
   });
 
   testWidgets('home route does not render MVP fixture course data', (
@@ -347,9 +357,41 @@ void main() {
 
     expect(find.text('Session terminée'), findsOneWidget);
     expect(find.text('4/6 bonnes réponses'), findsOneWidget);
+    expect(find.byType(RevisionBottomNavigation), findsNothing);
+    expect(find.byType(RevisionNavigationRail), findsNothing);
     expect(find.text('78%'), findsNothing);
     expect(find.text('4/5 bonnes'), findsNothing);
   });
+
+  testWidgets(
+    'revision session routes are immersive without shell navigation',
+    (tester) async {
+      final harness = _RouterHarness();
+      addTearDown(harness.dispose);
+
+      await tester.pumpWidget(harness.buildApp());
+      harness.router.go(
+        AppRoutes.revisionSession(sessionId: 'revision-session-1'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Révision IA'), findsOneWidget);
+      expect(find.byType(RevisionBottomNavigation), findsNothing);
+      expect(find.byType(RevisionNavigationRail), findsNothing);
+
+      harness.router.go(
+        AppRoutes.richClosedExercise(
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Questions riches'), findsOneWidget);
+      expect(find.byType(RevisionBottomNavigation), findsNothing);
+      expect(find.byType(RevisionNavigationRail), findsNothing);
+    },
+  );
 
   testWidgets('legacy real routes stay accessible', (tester) async {
     final harness = _RouterHarness();
@@ -368,6 +410,12 @@ void main() {
     harness.router.go(AppRoutes.activities);
     await tester.pumpAndSettle();
     expect(find.text('Activites'), findsWidgets);
+
+    harness.router.go(AppRoutes.sources);
+    await tester.pumpAndSettle();
+    expect(find.text('Sources depuis les cours'), findsOneWidget);
+    expect(find.byType(RevisionBottomNavigation), findsNothing);
+    expect(find.byType(RevisionNavigationRail), findsNothing);
   });
 
   testWidgets(

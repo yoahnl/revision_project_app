@@ -69,7 +69,8 @@ class _WideHomeScaffold extends StatelessWidget {
                 destinations: _navigationDestinations,
               ),
               Expanded(
-                child: Center(
+                child: Align(
+                  alignment: Alignment.topCenter,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
                       maxWidth: RevisionHomeShell._maxContentWidth,
@@ -101,15 +102,9 @@ const List<_RevisionDestination> _destinations = [
   ),
   _RevisionDestination(
     path: revisionsRoutePath,
-    label: 'Révisions',
+    label: 'Réviser',
     icon: Icons.track_changes_rounded,
     selectedIcon: Icons.track_changes_rounded,
-  ),
-  _RevisionDestination(
-    path: sourcesRoutePath,
-    label: 'Sources',
-    icon: Icons.description_outlined,
-    selectedIcon: Icons.description_rounded,
   ),
   _RevisionDestination(
     path: profileRoutePath,
