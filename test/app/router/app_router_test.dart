@@ -401,7 +401,7 @@ void main() {
 
     harness.router.go(AppRoutes.subjects);
     await tester.pumpAndSettle();
-    expect(find.text('Tes matieres'), findsOneWidget);
+    expect(find.text('Matières'), findsOneWidget);
 
     harness.router.go(AppRoutes.today);
     await tester.pumpAndSettle();

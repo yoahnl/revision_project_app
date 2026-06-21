@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
-import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
 import 'package:Neralune/presentation/widgets/documents/document_import_button.dart';
 
 class CompletingDocumentsApi implements DocumentsApi {
@@ -118,15 +118,17 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byType(RevisionButton));
+    await tester.tap(find.byType(RevisionGradientButton));
     await tester.pump();
 
     expect(
-      tester.widget<RevisionButton>(find.byType(RevisionButton)).onPressed,
+      tester
+          .widget<RevisionGradientButton>(find.byType(RevisionGradientButton))
+          .onPressed,
       isNull,
     );
 
-    await tester.tap(find.byType(RevisionButton));
+    await tester.tap(find.byType(RevisionGradientButton));
     await tester.pump();
 
     expect(documentsApi.uploadCallCount, 1);
@@ -135,7 +137,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<RevisionButton>(find.byType(RevisionButton)).onPressed,
+      tester
+          .widget<RevisionGradientButton>(find.byType(RevisionGradientButton))
+          .onPressed,
       isNotNull,
     );
   });
@@ -161,7 +165,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byType(RevisionButton));
+    await tester.tap(find.byType(RevisionGradientButton));
     await tester.pump();
 
     expect(find.text("Impossible d'importer le document"), findsOneWidget);
@@ -193,7 +197,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byType(RevisionButton));
+    await tester.tap(find.byType(RevisionGradientButton));
     await tester.pump();
 
     documentsApi.completer.complete();

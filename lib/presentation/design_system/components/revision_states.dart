@@ -16,7 +16,7 @@ class RevisionLoadingState extends StatelessWidget {
       icon: Icons.hourglass_top_rounded,
       iconColor: RevisionColors.blue,
       title: label,
-      message: 'Les données réelles sont en cours de chargement.',
+      message: 'Les informations sont en cours de chargement.',
       child: const Padding(
         padding: EdgeInsets.only(top: RevisionSpacing.m),
         child: LinearProgressIndicator(),

@@ -364,6 +364,69 @@ class RevisionHeaderActionPill extends StatelessWidget {
   }
 }
 
+class RevisionActionListTile extends StatelessWidget {
+  const RevisionActionListTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accent,
+    this.onTap,
+    this.trailing,
+    this.enabled = true,
+    super.key,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color accent;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionGlassCard(
+      onTap: enabled ? onTap : null,
+      padding: const EdgeInsets.all(RevisionSpacing.m),
+      borderColor: accent.withValues(alpha: enabled ? 0.36 : 0.18),
+      child: AnimatedOpacity(
+        opacity: enabled ? 1 : 0.58,
+        duration: const Duration(milliseconds: 160),
+        child: Row(
+          children: [
+            RevisionIconTile(
+              icon: icon,
+              accent: accent,
+              size: 46,
+              iconSize: 24,
+            ),
+            const SizedBox(width: RevisionSpacing.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: RevisionTypography.sectionTitle),
+                  const SizedBox(height: RevisionSpacing.xs),
+                  Text(subtitle, style: RevisionTypography.body),
+                ],
+              ),
+            ),
+            const SizedBox(width: RevisionSpacing.s),
+            trailing ??
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: enabled
+                      ? RevisionColors.textMuted
+                      : RevisionColors.textFaint,
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class RevisionMetricPill extends StatelessWidget {
   const RevisionMetricPill({
     required this.label,

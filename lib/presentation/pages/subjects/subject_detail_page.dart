@@ -7,13 +7,12 @@ import 'package:Neralune/features/documents/application/subject_documents_notifi
 import 'package:Neralune/features/documents/domain/revision_document.dart';
 import 'package:Neralune/features/subjects/application/subjects_controller.dart';
 import 'package:Neralune/features/subjects/domain/subject.dart';
-import 'package:Neralune/presentation/theme/app_colors.dart';
-import 'package:Neralune/presentation/theme/app_spacing.dart';
-import 'package:Neralune/presentation/widgets/revision_button.dart';
-import 'package:Neralune/presentation/widgets/revision_icon_badge.dart';
-import 'package:Neralune/presentation/widgets/revision_page.dart';
-import 'package:Neralune/presentation/widgets/revision_panel.dart';
-import 'package:Neralune/presentation/widgets/revision_status_pill.dart';
+import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
+import 'package:Neralune/presentation/design_system/components/revision_states.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_colors.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_spacing.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_subject_visuals.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_typography.dart';
 import 'package:Neralune/presentation/widgets/documents/document_import_button.dart';
 
 class SubjectDetailPage extends ConsumerStatefulWidget {
@@ -58,9 +57,9 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer le cours ?'),
-        content: const Text(
-          'Cette action supprimera les notions et supports lies a ce cours.',
+        title: const Text('Supprimer la source ?'),
+        content: Text(
+          'Cette action supprimera les notions et supports liés à ${document.fileName}.',
         ),
         actions: [
           TextButton(
@@ -88,7 +87,7 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible de supprimer le cours')),
+        const SnackBar(content: Text('Impossible de supprimer la source')),
       );
     }
   }
@@ -101,74 +100,95 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
         final subject = snapshot.data;
 
         if (snapshot.connectionState != ConnectionState.done) {
-          return const RevisionPage(
-            title: 'Chargement',
-            children: [LinearProgressIndicator()],
+          return const RevisionPageScaffold(
+            children: [RevisionLoadingState(label: 'Chargement de la matière')],
           );
         }
 
         if (snapshot.hasError || subject == null) {
-          return RevisionPage(
-            title: 'Matiere indisponible',
+          return RevisionPageScaffold(
             children: [
-              Text(
-                'Impossible de charger la matiere',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.m),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: RevisionButton(
-                  onPressed: _reloadSubject,
-                  icon: Icons.refresh,
-                  label: 'Reessayer',
-                  style: RevisionButtonStyle.ghost,
-                ),
+              RevisionErrorState(
+                title: 'Matière indisponible',
+                message: 'Impossible de charger cette matière pour le moment.',
+                actionLabel: 'Réessayer',
+                onAction: _reloadSubject,
               ),
             ],
           );
         }
 
+        final visualTheme = revisionSubjectVisualThemeFor(subject.name);
         final documents = ref.watch(
           subjectDocumentsNotifierProvider(widget.subjectId),
         );
 
-        return RevisionPage(
-          title: subject.name,
-          subtitle: 'Priorite ${subject.priority}',
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: RevisionButton(
-                onPressed: () => context.go(
-                  Uri(
-                    path: activitiesRoutePath,
-                    queryParameters: {'subjectId': widget.subjectId},
-                  ).toString(),
-                ),
-                icon: Icons.play_arrow,
-                label: 'Lancer un diagnostic',
+        return RevisionPageScaffold(
+          headerChildren: [
+            RevisionGlassCard(
+              gradient: visualTheme.gradient,
+              borderColor: visualTheme.accent.withValues(alpha: 0.40),
+              child: Row(
+                children: [
+                  RevisionIconTile(
+                    icon: visualTheme.icon,
+                    accent: visualTheme.accent,
+                    size: 58,
+                  ),
+                  const SizedBox(width: RevisionSpacing.l),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          subject.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: RevisionTypography.pageTitle,
+                        ),
+                        const SizedBox(height: RevisionSpacing.xs),
+                        Text(
+                          'Priorité ${subject.priority} · ${_subjectRhythmLabel(subject)}',
+                          style: RevisionTypography.body.copyWith(
+                            color: RevisionColors.text,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            Row(
+            Wrap(
+              spacing: RevisionSpacing.s,
+              runSpacing: RevisionSpacing.s,
               children: [
-                Expanded(
-                  child: Text(
-                    'Cours',
-                    style: Theme.of(context).textTheme.titleLarge,
+                RevisionHeaderActionPill(
+                  label: 'Réviser',
+                  icon: Icons.play_arrow_rounded,
+                  accent: visualTheme.accent,
+                  onTap: () => context.go(
+                    Uri(
+                      path: activitiesRoutePath,
+                      queryParameters: {'subjectId': widget.subjectId},
+                    ).toString(),
                   ),
                 ),
-                IconButton(
-                  onPressed: _reloadSubject,
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Recharger',
+                RevisionHeaderActionPill(
+                  label: 'Rafraîchir',
+                  icon: Icons.refresh_rounded,
+                  accent: RevisionColors.cyan,
+                  onTap: _reloadSubject,
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.s),
+          ],
+          children: [
+            RevisionSectionHeader(
+              title: 'Sources importées',
+              subtitle:
+                  'Ajoute des PDF pour préparer les notions et les fiches.',
+            ),
             Align(
               alignment: Alignment.centerLeft,
               child: DocumentImportButton(
@@ -177,30 +197,39 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
                 onImported: _reloadDocuments,
               ),
             ),
-            const SizedBox(height: AppSpacing.l),
             documents.when(
-              loading: () => const LinearProgressIndicator(),
-              error: (error, stackTrace) =>
-                  _DocumentsErrorState(onRetry: _reloadDocuments),
+              loading: () =>
+                  const RevisionLoadingState(label: 'Chargement des sources'),
+              error: (error, stackTrace) => RevisionErrorState(
+                title: 'Sources indisponibles',
+                message: 'Impossible de charger les sources de cette matière.',
+                actionLabel: 'Réessayer',
+                onAction: _reloadDocuments,
+              ),
               data: (documents) {
                 if (documents.isEmpty) {
-                  return const Text('Aucun cours importe');
+                  return RevisionEmptyState(
+                    icon: Icons.upload_file_rounded,
+                    title: 'Aucune source importée',
+                    message:
+                        'Importe un PDF de cours pour commencer à structurer cette matière.',
+                    actionLabel: 'Réessayer',
+                    onAction: _reloadDocuments,
+                  );
                 }
 
                 return Column(
-                  spacing: AppSpacing.itemGap,
                   children: [
-                    for (final document in documents)
+                    for (final (index, document) in documents.indexed) ...[
+                      if (index > 0) const SizedBox(height: RevisionSpacing.m),
                       _DocumentListItem(
                         document: document,
                         onTap: () => context.go(
-                          documentDetailRoutePath(
-                            subjectId: widget.subjectId,
-                            documentId: document.id,
-                          ),
+                          '/subjects/${widget.subjectId}/documents/${document.id}',
                         ),
                         onDelete: () => _deleteDocument(document),
                       ),
+                    ],
                   ],
                 );
               },
@@ -208,34 +237,6 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
           ],
         );
       },
-    );
-  }
-}
-
-class _DocumentsErrorState extends StatelessWidget {
-  const _DocumentsErrorState({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Impossible de charger les cours',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.error,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.m),
-        RevisionButton(
-          onPressed: onRetry,
-          icon: Icons.refresh,
-          label: 'Reessayer',
-          style: RevisionButtonStyle.ghost,
-        ),
-      ],
     );
   }
 }
@@ -253,81 +254,45 @@ class _DocumentListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RevisionPanel(
+    final (:label, :color) = _documentStatus(document);
+
+    return RevisionSourceFileCard(
+      fileName: document.fileName,
+      statusLabel: '${_documentKindLabel(document.kind)} · $label',
+      statusColor: color,
       onTap: onTap,
-      child: Row(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const _DocumentIcon(),
-          const SizedBox(width: AppSpacing.l),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  document.fileName,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  _documentKindLabel(document.kind),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.m),
-          _DocumentStatusChip(
-            status: document.status,
-            errorCode: document.errorCode,
-          ),
-          const SizedBox(width: AppSpacing.s),
           IconButton(
             onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Supprimer le cours',
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: RevisionColors.textMuted,
+            ),
+            tooltip: 'Supprimer la source',
           ),
-          const SizedBox(width: AppSpacing.s),
-          const Icon(Icons.chevron_right),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: RevisionColors.textMuted,
+          ),
         ],
       ),
     );
   }
 }
 
-class _DocumentIcon extends StatelessWidget {
-  const _DocumentIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return const RevisionIconBadge(
-      icon: Icons.picture_as_pdf_outlined,
-      color: AppColors.aqua,
-    );
-  }
-}
-
-class _DocumentStatusChip extends StatelessWidget {
-  const _DocumentStatusChip({required this.status, this.errorCode});
-
-  final String status;
-  final String? errorCode;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final (:label, :color) = switch (status) {
-      'UPLOADED' => (label: 'Importe', color: colorScheme.secondary),
-      'PROCESSING' => (label: 'Analyse', color: colorScheme.primary),
-      'READY' => (label: 'Pret', color: colorScheme.tertiary),
-      'FAILED' => (
-        label: _failedDocumentLabel(errorCode),
-        color: colorScheme.error,
-      ),
-      _ => (label: status, color: colorScheme.outline),
-    };
-
-    return RevisionStatusPill(label: label, color: color);
-  }
+({String label, Color color}) _documentStatus(RevisionDocument document) {
+  return switch (document.status) {
+    'UPLOADED' => (label: 'Importée', color: RevisionColors.cyan),
+    'PROCESSING' => (label: 'En analyse', color: RevisionColors.violet),
+    'READY' => (label: 'Prête', color: RevisionColors.green),
+    'FAILED' => (
+      label: _failedDocumentLabel(document.errorCode),
+      color: RevisionColors.red,
+    ),
+    _ => (label: document.status, color: RevisionColors.textMuted),
+  };
 }
 
 String _failedDocumentLabel(String? errorCode) {
@@ -337,7 +302,7 @@ String _failedDocumentLabel(String? errorCode) {
     'KNOWLEDGE_EXTRACTION_EMPTY' => 'Aucune notion',
     'KNOWLEDGE_EXTRACTION_FAILED' => 'Erreur IA',
     'DOCUMENT_UNSUPPORTED_MIME_TYPE' => 'Format invalide',
-    _ => 'Echec',
+    _ => 'Échec',
   };
 }
 
@@ -348,4 +313,23 @@ String _documentKindLabel(String kind) {
     'EXAM_IMAGE' => 'Image examen',
     _ => kind,
   };
+}
+
+String _subjectRhythmLabel(Subject subject) {
+  if (subject.weeklyMinutes <= 0) {
+    return 'rythme à préciser';
+  }
+
+  final hours = subject.weeklyMinutes ~/ 60;
+  final minutes = subject.weeklyMinutes % 60;
+
+  if (minutes == 0) {
+    return '$hours h par semaine';
+  }
+
+  if (hours == 0) {
+    return '$minutes min par semaine';
+  }
+
+  return '$hours h $minutes min par semaine';
 }

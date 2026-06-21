@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/presentation/platform_file_bytes_reader.dart';
-import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
 
 typedef DocumentFilePicker = Future<FilePickerResult?> Function();
 
@@ -30,10 +30,10 @@ class _DocumentImportButtonState extends State<DocumentImportButton> {
 
   @override
   Widget build(BuildContext context) {
-    return RevisionButton(
+    return RevisionGradientButton(
       onPressed: _isUploading ? null : _importDocument,
-      icon: Icons.upload_file,
-      label: _isUploading ? 'Import...' : 'Importer un cours',
+      icon: Icons.upload_file_rounded,
+      label: _isUploading ? 'Import en cours...' : 'Importer un cours',
     );
   }
 

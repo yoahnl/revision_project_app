@@ -137,7 +137,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('cours.pdf'), findsOneWidget);
-    expect(find.text('Erreur IA'), findsOneWidget);
+    expect(find.textContaining('Erreur IA'), findsOneWidget);
   });
 
   testWidgets('opens document detail when tapping a document', (tester) async {
@@ -199,7 +199,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('cours.pdf'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Supprimer le cours'));
+    await tester.tap(find.byTooltip('Supprimer la source'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Supprimer'));
     await tester.pumpAndSettle();

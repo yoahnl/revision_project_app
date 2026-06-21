@@ -59,7 +59,7 @@ void main() {
 
     expect(find.text('Droit constitutionnel'), findsOneWidget);
     expect(find.text('Matière active'), findsOneWidget);
-    expect(find.text('Changer de matière'), findsOneWidget);
+    expect(find.text('Changer de matière'), findsNothing);
     expect(find.text('3/12 notions travaillées'), findsWidgets);
     expect(find.text('Maîtrise travaillée : 72%'), findsOneWidget);
     expect(find.text('Estimation globale : 18%'), findsOneWidget);

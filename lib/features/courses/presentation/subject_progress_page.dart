@@ -153,15 +153,6 @@ class _SubjectProgressLoaded extends StatelessWidget {
                       'Estimation globale : ${_percent(progress.estimatedGlobalMastery)}',
                       style: RevisionTypography.caption,
                     ),
-                    const SizedBox(height: RevisionSpacing.s),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => context.go(AppRoutes.home),
-                        icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                        label: const Text('Changer de matière'),
-                      ),
-                    ),
                   ],
                 ),
               ),

@@ -28,7 +28,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Droit constitutionnel'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Supprimer la matiere'));
+    await tester.tap(find.byTooltip('Supprimer la matière'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Supprimer'));
     await tester.pumpAndSettle();

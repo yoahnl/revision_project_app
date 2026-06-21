@@ -61,7 +61,7 @@ class _HomePageFrame extends StatelessWidget {
                   RevisionSpacing.pageX,
                   RevisionSpacing.pageTop,
                   RevisionSpacing.pageX,
-                  110,
+                  RevisionSpacing.l,
                 ),
                 child: child,
               ),

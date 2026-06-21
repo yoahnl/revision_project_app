@@ -101,6 +101,12 @@ void main() {
     expect(find.text('Réviser'), findsOneWidget);
     expect(find.text('Sources'), findsNothing);
     expect(find.byType(RevisionBottomNavigation), findsOneWidget);
+    final shellScaffold = find.ancestor(
+      of: find.byType(RevisionBottomNavigation),
+      matching: find.byType(Scaffold),
+    );
+    expect(shellScaffold, findsOneWidget);
+    expect(tester.widget<Scaffold>(shellScaffold).extendBody, isTrue);
     expect(testApp.authController.isSignedIn, isTrue);
   });
 
@@ -277,10 +283,17 @@ void main() {
     expect(find.text('Reprendre le cours'), findsNothing);
     expect(find.text('Cours 12'), findsNothing);
 
+    final courseListScrollable = find.byType(Scrollable).last;
+    final listBottom = tester.getRect(courseListScrollable).bottom;
+    final navigationTop = tester
+        .getRect(find.byType(RevisionBottomNavigation))
+        .top;
+    expect(navigationTop - listBottom, lessThanOrEqualTo(32));
+
     await tester.scrollUntilVisible(
       find.text('Cours 12'),
       600,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: courseListScrollable,
     );
     await tester.pumpAndSettle();
 
@@ -382,9 +395,11 @@ void main() {
         authController: AuthController(SignedOutAuthRepository()),
       ).widget,
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.text('Connexion'), findsOneWidget);
+    expect(find.text('NERALUNE'), findsOneWidget);
+    expect(find.textContaining('Révise mieux'), findsOneWidget);
     expect(find.text('Continuer avec Google'), findsOneWidget);
     expect(find.text('Continuer avec Apple'), findsOneWidget);
   });

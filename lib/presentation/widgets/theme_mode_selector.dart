@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../design_system/components/revision_mvp_components.dart';
+import '../design_system/components/revision_states.dart';
 import '../theme/theme_controller.dart';
 
 class ThemeModeSelector extends ConsumerWidget {
@@ -11,19 +13,22 @@ class ThemeModeSelector extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
 
     return themeMode.when(
-      loading: () => const LinearProgressIndicator(),
+      loading: () => const RevisionLoadingState(label: 'Chargement du thème'),
       error: (error, stackTrace) => const SizedBox.shrink(),
-      data: (mode) => SegmentedButton<ThemeMode>(
-        segments: const [
-          ButtonSegment(value: ThemeMode.system, label: Text('Systeme')),
-          ButtonSegment(value: ThemeMode.light, label: Text('Clair')),
-          ButtonSegment(value: ThemeMode.dark, label: Text('Sombre')),
-        ],
-        selected: {mode},
-        onSelectionChanged: (selection) {
-          ref.read(themeProvider.notifier).select(selection.single);
-        },
+      data: (mode) => RevisionSegmentedControl<ThemeMode>(
+        values: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
+        selected: mode,
+        labelOf: _themeLabel,
+        onChanged: ref.read(themeProvider.notifier).select,
       ),
     );
   }
+}
+
+String _themeLabel(ThemeMode mode) {
+  return switch (mode) {
+    ThemeMode.system => 'Système',
+    ThemeMode.light => 'Clair',
+    ThemeMode.dark => 'Sombre',
+  };
 }

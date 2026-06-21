@@ -32,6 +32,8 @@ class RevisionHomeShell extends StatelessWidget {
         }
 
         return Scaffold(
+          backgroundColor: Colors.transparent,
+          extendBody: true,
           body: RevisionBackground(child: SafeArea(child: navigationShell)),
           bottomNavigationBar: RevisionBottomNavigation(
             selectedIndex: navigationShell.currentIndex,
