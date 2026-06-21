@@ -19,16 +19,16 @@ class RevisionSessionPendingPage extends StatelessWidget {
         Text('Session de révision', style: RevisionTypography.pageTitle),
         const SizedBox(height: RevisionSpacing.xs),
         Text(
-          'Cette route est conservée pour le futur parcours Course.',
+          'Cette page sera utilisée par les prochains parcours de révision.',
           style: RevisionTypography.body,
         ),
         RevisionEmptyState(
-          title: 'Route V2 en attente',
+          title: 'Session indisponible',
           message:
-              'Les sessions réelles du MVP Core passent par Activités. Cette route sera reprise plus tard pour le parcours V2.',
+              'Pour le moment, lance une session rapide depuis un cours prêt.',
           icon: Icons.track_changes_rounded,
-          actionLabel: 'Ouvrir les activités',
-          onAction: () => context.go(AppRoutes.activities),
+          actionLabel: 'Retour aux révisions',
+          onAction: () => context.go(AppRoutes.revisions),
         ),
       ],
     );

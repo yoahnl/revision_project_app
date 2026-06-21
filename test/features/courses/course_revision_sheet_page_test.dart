@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/courses/application/courses_providers.dart';
-import 'package:revision_app/features/courses/domain/courses_repository.dart';
-import 'package:revision_app/features/courses/presentation/course_revision_sheet_page.dart';
-import 'package:revision_app/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/courses/application/courses_providers.dart';
+import 'package:Neralune/features/courses/domain/courses_repository.dart';
+import 'package:Neralune/features/courses/presentation/course_revision_sheet_page.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 
@@ -22,6 +22,9 @@ void main() {
     expect(find.text('Introduction destinée aux étudiants'), findsOneWidget);
     expect(find.text('Institutions'), findsOneWidget);
     expect(find.text('Le Parlement contrôle le Gouvernement.'), findsOneWidget);
+    expect(find.text('Complète'), findsNothing);
+    expect(find.text('Examen'), findsNothing);
+    expect(find.textContaining('réel'), findsNothing);
     expect(find.textContaining('étudiant.es'), findsNothing);
     expect(find.textContaining('Cours mais à la disposition'), findsNothing);
     expect(find.text('Sources >'), findsOneWidget);
@@ -63,6 +66,8 @@ void main() {
 
     expect(find.text('Aucune source prête'), findsOneWidget);
     expect(find.textContaining('traitée avec succès'), findsOneWidget);
+    expect(find.textContaining('données réelles'), findsNothing);
+    expect(find.textContaining('fictive'), findsNothing);
   });
 
   testWidgets('course revision sheet page shows course not found errors', (

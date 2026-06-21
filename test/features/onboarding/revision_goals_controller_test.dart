@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
-import 'package:revision_app/features/onboarding/domain/revision_goal.dart';
+import 'package:Neralune/features/onboarding/application/revision_goals_controller.dart';
+import 'package:Neralune/features/onboarding/domain/revision_goal.dart';
 
 class CapturingRevisionGoalsRepository implements RevisionGoalsRepository {
   RevisionGoal? savedGoal;

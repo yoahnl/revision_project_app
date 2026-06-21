@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_case_qualification_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_error_detection_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_multiple_choice_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_single_choice_widget.dart';
-import 'package:revision_app/presentation/widgets/revision_choice_tile.dart';
+import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_case_qualification_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_error_detection_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_multiple_choice_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_single_choice_widget.dart';
+import 'package:Neralune/presentation/widgets/revision_choice_tile.dart';
 
 import 'fixtures/rich_closed_exercise_fixtures.dart';
 

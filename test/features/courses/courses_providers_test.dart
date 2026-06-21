@@ -2,11 +2,11 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/courses/application/course_pdf_picker.dart';
-import 'package:revision_app/features/courses/application/courses_providers.dart';
-import 'package:revision_app/features/courses/domain/course_models.dart';
-import 'package:revision_app/features/courses/domain/courses_repository.dart';
-import 'package:revision_app/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/courses/application/course_pdf_picker.dart';
+import 'package:Neralune/features/courses/application/courses_providers.dart';
+import 'package:Neralune/features/courses/domain/course_models.dart';
+import 'package:Neralune/features/courses/domain/courses_repository.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 

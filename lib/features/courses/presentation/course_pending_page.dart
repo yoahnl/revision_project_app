@@ -27,9 +27,9 @@ class CoursePendingPage extends StatelessWidget {
         const SizedBox(height: RevisionSpacing.xs),
         Text(message, style: RevisionTypography.body),
         RevisionEmptyState(
-          title: 'Intégration Course requise',
+          title: 'Page bientôt disponible',
           message:
-              'Cette route est conservée, mais elle n’affiche plus de données fictives.',
+              'Cette page est conservée pour un prochain parcours. Reviens à l’accueil pour continuer.',
           icon: Icons.pending_actions_rounded,
           actionLabel: actionLabel,
           onAction: () => context.go(AppRoutes.home),

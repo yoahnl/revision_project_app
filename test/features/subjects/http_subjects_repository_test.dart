@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/subjects/data/http_subjects_repository.dart';
+import 'package:Neralune/features/subjects/data/http_subjects_repository.dart';
 
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   CapturingHttpClientAdapter(this.response);

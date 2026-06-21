@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
 
 import '../../../app/router/app_routes.dart';
 import '../../../presentation/design_system/components/revision_mvp_components.dart';
@@ -13,23 +13,14 @@ import '../../documents/domain/revision_document.dart';
 import '../application/courses_providers.dart';
 import '../domain/courses_repository.dart';
 
-class CourseRevisionSheetPage extends ConsumerStatefulWidget {
+class CourseRevisionSheetPage extends ConsumerWidget {
   const CourseRevisionSheetPage({required this.courseId, super.key});
 
   final String courseId;
 
   @override
-  ConsumerState<CourseRevisionSheetPage> createState() =>
-      _CourseRevisionSheetPageState();
-}
-
-class _CourseRevisionSheetPageState
-    extends ConsumerState<CourseRevisionSheetPage> {
-  _SheetMode _mode = _SheetMode.fast;
-
-  @override
-  Widget build(BuildContext context) {
-    final sheet = ref.watch(courseRevisionSheetProvider(widget.courseId));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sheet = ref.watch(courseRevisionSheetProvider(courseId));
 
     return RevisionPageScaffold(
       headerChildren: [
@@ -37,23 +28,21 @@ class _CourseRevisionSheetPageState
           children: [
             IconButton(
               tooltip: 'Retour au cours',
-              onPressed: () =>
-                  _popOrGo(context, AppRoutes.course(widget.courseId)),
+              onPressed: () => _popOrGo(context, AppRoutes.course(courseId)),
               icon: const Icon(Icons.arrow_back_rounded),
             ),
             const Spacer(),
             RevisionHeaderActionPill(
               label: 'Sources',
               icon: Icons.description_outlined,
-              onTap: () => _popOrGo(context, AppRoutes.course(widget.courseId)),
+              onTap: () => context.push(AppRoutes.courseSheetSources(courseId)),
             ),
           ],
         ),
-        RevisionSegmentedControl<_SheetMode>(
-          values: _SheetMode.values,
-          selected: _mode,
-          labelOf: _sheetModeLabel,
-          onChanged: (mode) => setState(() => _mode = mode),
+        Text('Fiche', style: RevisionTypography.hero),
+        Text(
+          'Résumé du cours, points à retenir et sources consultables.',
+          style: RevisionTypography.body,
         ),
       ],
       children: [
@@ -61,25 +50,13 @@ class _CourseRevisionSheetPageState
           loading: () =>
               const RevisionLoadingState(label: 'Chargement de la fiche'),
           error: (error, stackTrace) =>
-              _SheetErrorState(error: error, courseId: widget.courseId),
+              _SheetErrorState(error: error, courseId: courseId),
           data: (sheet) {
             if (sheet == null) {
-              return _GenerateSheetCard(courseId: widget.courseId);
+              return _GenerateSheetCard(courseId: courseId);
             }
 
-            if (_mode != _SheetMode.fast) {
-              return RevisionEmptyState(
-                title: '${_sheetModeLabel(_mode)} bientôt',
-                message:
-                    'Ce format de fiche est prévu plus tard. Le contenu rapide ci-dessus reste le format réel disponible aujourd’hui.',
-                icon: Icons.lock_outline_rounded,
-              );
-            }
-
-            return _RevisionSheetContent(
-              courseId: widget.courseId,
-              sheet: sheet,
-            );
+            return _RevisionSheetContent(courseId: courseId, sheet: sheet);
           },
         ),
       ],
@@ -119,8 +96,8 @@ class _GenerateSheetCard extends ConsumerWidget {
               .read(generateCourseRevisionSheetControllerProvider.notifier)
               .generate(courseId: courseId);
         } catch (_) {
-          // The controller stores the error state; the provider refresh below
-          // renders a domain-specific message if the backend rejected it.
+          // The controller stores the error state; the next rebuild renders the
+          // message mapped to the course state.
         }
       },
     );
@@ -148,7 +125,7 @@ class _SheetErrorState extends StatelessWidget {
     if (error is CourseNotFoundException) {
       return RevisionNotFoundState(
         title: 'Cours introuvable',
-        message: 'Ce cours n’existe pas dans les données réelles.',
+        message: 'Ce cours est introuvable.',
         actionLabel: 'Retour à l’accueil',
         onAction: () => context.go(AppRoutes.home),
       );
@@ -157,7 +134,7 @@ class _SheetErrorState extends StatelessWidget {
     return RevisionErrorState(
       title: 'Fiche indisponible',
       message:
-          'Impossible de charger cette fiche pour le moment. Aucune donnée fictive ne sera affichée.',
+          'Impossible de charger cette fiche pour le moment. Réessaie ou retourne au cours.',
       actionLabel: 'Réessayer',
       onAction: () => context.go(AppRoutes.courseSheet(courseId)),
     );
@@ -443,16 +420,6 @@ String _readableStudyText(String value) {
         RegExp(r'\b([A-Za-zÀ-ÖØ-öø-ÿ]+)\(e\)\b'),
         (match) => match.group(1)!,
       );
-}
-
-enum _SheetMode { fast, complete, exam }
-
-String _sheetModeLabel(_SheetMode mode) {
-  return switch (mode) {
-    _SheetMode.fast => 'Rapide',
-    _SheetMode.complete => 'Complète',
-    _SheetMode.exam => 'Examen',
-  };
 }
 
 void _popOrGo(BuildContext context, String fallbackLocation) {

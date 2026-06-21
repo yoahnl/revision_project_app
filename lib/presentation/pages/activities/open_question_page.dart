@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:revision_app/features/activities/application/activity_controller.dart';
-import 'package:revision_app/features/activities/domain/open_question_activity.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/widgets/documents/document_source_excerpt.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
-import 'package:revision_app/presentation/widgets/revision_message.dart';
-import 'package:revision_app/presentation/widgets/revision_panel.dart';
-import 'package:revision_app/presentation/widgets/revision_status_pill.dart';
+import 'package:Neralune/features/activities/application/activity_controller.dart';
+import 'package:Neralune/features/activities/domain/open_question_activity.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/widgets/documents/document_source_excerpt.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/widgets/revision_message.dart';
+import 'package:Neralune/presentation/widgets/revision_panel.dart';
+import 'package:Neralune/presentation/widgets/revision_status_pill.dart';
 
 class OpenQuestionPage extends StatefulWidget {
   const OpenQuestionPage({required this.activity, this.onSubmit, super.key});

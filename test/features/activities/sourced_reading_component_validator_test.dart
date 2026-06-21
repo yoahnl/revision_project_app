@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/activities/genui/sourced_reading_component_validator.dart';
+import 'package:Neralune/features/activities/genui/sourced_reading_component_validator.dart';
 
 void main() {
   test('accepts valid summary card payloads', () {

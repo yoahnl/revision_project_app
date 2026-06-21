@@ -2,9 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/documents/application/documents_controller.dart';
-import 'package:revision_app/features/documents/domain/revision_document.dart';
-import 'package:revision_app/presentation/pages/documents/document_detail_page.dart';
+import 'package:Neralune/features/documents/application/documents_controller.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
+import 'package:Neralune/presentation/pages/documents/document_detail_page.dart';
 
 class DetailDocumentsApi implements DocumentsApi {
   DetailDocumentsApi({

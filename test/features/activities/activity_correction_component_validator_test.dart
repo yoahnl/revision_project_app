@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/activities/genui/activity_correction_component_validator.dart';
+import 'package:Neralune/features/activities/genui/activity_correction_component_validator.dart';
 
 void main() {
   group('activity correction GenUI validators', () {

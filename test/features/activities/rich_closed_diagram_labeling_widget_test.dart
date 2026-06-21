@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_diagram_labeling_widget.dart';
+import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_diagram_labeling_widget.dart';
 
 import 'fixtures/rich_closed_exercise_fixtures.dart';
 

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/app/di/providers.dart';
-import 'package:revision_app/app/router/app_routes.dart';
-import 'package:revision_app/features/courses/application/courses_providers.dart';
-import 'package:revision_app/features/courses/domain/course_models.dart';
-import 'package:revision_app/features/courses/presentation/revisions_pending_page.dart';
-import 'package:revision_app/features/subjects/domain/subject.dart';
+import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/app/router/app_routes.dart';
+import 'package:Neralune/features/courses/application/courses_providers.dart';
+import 'package:Neralune/features/courses/domain/course_models.dart';
+import 'package:Neralune/features/courses/presentation/revisions_pending_page.dart';
+import 'package:Neralune/features/subjects/domain/subject.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 import '../../fakes/in_memory_subjects_repository.dart';

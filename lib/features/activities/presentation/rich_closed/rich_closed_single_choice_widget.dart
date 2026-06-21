@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_choice_group.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_question_card.dart';
+import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_choice_group.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_question_card.dart';
 
 class RichClosedSingleChoiceWidget extends StatefulWidget {
   const RichClosedSingleChoiceWidget({

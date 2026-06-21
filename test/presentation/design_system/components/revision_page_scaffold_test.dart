@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/presentation/design_system/components/revision_mvp_components.dart';
+import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
 
 void main() {
   testWidgets('keeps header fixed while body content scrolls', (tester) async {

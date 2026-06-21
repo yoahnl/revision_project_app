@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:genui/genui.dart';
-import 'package:revision_app/features/activities/genui/revision_activity_catalog.dart';
+import 'package:Neralune/features/activities/genui/revision_activity_catalog.dart';
 
 void main() {
   group('buildRevisionActivityCatalog', () {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
-import 'package:revision_app/features/revision_sessions/data/revision_sessions_api.dart';
-import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
-import 'package:revision_app/presentation/design_system/components/revision_mvp_components.dart';
-import 'package:revision_app/presentation/pages/revision_sessions/revision_session_result_page.dart';
+import 'package:Neralune/features/revision_sessions/application/revision_session_controller.dart';
+import 'package:Neralune/features/revision_sessions/data/revision_sessions_api.dart';
+import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
+import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
+import 'package:Neralune/presentation/pages/revision_sessions/revision_session_result_page.dart';
 
 import '../../fakes/in_memory_revision_sessions_api.dart';
 

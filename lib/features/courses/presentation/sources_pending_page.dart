@@ -17,7 +17,7 @@ class SourcesPendingPage extends StatelessWidget {
         Text('Sources', style: RevisionTypography.pageTitle),
         const SizedBox(height: RevisionSpacing.xs),
         Text(
-          'Les PDF se gèrent maintenant depuis le détail de chaque cours réel.',
+          'Les PDF se gèrent depuis le détail de chaque cours.',
           style: RevisionTypography.body,
         ),
       ],
@@ -25,7 +25,7 @@ class SourcesPendingPage extends StatelessWidget {
         RevisionEmptyState(
           title: 'Sources depuis les cours',
           message:
-              'Ouvre un cours réel puis utilise Ajouter une source. Cette page globale deviendra un catalogue centralisé plus tard.',
+              'Ouvre un cours puis utilise Ajouter une source. Cette page globale deviendra un catalogue centralisé plus tard.',
           icon: Icons.description_outlined,
           actionLabel: 'Ouvrir les cours',
           onAction: () => context.go(AppRoutes.home),

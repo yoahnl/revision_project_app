@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/core/routing/route_paths.dart';
-import 'package:revision_app/features/documents/application/documents_controller.dart';
-import 'package:revision_app/features/documents/application/subject_documents_notifier.dart';
-import 'package:revision_app/features/documents/domain/revision_document.dart';
-import 'package:revision_app/features/subjects/application/subjects_controller.dart';
-import 'package:revision_app/features/subjects/domain/subject.dart';
-import 'package:revision_app/presentation/theme/app_colors.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
-import 'package:revision_app/presentation/widgets/revision_icon_badge.dart';
-import 'package:revision_app/presentation/widgets/revision_page.dart';
-import 'package:revision_app/presentation/widgets/revision_panel.dart';
-import 'package:revision_app/presentation/widgets/revision_status_pill.dart';
-import 'package:revision_app/presentation/widgets/documents/document_import_button.dart';
+import 'package:Neralune/core/routing/route_paths.dart';
+import 'package:Neralune/features/documents/application/documents_controller.dart';
+import 'package:Neralune/features/documents/application/subject_documents_notifier.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/subjects/application/subjects_controller.dart';
+import 'package:Neralune/features/subjects/domain/subject.dart';
+import 'package:Neralune/presentation/theme/app_colors.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/widgets/revision_icon_badge.dart';
+import 'package:Neralune/presentation/widgets/revision_page.dart';
+import 'package:Neralune/presentation/widgets/revision_panel.dart';
+import 'package:Neralune/presentation/widgets/revision_status_pill.dart';
+import 'package:Neralune/presentation/widgets/documents/document_import_button.dart';
 
 class SubjectDetailPage extends ConsumerStatefulWidget {
   const SubjectDetailPage({

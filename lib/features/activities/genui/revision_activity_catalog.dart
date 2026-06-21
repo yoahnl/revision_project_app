@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:genui/genui.dart';
 import 'package:json_schema_builder/json_schema_builder.dart';
-import 'package:revision_app/features/activities/genui/activity_correction_component_validator.dart';
-import 'package:revision_app/features/activities/genui/sourced_reading_component_validator.dart';
-import 'package:revision_app/presentation/theme/app_colors.dart';
-import 'package:revision_app/presentation/theme/app_radius.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/widgets/documents/document_source_excerpt.dart';
-import 'package:revision_app/presentation/widgets/revision_choice_tile.dart';
-import 'package:revision_app/presentation/widgets/revision_message.dart';
-import 'package:revision_app/presentation/widgets/revision_panel.dart';
-import 'package:revision_app/presentation/widgets/revision_status_pill.dart';
+import 'package:Neralune/features/activities/genui/activity_correction_component_validator.dart';
+import 'package:Neralune/features/activities/genui/sourced_reading_component_validator.dart';
+import 'package:Neralune/presentation/theme/app_colors.dart';
+import 'package:Neralune/presentation/theme/app_radius.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/widgets/documents/document_source_excerpt.dart';
+import 'package:Neralune/presentation/widgets/revision_choice_tile.dart';
+import 'package:Neralune/presentation/widgets/revision_message.dart';
+import 'package:Neralune/presentation/widgets/revision_panel.dart';
+import 'package:Neralune/presentation/widgets/revision_status_pill.dart';
 
 const revisionActivityCatalogId = 'com.revision.activity_catalog';
 

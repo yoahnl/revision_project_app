@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/documents/application/documents_controller.dart';
-import 'package:revision_app/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/documents/application/documents_controller.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
 
 class FakeDocumentsApi implements DocumentsApi {
   int uploadCallCount = 0;

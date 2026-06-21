@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/auth/application/auth_controller.dart';
-import 'package:revision_app/features/auth/domain/auth_session.dart';
-import 'package:revision_app/features/auth/domain/authenticated_user.dart';
+import 'package:Neralune/features/auth/application/auth_controller.dart';
+import 'package:Neralune/features/auth/domain/auth_session.dart';
+import 'package:Neralune/features/auth/domain/authenticated_user.dart';
 
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({

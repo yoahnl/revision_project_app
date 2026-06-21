@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/onboarding/data/http_revision_goals_api.dart';
-import 'package:revision_app/features/onboarding/domain/revision_goal.dart';
+import 'package:Neralune/features/onboarding/data/http_revision_goals_api.dart';
+import 'package:Neralune/features/onboarding/domain/revision_goal.dart';
 
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   int fetchCallCount = 0;

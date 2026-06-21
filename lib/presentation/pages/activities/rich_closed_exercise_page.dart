@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:revision_app/features/activities/application/activity_controller.dart';
-import 'package:revision_app/features/activities/application/rich_closed_exercise_flow_controller.dart';
-import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_correction_list.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_question_renderer.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
-import 'package:revision_app/presentation/widgets/revision_message.dart';
-import 'package:revision_app/presentation/widgets/revision_page.dart';
-import 'package:revision_app/presentation/widgets/revision_panel.dart';
+import 'package:Neralune/features/activities/application/activity_controller.dart';
+import 'package:Neralune/features/activities/application/rich_closed_exercise_flow_controller.dart';
+import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_correction_list.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_question_renderer.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/widgets/revision_message.dart';
+import 'package:Neralune/presentation/widgets/revision_page.dart';
+import 'package:Neralune/presentation/widgets/revision_panel.dart';
 
 class RichClosedExercisePage extends StatefulWidget {
   const RichClosedExercisePage({

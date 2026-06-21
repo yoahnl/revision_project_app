@@ -4,9 +4,9 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/revision_sessions/data/http_revision_sessions_api.dart';
-import 'package:revision_app/features/revision_sessions/data/revision_sessions_api.dart';
-import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
+import 'package:Neralune/features/revision_sessions/data/http_revision_sessions_api.dart';
+import 'package:Neralune/features/revision_sessions/data/revision_sessions_api.dart';
+import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
 
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   CapturingHttpClientAdapter(this.response);

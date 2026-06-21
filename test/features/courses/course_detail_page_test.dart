@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/app/router/app_routes.dart';
-import 'package:revision_app/features/courses/application/course_pdf_picker.dart';
-import 'package:revision_app/features/courses/application/courses_providers.dart';
-import 'package:revision_app/features/courses/domain/course_models.dart';
-import 'package:revision_app/features/courses/domain/courses_repository.dart';
-import 'package:revision_app/features/courses/presentation/course_detail_page.dart';
-import 'package:revision_app/presentation/design_system/components/revision_mvp_components.dart';
+import 'package:Neralune/app/router/app_routes.dart';
+import 'package:Neralune/features/courses/application/course_pdf_picker.dart';
+import 'package:Neralune/features/courses/application/courses_providers.dart';
+import 'package:Neralune/features/courses/domain/course_models.dart';
+import 'package:Neralune/features/courses/domain/courses_repository.dart';
+import 'package:Neralune/features/courses/presentation/course_detail_page.dart';
+import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 

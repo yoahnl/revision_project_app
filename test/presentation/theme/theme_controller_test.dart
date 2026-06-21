@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/app/di/providers.dart';
-import 'package:revision_app/core/storage/kv_storage_port.dart';
-import 'package:revision_app/presentation/theme/theme_controller.dart';
+import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/core/storage/kv_storage_port.dart';
+import 'package:Neralune/presentation/theme/theme_controller.dart';
 
 class FakeKvStorage implements KvStoragePort {
   final Map<String, String> values = {};

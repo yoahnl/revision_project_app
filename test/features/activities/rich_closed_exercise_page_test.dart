@@ -2,14 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/activities/application/activity_controller.dart';
-import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
-import 'package:revision_app/features/activities/domain/open_question_activity.dart';
-import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_question_renderer.dart';
-import 'package:revision_app/presentation/pages/activities/rich_closed_exercise_page.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
+import 'package:Neralune/features/activities/application/activity_controller.dart';
+import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:Neralune/features/activities/domain/open_question_activity.dart';
+import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_question_renderer.dart';
+import 'package:Neralune/presentation/pages/activities/rich_closed_exercise_page.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
 
 import 'fixtures/rich_closed_exercise_fixtures.dart';
 

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_correction_presenter.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/widgets/revision_panel.dart';
-import 'package:revision_app/presentation/widgets/revision_status_pill.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_correction_presenter.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/widgets/revision_panel.dart';
+import 'package:Neralune/presentation/widgets/revision_status_pill.dart';
 
 class RichClosedCorrectionCard extends StatelessWidget {
   const RichClosedCorrectionCard({required this.item, super.key});

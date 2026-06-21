@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/app/router/app_routes.dart';
-import 'package:revision_app/features/activities/application/activity_controller.dart';
-import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
-import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
-import 'package:revision_app/features/revision_sessions/data/revision_sessions_api.dart';
-import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
-import 'package:revision_app/features/revision_sessions/presentation/quick_revision_quiz_flow.dart';
-import 'package:revision_app/core/routing/route_paths.dart';
-import 'package:revision_app/presentation/pages/activities/diagnostic_quiz_page.dart';
-import 'package:revision_app/presentation/pages/activities/open_question_page.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
-import 'package:revision_app/presentation/widgets/revision_message.dart';
-import 'package:revision_app/presentation/widgets/revision_page.dart';
-import 'package:revision_app/presentation/widgets/revision_panel.dart';
-import 'package:revision_app/presentation/widgets/revision_status_pill.dart';
+import 'package:Neralune/app/router/app_routes.dart';
+import 'package:Neralune/features/activities/application/activity_controller.dart';
+import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:Neralune/features/revision_sessions/application/revision_session_controller.dart';
+import 'package:Neralune/features/revision_sessions/data/revision_sessions_api.dart';
+import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
+import 'package:Neralune/features/revision_sessions/presentation/quick_revision_quiz_flow.dart';
+import 'package:Neralune/core/routing/route_paths.dart';
+import 'package:Neralune/presentation/pages/activities/diagnostic_quiz_page.dart';
+import 'package:Neralune/presentation/pages/activities/open_question_page.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/widgets/revision_message.dart';
+import 'package:Neralune/presentation/widgets/revision_page.dart';
+import 'package:Neralune/presentation/widgets/revision_panel.dart';
+import 'package:Neralune/presentation/widgets/revision_status_pill.dart';
 
 class RevisionSessionPage extends StatefulWidget {
   const RevisionSessionPage({
@@ -234,7 +234,7 @@ class _CompletedCourseQuickSessionRedirectState
   Widget build(BuildContext context) {
     return const RevisionPage(
       title: 'Révision terminée',
-      subtitle: 'Ouverture du résultat réel.',
+      subtitle: 'Ouverture du résultat.',
       children: [Center(child: CircularProgressIndicator())],
     );
   }
@@ -332,19 +332,19 @@ class _SessionSummaryPanel extends StatelessWidget {
                 icon: Icons.play_circle_outline,
               ),
               RevisionStatusPill(
-                label: 'Matière ${session.subjectId}',
+                label: 'Matière liée',
                 color: Theme.of(context).colorScheme.secondary,
                 icon: Icons.menu_book_outlined,
               ),
               if (session.documentId != null)
                 RevisionStatusPill(
-                  label: 'Document ${session.documentId}',
+                  label: 'Document lié',
                   color: Theme.of(context).colorScheme.secondary,
                   icon: Icons.description_outlined,
                 ),
               if (session.knowledgeUnitId != null)
                 RevisionStatusPill(
-                  label: 'Notion ${session.knowledgeUnitId}',
+                  label: 'Notion liée',
                   color: Theme.of(context).colorScheme.tertiary,
                   icon: Icons.psychology_outlined,
                 ),
@@ -509,10 +509,10 @@ class _RichClosedLauncher extends StatelessWidget {
   String get _contextLabel {
     final title = payload.knowledgeUnitTitle?.trim();
     if (title != null && title.isNotEmpty) {
-      return 'Notion: $title';
+      return 'Notion : $title';
     }
 
-    return 'Notion ${payload.knowledgeUnitId}';
+    return 'Notion à travailler';
   }
 }
 

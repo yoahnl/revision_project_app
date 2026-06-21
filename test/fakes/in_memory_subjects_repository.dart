@@ -1,5 +1,5 @@
-import 'package:revision_app/features/subjects/application/subjects_controller.dart';
-import 'package:revision_app/features/subjects/domain/subject.dart';
+import 'package:Neralune/features/subjects/application/subjects_controller.dart';
+import 'package:Neralune/features/subjects/domain/subject.dart';
 
 class InMemorySubjectsRepository implements SubjectsRepository {
   final List<Subject> subjects = [];

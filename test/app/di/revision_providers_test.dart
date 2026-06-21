@@ -1,15 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/app/di/providers.dart';
-import 'package:revision_app/core/config/app_config.dart';
-import 'package:revision_app/features/activities/application/activity_controller.dart';
-import 'package:revision_app/features/auth/application/auth_controller.dart';
-import 'package:revision_app/features/auth/domain/auth_session.dart';
-import 'package:revision_app/features/documents/application/documents_controller.dart';
-import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
-import 'package:revision_app/features/subjects/application/subjects_controller.dart';
-import 'package:revision_app/features/today/application/today_controller.dart';
+import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/core/config/app_config.dart';
+import 'package:Neralune/features/activities/application/activity_controller.dart';
+import 'package:Neralune/features/auth/application/auth_controller.dart';
+import 'package:Neralune/features/auth/domain/auth_session.dart';
+import 'package:Neralune/features/documents/application/documents_controller.dart';
+import 'package:Neralune/features/onboarding/application/revision_goals_controller.dart';
+import 'package:Neralune/features/subjects/application/subjects_controller.dart';
+import 'package:Neralune/features/today/application/today_controller.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
 import '../../fakes/in_memory_documents_api.dart';

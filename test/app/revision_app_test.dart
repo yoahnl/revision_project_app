@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/app/app_root.dart';
-import 'package:revision_app/app/di/providers.dart';
-import 'package:revision_app/core/storage/kv_storage_port.dart';
-import 'package:revision_app/features/activities/application/activity_controller.dart';
-import 'package:revision_app/features/auth/application/auth_controller.dart';
-import 'package:revision_app/features/auth/domain/auth_session.dart';
-import 'package:revision_app/features/auth/domain/authenticated_user.dart';
-import 'package:revision_app/features/courses/application/courses_providers.dart';
-import 'package:revision_app/features/courses/domain/course_models.dart';
-import 'package:revision_app/features/documents/application/documents_controller.dart';
-import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
-import 'package:revision_app/features/subjects/application/subjects_controller.dart';
-import 'package:revision_app/features/subjects/domain/subject.dart';
-import 'package:revision_app/features/today/application/today_controller.dart';
-import 'package:revision_app/presentation/widgets/revision_navigation.dart';
+import 'package:Neralune/app/app_root.dart';
+import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/core/storage/kv_storage_port.dart';
+import 'package:Neralune/features/activities/application/activity_controller.dart';
+import 'package:Neralune/features/auth/application/auth_controller.dart';
+import 'package:Neralune/features/auth/domain/auth_session.dart';
+import 'package:Neralune/features/auth/domain/authenticated_user.dart';
+import 'package:Neralune/features/courses/application/courses_providers.dart';
+import 'package:Neralune/features/courses/domain/course_models.dart';
+import 'package:Neralune/features/documents/application/documents_controller.dart';
+import 'package:Neralune/features/onboarding/application/revision_goals_controller.dart';
+import 'package:Neralune/features/subjects/application/subjects_controller.dart';
+import 'package:Neralune/features/subjects/domain/subject.dart';
+import 'package:Neralune/features/today/application/today_controller.dart';
+import 'package:Neralune/presentation/widgets/revision_navigation.dart';
 
 import '../fakes/in_memory_activity_api.dart';
 import '../fakes/in_memory_courses_repository.dart';
@@ -113,7 +113,10 @@ void main() {
     await tester.tap(find.text('Progrès'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Aucune matière réelle'), findsOneWidget);
+    expect(
+      find.text('Crée une matière pour suivre ta progression.'),
+      findsOneWidget,
+    );
     expect(find.text('Progression réelle en attente'), findsNothing);
     expect(find.text('78%'), findsNothing);
     expect(find.textContaining('CORE-06 branchera'), findsNothing);
@@ -338,6 +341,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Cours introuvable'), findsOneWidget);
+    expect(find.text('Impossible d’ouvrir ce cours'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
 
     GoRouter.of(context).go('/revision-sessions/fake/result');

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/core/routing/route_paths.dart';
-import 'package:revision_app/presentation/widgets/revision_background.dart';
-import 'package:revision_app/presentation/widgets/revision_navigation.dart';
+import 'package:Neralune/core/routing/route_paths.dart';
+import 'package:Neralune/presentation/widgets/revision_background.dart';
+import 'package:Neralune/presentation/widgets/revision_navigation.dart';
 
 class RevisionHomeShell extends StatelessWidget {
   const RevisionHomeShell({super.key, required this.navigationShell});

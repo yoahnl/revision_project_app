@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/app/di/providers.dart';
-import 'package:revision_app/features/subjects/domain/subject.dart';
-import 'package:revision_app/presentation/pages/subjects/subjects_home_page.dart';
+import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/features/subjects/domain/subject.dart';
+import 'package:Neralune/presentation/pages/subjects/subjects_home_page.dart';
 
 import '../../fakes/in_memory_subjects_repository.dart';
 

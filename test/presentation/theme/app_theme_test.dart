@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/presentation/theme/app_colors.dart';
-import 'package:revision_app/presentation/theme/app_radius.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/theme/app_theme.dart';
+import 'package:Neralune/presentation/theme/app_colors.dart';
+import 'package:Neralune/presentation/theme/app_radius.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/theme/app_theme.dart';
 
 void main() {
   test('light and dark themes expose Revision design tokens', () {

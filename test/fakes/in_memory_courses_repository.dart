@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
-import 'package:revision_app/features/courses/domain/course_models.dart';
-import 'package:revision_app/features/courses/domain/courses_repository.dart';
-import 'package:revision_app/features/documents/domain/revision_document.dart';
-import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
+import 'package:Neralune/features/courses/domain/course_models.dart';
+import 'package:Neralune/features/courses/domain/courses_repository.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
 
 class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, List<CourseListItem>> coursesBySubject = {};

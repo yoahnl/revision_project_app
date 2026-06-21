@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/app/di/providers.dart';
-import 'package:revision_app/features/today/domain/today_plan.dart';
-import 'package:revision_app/presentation/pages/today/today_page.dart';
+import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/features/today/domain/today_plan.dart';
+import 'package:Neralune/presentation/pages/today/today_page.dart';
 
 import '../../fakes/in_memory_today_repository.dart';
 

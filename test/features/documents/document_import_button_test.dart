@@ -4,10 +4,10 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/documents/application/documents_controller.dart';
-import 'package:revision_app/features/documents/domain/revision_document.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
-import 'package:revision_app/presentation/widgets/documents/document_import_button.dart';
+import 'package:Neralune/features/documents/application/documents_controller.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/widgets/documents/document_import_button.dart';
 
 class CompletingDocumentsApi implements DocumentsApi {
   final completer = Completer<void>();

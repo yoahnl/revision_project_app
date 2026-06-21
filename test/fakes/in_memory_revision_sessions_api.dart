@@ -1,7 +1,7 @@
-import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
-import 'package:revision_app/features/activities/domain/open_question_activity.dart';
-import 'package:revision_app/features/revision_sessions/data/revision_sessions_api.dart';
-import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
+import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:Neralune/features/activities/domain/open_question_activity.dart';
+import 'package:Neralune/features/revision_sessions/data/revision_sessions_api.dart';
+import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
 
 class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
   String? startedSubjectId;

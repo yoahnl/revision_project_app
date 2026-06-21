@@ -1,9 +1,9 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:revision_app/features/documents/application/documents_controller.dart';
-import 'package:revision_app/features/documents/presentation/platform_file_bytes_reader.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
+import 'package:Neralune/features/documents/application/documents_controller.dart';
+import 'package:Neralune/features/documents/presentation/platform_file_bytes_reader.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
 
 typedef DocumentFilePicker = Future<FilePickerResult?> Function();
 

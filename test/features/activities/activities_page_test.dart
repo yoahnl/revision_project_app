@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/activities/application/activity_controller.dart';
-import 'package:revision_app/presentation/pages/activities/activities_page.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
+import 'package:Neralune/features/activities/application/activity_controller.dart';
+import 'package:Neralune/presentation/pages/activities/activities_page.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
 

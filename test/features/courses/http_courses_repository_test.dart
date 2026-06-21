@@ -4,9 +4,9 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/courses/data/http_courses_repository.dart';
-import 'package:revision_app/features/courses/domain/course_models.dart';
-import 'package:revision_app/features/courses/domain/courses_repository.dart';
+import 'package:Neralune/features/courses/data/http_courses_repository.dart';
+import 'package:Neralune/features/courses/domain/course_models.dart';
+import 'package:Neralune/features/courses/domain/courses_repository.dart';
 
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   CapturingHttpClientAdapter(this.response);

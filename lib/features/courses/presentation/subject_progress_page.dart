@@ -37,7 +37,7 @@ class SubjectProgressPage extends ConsumerWidget {
           error: (error, stackTrace) => RevisionErrorState(
             title: 'Impossible de charger les matières',
             message:
-                'La progression réelle ne peut pas être calculée sans matière chargée.',
+                'Choisis ou crée une matière pour afficher ta progression.',
             actionLabel: 'Réessayer',
             onAction: () =>
                 ref.read(subjectsNotifierProvider.notifier).reload(),
@@ -45,9 +45,9 @@ class SubjectProgressPage extends ConsumerWidget {
           data: (subject) {
             if (subject == null) {
               return RevisionEmptyState(
-                title: 'Aucune matière réelle',
+                title: 'Crée une matière pour suivre ta progression.',
                 message:
-                    'Crée une matière puis ajoute des cours et sources pour suivre ta progression.',
+                    'Ajoute ensuite un cours et une source pour commencer à voir tes notions.',
                 icon: Icons.trending_up_rounded,
                 actionLabel: 'Ouvrir les matières',
                 onAction: () => context.go(AppRoutes.subjects),
@@ -77,7 +77,7 @@ class _SubjectProgressContent extends ConsumerWidget {
       error: (error, stackTrace) => RevisionErrorState(
         title: 'Progression indisponible',
         message:
-            'Impossible de charger les métriques réelles de cette matière.',
+            'Impossible de charger les informations de progression pour cette matière.',
         actionLabel: 'Réessayer',
         onAction: () => ref.invalidate(subjectProgressProvider(subject.id)),
       ),
@@ -128,6 +128,8 @@ class _SubjectProgressLoaded extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(subject.name, style: RevisionTypography.sectionTitle),
+                    const SizedBox(height: RevisionSpacing.xs),
+                    Text('Matière active', style: RevisionTypography.caption),
                     const SizedBox(height: RevisionSpacing.s),
                     Text(
                       '${progress.practicedKnowledgeUnitCount}/${progress.knowledgeUnitCount} notions travaillées',
@@ -151,6 +153,15 @@ class _SubjectProgressLoaded extends StatelessWidget {
                       'Estimation globale : ${_percent(progress.estimatedGlobalMastery)}',
                       style: RevisionTypography.caption,
                     ),
+                    const SizedBox(height: RevisionSpacing.s),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => context.go(AppRoutes.home),
+                        icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                        label: const Text('Changer de matière'),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -162,9 +173,9 @@ class _SubjectProgressLoaded extends StatelessWidget {
         const SizedBox(height: RevisionSpacing.l),
         if (progress.courses.isEmpty)
           RevisionEmptyState(
-            title: 'Aucun cours réel à suivre',
+            title: 'Aucun cours à suivre',
             message:
-                'Crée un cours, ajoute une source PDF, puis révise pour faire progresser ces métriques.',
+                'Crée un cours, ajoute une source PDF, puis révise pour suivre tes notions.',
             icon: Icons.layers_outlined,
             actionLabel: 'Retour à l’accueil',
             onAction: () => context.go(AppRoutes.home),
@@ -201,7 +212,7 @@ class _SubjectProgressMeta extends StatelessWidget {
           accent: visual.accent,
         ),
         RevisionMetricPill(
-          label: '${progress.readyCourseCount} prêts',
+          label: '${progress.readyCourseCount} avec source prête',
           icon: Icons.check_circle_rounded,
           accent: RevisionColors.green,
         ),
@@ -300,7 +311,7 @@ class _WeakPointSummary extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: RevisionSpacing.s),
-        Text('À surveiller', style: RevisionTypography.sectionTitle),
+        Text('À préparer', style: RevisionTypography.sectionTitle),
         const SizedBox(height: RevisionSpacing.m),
         for (final course in weakCourses) ...[
           RevisionGlassCard(
@@ -359,9 +370,8 @@ String _stateLabel(CourseProgressState state) {
       'Source prête, mais aucune notion exploitable.',
     CourseProgressState.readyNotPracticed =>
       'Notions prêtes, pas encore travaillées.',
-    CourseProgressState.practiced =>
-      'Progression réelle basée sur tes réponses.',
-    CourseProgressState.unknown => 'Progression réelle disponible.',
+    CourseProgressState.practiced => 'Progression basée sur tes réponses.',
+    CourseProgressState.unknown => 'Progression disponible.',
   };
 }
 

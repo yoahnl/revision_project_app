@@ -15,10 +15,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marionette_flutter/marionette_flutter.dart';
-import 'package:revision_app/app/app_root.dart';
-import 'package:revision_app/app/di/infrastructure_providers.dart';
-import 'package:revision_app/core/config/app_config.dart';
-import 'package:revision_app/firebase_options.dart';
+import 'package:Neralune/app/app_root.dart';
+import 'package:Neralune/app/di/infrastructure_providers.dart';
+import 'package:Neralune/core/config/app_config.dart';
+import 'package:Neralune/firebase_options.dart';
 
 Future<void> main() async {
   final isFlutterTest = Platform.environment.containsKey('FLUTTER_TEST');

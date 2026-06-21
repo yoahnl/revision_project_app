@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/app/di/providers.dart';
-import 'package:revision_app/features/documents/application/subject_documents_notifier.dart';
-import 'package:revision_app/features/documents/domain/revision_document.dart';
+import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/features/documents/application/subject_documents_notifier.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
 
 import '../../fakes/in_memory_documents_api.dart';
 

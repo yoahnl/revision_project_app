@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/core/routing/route_paths.dart';
-import 'package:revision_app/features/activities/application/activity_controller.dart';
-import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
-import 'package:revision_app/features/activities/domain/open_question_activity.dart';
-import 'package:revision_app/features/activities/genui/diagnostic_quiz_activity_validator.dart';
-import 'package:revision_app/features/activities/genui/revision_activity_catalog.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
-import 'package:revision_app/presentation/widgets/revision_message.dart';
-import 'package:revision_app/presentation/widgets/revision_page.dart';
-import 'package:revision_app/presentation/widgets/revision_panel.dart';
+import 'package:Neralune/core/routing/route_paths.dart';
+import 'package:Neralune/features/activities/application/activity_controller.dart';
+import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:Neralune/features/activities/domain/open_question_activity.dart';
+import 'package:Neralune/features/activities/genui/diagnostic_quiz_activity_validator.dart';
+import 'package:Neralune/features/activities/genui/revision_activity_catalog.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/widgets/revision_message.dart';
+import 'package:Neralune/presentation/widgets/revision_page.dart';
+import 'package:Neralune/presentation/widgets/revision_panel.dart';
 
 import 'diagnostic_quiz_page.dart';
 import 'open_question_page.dart';

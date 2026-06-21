@@ -4,8 +4,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/today/data/http_today_repository.dart';
-import 'package:revision_app/features/today/domain/today_plan.dart';
+import 'package:Neralune/features/today/data/http_today_repository.dart';
+import 'package:Neralune/features/today/domain/today_plan.dart';
 
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   CapturingHttpClientAdapter(this.response);

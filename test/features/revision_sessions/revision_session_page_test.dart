@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/app/router/app_routes.dart';
-import 'package:revision_app/features/activities/application/activity_controller.dart';
-import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
-import 'package:revision_app/features/courses/application/courses_providers.dart';
-import 'package:revision_app/features/courses/domain/course_models.dart';
-import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
-import 'package:revision_app/features/revision_sessions/domain/revision_session.dart';
-import 'package:revision_app/presentation/pages/revision_sessions/revision_session_page.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
+import 'package:Neralune/app/router/app_routes.dart';
+import 'package:Neralune/features/activities/application/activity_controller.dart';
+import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:Neralune/features/courses/application/courses_providers.dart';
+import 'package:Neralune/features/courses/domain/course_models.dart';
+import 'package:Neralune/features/revision_sessions/application/revision_session_controller.dart';
+import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
+import 'package:Neralune/presentation/pages/revision_sessions/revision_session_page.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
 
 import '../../fakes/in_memory_activity_api.dart';
 import '../../fakes/in_memory_courses_repository.dart';
@@ -62,7 +62,7 @@ void main() {
 
       expect(api.startCount, 1);
       expect(find.text('Questions riches'), findsWidgets);
-      expect(find.text('Notion: Institutions politiques'), findsOneWidget);
+      expect(find.text('Notion : Institutions politiques'), findsOneWidget);
       expect(find.text('Questions riches recommandées.'), findsOneWidget);
       expect(find.text('Commencer'), findsOneWidget);
       expect(find.text('question-1'), findsNothing);

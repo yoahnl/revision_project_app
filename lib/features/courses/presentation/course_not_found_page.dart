@@ -19,13 +19,12 @@ class CourseNotFoundPage extends StatelessWidget {
         Text('Cours introuvable', style: RevisionTypography.pageTitle),
         const SizedBox(height: RevisionSpacing.xs),
         Text(
-          'Ce cours n’existe pas encore dans les données réelles.',
+          'Ce cours est introuvable ou n’est plus disponible.',
           style: RevisionTypography.body,
         ),
         RevisionNotFoundState(
-          title: 'Aucun fallback vers un cours fictif',
-          message:
-              'La route demandée ne peut pas afficher de fixture. Retourne à l’accueil pour choisir un cours réel existant.',
+          title: 'Impossible d’ouvrir ce cours',
+          message: 'Retourne à l’accueil pour choisir un cours disponible.',
           actionLabel: 'Retour à l’accueil',
           onAction: () => context.go(AppRoutes.home),
         ),

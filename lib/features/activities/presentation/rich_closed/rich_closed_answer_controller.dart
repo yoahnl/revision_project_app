@@ -1,4 +1,4 @@
-import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
+import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
 
 class RichClosedCoreAnswerController {
   final Map<String, String> _singleSelections = {};

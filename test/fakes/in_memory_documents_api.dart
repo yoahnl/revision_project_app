@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:revision_app/features/documents/application/documents_controller.dart';
-import 'package:revision_app/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/documents/application/documents_controller.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
 
 class InMemoryDocumentsApi implements DocumentsApi {
   final List<RevisionDocument> documents = [];

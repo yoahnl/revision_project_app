@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
-import 'package:revision_app/presentation/pages/activities/diagnostic_quiz_page.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
+import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:Neralune/presentation/pages/activities/diagnostic_quiz_page.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
 
 void main() {
   testWidgets('renders the diagnostic quiz fallback activity', (tester) async {

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:revision_app/core/routing/route_paths.dart';
-import 'package:revision_app/features/onboarding/application/revision_goals_controller.dart';
-import 'package:revision_app/features/subjects/application/subjects_controller.dart';
-import 'package:revision_app/presentation/theme/app_colors.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/widgets/revision_background.dart';
-import 'package:revision_app/presentation/widgets/revision_button.dart';
-import 'package:revision_app/presentation/widgets/revision_icon_badge.dart';
-import 'package:revision_app/presentation/widgets/revision_message.dart';
-import 'package:revision_app/presentation/widgets/revision_page.dart';
-import 'package:revision_app/presentation/widgets/revision_panel.dart';
-import 'package:revision_app/presentation/widgets/revision_text_field.dart';
+import 'package:Neralune/core/routing/route_paths.dart';
+import 'package:Neralune/features/onboarding/application/revision_goals_controller.dart';
+import 'package:Neralune/features/subjects/application/subjects_controller.dart';
+import 'package:Neralune/presentation/theme/app_colors.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/widgets/revision_background.dart';
+import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/widgets/revision_icon_badge.dart';
+import 'package:Neralune/presentation/widgets/revision_message.dart';
+import 'package:Neralune/presentation/widgets/revision_page.dart';
+import 'package:Neralune/presentation/widgets/revision_panel.dart';
+import 'package:Neralune/presentation/widgets/revision_text_field.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({

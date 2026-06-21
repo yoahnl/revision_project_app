@@ -1,5 +1,5 @@
-import 'package:revision_app/features/today/application/today_controller.dart';
-import 'package:revision_app/features/today/domain/today_plan.dart';
+import 'package:Neralune/features/today/application/today_controller.dart';
+import 'package:Neralune/features/today/domain/today_plan.dart';
 
 class InMemoryTodayRepository implements TodayRepository {
   TodayPlan plan = TodayPlan(

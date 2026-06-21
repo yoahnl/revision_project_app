@@ -53,7 +53,7 @@ class _RevisionSessionResultPageState extends State<RevisionSessionResultPage> {
             children: [
               RevisionProcessingState(
                 title: 'Chargement du résultat',
-                message: 'Le backend prépare le bilan réel de la session.',
+                message: 'Préparation du bilan de la session.',
               ),
             ],
           );
@@ -416,5 +416,5 @@ String _errorMessage(Object? error) {
     return error.message;
   }
 
-  return 'Le résultat sera affiché uniquement depuis un calcul backend réel.';
+  return 'Le résultat sera affiché après une session finalisée.';
 }

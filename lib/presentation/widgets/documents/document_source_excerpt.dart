@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:revision_app/presentation/theme/app_radius.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/theme/app_radius.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
 
 class DocumentSourceExcerpt extends StatelessWidget {
   const DocumentSourceExcerpt({

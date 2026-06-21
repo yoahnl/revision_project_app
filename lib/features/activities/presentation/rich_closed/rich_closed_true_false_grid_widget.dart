@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_question_card.dart';
-import 'package:revision_app/presentation/theme/app_spacing.dart';
-import 'package:revision_app/presentation/widgets/revision_panel.dart';
+import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_question_card.dart';
+import 'package:Neralune/presentation/theme/app_spacing.dart';
+import 'package:Neralune/presentation/widgets/revision_panel.dart';
 
 class RichClosedTrueFalseGridWidget extends StatefulWidget {
   const RichClosedTrueFalseGridWidget({

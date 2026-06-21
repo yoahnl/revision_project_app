@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:revision_app/features/activities/domain/rich_closed_exercise.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_calculation_mcq_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_case_qualification_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_cause_consequence_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_date_slider_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_diagram_labeling_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_error_detection_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_image_choice_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_institution_matrix_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_matching_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_multiple_choice_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_ordering_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_single_choice_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_timeline_widget.dart';
-import 'package:revision_app/features/activities/presentation/rich_closed/rich_closed_true_false_grid_widget.dart';
+import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_calculation_mcq_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_case_qualification_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_cause_consequence_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_date_slider_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_diagram_labeling_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_error_detection_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_image_choice_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_institution_matrix_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_matching_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_multiple_choice_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_ordering_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_single_choice_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_timeline_widget.dart';
+import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_true_false_grid_widget.dart';
 
 class RichClosedQuestionRenderer extends StatelessWidget {
   const RichClosedQuestionRenderer({

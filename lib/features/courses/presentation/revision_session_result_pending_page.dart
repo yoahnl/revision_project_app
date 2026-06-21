@@ -19,13 +19,13 @@ class RevisionSessionResultPendingPage extends StatelessWidget {
         Text('Résultat de session', style: RevisionTypography.pageTitle),
         const SizedBox(height: RevisionSpacing.xs),
         Text(
-          'Le résultat sera affiché uniquement depuis un calcul backend réel.',
+          'Le résultat sera affiché après une session terminée.',
           style: RevisionTypography.body,
         ),
         RevisionEmptyState(
-          title: 'Résultat réel indisponible',
+          title: 'Résultat indisponible',
           message:
-              'Aucun score fictif n’est affiché ici. Les résultats course-level dédiés restent hors MVP Core actuel.',
+              'Aucun score n’est affiché tant qu’une session n’a pas été finalisée.',
           icon: Icons.emoji_events_outlined,
           actionLabel: 'Retour aux révisions',
           onAction: () => context.go(AppRoutes.revisions),

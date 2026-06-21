@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/revision_sessions/application/revision_session_controller.dart';
-import 'package:revision_app/features/revision_sessions/data/revision_sessions_api.dart';
+import 'package:Neralune/features/revision_sessions/application/revision_session_controller.dart';
+import 'package:Neralune/features/revision_sessions/data/revision_sessions_api.dart';
 
 import '../../fakes/in_memory_revision_sessions_api.dart';
 

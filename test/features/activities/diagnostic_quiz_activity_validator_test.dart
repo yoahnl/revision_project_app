@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:revision_app/features/activities/domain/diagnostic_quiz_activity.dart';
-import 'package:revision_app/features/activities/genui/diagnostic_quiz_activity_validator.dart';
+import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:Neralune/features/activities/genui/diagnostic_quiz_activity_validator.dart';
 
 void main() {
   test('accepts a bounded diagnostic quiz activity', () {
