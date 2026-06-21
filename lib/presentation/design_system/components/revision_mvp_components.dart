@@ -1284,24 +1284,38 @@ class RevisionFloatingAddButton extends StatelessWidget {
   }
 }
 
-class RevisionConfettiStrip extends StatefulWidget {
-  const RevisionConfettiStrip({super.key});
+class RevisionConfettiOverlay extends StatefulWidget {
+  const RevisionConfettiOverlay({this.particleCount = 180, super.key});
+
+  final int particleCount;
 
   @override
-  State<RevisionConfettiStrip> createState() => _RevisionConfettiStripState();
+  State<RevisionConfettiOverlay> createState() =>
+      _RevisionConfettiOverlayState();
 }
 
-class _RevisionConfettiStripState extends State<RevisionConfettiStrip>
+class _RevisionConfettiOverlayState extends State<RevisionConfettiOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  late List<_RevisionConfettiParticle> _particles;
 
   @override
   void initState() {
     super.initState();
+    _particles = _buildRevisionConfettiParticles(widget.particleCount);
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1100),
+      duration: const Duration(milliseconds: 7600),
     )..forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant RevisionConfettiOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.particleCount != widget.particleCount) {
+      _particles = _buildRevisionConfettiParticles(widget.particleCount);
+      _controller.forward(from: 0);
+    }
   }
 
   @override
@@ -1312,70 +1326,185 @@ class _RevisionConfettiStripState extends State<RevisionConfettiStrip>
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
+    final animationsDisabled = MediaQuery.disableAnimationsOf(context);
+
+    return IgnorePointer(
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
+          if (!animationsDisabled && _controller.isCompleted) {
+            return child!;
+          }
+
           return CustomPaint(
-            painter: _RevisionConfettiPainter(_controller.value),
-            child: const SizedBox.expand(),
+            painter: _RevisionConfettiOverlayPainter(
+              progress: animationsDisabled ? 0.72 : _controller.value,
+              particles: _particles,
+            ),
+            child: child,
           );
         },
+        child: const SizedBox.expand(),
       ),
     );
   }
 }
 
-class _RevisionConfettiPainter extends CustomPainter {
-  const _RevisionConfettiPainter(this.progress);
+List<_RevisionConfettiParticle> _buildRevisionConfettiParticles(int count) {
+  final random = math.Random(20260617);
+  return List<_RevisionConfettiParticle>.generate(count, (index) {
+    return _RevisionConfettiParticle(
+      x: random.nextDouble(),
+      start: random.nextDouble() * 0.42,
+      yOffset: random.nextDouble() * 0.22,
+      drift: (random.nextDouble() - 0.5) * 0.28,
+      size: 3 + random.nextDouble() * 8,
+      spin: random.nextDouble() * math.pi * 2,
+      speed: 0.28 + random.nextDouble() * 0.42,
+      colorIndex: random.nextInt(8),
+      shapeIndex: random.nextInt(4),
+    );
+  });
+}
+
+class _RevisionConfettiParticle {
+  const _RevisionConfettiParticle({
+    required this.x,
+    required this.start,
+    required this.yOffset,
+    required this.drift,
+    required this.size,
+    required this.spin,
+    required this.speed,
+    required this.colorIndex,
+    required this.shapeIndex,
+  });
+
+  final double x;
+  final double start;
+  final double yOffset;
+  final double drift;
+  final double size;
+  final double spin;
+  final double speed;
+  final int colorIndex;
+  final int shapeIndex;
+}
+
+class _RevisionConfettiOverlayPainter extends CustomPainter {
+  _RevisionConfettiOverlayPainter({
+    required this.progress,
+    required this.particles,
+  });
+
+  static const _strokeWidth = 3.0;
+  static const _colors = [
+    RevisionColors.blue,
+    RevisionColors.cyan,
+    RevisionColors.green,
+    RevisionColors.amber,
+    RevisionColors.pink,
+    RevisionColors.violet,
+    RevisionColors.mint,
+    RevisionColors.coral,
+  ];
 
   final double progress;
+  final List<_RevisionConfettiParticle> particles;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const colors = [
-      RevisionColors.blue,
-      RevisionColors.green,
-      RevisionColors.pink,
-      RevisionColors.amber,
-      RevisionColors.violet,
-      RevisionColors.mint,
-    ];
+    if (size.isEmpty || particles.isEmpty) return;
 
-    for (var index = 0; index < 22; index++) {
-      final baseX = size.width * ((index + 0.5) / 22);
-      final wave = math.sin((progress * math.pi * 2) + index) * 5;
-      final y = 8 + (progress * 20 * ((index % 3) + 1) / 3);
-      final opacity = (1 - (progress * 0.45)).clamp(0.45, 1.0);
-      final paint = Paint()
-        ..color = colors[index % colors.length].withValues(alpha: opacity);
-      final rect = Rect.fromCenter(
-        center: Offset(baseX + wave, y),
-        width: index.isEven ? 4 : 3,
-        height: index.isEven ? 10 : 7,
+    final paint = Paint()..strokeCap = StrokeCap.round;
+
+    for (final particle in particles) {
+      final phase = (progress * (0.55 + particle.speed) - particle.start).clamp(
+        0.0,
+        1.0,
       );
+      final eased = Curves.easeInOutSine.transform(phase);
+      final sway = math.sin((phase * math.pi * 3) + particle.spin);
+      final x =
+          (particle.x + particle.drift * eased + sway * 0.018) * size.width;
+      final y =
+          -size.height * (0.18 + particle.yOffset) +
+          (size.height * (1.2 + particle.yOffset)) * eased;
+      final rotation = particle.spin + phase * math.pi * 3.5;
+      final introOpacity = (phase / 0.18).clamp(0.0, 1.0);
+      final exitOpacity = (1 - ((phase - 0.88) / 0.12).clamp(0.0, 1.0));
+      final opacity = introOpacity * exitOpacity * (0.62 + (1 - phase) * 0.24);
 
       canvas.save();
-      canvas.translate(rect.center.dx, rect.center.dy);
-      canvas.rotate((index % 5 - 2) * math.pi / 7 + progress);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: rect.width,
-            height: rect.height,
-          ),
-          const Radius.circular(2),
-        ),
-        paint,
-      );
+      canvas.translate(x, y);
+      canvas.rotate(rotation);
+      paint
+        ..color = _colors[particle.colorIndex % _colors.length].withValues(
+          alpha: opacity,
+        )
+        ..strokeWidth = _strokeWidth;
+      _paintShape(canvas, paint, particle);
       canvas.restore();
     }
   }
 
+  void _paintShape(
+    Canvas canvas,
+    Paint paint,
+    _RevisionConfettiParticle particle,
+  ) {
+    final size = particle.size;
+
+    switch (particle.shapeIndex) {
+      case 0:
+        paint.style = PaintingStyle.fill;
+        canvas.drawCircle(Offset.zero, size * 0.45, paint);
+        break;
+      case 1:
+        paint.style = PaintingStyle.fill;
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: size * 0.72,
+              height: size * 1.85,
+            ),
+            const Radius.circular(RevisionSpacing.xs),
+          ),
+          paint,
+        );
+        break;
+      case 2:
+        paint.style = PaintingStyle.stroke;
+        canvas.drawLine(Offset(-size, 0), Offset(size, 0), paint);
+        break;
+      default:
+        paint.style = PaintingStyle.fill;
+        final path = Path()
+          ..moveTo(0, -size)
+          ..lineTo(size * 0.88, size * 0.72)
+          ..lineTo(-size * 0.88, size * 0.72)
+          ..close();
+        canvas.drawPath(path, paint);
+        break;
+    }
+  }
+
   @override
-  bool shouldRepaint(covariant _RevisionConfettiPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _RevisionConfettiOverlayPainter oldDelegate) {
+    return progress != oldDelegate.progress ||
+        particles != oldDelegate.particles;
+  }
+}
+
+class RevisionConfettiStrip extends StatelessWidget {
+  const RevisionConfettiStrip({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 120,
+      child: RevisionConfettiOverlay(particleCount: 90),
+    );
   }
 }

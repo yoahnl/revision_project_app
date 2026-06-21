@@ -28,7 +28,7 @@ void main() {
       expect(find.text('Quelle institution vote la loi ?'), findsOneWidget);
       expect(find.textContaining('Le préfet'), findsOneWidget);
       expect(find.textContaining('Le Parlement'), findsWidgets);
-      expect(find.byType(RevisionConfettiStrip), findsNothing);
+      expect(find.byType(RevisionConfettiOverlay), findsNothing);
       expect(find.text('78%'), findsNothing);
       expect(find.text('4/5 bonnes'), findsNothing);
     },
@@ -44,7 +44,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('83%'), findsWidgets);
-    expect(find.byType(RevisionConfettiStrip), findsOneWidget);
+    expect(find.byType(RevisionConfettiOverlay), findsOneWidget);
   });
 
   testWidgets('displays a not-ready error from backend result contract', (

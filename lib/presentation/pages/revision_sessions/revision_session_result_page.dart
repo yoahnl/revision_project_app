@@ -108,87 +108,100 @@ class _ResultContent extends StatelessWidget {
         .toList(growable: false);
     final courseId = result.session.courseId;
 
-    return RevisionPageScaffold(
+    final showConfetti = result.summary.score > 0.70;
+
+    return Stack(
       children: [
-        if (result.summary.score > 0.70) const RevisionConfettiStrip(),
-        Text(
-          'Session terminée',
-          textAlign: TextAlign.center,
-          style: RevisionTypography.sectionTitle,
-        ),
-        RevisionGlassCard(
-          child: Column(
-            children: [
-              RevisionMasteryRing(
-                value: result.summary.score,
-                label: '${(result.summary.score * 100).round()}%',
-                caption: 'global',
-                size: 112,
-                color: _scoreColor(result.summary.score),
-              ),
-              const SizedBox(height: RevisionSpacing.m),
-              Text(
-                _resultMessage(result.summary.score),
-                style: RevisionTypography.sectionTitle,
-              ),
-              const SizedBox(height: RevisionSpacing.xs),
-              Text(
-                '${result.summary.correctAnswers}/${result.summary.totalQuestions} bonnes réponses',
-                style: RevisionTypography.body,
-              ),
-            ],
-          ),
-        ),
-        if (mastered.isNotEmpty)
-          _ResultSection(
-            title: 'Tu maîtrises',
-            icon: Icons.check_circle_rounded,
-            color: RevisionColors.green,
-            units: mastered,
-          ),
-        if (toReview.isNotEmpty)
-          _ResultSection(
-            title: 'À retravailler',
-            icon: Icons.error_rounded,
-            color: RevisionColors.amber,
-            units: toReview,
-          ),
-        if (missedCorrections.isNotEmpty)
-          _MissedCorrectionsSection(corrections: missedCorrections),
-        RevisionGlassCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Prochaine étape', style: RevisionTypography.sectionTitle),
-              const SizedBox(height: RevisionSpacing.m),
-              if (courseId != null) ...[
-                RevisionGradientButton(
-                  label: 'Voir la fiche',
-                  icon: Icons.description_rounded,
-                  expanded: true,
-                  gradient: const LinearGradient(
-                    colors: [RevisionColors.glassStrong, RevisionColors.ink3],
+        RevisionPageScaffold(
+          children: [
+            Text(
+              'Session terminée',
+              textAlign: TextAlign.center,
+              style: RevisionTypography.sectionTitle,
+            ),
+            RevisionGlassCard(
+              child: Column(
+                children: [
+                  RevisionMasteryRing(
+                    value: result.summary.score,
+                    label: '${(result.summary.score * 100).round()}%',
+                    caption: 'global',
+                    size: 112,
+                    color: _scoreColor(result.summary.score),
                   ),
-                  onPressed: () =>
-                      context.push(AppRoutes.courseSheet(courseId)),
-                ),
-                const SizedBox(height: RevisionSpacing.m),
-                RevisionGradientButton(
-                  label: 'Retour au cours',
-                  icon: Icons.arrow_back_rounded,
-                  expanded: true,
-                  onPressed: () => context.go(AppRoutes.course(courseId)),
-                ),
-              ] else
-                RevisionGradientButton(
-                  label: 'Retour aux révisions',
-                  icon: Icons.arrow_back_rounded,
-                  expanded: true,
-                  onPressed: () => context.go(AppRoutes.revisions),
-                ),
-            ],
-          ),
+                  const SizedBox(height: RevisionSpacing.m),
+                  Text(
+                    _resultMessage(result.summary.score),
+                    style: RevisionTypography.sectionTitle,
+                  ),
+                  const SizedBox(height: RevisionSpacing.xs),
+                  Text(
+                    '${result.summary.correctAnswers}/${result.summary.totalQuestions} bonnes réponses',
+                    style: RevisionTypography.body,
+                  ),
+                ],
+              ),
+            ),
+            if (mastered.isNotEmpty)
+              _ResultSection(
+                title: 'Tu maîtrises',
+                icon: Icons.check_circle_rounded,
+                color: RevisionColors.green,
+                units: mastered,
+              ),
+            if (toReview.isNotEmpty)
+              _ResultSection(
+                title: 'À retravailler',
+                icon: Icons.error_rounded,
+                color: RevisionColors.amber,
+                units: toReview,
+              ),
+            if (missedCorrections.isNotEmpty)
+              _MissedCorrectionsSection(corrections: missedCorrections),
+            RevisionGlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Prochaine étape',
+                    style: RevisionTypography.sectionTitle,
+                  ),
+                  const SizedBox(height: RevisionSpacing.m),
+                  if (courseId != null) ...[
+                    RevisionGradientButton(
+                      label: 'Voir la fiche',
+                      icon: Icons.description_rounded,
+                      expanded: true,
+                      gradient: const LinearGradient(
+                        colors: [
+                          RevisionColors.glassStrong,
+                          RevisionColors.ink3,
+                        ],
+                      ),
+                      onPressed: () =>
+                          context.push(AppRoutes.courseSheet(courseId)),
+                    ),
+                    const SizedBox(height: RevisionSpacing.m),
+                    RevisionGradientButton(
+                      label: 'Retour au cours',
+                      icon: Icons.arrow_back_rounded,
+                      expanded: true,
+                      onPressed: () => context.go(AppRoutes.course(courseId)),
+                    ),
+                  ] else
+                    RevisionGradientButton(
+                      label: 'Retour aux révisions',
+                      icon: Icons.arrow_back_rounded,
+                      expanded: true,
+                      onPressed: () => context.go(AppRoutes.revisions),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
+        if (showConfetti)
+          const Positioned.fill(child: RevisionConfettiOverlay()),
       ],
     );
   }
