@@ -16,6 +16,7 @@ import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import 'course_not_found_page.dart';
+import 'course_quick_revision_launcher.dart';
 
 class CourseDetailPage extends ConsumerWidget {
   const CourseDetailPage({required this.courseId, super.key});
@@ -41,7 +42,7 @@ class CourseDetailPage extends ConsumerWidget {
             RevisionErrorState(
               title: 'Impossible de charger ce cours',
               message:
-                  'Aucune fixture ne remplacera ce cours. Réessaie ou retourne à l’accueil.',
+                  'Réessaie ou retourne à l’accueil pour choisir un autre cours.',
               actionLabel: 'Retour à l’accueil',
               onAction: () => context.go(AppRoutes.home),
             ),
@@ -111,6 +112,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
         _CourseHero(detail: detail, visual: visual),
       ],
       children: [
+        _CoursePrimaryAction(detail: detail, visual: visual),
         _StatsStrip(course: course, progress: progress, visual: visual),
         _CourseProgressSection(
           progress: progress,
@@ -264,6 +266,133 @@ class _CourseHero extends StatelessWidget {
   }
 }
 
+class _CoursePrimaryAction extends ConsumerWidget {
+  const _CoursePrimaryAction({required this.detail, required this.visual});
+
+  final CourseDetail detail;
+  final RevisionSubjectVisualTheme visual;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final action = _primaryActionFor(detail.sources);
+
+    return RevisionGlassCard(
+      borderColor: action.accent.withValues(alpha: 0.34),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          action.accent.withValues(alpha: 0.20),
+          RevisionColors.glassStrong,
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RevisionIconTile(icon: action.icon, accent: action.accent, size: 48),
+          const SizedBox(width: RevisionSpacing.m),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Action recommandée',
+                  style: RevisionTypography.caption.copyWith(
+                    color: visual.accent,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: RevisionSpacing.xs),
+                Text(action.title, style: RevisionTypography.sectionTitle),
+                const SizedBox(height: RevisionSpacing.xs),
+                Text(action.message, style: RevisionTypography.body),
+                const SizedBox(height: RevisionSpacing.m),
+                RevisionGradientButton(
+                  label: action.buttonLabel,
+                  icon: action.buttonIcon,
+                  onPressed: () => action.run(context, ref, detail),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrimaryCourseAction {
+  const _PrimaryCourseAction({
+    required this.title,
+    required this.message,
+    required this.buttonLabel,
+    required this.icon,
+    required this.buttonIcon,
+    required this.accent,
+    required this.run,
+  });
+
+  final String title;
+  final String message;
+  final String buttonLabel;
+  final IconData icon;
+  final IconData buttonIcon;
+  final Color accent;
+  final void Function(BuildContext context, WidgetRef ref, CourseDetail detail)
+  run;
+}
+
+_PrimaryCourseAction _primaryActionFor(List<CourseDocument> sources) {
+  if (sources.any((source) => source.status == CourseDocumentStatus.ready)) {
+    return _PrimaryCourseAction(
+      title: 'Réviser maintenant',
+      message: 'Une source est prête pour lancer des questions rapides.',
+      buttonLabel: 'Commencer une session rapide',
+      icon: Icons.flash_on_rounded,
+      buttonIcon: Icons.play_arrow_rounded,
+      accent: RevisionColors.blue,
+      run: (context, ref, detail) =>
+          _showQuickRevisionSheet(context, ref, detail),
+    );
+  }
+
+  if (sources.any(_isPendingSource)) {
+    return _PrimaryCourseAction(
+      title: 'Source en analyse',
+      message: 'La révision sera disponible quand le PDF sera prêt.',
+      buttonLabel: 'Voir les sources',
+      icon: Icons.hourglass_top_rounded,
+      buttonIcon: Icons.description_outlined,
+      accent: RevisionColors.amber,
+      run: (context, ref, detail) => _showSourcesSheet(context, ref, detail),
+    );
+  }
+
+  if (sources.isNotEmpty &&
+      sources.every((source) => source.status == CourseDocumentStatus.failed)) {
+    return _PrimaryCourseAction(
+      title: 'Source à corriger',
+      message:
+          'Ouvre les sources pour remplacer ou supprimer le PDF en erreur.',
+      buttonLabel: 'Voir les sources',
+      icon: Icons.error_outline_rounded,
+      buttonIcon: Icons.description_outlined,
+      accent: RevisionColors.red,
+      run: (context, ref, detail) => _showSourcesSheet(context, ref, detail),
+    );
+  }
+
+  return _PrimaryCourseAction(
+    title: 'Ajoute une source',
+    message: 'Ajoute un PDF pour préparer la fiche et les révisions.',
+    buttonLabel: 'Ajouter une source',
+    icon: Icons.upload_file_rounded,
+    buttonIcon: Icons.add_rounded,
+    accent: RevisionColors.blue,
+    run: (context, ref, detail) => _showSourcesSheet(context, ref, detail),
+  );
+}
+
 class _StatsStrip extends StatelessWidget {
   const _StatsStrip({
     required this.course,
@@ -322,7 +451,7 @@ class _CourseProgressSection extends StatelessWidget {
           const RevisionLoadingState(label: 'Chargement de la progression'),
       error: (error, stackTrace) => RevisionErrorState(
         title: 'Progression indisponible',
-        message: 'Les métriques réelles ne sont pas disponibles pour ce cours.',
+        message: 'Les métriques ne sont pas disponibles pour ce cours.',
         actionLabel: 'Réessayer',
         onAction: onRetry,
       ),
@@ -330,7 +459,7 @@ class _CourseProgressSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Progression réelle', style: RevisionTypography.sectionTitle),
+            Text('Progression', style: RevisionTypography.sectionTitle),
             const SizedBox(height: RevisionSpacing.m),
             Row(
               children: [
@@ -411,7 +540,9 @@ class _CourseModes extends ConsumerWidget {
           description: _quickRevisionActionLabel(detail.sources),
           icon: Icons.flash_on_rounded,
           accent: RevisionColors.blue,
-          trailingLabel: hasReadySource ? null : 'Bientôt',
+          trailingLabel: hasReadySource
+              ? null
+              : _quickRevisionBlockedLabel(detail.sources),
           enabled: hasReadySource && !isStartingQuickRevision,
           onTap: () => _showQuickRevisionSheet(context, ref, detail),
         ),
@@ -421,7 +552,7 @@ class _CourseModes extends ConsumerWidget {
           description: 'Cours complet et exemples détaillés.',
           icon: Icons.menu_book_rounded,
           accent: RevisionColors.violet,
-          trailingLabel: 'MVP+',
+          trailingLabel: 'Bientôt disponible',
           enabled: false,
         ),
         const SizedBox(height: RevisionSpacing.m),
@@ -430,13 +561,13 @@ class _CourseModes extends ConsumerWidget {
           description: 'Entraînements et sujets corrigés.',
           icon: Icons.gps_fixed_rounded,
           accent: RevisionColors.pink,
-          trailingLabel: 'MVP+',
+          trailingLabel: 'Bientôt disponible',
           enabled: false,
         ),
         if (quickRevisionState.hasError) ...[
           const SizedBox(height: RevisionSpacing.s),
           Text(
-            'Révision rapide indisponible pour ce cours.',
+            'Les questions sont en préparation. Réessaie dans un instant.',
             style: RevisionTypography.caption.copyWith(
               color: RevisionColors.red,
             ),
@@ -445,117 +576,30 @@ class _CourseModes extends ConsumerWidget {
       ],
     );
   }
-
-  Future<void> _showQuickRevisionSheet(
-    BuildContext context,
-    WidgetRef ref,
-    CourseDetail detail,
-  ) async {
-    final questionCount = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _QuickRevisionQuestionCountSheet(),
-    );
-
-    if (!context.mounted || questionCount == null) {
-      return;
-    }
-
-    await _startQuickRevision(
-      context,
-      ref,
-      detail,
-      questionCount: questionCount,
-    );
-  }
-
-  Future<void> _startQuickRevision(
-    BuildContext context,
-    WidgetRef ref,
-    CourseDetail detail, {
-    required int questionCount,
-  }) async {
-    var loadingDialogShown = false;
-    try {
-      loadingDialogShown = true;
-      unawaited(_showQuickRevisionLoadingDialog(context, questionCount));
-      final response = await ref
-          .read(startCourseQuickRevisionControllerProvider.notifier)
-          .start(detail: detail, questionCount: questionCount);
-
-      if (!context.mounted) {
-        return;
-      }
-
-      if (loadingDialogShown) {
-        Navigator.of(context, rootNavigator: true).pop();
-        loadingDialogShown = false;
-      }
-      context.go(
-        AppRoutes.revisionSessionV2(
-          sessionId: response.session.id,
-          courseId: detail.course.id,
-          mode: 'quick',
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-
-      if (loadingDialogShown) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_quickRevisionErrorLabel(error))));
-    }
-  }
 }
 
-Future<void> _showQuickRevisionLoadingDialog(
+Future<void> _showQuickRevisionSheet(
   BuildContext context,
-  int questionCount,
-) {
-  return showDialog<void>(
+  WidgetRef ref,
+  CourseDetail detail,
+) async {
+  final questionCount = await showModalBottomSheet<int>(
     context: context,
-    barrierDismissible: false,
-    builder: (context) => PopScope(
-      canPop: false,
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(RevisionSpacing.xl),
-        child: RevisionGlassCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 42,
-                height: 42,
-                child: CircularProgressIndicator(
-                  color: RevisionColors.blue,
-                  strokeWidth: 4,
-                ),
-              ),
-              const SizedBox(height: RevisionSpacing.l),
-              Text(
-                'Préparation des questions',
-                textAlign: TextAlign.center,
-                style: RevisionTypography.sectionTitle,
-              ),
-              const SizedBox(height: RevisionSpacing.s),
-              Text(
-                '$questionCount questions sont chargées depuis la banque du cours.',
-                textAlign: TextAlign.center,
-                style: RevisionTypography.body,
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => const _QuickRevisionQuestionCountSheet(),
+  );
+
+  if (!context.mounted || questionCount == null) {
+    return;
+  }
+
+  await startCourseQuickRevisionFlow(
+    context: context,
+    ref: ref,
+    courseId: detail.course.id,
+    questionCount: questionCount,
   );
 }
 
@@ -616,7 +660,7 @@ class _QuickRevisionQuestionCountSheetState
         ),
         const SizedBox(height: RevisionSpacing.s),
         Text(
-          'Les questions réutilisées viennent de la banque du cours. Si elle manque de questions, le backend en prépare par petits lots.',
+          'Les questions viennent de la banque du cours. Si elle en manque, le service en prépare par petits lots.',
           style: RevisionTypography.caption,
         ),
       ],
@@ -721,7 +765,7 @@ class _SourcesBottomSheet extends ConsumerWidget {
         if (isUploading)
           const RevisionProcessingState(
             title: 'Upload en cours...',
-            message: 'La source est envoyée au backend.',
+            message: 'La source est envoyée pour analyse.',
           ),
         if (uploadState.hasError)
           Text(
@@ -840,7 +884,7 @@ Future<bool> _confirmDeleteSource(BuildContext context, String fileName) async {
 
 String _quickRevisionActionLabel(List<CourseDocument> sources) {
   if (sources.any((source) => source.status == CourseDocumentStatus.ready)) {
-    return 'Synthèse essentielle depuis une source prête.';
+    return 'Questions rapides depuis une source prête.';
   }
 
   if (sources.any(_isPendingSource)) {
@@ -855,20 +899,17 @@ String _quickRevisionActionLabel(List<CourseDocument> sources) {
   return 'Ajoute une source pour réviser';
 }
 
-String _quickRevisionErrorLabel(Object error) {
-  if (error is CourseQuickRevisionUnavailableException) {
-    if (error.message == 'Course quick revision questions are being prepared') {
-      return 'Les questions sont en préparation. Réessaie dans un instant.';
-    }
-
-    return error.message;
+String _quickRevisionBlockedLabel(List<CourseDocument> sources) {
+  if (sources.any(_isPendingSource)) {
+    return 'Analyse en cours';
   }
 
-  if (error is CourseNotFoundException) {
-    return 'Cours introuvable.';
+  if (sources.isNotEmpty &&
+      sources.every((source) => source.status == CourseDocumentStatus.failed)) {
+    return 'Source à corriger';
   }
 
-  return 'Impossible de démarrer la révision rapide.';
+  return 'Source requise';
 }
 
 String _masteryLabel(CourseProgress progress) {
@@ -889,9 +930,8 @@ String _progressStateLabel(CourseProgressState state) {
       'Source prête, mais aucune notion exploitable.',
     CourseProgressState.readyNotPracticed =>
       'Notions prêtes, pas encore travaillées.',
-    CourseProgressState.practiced =>
-      'Progression réelle basée sur tes réponses.',
-    CourseProgressState.unknown => 'Progression réelle disponible.',
+    CourseProgressState.practiced => 'Progression basée sur tes réponses.',
+    CourseProgressState.unknown => 'Progression disponible.',
   };
 }
 

@@ -89,7 +89,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Accueil'), findsWidgets);
-    expect(find.text('Aucune matière réelle'), findsOneWidget);
+    expect(find.text('Commence par créer une matière.'), findsOneWidget);
+    expect(find.text('Créer une matière'), findsOneWidget);
     expect(find.text('Math'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);
@@ -120,8 +121,8 @@ void main() {
     await tester.tap(find.text('Réviser'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Révisions'), findsWidgets);
-    expect(find.text('Choisis ton mode de travail'), findsOneWidget);
+    expect(find.text('Réviser'), findsWidgets);
+    expect(find.text('Choisis une session courte et utile.'), findsOneWidget);
     expect(find.text('Aucune matière disponible'), findsOneWidget);
     expect(find.textContaining('CORE-05 branchera'), findsNothing);
     expect(find.textContaining('à brancher en CORE-05'), findsNothing);
@@ -147,7 +148,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Droit constitutionnel'), findsWidgets);
-    expect(find.text('Aucun cours réel'), findsOneWidget);
+    expect(find.text('Aucun cours pour le moment'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
   });
 
@@ -187,7 +188,7 @@ void main() {
 
     expect(find.text('Histoire'), findsWidgets);
     expect(find.text('Tes cours de Histoire'), findsOneWidget);
-    expect(find.text('Aucun cours réel'), findsOneWidget);
+    expect(find.text('Aucun cours pour le moment'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);
   });
@@ -269,7 +270,8 @@ void main() {
 
     expect(find.text('Droits'), findsWidgets);
     expect(find.text('Continue ton progrès'), findsOneWidget);
-    expect(find.text('Reprendre le cours'), findsOneWidget);
+    expect(find.text('Cours prêt à réviser'), findsOneWidget);
+    expect(find.text('Reprendre le cours'), findsNothing);
     expect(find.text('Cours 12'), findsNothing);
 
     await tester.scrollUntilVisible(
@@ -281,7 +283,8 @@ void main() {
 
     expect(find.text('Droits'), findsWidgets);
     expect(find.text('Continue ton progrès'), findsOneWidget);
-    expect(find.text('Reprendre le cours'), findsOneWidget);
+    expect(find.text('Cours prêt à réviser'), findsOneWidget);
+    expect(find.text('Reprendre le cours'), findsNothing);
     expect(find.text('Cours 12'), findsOneWidget);
   });
 
@@ -363,8 +366,8 @@ void main() {
     await tester.tap(find.text('Réviser'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Révisions'), findsWidgets);
-    expect(find.text('Choisis ton mode de travail'), findsOneWidget);
+    expect(find.text('Réviser'), findsWidgets);
+    expect(find.text('Choisis une session courte et utile.'), findsOneWidget);
     expect(find.text('Aucune matière disponible'), findsOneWidget);
     expect(find.textContaining('CORE-05 branchera'), findsNothing);
   });

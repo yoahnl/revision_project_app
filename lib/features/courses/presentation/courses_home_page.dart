@@ -15,6 +15,7 @@ import '../application/active_subject_provider.dart';
 import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
+import 'course_quick_revision_launcher.dart';
 
 class CoursesHomePage extends ConsumerWidget {
   const CoursesHomePage({super.key});
@@ -31,7 +32,7 @@ class CoursesHomePage extends ConsumerWidget {
         error: (error, stackTrace) => RevisionErrorState(
           title: 'Impossible de charger les matières',
           message:
-              'Vérifie la connexion puis réessaie. Aucun cours fictif ne sera affiché.',
+              'Vérifie la connexion puis réessaie. Aucun cours de remplacement ne sera affiché.',
           actionLabel: 'Réessayer',
           onAction: notifier.reload,
         ),
@@ -81,12 +82,12 @@ class _CoursesHomeContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (subjects.isEmpty) {
       return RevisionEmptyState(
-        title: 'Aucune matière réelle',
+        title: 'Commence par créer une matière.',
         message:
-            'Crée une matière pour construire tes cours, ajouter tes PDF et suivre ta progression.',
+            'Ajoute ensuite un cours et une source pour générer tes premières révisions.',
         icon: Icons.school_outlined,
-        actionLabel: 'Ouvrir les matières',
-        onAction: () => context.go(AppRoutes.subjects),
+        actionLabel: 'Créer une matière',
+        onAction: () => _showCreateSubjectSheet(context),
       );
     }
 
@@ -115,7 +116,7 @@ class _CoursesHomeContent extends ConsumerWidget {
             error: (error, stackTrace) => RevisionErrorState(
               title: 'Impossible de charger les cours',
               message:
-                  'Aucun cours fictif ne sera affiché. Vérifie la connexion puis réessaie.',
+                  'Vérifie la connexion puis réessaie. Aucun cours de remplacement ne sera affiché.',
               actionLabel: 'Réessayer',
               onAction: () => ref.invalidate(coursesProvider(activeSubject.id)),
             ),
@@ -162,7 +163,7 @@ class _HomeTopBar extends ConsumerWidget {
   }
 }
 
-class _CourseList extends StatelessWidget {
+class _CourseList extends ConsumerWidget {
   const _CourseList({
     required this.subject,
     required this.visual,
@@ -174,7 +175,7 @@ class _CourseList extends StatelessWidget {
   final List<CourseListItem> courses;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (courses.isEmpty) {
       return ListView(
         padding: EdgeInsets.zero,
@@ -185,9 +186,9 @@ class _CourseList extends StatelessWidget {
           ),
           const SizedBox(height: RevisionSpacing.m),
           RevisionEmptyState(
-            title: 'Aucun cours réel',
+            title: 'Aucun cours pour le moment',
             message:
-                'Crée un cours, ajoute une source PDF, puis reviens ici pour reprendre ton apprentissage.',
+                'Crée ton premier cours pour ajouter une source et commencer à réviser.',
             icon: Icons.layers_outlined,
             actionLabel: 'Créer un cours',
             onAction: () => _showCreateCourseSheet(context, subject),
@@ -198,19 +199,35 @@ class _CourseList extends StatelessWidget {
       );
     }
 
-    final resumeCourse = courses.first;
+    final spotlightCourse = _spotlightCourse(courses);
+    final spotlightReady = spotlightCourse.readySourceCount > 0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final fixedHeader = <Widget>[
           RevisionResumeCourseCard(
-            title: resumeCourse.title,
-            subtitle: 'Reprendre le cours',
-            progressLabel: _courseProgressLabel(resumeCourse),
-            progress: _courseProgressValue(resumeCourse),
+            title: spotlightCourse.title,
+            subtitle: spotlightReady
+                ? 'Cours prêt à réviser'
+                : 'Préparer ce cours',
+            progressLabel: _courseProgressLabel(spotlightCourse),
+            progress: _courseProgressValue(spotlightCourse),
             accent: visual.accent,
             icon: visual.icon,
-            onContinue: () => context.push(AppRoutes.course(resumeCourse.id)),
+            actionLabel: spotlightReady ? 'Réviser' : 'Ouvrir',
+            onContinue: () {
+              if (!spotlightReady) {
+                context.push(AppRoutes.course(spotlightCourse.id));
+                return;
+              }
+
+              startCourseQuickRevisionFlow(
+                context: context,
+                ref: ref,
+                courseId: spotlightCourse.id,
+                questionCount: 5,
+              );
+            },
           ),
           const SizedBox(height: RevisionSpacing.xl),
           Row(
@@ -570,6 +587,16 @@ Subject _activeSubject(List<Subject> subjects, String? activeSubjectId) {
   }
 
   return subjects.first;
+}
+
+CourseListItem _spotlightCourse(List<CourseListItem> courses) {
+  for (final course in courses) {
+    if (course.readySourceCount > 0) {
+      return course;
+    }
+  }
+
+  return courses.first;
 }
 
 void _showSubjectPicker(

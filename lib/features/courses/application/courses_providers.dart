@@ -208,14 +208,20 @@ class StartCourseQuickRevisionController
   AsyncValue<RevisionSessionResponse?> build() => const AsyncData(null);
 
   Future<RevisionSessionResponse> start({
-    required CourseDetail detail,
+    CourseDetail? detail,
+    String? courseId,
     int questionCount = 10,
   }) async {
+    final resolvedCourseId = courseId ?? detail?.course.id;
+    if (resolvedCourseId == null) {
+      throw ArgumentError('A course id is required to start quick revision');
+    }
+
     state = const AsyncLoading();
     final repository = ref.read(coursesRepositoryProvider);
     final result = await AsyncValue.guard(
       () => repository.startCourseQuickRevision(
-        courseId: detail.course.id,
+        courseId: resolvedCourseId,
         questionCount: questionCount,
       ),
     );

@@ -12,6 +12,7 @@ import '../../../presentation/design_system/tokens/revision_typography.dart';
 import '../application/active_subject_provider.dart';
 import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
+import 'course_quick_revision_launcher.dart';
 
 class RevisionsPendingPage extends ConsumerWidget {
   const RevisionsPendingPage({super.key});
@@ -22,8 +23,11 @@ class RevisionsPendingPage extends ConsumerWidget {
 
     return RevisionPageScaffold(
       headerChildren: [
-        Text('Révisions', style: RevisionTypography.hero),
-        Text('Choisis ton mode de travail', style: RevisionTypography.body),
+        Text('Réviser', style: RevisionTypography.hero),
+        Text(
+          'Choisis une session courte et utile.',
+          style: RevisionTypography.body,
+        ),
       ],
       children: [
         activeSubject.when(
@@ -40,7 +44,7 @@ class RevisionsPendingPage extends ConsumerWidget {
               return RevisionEmptyState(
                 title: 'Aucune matière disponible',
                 message:
-                    'Crée une matière et un cours avec source prête pour lancer une révision rapide.',
+                    'Crée une matière, puis ajoute un cours et une source pour lancer une révision rapide.',
                 icon: Icons.track_changes_rounded,
                 actionLabel: 'Ouvrir les matières',
                 onAction: () => context.go(AppRoutes.subjects),
@@ -82,10 +86,18 @@ class _RevisionHubContent extends ConsumerWidget {
       ),
       data: (courses) {
         final readyCourse = _firstReadyCourse(courses);
+        final firstCourse = courses.isEmpty ? null : courses.first;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _RevisionHubPrimaryAction(
+              subjectName: subjectName,
+              visual: visual,
+              readyCourse: readyCourse,
+              fallbackCourse: firstCourse,
+            ),
+            const SizedBox(height: RevisionSpacing.l),
             RevisionModeCard(
               title: 'Révision rapide',
               description: readyCourse == null
@@ -94,10 +106,15 @@ class _RevisionHubContent extends ConsumerWidget {
               icon: Icons.flash_on_rounded,
               accent: RevisionColors.blue,
               enabled: readyCourse != null,
-              trailingLabel: readyCourse == null ? 'À préparer' : null,
+              trailingLabel: readyCourse == null ? 'Source requise' : null,
               onTap: readyCourse == null
                   ? null
-                  : () => context.push(AppRoutes.course(readyCourse.id)),
+                  : () => startCourseQuickRevisionFlow(
+                      context: context,
+                      ref: ref,
+                      courseId: readyCourse.id,
+                      questionCount: 5,
+                    ),
             ),
             const SizedBox(height: RevisionSpacing.m),
             RevisionModeCard(
@@ -105,7 +122,7 @@ class _RevisionHubContent extends ConsumerWidget {
               description: 'Cours complet et exemples détaillés.',
               icon: Icons.menu_book_rounded,
               accent: visual.accent,
-              trailingLabel: 'MVP+',
+              trailingLabel: 'Bientôt disponible',
               enabled: false,
             ),
             const SizedBox(height: RevisionSpacing.m),
@@ -114,33 +131,131 @@ class _RevisionHubContent extends ConsumerWidget {
               description: 'Entraînements et sujets corrigés.',
               icon: Icons.gps_fixed_rounded,
               accent: RevisionColors.pink,
-              trailingLabel: 'MVP+',
+              trailingLabel: 'Bientôt disponible',
               enabled: false,
             ),
-            const SizedBox(height: RevisionSpacing.l),
-            RevisionGlassCard(
-              child: Row(
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _RevisionHubPrimaryAction extends ConsumerWidget {
+  const _RevisionHubPrimaryAction({
+    required this.subjectName,
+    required this.visual,
+    required this.readyCourse,
+    required this.fallbackCourse,
+  });
+
+  final String subjectName;
+  final RevisionSubjectVisualTheme visual;
+  final CourseListItem? readyCourse;
+  final CourseListItem? fallbackCourse;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final readyCourse = this.readyCourse;
+
+    if (readyCourse != null) {
+      return RevisionGlassCard(
+        borderColor: RevisionColors.blue.withValues(alpha: 0.36),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            RevisionColors.blue.withValues(alpha: 0.26),
+            RevisionColors.glassStrong,
+          ],
+        ),
+        child: Row(
+          children: [
+            RevisionIconTile(
+              icon: Icons.flash_on_rounded,
+              accent: RevisionColors.blue,
+              size: 52,
+            ),
+            const SizedBox(width: RevisionSpacing.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RevisionIconTile(
-                    icon: visual.icon,
-                    accent: visual.accent,
-                    size: 42,
+                  Text(
+                    subjectName,
+                    style: RevisionTypography.caption.copyWith(
+                      color: visual.accent,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                  const SizedBox(width: RevisionSpacing.m),
-                  Expanded(
-                    child: Text(
-                      readyCourse == null
-                          ? 'Les révisions rapides se lancent depuis un cours avec une source prête.'
-                          : 'Ouvre le cours recommandé puis démarre la révision rapide.',
-                      style: RevisionTypography.body,
+                  const SizedBox(height: RevisionSpacing.xs),
+                  Text(
+                    readyCourse.title,
+                    style: RevisionTypography.sectionTitle,
+                  ),
+                  const SizedBox(height: RevisionSpacing.xs),
+                  Text(
+                    'Un cours est prêt pour une session rapide.',
+                    style: RevisionTypography.body,
+                  ),
+                  const SizedBox(height: RevisionSpacing.m),
+                  RevisionGradientButton(
+                    label: 'Commencer 5 questions',
+                    icon: Icons.play_arrow_rounded,
+                    onPressed: () => startCourseQuickRevisionFlow(
+                      context: context,
+                      ref: ref,
+                      courseId: readyCourse.id,
+                      questionCount: 5,
                     ),
                   ),
                 ],
               ),
             ),
           ],
-        );
-      },
+        ),
+      );
+    }
+
+    final fallbackCourse = this.fallbackCourse;
+    return RevisionGlassCard(
+      child: Row(
+        children: [
+          RevisionIconTile(icon: visual.icon, accent: visual.accent, size: 42),
+          const SizedBox(width: RevisionSpacing.m),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Préparer un cours',
+                  style: RevisionTypography.sectionTitle,
+                ),
+                const SizedBox(height: RevisionSpacing.xs),
+                Text(
+                  fallbackCourse == null
+                      ? 'Crée un cours et ajoute une source pour lancer une révision rapide.'
+                      : 'Ajoute une source prête dans un cours pour lancer une révision rapide.',
+                  style: RevisionTypography.body,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: RevisionSpacing.s),
+          TextButton(
+            onPressed: () {
+              final course = fallbackCourse;
+              if (course == null) {
+                context.go(AppRoutes.home);
+                return;
+              }
+
+              context.push(AppRoutes.course(course.id));
+            },
+            child: Text(fallbackCourse == null ? 'Accueil' : 'Ouvrir'),
+          ),
+        ],
+      ),
     );
   }
 }

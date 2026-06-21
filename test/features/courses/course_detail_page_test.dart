@@ -173,7 +173,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Progression réelle'), findsOneWidget);
+    expect(find.text('Progression'), findsWidgets);
     expect(find.text('0/0 notions travaillées'), findsOneWidget);
     expect(find.text('Ajoute une source pour commencer.'), findsOneWidget);
     expect(find.text('78%'), findsNothing);
@@ -202,10 +202,7 @@ void main() {
     expect(find.text('3/12 notions travaillées'), findsOneWidget);
     expect(find.text('Maîtrise sur notions travaillées : 72%'), findsOneWidget);
     expect(find.text('Estimation globale : 18%'), findsOneWidget);
-    expect(
-      find.text('Progression réelle basée sur tes réponses.'),
-      findsOneWidget,
-    );
+    expect(find.text('Progression basée sur tes réponses.'), findsOneWidget);
   });
 
   testWidgets('processing sources trigger bounded detail refresh polling', (
@@ -298,6 +295,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Action recommandée'), findsOneWidget);
+    expect(find.text('Ajouter une source'), findsWidgets);
+    expect(find.textContaining('MVP+'), findsNothing);
+    expect(find.textContaining('backend'), findsNothing);
+
     final emptySheetPill = tester.widget<RevisionHeaderActionPill>(
       find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
     );
@@ -332,6 +334,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Action recommandée'), findsOneWidget);
+    expect(find.text('Voir les sources'), findsWidgets);
+    expect(find.text('Source en analyse'), findsOneWidget);
+
     final processingSheetPill = tester.widget<RevisionHeaderActionPill>(
       find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
     );
@@ -365,6 +371,9 @@ void main() {
       testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
     );
     await tester.pumpAndSettle();
+
+    expect(find.text('Action recommandée'), findsOneWidget);
+    expect(find.text('Commencer une session rapide'), findsOneWidget);
 
     final sheetPill = tester.widget<RevisionHeaderActionPill>(
       find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),

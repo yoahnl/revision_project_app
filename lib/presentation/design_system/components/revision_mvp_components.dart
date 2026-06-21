@@ -654,6 +654,7 @@ class RevisionResumeCourseCard extends StatelessWidget {
     required this.accent,
     required this.icon,
     required this.onContinue,
+    this.actionLabel = 'Continuer',
     super.key,
   });
 
@@ -664,6 +665,7 @@ class RevisionResumeCourseCard extends StatelessWidget {
   final Color accent;
   final IconData icon;
   final VoidCallback onContinue;
+  final String actionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -733,9 +735,9 @@ class RevisionResumeCourseCard extends StatelessWidget {
                 vertical: RevisionSpacing.s,
               ),
             ),
-            child: const Text(
-              'Continuer',
-              style: TextStyle(fontWeight: FontWeight.w900),
+            child: Text(
+              actionLabel,
+              style: const TextStyle(fontWeight: FontWeight.w900),
             ),
           ),
         ],
