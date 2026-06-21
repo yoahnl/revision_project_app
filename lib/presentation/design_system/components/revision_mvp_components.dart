@@ -1315,33 +1315,41 @@ class RevisionSectionHeader extends StatelessWidget {
 class RevisionFloatingAddButton extends StatelessWidget {
   const RevisionFloatingAddButton({required this.onTap, super.key});
 
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onTap != null;
+
     return Semantics(
       button: true,
+      enabled: enabled,
       label: 'Ajouter une source',
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 78,
-          height: 78,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [RevisionColors.pink, RevisionColors.pinkDeep],
+      child: Opacity(
+        opacity: enabled ? 1 : 0.42,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 78,
+            height: 78,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [RevisionColors.pink, RevisionColors.pinkDeep],
+              ),
+              border: Border.all(
+                color: RevisionColors.pink.withValues(alpha: 0.55),
+                width: 6,
+              ),
+              boxShadow: enabled
+                  ? RevisionShadows.soft(RevisionColors.pink)
+                  : const [],
             ),
-            border: Border.all(
-              color: RevisionColors.pink.withValues(alpha: 0.55),
-              width: 6,
+            child: const Icon(
+              Icons.add_rounded,
+              color: RevisionColors.text,
+              size: 38,
             ),
-            boxShadow: RevisionShadows.soft(RevisionColors.pink),
-          ),
-          child: const Icon(
-            Icons.add_rounded,
-            color: RevisionColors.text,
-            size: 38,
           ),
         ),
       ),

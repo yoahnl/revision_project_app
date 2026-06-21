@@ -64,7 +64,7 @@ void main() {
             documentId: 'document-1',
             fileName: 'broken.pdf',
             status: CourseDocumentStatus.failed,
-            errorCode: 'PDF_PARSE_FAILED',
+            errorCode: 'KNOWLEDGE_EXTRACTION_FAILED',
           ),
         ],
       );
@@ -76,8 +76,41 @@ void main() {
 
     await openSourcesSheet(tester);
     expect(find.text('broken.pdf'), findsOneWidget);
-    expect(find.textContaining('Erreur'), findsOneWidget);
-    expect(find.textContaining('PDF_PARSE_FAILED'), findsOneWidget);
+    expect(find.textContaining('Analyse du PDF impossible'), findsOneWidget);
+    expect(find.textContaining('KNOWLEDGE_EXTRACTION_FAILED'), findsNothing);
+    expect(find.textContaining('Code erreur'), findsNothing);
+  });
+
+  testWidgets('source upload button is disabled while upload is in progress', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..uploadDelay = const Duration(milliseconds: 80);
+    final picker = FakeCoursePdfPicker(
+      PickedCoursePdf(
+        fileName: 'cours.pdf',
+        bytes: Uint8List.fromList('%PDF-1.7'.codeUnits),
+      ),
+    );
+
+    await tester.pumpWidget(testApp(repository: repository, picker: picker));
+    await tester.pumpAndSettle();
+
+    await openSourcesSheet(tester);
+    await tester.tap(find.bySemanticsLabel('Ajouter une source'));
+    await tester.pump();
+
+    final addButton = tester.widget<RevisionFloatingAddButton>(
+      find.byType(RevisionFloatingAddButton),
+    );
+    expect(addButton.onTap, isNull);
+
+    await tester.tap(find.bySemanticsLabel('Ajouter une source'));
+    await tester.pump(const Duration(milliseconds: 90));
+    await tester.pump();
+
+    expect(repository.uploadCount, 1);
   });
 
   testWidgets('course detail deletes a source after confirmation', (

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:Neralune/core/routing/route_paths.dart';
+import 'package:Neralune/features/courses/application/active_subject_provider.dart';
 import 'package:Neralune/features/subjects/application/subjects_notifier.dart';
 import 'package:Neralune/features/subjects/domain/subject.dart';
 import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
@@ -64,7 +65,12 @@ class SubjectsHomePage extends ConsumerWidget {
                   if (index > 0) const SizedBox(height: RevisionSpacing.m),
                   _SubjectListItem(
                     subject: subject,
-                    onTap: () => context.go(subjectDetailRoutePath(subject.id)),
+                    onTap: () {
+                      ref
+                          .read(activeSubjectIdProvider.notifier)
+                          .select(subject.id);
+                      context.go(subjectDetailRoutePath(subject.id));
+                    },
                     onDelete: () => _confirmAndDeleteSubject(
                       context: context,
                       notifier: notifier,

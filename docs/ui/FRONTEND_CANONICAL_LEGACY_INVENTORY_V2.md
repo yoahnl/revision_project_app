@@ -77,3 +77,10 @@ Progres
 - Les routes legacy restent accessibles directement.
 - Les liens juridiques de la page de connexion restent inchanges, conformement a la decision produit.
 - Aucun backend, contrat HTTP, identifiant natif, CocoaPods ou Xcode Cloud n'a ete modifie.
+
+## Decisions STAB-02B-bis
+
+- Le CTA `Reviser` du detail matiere selectionne maintenant la matiere affichee avant d'ouvrir le hub `/revisions`.
+- Le bouton d'ajout de source est reellement desactive pendant un upload : pas de callback vide, opacite reduite et semantique disabled.
+- La bottom sheet Sources ne montre plus les codes techniques d'analyse PDF aux utilisateurs.
+- STAB-02B et le macro-lot STAB-02 restent `DONE`.

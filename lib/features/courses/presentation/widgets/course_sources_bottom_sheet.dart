@@ -25,7 +25,7 @@ class CourseSourcesBottomSheet extends ConsumerWidget {
       title: 'Sources',
       subtitle: detail.course.title,
       floatingAction: RevisionFloatingAddButton(
-        onTap: isUploading ? () {} : () => _uploadSource(context, ref),
+        onTap: isUploading ? null : () => _uploadSource(context, ref),
       ),
       children: [
         if (sources.isEmpty)
@@ -39,11 +39,7 @@ class CourseSourcesBottomSheet extends ConsumerWidget {
           for (final source in sources)
             RevisionSourceFileCard(
               fileName: source.fileName,
-              statusLabel:
-                  source.status == CourseDocumentStatus.failed &&
-                      source.errorCode != null
-                  ? '${_statusLabel(source.status)} · Code erreur : ${source.errorCode}'
-                  : _statusLabel(source.status),
+              statusLabel: _sourceStatusLabel(source),
               statusColor: _statusColor(source.status),
               trailing: IconButton(
                 tooltip: 'Supprimer la source ${source.fileName}',
@@ -183,6 +179,23 @@ String _statusLabel(CourseDocumentStatus status) {
     CourseDocumentStatus.ready => 'Prête',
     CourseDocumentStatus.failed => 'Erreur',
     CourseDocumentStatus.unknown => 'Statut inconnu',
+  };
+}
+
+String _sourceStatusLabel(CourseDocument source) {
+  if (source.status != CourseDocumentStatus.failed) {
+    return _statusLabel(source.status);
+  }
+
+  return '${_statusLabel(source.status)} · ${_analysisErrorLabel(source.errorCode)}';
+}
+
+String _analysisErrorLabel(String? errorCode) {
+  return switch (errorCode) {
+    'KNOWLEDGE_EXTRACTION_FAILED' => 'Analyse du PDF impossible',
+    'KNOWLEDGE_EXTRACTION_EMPTY' => 'Aucune notion trouvée',
+    'DOCUMENT_TEXT_EMPTY' => 'PDF sans texte exploitable',
+    _ => 'Erreur d’analyse',
   };
 }
 

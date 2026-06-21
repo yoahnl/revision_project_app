@@ -316,6 +316,18 @@ git diff --unified=0 | rg "onTap:\\s*\\(\\)\\s*\\{\\}|onPressed:\\s*\\(\\)\\s*\\
 
 Résultat : vide. Aucun callback vide nouveau.
 
+## STAB-02B-bis review fixes
+
+Micro-lot appliqué après review STAB-02B :
+
+- Matière active corrigée : `SubjectDetailPage` sélectionne maintenant `widget.subjectId` dans `activeSubjectIdProvider` avant de naviguer vers `/revisions`. `SubjectsHomePage` sélectionne aussi la matière ouverte depuis la liste.
+- Bouton upload réellement désactivé : `RevisionFloatingAddButton` accepte maintenant `onTap: null`, réduit son opacité et expose `Semantics.enabled == false`. `CourseSourcesBottomSheet` n'utilise plus de callback vide pendant l'upload.
+- Codes techniques masqués : la bottom sheet Sources ne montre plus `Code erreur : ...`; les codes connus sont mappés vers des libellés utilisateur (`Analyse du PDF impossible`, `Aucune notion trouvée`, `PDF sans texte exploitable`, fallback `Erreur d'analyse`).
+- Tests ajoutés ou adaptés : détail matière avec deux matières, bouton upload désactivé pendant upload, erreur source sans code brut.
+- Tests exécutés : `dart analyze lib test`, tests ciblés subjects/courses, suites `test/features/courses`, `test/features/subjects`, `flutter test --reporter compact`, `git diff --check`.
+- Backend intact : aucun fichier API, Prisma, GenKit ou contrat HTTP modifié.
+- Git : aucun commit, amend, merge, rebase, push ou tag effectué.
+
 ## 23. Limitations
 
 - Les routes legacy `Today`, `Activities` et `RichClosed` restent déclarées et testées.

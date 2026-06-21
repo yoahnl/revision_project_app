@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:Neralune/app/router/app_routes.dart';
 import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/features/courses/application/active_subject_provider.dart';
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
 import 'package:Neralune/features/subjects/application/subjects_controller.dart';
@@ -13,6 +14,14 @@ import 'package:Neralune/features/subjects/domain/subject.dart';
 import 'package:Neralune/features/subjects/presentation/subject_detail_page.dart';
 
 class SingleSubjectRepository implements SubjectsRepository {
+  SingleSubjectRepository({
+    this.subjects = const [
+      Subject(id: 'subject-1', name: 'Biologie', priority: 4),
+    ],
+  });
+
+  final List<Subject> subjects;
+
   @override
   Future<Subject> createSubject({
     required String name,
@@ -29,13 +38,11 @@ class SingleSubjectRepository implements SubjectsRepository {
 
   @override
   Future<Subject> getSubject(String id) async {
-    return const Subject(id: 'subject-1', name: 'Biologie', priority: 4);
+    return subjects.firstWhere((subject) => subject.id == id);
   }
 
   @override
-  Future<List<Subject>> listSubjects() {
-    throw UnimplementedError();
-  }
+  Future<List<Subject>> listSubjects() async => subjects;
 }
 
 class StaticDocumentsApi implements DocumentsApi {
@@ -221,6 +228,66 @@ void main() {
     expect(find.text('Activités legacy'), findsNothing);
     expect(router.routeInformationProvider.value.uri.path, AppRoutes.revisions);
   });
+
+  testWidgets(
+    'selects the displayed subject before opening the canonical revision hub',
+    (tester) async {
+      final documentsApi = StaticDocumentsApi();
+      final subjectsRepository = SingleSubjectRepository(
+        subjects: const [
+          Subject(id: 'subject-1', name: 'Biologie', priority: 4),
+          Subject(id: 'subject-2', name: 'Japonais', priority: 2),
+        ],
+      );
+      final router = GoRouter(
+        initialLocation: '/subjects/subject-2',
+        routes: [
+          GoRoute(
+            path: '/subjects/:subjectId',
+            builder: (context, state) => SubjectDetailPage(
+              subjectId: state.pathParameters['subjectId'] ?? '',
+              controller: SubjectsController(subjectsRepository),
+              documentsController: DocumentsController(documentsApi),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.revisions,
+            builder: (context, state) => Consumer(
+              builder: (context, ref, child) {
+                final activeSubject = ref.watch(activeSubjectProvider);
+                return activeSubject.when(
+                  data: (subject) => Text(subject?.name ?? 'Aucune matière'),
+                  loading: () => const Text('Chargement'),
+                  error: (error, stackTrace) => const Text('Erreur'),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            subjectsRepositoryProvider.overrideWithValue(subjectsRepository),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Réviser'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Japonais'), findsOneWidget);
+      expect(find.text('Biologie'), findsNothing);
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        AppRoutes.revisions,
+      );
+    },
+  );
 
   testWidgets('deletes a document after confirmation', (tester) async {
     final documentsApi = StaticDocumentsApi();
