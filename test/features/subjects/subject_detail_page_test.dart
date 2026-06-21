@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:Neralune/app/router/app_routes.dart';
 import 'package:Neralune/app/di/providers.dart';
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
@@ -176,6 +177,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Document document-1'), findsOneWidget);
+  });
+
+  testWidgets('opens the canonical revision hub from the subject detail CTA', (
+    tester,
+  ) async {
+    final documentsApi = StaticDocumentsApi();
+    final router = GoRouter(
+      initialLocation: '/subjects/subject-1',
+      routes: [
+        GoRoute(
+          path: '/subjects/:subjectId',
+          builder: (context, state) => SubjectDetailPage(
+            subjectId: state.pathParameters['subjectId'] ?? '',
+            controller: SubjectsController(SingleSubjectRepository()),
+            documentsController: DocumentsController(documentsApi),
+          ),
+        ),
+        GoRoute(
+          path: AppRoutes.revisions,
+          builder: (context, state) => const Text('Hub Réviser canonique'),
+        ),
+        GoRoute(
+          path: AppRoutes.activities,
+          builder: (context, state) => const Text('Activités legacy'),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [documentsApiProvider.overrideWithValue(documentsApi)],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Réviser'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hub Réviser canonique'), findsOneWidget);
+    expect(find.text('Activités legacy'), findsNothing);
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.revisions);
   });
 
   testWidgets('deletes a document after confirmation', (tester) async {

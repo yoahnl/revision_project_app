@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:Neralune/core/routing/route_paths.dart';
+import 'package:Neralune/app/router/app_routes.dart';
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/application/subject_documents_notifier.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
@@ -13,6 +13,7 @@ import 'package:Neralune/presentation/design_system/tokens/revision_colors.dart'
 import 'package:Neralune/presentation/design_system/tokens/revision_spacing.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_subject_visuals.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_typography.dart';
+import 'package:Neralune/presentation/pages/subjects/widgets/subject_document_list_item.dart';
 import 'package:Neralune/presentation/widgets/documents/document_import_button.dart';
 
 class SubjectDetailPage extends ConsumerStatefulWidget {
@@ -167,12 +168,7 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
                   label: 'Réviser',
                   icon: Icons.play_arrow_rounded,
                   accent: visualTheme.accent,
-                  onTap: () => context.go(
-                    Uri(
-                      path: activitiesRoutePath,
-                      queryParameters: {'subjectId': widget.subjectId},
-                    ).toString(),
-                  ),
+                  onTap: () => context.go(AppRoutes.revisions),
                 ),
                 RevisionHeaderActionPill(
                   label: 'Rafraîchir',
@@ -222,7 +218,7 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
                   children: [
                     for (final (index, document) in documents.indexed) ...[
                       if (index > 0) const SizedBox(height: RevisionSpacing.m),
-                      _DocumentListItem(
+                      SubjectDocumentListItem(
                         document: document,
                         onTap: () => context.go(
                           '/subjects/${widget.subjectId}/documents/${document.id}',
@@ -239,80 +235,6 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
       },
     );
   }
-}
-
-class _DocumentListItem extends StatelessWidget {
-  const _DocumentListItem({
-    required this.document,
-    required this.onTap,
-    required this.onDelete,
-  });
-
-  final RevisionDocument document;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final (:label, :color) = _documentStatus(document);
-
-    return RevisionSourceFileCard(
-      fileName: document.fileName,
-      statusLabel: '${_documentKindLabel(document.kind)} · $label',
-      statusColor: color,
-      onTap: onTap,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            onPressed: onDelete,
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              color: RevisionColors.textMuted,
-            ),
-            tooltip: 'Supprimer la source',
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: RevisionColors.textMuted,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-({String label, Color color}) _documentStatus(RevisionDocument document) {
-  return switch (document.status) {
-    'UPLOADED' => (label: 'Importée', color: RevisionColors.cyan),
-    'PROCESSING' => (label: 'En analyse', color: RevisionColors.violet),
-    'READY' => (label: 'Prête', color: RevisionColors.green),
-    'FAILED' => (
-      label: _failedDocumentLabel(document.errorCode),
-      color: RevisionColors.red,
-    ),
-    _ => (label: document.status, color: RevisionColors.textMuted),
-  };
-}
-
-String _failedDocumentLabel(String? errorCode) {
-  return switch (errorCode) {
-    'DOCUMENT_TEXT_EMPTY' => 'PDF sans texte',
-    'DOCUMENT_TEXT_EXTRACTION_FAILED' => 'Lecture PDF impossible',
-    'KNOWLEDGE_EXTRACTION_EMPTY' => 'Aucune notion',
-    'KNOWLEDGE_EXTRACTION_FAILED' => 'Erreur IA',
-    'DOCUMENT_UNSUPPORTED_MIME_TYPE' => 'Format invalide',
-    _ => 'Échec',
-  };
-}
-
-String _documentKindLabel(String kind) {
-  return switch (kind) {
-    'COURSE_PDF' => 'PDF de cours',
-    'EXAM_PDF' => 'PDF examen',
-    'EXAM_IMAGE' => 'Image examen',
-    _ => kind,
-  };
 }
 
 String _subjectRhythmLabel(Subject subject) {

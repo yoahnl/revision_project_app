@@ -8,7 +8,6 @@ import '../../../app/router/app_routes.dart';
 import '../../../presentation/design_system/components/revision_mvp_components.dart';
 import '../../../presentation/design_system/components/revision_states.dart';
 import '../../../presentation/design_system/tokens/revision_colors.dart';
-import '../../../presentation/design_system/tokens/revision_radius.dart';
 import '../../../presentation/design_system/tokens/revision_spacing.dart';
 import '../../../presentation/design_system/tokens/revision_subject_visuals.dart';
 import '../../../presentation/design_system/tokens/revision_typography.dart';
@@ -17,6 +16,8 @@ import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import 'course_not_found_page.dart';
 import 'course_quick_revision_launcher.dart';
+import 'widgets/course_sources_bottom_sheet.dart';
+import 'widgets/quick_revision_question_count_sheet.dart';
 
 class CourseDetailPage extends ConsumerWidget {
   const CourseDetailPage({required this.courseId, super.key});
@@ -588,7 +589,7 @@ Future<void> _showQuickRevisionSheet(
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => const _QuickRevisionQuestionCountSheet(),
+    builder: (context) => const QuickRevisionQuestionCountSheet(),
   );
 
   if (!context.mounted || questionCount == null) {
@@ -613,273 +614,8 @@ void _showSourcesSheet(
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => _SourcesBottomSheet(detail: detail),
+    builder: (context) => CourseSourcesBottomSheet(detail: detail),
   );
-}
-
-class _QuickRevisionQuestionCountSheet extends StatefulWidget {
-  const _QuickRevisionQuestionCountSheet();
-
-  @override
-  State<_QuickRevisionQuestionCountSheet> createState() =>
-      _QuickRevisionQuestionCountSheetState();
-}
-
-class _QuickRevisionQuestionCountSheetState
-    extends State<_QuickRevisionQuestionCountSheet> {
-  static const _choices = [5, 10, 20, 30];
-
-  int _selectedQuestionCount = 10;
-
-  @override
-  Widget build(BuildContext context) {
-    return RevisionBottomSheetFrame(
-      title: 'Révision rapide',
-      subtitle: 'Choisis le nombre de questions pour cette session.',
-      children: [
-        Wrap(
-          spacing: RevisionSpacing.s,
-          runSpacing: RevisionSpacing.s,
-          children: [
-            for (final choice in _choices)
-              _QuestionCountChip(
-                count: choice,
-                selected: choice == _selectedQuestionCount,
-                onTap: () => setState(() {
-                  _selectedQuestionCount = choice;
-                }),
-              ),
-          ],
-        ),
-        const SizedBox(height: RevisionSpacing.l),
-        RevisionGradientButton(
-          label: 'Démarrer',
-          icon: Icons.play_arrow_rounded,
-          expanded: true,
-          onPressed: () => Navigator.of(context).pop(_selectedQuestionCount),
-        ),
-        const SizedBox(height: RevisionSpacing.s),
-        Text(
-          'Les questions viennent de la banque du cours. Si elle en manque, le service en prépare par petits lots.',
-          style: RevisionTypography.caption,
-        ),
-      ],
-    );
-  }
-}
-
-class _QuestionCountChip extends StatelessWidget {
-  const _QuestionCountChip({
-    required this.count,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final int count;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: RevisionRadius.pill,
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(
-          horizontal: RevisionSpacing.l,
-          vertical: RevisionSpacing.s,
-        ),
-        decoration: BoxDecoration(
-          gradient: selected
-              ? const LinearGradient(
-                  colors: [RevisionColors.blue, RevisionColors.blueDeep],
-                )
-              : null,
-          color: selected ? null : RevisionColors.glassSoft,
-          borderRadius: RevisionRadius.pill,
-          border: Border.all(
-            color: selected ? RevisionColors.blue : RevisionColors.border,
-          ),
-        ),
-        child: Text(
-          '$count questions',
-          style: RevisionTypography.body.copyWith(
-            color: selected ? RevisionColors.text : RevisionColors.textMuted,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SourcesBottomSheet extends ConsumerWidget {
-  const _SourcesBottomSheet({required this.detail});
-
-  final CourseDetail detail;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final uploadState = ref.watch(uploadCourseDocumentControllerProvider);
-    final deleteState = ref.watch(deleteCourseDocumentControllerProvider);
-    final isUploading = uploadState.isLoading;
-    final isDeleting = deleteState.isLoading;
-    final sources = detail.sources;
-
-    return RevisionBottomSheetFrame(
-      title: 'Sources',
-      subtitle: detail.course.title,
-      floatingAction: RevisionFloatingAddButton(
-        onTap: isUploading ? () {} : () => _uploadSource(context, ref),
-      ),
-      children: [
-        if (sources.isEmpty)
-          RevisionEmptyState(
-            title: 'Aucune source attachée',
-            message:
-                'Ajoute un PDF pour lancer le traitement documentaire de ce cours.',
-            icon: Icons.source_outlined,
-          )
-        else
-          for (final source in sources)
-            RevisionSourceFileCard(
-              fileName: source.fileName,
-              statusLabel:
-                  source.status == CourseDocumentStatus.failed &&
-                      source.errorCode != null
-                  ? '${_statusLabel(source.status)} · Code erreur : ${source.errorCode}'
-                  : _statusLabel(source.status),
-              statusColor: _statusColor(source.status),
-              trailing: IconButton(
-                tooltip: 'Supprimer la source ${source.fileName}',
-                onPressed: isDeleting
-                    ? null
-                    : () => _deleteSource(context, ref, source),
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: RevisionColors.textMuted,
-                ),
-              ),
-            ),
-        if (isUploading)
-          const RevisionProcessingState(
-            title: 'Upload en cours...',
-            message: 'La source est envoyée pour analyse.',
-          ),
-        if (uploadState.hasError)
-          Text(
-            'Upload impossible pour le moment.',
-            style: RevisionTypography.caption.copyWith(
-              color: RevisionColors.red,
-            ),
-          ),
-        if (deleteState.hasError)
-          Text(
-            'Impossible de supprimer cette source.',
-            style: RevisionTypography.caption.copyWith(
-              color: RevisionColors.red,
-            ),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () {
-              ref.invalidate(courseDetailProvider(detail.course.id));
-              ref.invalidate(courseProgressProvider(detail.course.id));
-              ref.invalidate(subjectProgressProvider(detail.course.subjectId));
-              Navigator.of(context).pop();
-            },
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Rafraîchir'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _uploadSource(BuildContext context, WidgetRef ref) async {
-    try {
-      final uploaded = await ref
-          .read(uploadCourseDocumentControllerProvider.notifier)
-          .upload(detail: detail);
-
-      if (!context.mounted || uploaded == null) {
-        return;
-      }
-
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Source ajoutée')));
-    } catch (_) {
-      if (!context.mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible d’ajouter cette source PDF.')),
-      );
-    }
-  }
-
-  Future<void> _deleteSource(
-    BuildContext context,
-    WidgetRef ref,
-    CourseDocument source,
-  ) async {
-    final confirmed = await _confirmDeleteSource(context, source.fileName);
-    if (!confirmed || !context.mounted) {
-      return;
-    }
-
-    try {
-      await ref
-          .read(deleteCourseDocumentControllerProvider.notifier)
-          .delete(detail: detail, documentId: source.documentId);
-
-      if (!context.mounted) {
-        return;
-      }
-
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Source supprimée')));
-    } catch (_) {
-      if (!context.mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible de supprimer cette source.')),
-      );
-    }
-  }
-}
-
-Future<bool> _confirmDeleteSource(BuildContext context, String fileName) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Supprimer cette source ?'),
-      content: Text(
-        'Le PDF "$fileName" sera retiré de ce cours. Tu pourras le rajouter plus tard si besoin.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Annuler'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Supprimer'),
-        ),
-      ],
-    ),
-  );
-
-  return confirmed ?? false;
 }
 
 String _quickRevisionActionLabel(List<CourseDocument> sources) {
@@ -967,26 +703,6 @@ String _difficultyLabel(CourseDifficulty? difficulty) {
 
 String _percent(double value) {
   return '${(value.clamp(0, 1) * 100).round()}%';
-}
-
-String _statusLabel(CourseDocumentStatus status) {
-  return switch (status) {
-    CourseDocumentStatus.uploaded => 'Téléversée',
-    CourseDocumentStatus.processing => 'Traitement en cours',
-    CourseDocumentStatus.ready => 'Prête',
-    CourseDocumentStatus.failed => 'Erreur',
-    CourseDocumentStatus.unknown => 'Statut inconnu',
-  };
-}
-
-Color _statusColor(CourseDocumentStatus status) {
-  return switch (status) {
-    CourseDocumentStatus.ready => RevisionColors.mint,
-    CourseDocumentStatus.processing => RevisionColors.blue,
-    CourseDocumentStatus.failed => RevisionColors.red,
-    CourseDocumentStatus.uploaded => RevisionColors.amber,
-    CourseDocumentStatus.unknown => RevisionColors.violet,
-  };
 }
 
 bool _isPendingSource(CourseDocument source) {

@@ -154,9 +154,6 @@ class _HomeTopBar extends ConsumerWidget {
           onTap: () => _showSubjectPicker(context, subjects, subject.id),
         ),
         const Spacer(),
-        // No streak/gems are displayed here: the MVP Core has no real
-        // gamification counters yet, so the mockup slots intentionally remain
-        // empty instead of inventing production values.
         const RevisionTopCounters(),
       ],
     );
