@@ -38,12 +38,40 @@ class SingleSubjectRepository implements SubjectsRepository {
   }
 
   @override
+  Future<SubjectLifecycleDecision> archiveSubject(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Subject> getSubject(String id) async {
     return subjects.firstWhere((subject) => subject.id == id);
   }
 
   @override
+  Future<SubjectLifecycleDecision> getSubjectLifecycle(String id) async {
+    return SubjectLifecycleDecision(
+      subjectId: id,
+      status: SubjectLifecycleStatus.active,
+      recommendedAction: SubjectLifecycleRecommendedAction.delete,
+      canDelete: true,
+      canArchive: false,
+      canUpdate: true,
+      blockingReasons: const [],
+      userMessage: 'Cette matière peut être supprimée.',
+    );
+  }
+
+  @override
   Future<List<Subject>> listSubjects() async => subjects;
+
+  @override
+  Future<Subject> updateSubject({
+    required String id,
+    required String name,
+    required int priority,
+  }) {
+    throw UnimplementedError();
+  }
 }
 
 class StaticDocumentsApi implements DocumentsApi {
@@ -327,6 +355,40 @@ void main() {
       );
     },
   );
+
+  testWidgets('shows lifecycle management actions for the displayed subject', (
+    tester,
+  ) async {
+    final documentsApi = StaticDocumentsApi();
+    final subjectsRepository = SingleSubjectRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          documentsApiProvider.overrideWithValue(documentsApi),
+          subjectsRepositoryProvider.overrideWithValue(subjectsRepository),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: SubjectDetailPage(
+              subjectId: 'subject-1',
+              controller: SubjectsController(subjectsRepository),
+              documentsController: DocumentsController(documentsApi),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Gérer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gérer la matière'), findsOneWidget);
+    expect(find.text('Renommer'), findsOneWidget);
+    expect(find.text('Supprimer'), findsOneWidget);
+    expect(find.textContaining('SUBJECT_DELETE_BLOCKED'), findsNothing);
+  });
 
   testWidgets('deletes a document after confirmation', (tester) async {
     final documentsApi = StaticDocumentsApi();

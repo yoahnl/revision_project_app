@@ -251,11 +251,11 @@ Statuts autorisés :
 | --- | --- | --- | --- |
 | Créer une matière | AVAILABLE_NOW | STAB-01C | Doit être découvrable depuis le sélecteur matière. |
 | Supprimer une matière | AVAILABLE_NOW | STAB-01C | Afficher les conflits réels, pas de suppression silencieuse. |
-| Renommer une matière | NEEDS_API | CORE-09C | Ne pas afficher comme action active avant l'API. |
-| Archiver une matière | NEEDS_API | CORE-09C | Ne pas simuler côté front. |
+| Renommer une matière | AVAILABLE_NOW | CORE-09C | Action de gestion disponible depuis les matières. |
+| Archiver une matière | AVAILABLE_NOW | CORE-09C | Utiliser la décision backend, jamais une archive simulée. |
 | Créer un cours | AVAILABLE_NOW | STAB-01B | Action principale si une matière existe. |
 | Supprimer un cours vide | AVAILABLE_NOW | STAB-01B | Garder les erreurs 409 lisibles. |
-| Renommer ou modifier un cours | NEEDS_API | CORE-09C | Ne pas créer de bouton actif sans endpoint. |
+| Renommer ou modifier un cours | AVAILABLE_NOW | CORE-09C | Action de gestion disponible depuis le détail cours. |
 | Ajouter une source | AVAILABLE_NOW | CORE-09A | Disponible depuis le cours. |
 | Supprimer une source inutilisée | AVAILABLE_NOW | CORE-09A | Autorisé uniquement après décision lifecycle `DELETE`. |
 | Archiver une source utilisée | AVAILABLE_NOW | CORE-09A | Retire la source des listes actives sans casser l'historique pédagogique. |

@@ -163,6 +163,32 @@ enum CourseDifficulty { beginner, intermediate, advanced }
 
 enum CourseDocumentStatus { uploaded, processing, ready, failed, unknown }
 
+enum LifecycleStatus { active, archived }
+
+enum LifecycleRecommendedAction { delete, archive, block }
+
+class CourseLifecycleDecision {
+  const CourseLifecycleDecision({
+    required this.courseId,
+    required this.status,
+    required this.recommendedAction,
+    required this.canDelete,
+    required this.canArchive,
+    required this.canUpdate,
+    required this.blockingReasons,
+    required this.userMessage,
+  });
+
+  final String courseId;
+  final LifecycleStatus status;
+  final LifecycleRecommendedAction recommendedAction;
+  final bool canDelete;
+  final bool canArchive;
+  final bool canUpdate;
+  final List<String> blockingReasons;
+  final String userMessage;
+}
+
 enum CourseProgressState {
   noSource,
   processing,

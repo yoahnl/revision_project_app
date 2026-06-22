@@ -82,6 +82,27 @@ void main() {
     expect(find.textContaining('Code erreur'), findsNothing);
   });
 
+  testWidgets('course detail exposes lifecycle management actions', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail();
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(RevisionHeaderActionPill, 'Gérer'));
+    await tester.pumpAndSettle();
+
+    expect(repository.getCourseLifecycleCount, 1);
+    expect(find.text('Gérer le cours'), findsOneWidget);
+    expect(find.text('Renommer'), findsOneWidget);
+    expect(find.text('Supprimer'), findsOneWidget);
+    expect(find.textContaining('COURSE_DELETE_BLOCKED'), findsNothing);
+  });
+
   testWidgets('source upload button is disabled while upload is in progress', (
     tester,
   ) async {

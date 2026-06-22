@@ -80,6 +80,85 @@ void main() {
     });
   });
 
+  test('updates a course through the PATCH endpoint', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(courseJson(title: 'Droit public')),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final course = await repository.updateCourse(
+      courseId: 'course id/1',
+      input: const UpdateCourseInput(title: 'Droit public'),
+    );
+
+    expect(course.title, 'Droit public');
+    expect(adapter.lastOptions?.method, 'PATCH');
+    expect(adapter.lastOptions?.path, '/courses/course%20id%2F1');
+    expect(adapter.lastOptions?.data, {'title': 'Droit public'});
+  });
+
+  test('loads a course lifecycle decision', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(courseLifecycleJson(recommendedAction: 'ARCHIVE')),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final decision = await repository.getCourseLifecycle(courseId: 'course-1');
+
+    expect(decision.recommendedAction, LifecycleRecommendedAction.archive);
+    expect(adapter.lastOptions?.path, '/courses/course-1/lifecycle');
+  });
+
+  test('archives a course through the archive endpoint', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(courseLifecycleJson(status: 'ARCHIVED')),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final decision = await repository.archiveCourse(courseId: 'course-1');
+
+    expect(decision.status, LifecycleStatus.archived);
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(adapter.lastOptions?.path, '/courses/course-1/archive');
+  });
+
+  test(
+    'maps blocked course deletion without exposing the technical code',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse({
+          'code': 'COURSE_DELETE_BLOCKED',
+          'message':
+              'Ce cours contient déjà des sources ou des révisions. Archive-le plutôt que le supprimer.',
+        }, statusCode: 409),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await expectLater(
+        repository.deleteCourse(courseId: 'course-1'),
+        throwsA(
+          isA<CourseLifecycleBlockedException>().having(
+            (error) => error.message,
+            'message',
+            isNot(contains('COURSE_DELETE_BLOCKED')),
+          ),
+        ),
+      );
+    },
+  );
+
   test('loads course detail with subject and sources', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({
@@ -598,11 +677,12 @@ Map<String, Object?> revisionSessionJson({required String courseId}) {
 Map<String, Object?> courseJson({
   int sourceCount = 2,
   int readySourceCount = 1,
+  String title = 'Droit constitutionnel',
 }) {
   return {
     'id': 'course-1',
     'subjectId': 'subject-1',
-    'title': 'Droit constitutionnel',
+    'title': title,
     'description': 'Institutions',
     'chapterLabel': 'Chapitre 1',
     'estimatedMinutes': 30,
@@ -613,6 +693,22 @@ Map<String, Object?> courseJson({
     'readySourceCount': readySourceCount,
     'processingSourceCount': 1,
     'failedSourceCount': 0,
+  };
+}
+
+Map<String, Object?> courseLifecycleJson({
+  String status = 'ACTIVE',
+  String recommendedAction = 'DELETE',
+}) {
+  return {
+    'courseId': 'course-1',
+    'status': status,
+    'recommendedAction': recommendedAction,
+    'canDelete': recommendedAction == 'DELETE',
+    'canArchive': recommendedAction == 'ARCHIVE',
+    'canUpdate': status == 'ACTIVE',
+    'blockingReasons': const <String>[],
+    'userMessage': 'Décision lifecycle cours',
   };
 }
 

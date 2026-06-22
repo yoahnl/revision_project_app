@@ -16,6 +16,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, Object> revisionSheetErrorsByCourse = {};
   final Map<String, SourceLifecycleDecision> lifecycleByDocumentId = {};
   int createCount = 0;
+  int updateCount = 0;
   int listCoursesCount = 0;
   int getCourseCount = 0;
   int getCourseProgressCount = 0;
@@ -27,6 +28,9 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int archiveDocumentCount = 0;
   int getLifecycleCount = 0;
   int startQuickRevisionCount = 0;
+  int archiveCourseCount = 0;
+  int deleteCourseCount = 0;
+  int getCourseLifecycleCount = 0;
   String? lastUploadedCourseId;
   String? lastUploadedFileName;
   Uint8List? lastUploadedBytes;
@@ -36,6 +40,9 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastArchivedDocumentId;
   String? lastQuickRevisionCourseId;
   int? lastQuickRevisionQuestionCount;
+  String? lastArchivedCourseLifecycleId;
+  String? lastDeletedCourseLifecycleId;
+  String? lastUpdatedCourseId;
   Object? uploadError;
   Object? deleteDocumentError;
   Object? archiveDocumentError;
@@ -88,6 +95,113 @@ class InMemoryCoursesRepository implements CoursesRepository {
     );
 
     return course;
+  }
+
+  @override
+  Future<CourseListItem> updateCourse({
+    required String courseId,
+    required UpdateCourseInput input,
+  }) async {
+    final detail = detailsByCourse[courseId];
+    if (detail == null) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    updateCount += 1;
+    lastUpdatedCourseId = courseId;
+    final updated = CourseListItem(
+      id: detail.course.id,
+      subjectId: detail.course.subjectId,
+      title: input.title ?? detail.course.title,
+      description: input.description ?? detail.course.description,
+      chapterLabel: input.chapterLabel ?? detail.course.chapterLabel,
+      estimatedMinutes:
+          input.estimatedMinutes ?? detail.course.estimatedMinutes,
+      displayOrder: detail.course.displayOrder,
+      createdAt: detail.course.createdAt,
+      updatedAt: detail.course.updatedAt,
+      sourceCount: detail.course.sourceCount,
+      readySourceCount: detail.course.readySourceCount,
+      processingSourceCount: detail.course.processingSourceCount,
+      failedSourceCount: detail.course.failedSourceCount,
+      difficulty: detail.course.difficulty,
+      progress: detail.course.progress,
+    );
+    detailsByCourse[courseId] = CourseDetail(
+      course: updated,
+      subject: detail.subject,
+      sources: detail.sources,
+      progress: detail.progress,
+    );
+    final courses = coursesBySubject[updated.subjectId];
+    if (courses != null) {
+      final index = courses.indexWhere((course) => course.id == courseId);
+      if (index >= 0) {
+        courses[index] = updated;
+      }
+    }
+
+    return updated;
+  }
+
+  @override
+  Future<CourseLifecycleDecision> getCourseLifecycle({
+    required String courseId,
+  }) async {
+    getCourseLifecycleCount += 1;
+    if (!detailsByCourse.containsKey(courseId)) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    return CourseLifecycleDecision(
+      courseId: courseId,
+      status: LifecycleStatus.active,
+      recommendedAction: LifecycleRecommendedAction.delete,
+      canDelete: true,
+      canArchive: false,
+      canUpdate: true,
+      blockingReasons: const [],
+      userMessage: 'Ce cours peut être supprimé.',
+    );
+  }
+
+  @override
+  Future<CourseLifecycleDecision> archiveCourse({
+    required String courseId,
+  }) async {
+    archiveCourseCount += 1;
+    lastArchivedCourseLifecycleId = courseId;
+    final detail = detailsByCourse.remove(courseId);
+    if (detail == null) {
+      throw const CourseNotFoundException('Course not found');
+    }
+    coursesBySubject[detail.course.subjectId]?.removeWhere(
+      (course) => course.id == courseId,
+    );
+
+    return CourseLifecycleDecision(
+      courseId: courseId,
+      status: LifecycleStatus.archived,
+      recommendedAction: LifecycleRecommendedAction.block,
+      canDelete: false,
+      canArchive: false,
+      canUpdate: false,
+      blockingReasons: const ['ALREADY_ARCHIVED'],
+      userMessage: 'Ce cours est archivé.',
+    );
+  }
+
+  @override
+  Future<void> deleteCourse({required String courseId}) async {
+    deleteCourseCount += 1;
+    lastDeletedCourseLifecycleId = courseId;
+    final detail = detailsByCourse.remove(courseId);
+    if (detail == null) {
+      throw const CourseNotFoundException('Course not found');
+    }
+    coursesBySubject[detail.course.subjectId]?.removeWhere(
+      (course) => course.id == courseId,
+    );
   }
 
   @override

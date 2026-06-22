@@ -85,6 +85,107 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<CourseListItem> updateCourse({
+    required String courseId,
+    required UpdateCourseInput input,
+  }) async {
+    try {
+      final data = <String, Object?>{};
+      if (input.title != null) {
+        data['title'] = input.title;
+      }
+      if (input.description != null) {
+        data['description'] = input.description;
+      }
+      if (input.chapterLabel != null) {
+        data['chapterLabel'] = input.chapterLabel;
+      }
+      if (input.estimatedMinutes != null) {
+        data['estimatedMinutes'] = input.estimatedMinutes;
+      }
+
+      final response = await _dio.patch<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}',
+        data: data,
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseJson(response.data).toListItem();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 400) {
+        throw const CourseRequestException('Invalid course request');
+      }
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CourseLifecycleDecision> getCourseLifecycle({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/lifecycle',
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseLifecycleDecisionJson(response.data).toDecision();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CourseLifecycleDecision> archiveCourse({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/archive',
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseLifecycleDecisionJson(response.data).toDecision();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      if (error.response?.statusCode == 409) {
+        throw CourseLifecycleBlockedException(
+          _responseMessage(error) ?? 'Ce cours ne peut pas être archivé.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteCourse({required String courseId}) async {
+    try {
+      await _dio.delete<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}',
+        options: await _authorizedOptions(),
+      );
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      if (error.response?.statusCode == 409) {
+        throw CourseLifecycleBlockedException(
+          _responseMessage(error) ?? 'Ce cours ne peut pas être supprimé.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<CourseDocument> uploadCoursePdf({
     required String courseId,
     required String fileName,
@@ -456,6 +557,51 @@ class _CourseDocumentJson {
   }
 }
 
+class _CourseLifecycleDecisionJson {
+  const _CourseLifecycleDecisionJson(this.value);
+
+  final Object? value;
+
+  CourseLifecycleDecision toDecision() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid course lifecycle response');
+    }
+
+    final courseId = json['courseId'];
+    final status = json['status'];
+    final action = json['recommendedAction'];
+    final canDelete = json['canDelete'];
+    final canArchive = json['canArchive'];
+    final canUpdate = json['canUpdate'];
+    final blockingReasons = json['blockingReasons'];
+    final userMessage = json['userMessage'];
+
+    if (courseId is! String ||
+        status is! String ||
+        action is! String ||
+        canDelete is! bool ||
+        canArchive is! bool ||
+        canUpdate is! bool ||
+        blockingReasons is! List ||
+        userMessage is! String) {
+      throw const FormatException('Invalid course lifecycle response');
+    }
+
+    return CourseLifecycleDecision(
+      courseId: courseId,
+      status: _parseLifecycleStatus(status),
+      recommendedAction: _parseLifecycleAction(action),
+      canDelete: canDelete,
+      canArchive: canArchive,
+      canUpdate: canUpdate,
+      blockingReasons: blockingReasons.whereType<String>().toList(),
+      userMessage: userMessage,
+    );
+  }
+}
+
 class _CourseProgressJson {
   const _CourseProgressJson(this.value);
 
@@ -626,6 +772,23 @@ CourseProgressState _parseProgressState(String value) {
     'READY_NOT_PRACTICED' => CourseProgressState.readyNotPracticed,
     'PRACTICED' => CourseProgressState.practiced,
     _ => CourseProgressState.unknown,
+  };
+}
+
+LifecycleStatus _parseLifecycleStatus(String value) {
+  return switch (value) {
+    'ACTIVE' => LifecycleStatus.active,
+    'ARCHIVED' => LifecycleStatus.archived,
+    _ => throw const FormatException('Unknown lifecycle status'),
+  };
+}
+
+LifecycleRecommendedAction _parseLifecycleAction(String value) {
+  return switch (value) {
+    'DELETE' => LifecycleRecommendedAction.delete,
+    'ARCHIVE' => LifecycleRecommendedAction.archive,
+    'BLOCK' => LifecycleRecommendedAction.block,
+    _ => throw const FormatException('Unknown lifecycle action'),
   };
 }
 

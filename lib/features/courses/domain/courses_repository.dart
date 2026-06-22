@@ -15,6 +15,19 @@ abstract interface class CoursesRepository {
     required CreateCourseInput input,
   });
 
+  Future<CourseListItem> updateCourse({
+    required String courseId,
+    required UpdateCourseInput input,
+  });
+
+  Future<CourseLifecycleDecision> getCourseLifecycle({
+    required String courseId,
+  });
+
+  Future<CourseLifecycleDecision> archiveCourse({required String courseId});
+
+  Future<void> deleteCourse({required String courseId});
+
   Future<CourseDocument> uploadCoursePdf({
     required String courseId,
     required String fileName,
@@ -64,6 +77,20 @@ class CreateCourseInput {
   final int? estimatedMinutes;
 }
 
+class UpdateCourseInput {
+  const UpdateCourseInput({
+    this.title,
+    this.description,
+    this.chapterLabel,
+    this.estimatedMinutes,
+  });
+
+  final String? title;
+  final String? description;
+  final String? chapterLabel;
+  final int? estimatedMinutes;
+}
+
 class CourseNotFoundException implements Exception {
   const CourseNotFoundException(this.message);
 
@@ -75,6 +102,15 @@ class CourseNotFoundException implements Exception {
 
 class CourseRequestException implements Exception {
   const CourseRequestException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class CourseLifecycleBlockedException implements Exception {
+  const CourseLifecycleBlockedException(this.message);
 
   final String message;
 

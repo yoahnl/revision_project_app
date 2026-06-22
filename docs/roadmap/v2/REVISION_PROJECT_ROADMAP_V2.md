@@ -485,7 +485,7 @@ Tests Prisma relations, API 409/404/auth, UI confirmation.
 
 Une source utilisée ne détruit pas l'historique ; une source inutilisée peut être supprimée proprement.
 
-État CORE-09A : la décision delete/archive/block existe, les sources utilisées sont archivées logiquement et les listes actives les excluent. Le cleanup blob/storage et le lifecycle matière/cours restent dans CORE-09B/CORE-09C.
+État CORE-09 : les sources utilisées sont archivées logiquement et les listes actives les excluent ; le cleanup blob/storage post-delete est traité côté API ; les matières et cours disposent maintenant de rename, archive logique et suppression safe pour les éléments vides.
 
 ### Non-objectifs
 

@@ -16,6 +16,7 @@ import 'package:Neralune/presentation/design_system/tokens/revision_spacing.dart
 import 'package:Neralune/presentation/design_system/tokens/revision_subject_visuals.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_typography.dart';
 import 'package:Neralune/presentation/pages/subjects/widgets/subject_document_list_item.dart';
+import 'package:Neralune/presentation/pages/subjects/widgets/subject_management_sheet.dart';
 import 'package:Neralune/presentation/widgets/documents/document_import_button.dart';
 
 class SubjectDetailPage extends ConsumerStatefulWidget {
@@ -274,6 +275,12 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
                   accent: RevisionColors.cyan,
                   onTap: _reloadSubject,
                 ),
+                RevisionHeaderActionPill(
+                  label: 'Gérer',
+                  icon: Icons.more_horiz_rounded,
+                  accent: visualTheme.accent,
+                  onTap: () => _showSubjectManagement(subject),
+                ),
               ],
             ),
           ],
@@ -332,6 +339,25 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
         );
       },
     );
+  }
+
+  Future<void> _showSubjectManagement(Subject subject) async {
+    final result = await showSubjectManagementSheet(
+      context: context,
+      subject: subject,
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    if (result == SubjectManagementResult.removed) {
+      ref.read(activeSubjectIdProvider.notifier).select('');
+      context.go(AppRoutes.home);
+      return;
+    }
+
+    _reloadSubject();
   }
 }
 

@@ -30,12 +30,31 @@ class CapturingSubjectsRepository implements SubjectsRepository {
   }
 
   @override
+  Future<SubjectLifecycleDecision> archiveSubject(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Subject> getSubject(String id) {
     throw UnimplementedError();
   }
 
   @override
+  Future<SubjectLifecycleDecision> getSubjectLifecycle(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<List<Subject>> listSubjects() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Subject> updateSubject({
+    required String id,
+    required String name,
+    required int priority,
+  }) {
     throw UnimplementedError();
   }
 }

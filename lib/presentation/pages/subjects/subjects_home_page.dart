@@ -12,6 +12,7 @@ import 'package:Neralune/presentation/design_system/tokens/revision_radius.dart'
 import 'package:Neralune/presentation/design_system/tokens/revision_spacing.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_subject_visuals.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_typography.dart';
+import 'package:Neralune/presentation/pages/subjects/widgets/subject_management_sheet.dart';
 
 class SubjectsHomePage extends ConsumerWidget {
   const SubjectsHomePage({super.key});
@@ -71,9 +72,9 @@ class SubjectsHomePage extends ConsumerWidget {
                           .select(subject.id);
                       context.go(subjectDetailRoutePath(subject.id));
                     },
-                    onDelete: () => _confirmAndDeleteSubject(
+                    onManage: () => _showSubjectManagement(
                       context: context,
-                      notifier: notifier,
+                      ref: ref,
                       subject: subject,
                     ),
                   ),
@@ -91,12 +92,12 @@ class _SubjectListItem extends StatelessWidget {
   const _SubjectListItem({
     required this.subject,
     required this.onTap,
-    required this.onDelete,
+    required this.onManage,
   });
 
   final Subject subject;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
+  final VoidCallback onManage;
 
   @override
   Widget build(BuildContext context) {
@@ -142,12 +143,12 @@ class _SubjectListItem extends StatelessWidget {
           ),
           const SizedBox(width: RevisionSpacing.s),
           IconButton(
-            onPressed: onDelete,
+            onPressed: onManage,
             icon: const Icon(
-              Icons.delete_outline_rounded,
+              Icons.more_horiz_rounded,
               color: RevisionColors.textMuted,
             ),
-            tooltip: 'Supprimer la matière',
+            tooltip: 'Gérer la matière',
           ),
           const Icon(
             Icons.chevron_right_rounded,
@@ -200,44 +201,22 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-Future<void> _confirmAndDeleteSubject({
+Future<void> _showSubjectManagement({
   required BuildContext context,
-  required SubjectsNotifier notifier,
+  required WidgetRef ref,
   required Subject subject,
 }) async {
-  final confirmed = await showDialog<bool>(
+  final result = await showSubjectManagementSheet(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Supprimer la matière ?'),
-      content: Text(
-        'Cette action supprimera aussi les cours et activités liés à ${subject.name}.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Annuler'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Supprimer'),
-        ),
-      ],
-    ),
+    subject: subject,
   );
 
-  if (confirmed != true || !context.mounted) {
+  if (!context.mounted || result == null) {
     return;
   }
 
-  try {
-    await notifier.deleteSubject(subject.id);
-  } catch (_) {
-    if (!context.mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Impossible de supprimer la matière')),
-    );
+  if (result == SubjectManagementResult.removed) {
+    ref.read(activeSubjectIdProvider.notifier).select('');
   }
 }
 

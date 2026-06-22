@@ -28,6 +28,13 @@ final courseDetailProvider = FutureProvider.family<CourseDetail, String>((
   return ref.read(coursesRepositoryProvider).getCourse(courseId: courseId);
 });
 
+final courseLifecycleProvider =
+    FutureProvider.family<CourseLifecycleDecision, String>((ref, courseId) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getCourseLifecycle(courseId: courseId);
+    });
+
 final courseProgressProvider = FutureProvider.family<CourseProgress, String>((
   ref,
   courseId,
@@ -56,6 +63,21 @@ final courseRevisionSheetProvider =
 final createCourseControllerProvider =
     NotifierProvider<CreateCourseController, AsyncValue<void>>(
       CreateCourseController.new,
+    );
+
+final updateCourseControllerProvider =
+    NotifierProvider<UpdateCourseController, AsyncValue<void>>(
+      UpdateCourseController.new,
+    );
+
+final archiveCourseControllerProvider =
+    NotifierProvider<ArchiveCourseController, AsyncValue<void>>(
+      ArchiveCourseController.new,
+    );
+
+final deleteCourseControllerProvider =
+    NotifierProvider<DeleteCourseController, AsyncValue<void>>(
+      DeleteCourseController.new,
     );
 
 final uploadCourseDocumentControllerProvider =
@@ -113,6 +135,87 @@ class CreateCourseController extends Notifier<AsyncValue<void>> {
   }
 }
 
+class UpdateCourseController extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncData(null);
+
+  Future<CourseListItem> update({
+    required CourseDetail detail,
+    required UpdateCourseInput input,
+  }) async {
+    state = const AsyncLoading();
+    final repository = ref.read(coursesRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.updateCourse(courseId: detail.course.id, input: input),
+    );
+    state = result.whenData((_) {});
+
+    if (result.hasError) {
+      Error.throwWithStackTrace(result.error!, result.stackTrace!);
+    }
+
+    final course = result.requireValue;
+    _invalidateCourseSurfaces(
+      ref,
+      courseId: course.id,
+      subjectId: course.subjectId,
+    );
+    return course;
+  }
+}
+
+class ArchiveCourseController extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncData(null);
+
+  Future<CourseLifecycleDecision> archive({
+    required CourseDetail detail,
+  }) async {
+    state = const AsyncLoading();
+    final repository = ref.read(coursesRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.archiveCourse(courseId: detail.course.id),
+    );
+    state = result.whenData((_) {});
+
+    if (result.hasError) {
+      Error.throwWithStackTrace(result.error!, result.stackTrace!);
+    }
+
+    final decision = result.requireValue;
+    _invalidateCourseSurfaces(
+      ref,
+      courseId: detail.course.id,
+      subjectId: detail.course.subjectId,
+    );
+    return decision;
+  }
+}
+
+class DeleteCourseController extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncData(null);
+
+  Future<void> delete({required CourseDetail detail}) async {
+    state = const AsyncLoading();
+    final repository = ref.read(coursesRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.deleteCourse(courseId: detail.course.id),
+    );
+    state = result;
+
+    if (result.hasError) {
+      Error.throwWithStackTrace(result.error!, result.stackTrace!);
+    }
+
+    _invalidateCourseSurfaces(
+      ref,
+      courseId: detail.course.id,
+      subjectId: detail.course.subjectId,
+    );
+  }
+}
+
 class UploadCourseDocumentController
     extends Notifier<AsyncValue<CourseDocument?>> {
   @override
@@ -150,6 +253,18 @@ class UploadCourseDocumentController
 
     return uploaded;
   }
+}
+
+void _invalidateCourseSurfaces(
+  Ref ref, {
+  required String courseId,
+  required String subjectId,
+}) {
+  ref.invalidate(courseDetailProvider(courseId));
+  ref.invalidate(courseLifecycleProvider(courseId));
+  ref.invalidate(courseProgressProvider(courseId));
+  ref.invalidate(coursesProvider(subjectId));
+  ref.invalidate(subjectProgressProvider(subjectId));
 }
 
 class DeleteCourseDocumentController extends Notifier<AsyncValue<void>> {

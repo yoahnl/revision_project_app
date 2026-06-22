@@ -16,6 +16,7 @@ import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import 'course_not_found_page.dart';
 import 'course_quick_revision_launcher.dart';
+import 'widgets/course_management_sheet.dart';
 import 'widgets/course_sources_bottom_sheet.dart';
 import 'widgets/quick_revision_question_count_sheet.dart';
 
@@ -191,22 +192,41 @@ class _CourseTopBar extends ConsumerWidget {
           onPressed: () => _popOrGo(context, AppRoutes.home),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
-        const Spacer(),
-        RevisionHeaderActionPill(
-          label: 'Fiche',
-          icon: Icons.article_outlined,
-          accent: visual.accent,
-          selected: hasReadySource,
-          onTap: hasReadySource
-              ? () => context.push(AppRoutes.courseSheet(detail.course.id))
-              : null,
-        ),
         const SizedBox(width: RevisionSpacing.s),
-        RevisionHeaderActionPill(
-          label: 'Sources',
-          icon: Icons.description_outlined,
-          accent: visual.accent,
-          onTap: () => _showSourcesSheet(context, ref, detail),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: RevisionSpacing.s,
+              runSpacing: RevisionSpacing.s,
+              children: [
+                RevisionHeaderActionPill(
+                  label: 'Fiche',
+                  icon: Icons.article_outlined,
+                  accent: visual.accent,
+                  selected: hasReadySource,
+                  onTap: hasReadySource
+                      ? () => context.push(
+                          AppRoutes.courseSheet(detail.course.id),
+                        )
+                      : null,
+                ),
+                RevisionHeaderActionPill(
+                  label: 'Sources',
+                  icon: Icons.description_outlined,
+                  accent: visual.accent,
+                  onTap: () => _showSourcesSheet(context, ref, detail),
+                ),
+                RevisionHeaderActionPill(
+                  label: 'Gérer',
+                  icon: Icons.more_horiz_rounded,
+                  accent: visual.accent,
+                  onTap: () => _showCourseManagement(context, ref, detail),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -616,6 +636,30 @@ void _showSourcesSheet(
     backgroundColor: Colors.transparent,
     builder: (context) => CourseSourcesBottomSheet(detail: detail),
   );
+}
+
+Future<void> _showCourseManagement(
+  BuildContext context,
+  WidgetRef ref,
+  CourseDetail detail,
+) async {
+  final result = await showCourseManagementSheet(
+    context: context,
+    detail: detail,
+  );
+
+  if (!context.mounted || result == null) {
+    return;
+  }
+
+  if (result == CourseManagementResult.removed) {
+    context.go(AppRoutes.home);
+    return;
+  }
+
+  ref.invalidate(courseDetailProvider(detail.course.id));
+  ref.invalidate(courseProgressProvider(detail.course.id));
+  ref.invalidate(subjectProgressProvider(detail.course.subjectId));
 }
 
 String _quickRevisionActionLabel(List<CourseDocument> sources) {
