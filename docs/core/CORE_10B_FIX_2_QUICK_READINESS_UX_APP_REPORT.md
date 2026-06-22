@@ -10,7 +10,20 @@ Ce micro-lot corrige la coherence Flutter autour de la readiness quick :
 - polling dedie a la cible preparee;
 - disponibilite partielle exploitee, par exemple `9 questions prêtes` permet de lancer `5`.
 
-Le code app est valide localement. Le lot reste `BLOCKED` cote roadmap, car la preuve runtime Marionette demandee n'a pas pu etre executee : l'app Neralune debug detectee n'expose pas l'extension Marionette.
+Le code app est valide localement et verifie en runtime macOS avec Marionette via l'entree debug dediee du repo.
+
+Preuve runtime obtenue le 2026-06-22 :
+
+```text
+Course detail "test"
+-> 10 questions prêtes
+-> selecteur 5/10/20/30
+-> 20 questions À préparer
+-> CTA Préparer 20 questions
+-> readiness Dokploy PREPARING puis READY target 20
+-> 20 questions Prêt
+-> session demarree : Question 1 sur 20
+```
 
 ## 2. Diagnostic exact
 
@@ -110,7 +123,7 @@ La préparation prend plus de temps que prévu. Tu peux réessayer ou revenir pl
 
 Marionette est disponible.
 
-Une app Flutter macOS Neralune debug est detectee avec VM service locale.
+Une app Flutter macOS Neralune debug a d'abord ete detectee avec VM service locale.
 
 Connexion tentee :
 
@@ -118,14 +131,48 @@ Connexion tentee :
 ws://127.0.0.1:55354/QiFNi8J3CPY=/ws
 ```
 
-Resultat :
+Resultat initial :
 
 ```text
 Failed to connect to app: No isolate found with ext.flutter.marionette.getLogs extension.
 Make sure the Flutter app has marionette_flutter initialized.
 ```
 
-Conclusion : validation visuelle Marionette non executee. L'app Neralune presente n'est pas instrumentee Marionette dans cette session.
+Conclusion initiale : validation visuelle Marionette impossible sans instrumentation.
+
+L'entree debug dediee du repo a ete utilisee comme point d'entree QA :
+
+```text
+dev/marionette_main.dart
+```
+
+Cette entree initialise `MarionetteBinding` et conserve le fichier `lib/main.dart` pur runtime utilisateur.
+
+Validation reussie :
+
+```text
+flutter run -t dev/marionette_main.dart -d macos
+VM service: ws://127.0.0.1:65078/aSIxppKOVKU=/ws
+Marionette connect: success
+```
+
+Etapes Marionette executees :
+
+```text
+1. Ouvrir le detail du cours "test".
+2. Verifier "10 questions prêtes".
+3. Ouvrir la feuille "Révision rapide".
+4. Verifier les choix 5/10/20/30.
+5. Verifier 5 et 10 = Prêt, 20 et 30 = À préparer.
+6. Selectionner 20.
+7. Verifier le CTA "Préparer 20 questions".
+8. Declencher la preparation.
+9. Confirmer via Dokploy que target 20 passe PREPARING -> READY.
+10. Rouvrir la feuille quick.
+11. Verifier 20 = Prêt et 30 = À préparer.
+12. Demarrer.
+13. Verifier l'ecran session "Question 1 sur 20".
+```
 
 ## 9. Tests app executes
 
@@ -139,6 +186,7 @@ flutter --version -> Flutter 3.44.0 stable, Dart 3.12.0
 flutter analyze -> echec outil Flutter analysis server, FormatException unexpected end of input, crash report flutter_01.log
 dart analyze lib test -> succes, no issues
 flutter test --reporter compact -> succes, 480 tests passed
+flutter run -t dev/marionette_main.dart -d macos -> succes, Marionette connectable
 ```
 
 Le crash `flutter analyze` est un crash de l'analysis server Flutter, pas un diagnostic projet. `dart analyze lib test` passe.
@@ -173,18 +221,18 @@ Le crash `flutter analyze` est un crash de l'analysis server Flutter, pas un dia
 Etat conserve :
 
 ```text
-CORE-10B = BLOCKED
+CORE-10B = DONE
 CORE-10 = IN_PROGRESS
 CORE-10C = TODO
 ```
 
-Raison : tests app OK, mais preuve runtime Marionette et preuve worker Dokploy fix-2 non disponibles.
+Raison : tests app OK, preuve runtime Marionette OK, preuve worker Dokploy OK.
 
 ## 14. Limites restantes
 
-- La preuve visuelle macOS A/B/C/D du prompt n'a pas pu etre executee sans extension Marionette dans l'app.
-- La preuve de transition backend deployee `9/10 -> 10/10 -> quick 10` attend le deploiement du correctif API fix-2.
-- Le polling est teste par comportement widget et par analyse du code, pas par Marionette runtime.
+- La preuve runtime a utilise un cours reel `10 -> 20`, pas exactement le scenario historique `9 -> 10`. Le scenario `9/10` reste couvert par tests widget.
+- La verification Dokploy a ete faite via tail brut, car `application.readLogs(search=...)` renvoie une erreur 500 cote outil.
+- Marionette necessite l'entree debug `dev/marionette_main.dart`.
 
 ## 15. Auto-review
 
@@ -196,11 +244,12 @@ Raison : tests app OK, mais preuve runtime Marionette et preuve worker Dokploy f
 - Source de verite target-aware ajoutee.
 - Selecteur 5/10/20/30 honnete.
 - Polling target-aware annule au dispose.
+- Marionette macOS executee avec succes.
+- Session quick 20 demarree en runtime.
 - Tests Flutter complets passes via `flutter test`.
 - `flutter analyze` a crashe cote outil, `dart analyze lib test` passe.
-- Aucun commit effectue.
+- Commit/push final effectue uniquement sur demande explicite de Yoahn.
 
 ## 16. Critique du prompt
 
 La demande de ne pas lancer de format global est en tension avec la commande `dart format --output=none --set-exit-if-changed lib test`. Le choix applique a ete de formater uniquement les fichiers modifies, puis de verifier l'analyse et les tests. C'est plus coherent avec la contrainte historique du repo.
-
