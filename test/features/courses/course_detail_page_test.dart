@@ -489,6 +489,48 @@ void main() {
   });
 
   testWidgets(
+    'course detail does not offer question preparation when no knowledge unit exists',
+    (tester) async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'ready.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..questionBankReadinessByTarget[(
+          courseId: 'course-1',
+          questionCount: 10,
+        )] = const CourseQuestionBankReadiness(
+          courseId: 'course-1',
+          status: CourseQuestionBankReadinessStatus.noKnowledgeUnits,
+          readyQuestionCount: 0,
+          targetQuestionCount: 10,
+          canStartQuickRevision: false,
+          canPrepare: false,
+          userMessage:
+              "Aucune notion exploitable n'a encore été trouvée pour ce cours.",
+        );
+
+      await tester.pumpWidget(
+        testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Préparer les questions'), findsNothing);
+      expect(
+        find.textContaining("Aucune notion exploitable n'a encore été trouvée"),
+        findsWidgets,
+      );
+    },
+  );
+
+  testWidgets(
     'quick revision shows partial readiness without contradictory CTA',
     (tester) async {
       final repository = InMemoryCoursesRepository()

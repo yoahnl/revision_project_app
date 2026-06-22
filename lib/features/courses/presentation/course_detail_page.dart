@@ -522,6 +522,19 @@ _PrimaryCourseAction _primaryActionFor(
       );
     }
 
+    if (readiness.status ==
+        CourseQuestionBankReadinessStatus.noKnowledgeUnits) {
+      return _PrimaryCourseAction(
+        title: 'Questions indisponibles',
+        message: readiness.userMessage,
+        buttonLabel: 'Voir la fiche',
+        icon: Icons.info_outline_rounded,
+        buttonIcon: Icons.description_outlined,
+        accent: RevisionColors.amber,
+        run: null,
+      );
+    }
+
     if (readiness.status == CourseQuestionBankReadinessStatus.preparing) {
       return const _PrimaryCourseAction(
         title: 'Préparation en cours',

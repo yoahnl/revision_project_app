@@ -609,6 +609,69 @@ void main() {
       true,
     );
   });
+
+  test(
+    'startCourseQuickRevisionController invalidates target readiness after preparing error',
+    () async {
+      final preparing = const CourseQuestionBankReadiness(
+        courseId: 'course-1',
+        status: CourseQuestionBankReadinessStatus.preparing,
+        readyQuestionCount: 9,
+        targetQuestionCount: 10,
+        canStartQuickRevision: false,
+        canPrepare: false,
+        userMessage:
+            'Les questions sont en préparation. Réessaie dans un instant.',
+      );
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail()
+        ..questionBankReadinessByTarget[(
+              courseId: 'course-1',
+              questionCount: 10,
+            )] =
+            preparing
+        ..quickRevisionError = const CourseQuickRevisionUnavailableException(
+          'Les questions sont en préparation. Réessaie dans un instant.',
+          readiness: CourseQuestionBankReadiness(
+            courseId: 'course-1',
+            status: CourseQuestionBankReadinessStatus.preparing,
+            readyQuestionCount: 9,
+            targetQuestionCount: 10,
+            canStartQuickRevision: false,
+            canPrepare: false,
+            userMessage:
+                'Les questions sont en préparation. Réessaie dans un instant.',
+          ),
+        );
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(
+        courseQuestionBankReadinessProvider((
+          courseId: 'course-1',
+          questionCount: 10,
+        )).future,
+      );
+      expect(repository.getQuestionBankReadinessCount, 1);
+
+      await expectLater(
+        container
+            .read(startCourseQuickRevisionControllerProvider.notifier)
+            .start(courseId: 'course-1', questionCount: 10),
+        throwsA(isA<CourseQuickRevisionUnavailableException>()),
+      );
+
+      await container.read(
+        courseQuestionBankReadinessProvider((
+          courseId: 'course-1',
+          questionCount: 10,
+        )).future,
+      );
+      expect(repository.getQuestionBankReadinessCount, 2);
+    },
+  );
 }
 
 CourseDetail courseDetail({List<CourseDocument> sources = const []}) {
