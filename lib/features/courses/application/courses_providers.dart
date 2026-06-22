@@ -44,6 +44,13 @@ final courseProgressProvider = FutureProvider.family<CourseProgress, String>((
       .getCourseProgress(courseId: courseId);
 });
 
+final courseQuestionBankReadinessProvider =
+    FutureProvider.family<CourseQuestionBankReadiness, String>((ref, courseId) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getQuestionBankReadiness(courseId: courseId);
+    });
+
 final subjectProgressProvider = FutureProvider.family<SubjectProgress, String>((
   ref,
   subjectId,
@@ -101,6 +108,12 @@ final generateCourseRevisionSheetControllerProvider =
       GenerateCourseRevisionSheetController,
       AsyncValue<RevisionSheet?>
     >(GenerateCourseRevisionSheetController.new);
+
+final prepareQuestionBankControllerProvider =
+    NotifierProvider<
+      PrepareQuestionBankController,
+      AsyncValue<CourseQuestionBankReadiness?>
+    >(PrepareQuestionBankController.new);
 
 final startCourseQuickRevisionControllerProvider =
     NotifierProvider<
@@ -352,6 +365,38 @@ class GenerateCourseRevisionSheetController
   }
 }
 
+class PrepareQuestionBankController
+    extends Notifier<AsyncValue<CourseQuestionBankReadiness?>> {
+  @override
+  AsyncValue<CourseQuestionBankReadiness?> build() => const AsyncData(null);
+
+  Future<CourseQuestionBankReadiness> prepare({
+    required String courseId,
+    int questionCount = 10,
+  }) async {
+    state = const AsyncLoading();
+    final repository = ref.read(coursesRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.prepareQuestionBank(
+        courseId: courseId,
+        questionCount: questionCount,
+      ),
+    );
+
+    state = result.whenData<CourseQuestionBankReadiness?>(
+      (readiness) => readiness,
+    );
+
+    ref.invalidate(courseQuestionBankReadinessProvider(courseId));
+
+    if (result.hasError) {
+      Error.throwWithStackTrace(result.error!, result.stackTrace!);
+    }
+
+    return result.requireValue;
+  }
+}
+
 class StartCourseQuickRevisionController
     extends Notifier<AsyncValue<RevisionSessionResponse?>> {
   @override
@@ -377,6 +422,7 @@ class StartCourseQuickRevisionController
     );
 
     state = result.whenData<RevisionSessionResponse?>((response) => response);
+    ref.invalidate(courseQuestionBankReadinessProvider(resolvedCourseId));
 
     if (result.hasError) {
       Error.throwWithStackTrace(result.error!, result.stackTrace!);

@@ -529,10 +529,10 @@ void main() {
 
     expect(find.text('Préparation des questions'), findsOneWidget);
     expect(
-      find.text('20 questions sont chargées depuis la banque du cours.'),
+      find.text('20 questions sont préparées pour ta session.'),
       findsOneWidget,
     );
-    expect(find.text('Démarrage...'), findsOneWidget);
+    expect(find.text('Préparation...'), findsOneWidget);
 
     await tester.pumpAndSettle();
 

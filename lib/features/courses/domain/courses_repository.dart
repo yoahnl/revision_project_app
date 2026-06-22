@@ -53,6 +53,16 @@ abstract interface class CoursesRepository {
 
   Future<RevisionSheet> generateCourseRevisionSheet({required String courseId});
 
+  Future<CourseQuestionBankReadiness> getQuestionBankReadiness({
+    required String courseId,
+    int questionCount = 10,
+  });
+
+  Future<CourseQuestionBankReadiness> prepareQuestionBank({
+    required String courseId,
+    int questionCount = 10,
+  });
+
   Future<RevisionSessionResponse> startCourseQuickRevision({
     required String courseId,
     int questionCount = 10,
@@ -137,9 +147,10 @@ class CourseRevisionSheetNotReadyException implements Exception {
 }
 
 class CourseQuickRevisionUnavailableException implements Exception {
-  const CourseQuickRevisionUnavailableException(this.message);
+  const CourseQuickRevisionUnavailableException(this.message, {this.readiness});
 
   final String message;
+  final CourseQuestionBankReadiness? readiness;
 
   @override
   String toString() => message;

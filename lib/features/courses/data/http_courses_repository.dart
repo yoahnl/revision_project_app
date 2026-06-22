@@ -340,6 +340,48 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<CourseQuestionBankReadiness> getQuestionBankReadiness({
+    required String courseId,
+    int questionCount = 10,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/question-bank/readiness',
+        queryParameters: {'questionCount': questionCount},
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseQuestionBankReadinessJson(response.data).toReadiness();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CourseQuestionBankReadiness> prepareQuestionBank({
+    required String courseId,
+    int questionCount = 10,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/question-bank/prepare',
+        data: {'questionCount': questionCount},
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseQuestionBankReadinessJson(response.data).toReadiness();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<RevisionSessionResponse> startCourseQuickRevision({
     required String courseId,
     int questionCount = 10,
@@ -357,9 +399,13 @@ class HttpCoursesRepository implements CoursesRepository {
         throw const CourseNotFoundException('Course not found');
       }
       if (error.response?.statusCode == 409) {
-        final message = _responseMessage(error);
+        final readiness = _responseReadiness(error);
+        final message = readiness?.userMessage ?? _responseMessage(error);
         throw CourseQuickRevisionUnavailableException(
-          message ?? 'Course quick revision is not available',
+          _friendlyQuickRevisionMessage(
+            message ?? 'Course quick revision is not available',
+          ),
+          readiness: readiness,
         );
       }
       rethrow;
@@ -418,6 +464,18 @@ class HttpCoursesRepository implements CoursesRepository {
       final message = data['message'];
       if (message is String) {
         return message;
+      }
+    }
+
+    return null;
+  }
+
+  CourseQuestionBankReadiness? _responseReadiness(DioException error) {
+    final data = error.response?.data;
+    if (data is Map<String, Object?>) {
+      final readiness = data['readiness'];
+      if (readiness is Map<String, Object?>) {
+        return _CourseQuestionBankReadinessJson(readiness).toReadiness();
       }
     }
 
@@ -602,6 +660,48 @@ class _CourseLifecycleDecisionJson {
   }
 }
 
+class _CourseQuestionBankReadinessJson {
+  const _CourseQuestionBankReadinessJson(this.value);
+
+  final Object? value;
+
+  CourseQuestionBankReadiness toReadiness() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid question bank readiness response');
+    }
+
+    final courseId = json['courseId'];
+    final status = json['status'];
+    final readyQuestionCount = json['readyQuestionCount'];
+    final targetQuestionCount = json['targetQuestionCount'];
+    final canStartQuickRevision = json['canStartQuickRevision'];
+    final canPrepare = json['canPrepare'];
+    final userMessage = json['userMessage'];
+
+    if (courseId is! String ||
+        status is! String ||
+        readyQuestionCount is! int ||
+        targetQuestionCount is! int ||
+        canStartQuickRevision is! bool ||
+        canPrepare is! bool ||
+        userMessage is! String) {
+      throw const FormatException('Invalid question bank readiness response');
+    }
+
+    return CourseQuestionBankReadiness(
+      courseId: courseId,
+      status: _parseQuestionBankReadinessStatus(status),
+      readyQuestionCount: readyQuestionCount,
+      targetQuestionCount: targetQuestionCount,
+      canStartQuickRevision: canStartQuickRevision,
+      canPrepare: canPrepare,
+      userMessage: userMessage,
+    );
+  }
+}
+
 class _CourseProgressJson {
   const _CourseProgressJson(this.value);
 
@@ -772,6 +872,35 @@ CourseProgressState _parseProgressState(String value) {
     'READY_NOT_PRACTICED' => CourseProgressState.readyNotPracticed,
     'PRACTICED' => CourseProgressState.practiced,
     _ => CourseProgressState.unknown,
+  };
+}
+
+CourseQuestionBankReadinessStatus _parseQuestionBankReadinessStatus(
+  String value,
+) {
+  return switch (value) {
+    'NO_READY_SOURCE' => CourseQuestionBankReadinessStatus.noReadySource,
+    'NO_KNOWLEDGE_UNITS' => CourseQuestionBankReadinessStatus.noKnowledgeUnits,
+    'NOT_PREPARED' => CourseQuestionBankReadinessStatus.notPrepared,
+    'PREPARING' => CourseQuestionBankReadinessStatus.preparing,
+    'READY' => CourseQuestionBankReadinessStatus.ready,
+    'FAILED' => CourseQuestionBankReadinessStatus.failed,
+    _ => CourseQuestionBankReadinessStatus.unknown,
+  };
+}
+
+String _friendlyQuickRevisionMessage(String message) {
+  return switch (message) {
+    'Course quick revision questions are being prepared' ||
+    'COURSE_QUICK_REVISION_QUESTIONS_PREPARING' =>
+      'Les questions sont en préparation. Réessaie dans un instant.',
+    'Course has no ready knowledge unit' =>
+      "Aucune notion exploitable n'a encore été trouvée pour ce cours.",
+    'Course has no ready source' =>
+      'Ajoute une source prête avant de lancer la révision rapide.',
+    'Course quick revision generation failed' =>
+      "Les questions n'ont pas pu être préparées pour le moment.",
+    _ => message,
   };
 }
 

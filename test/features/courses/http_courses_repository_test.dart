@@ -524,6 +524,46 @@ void main() {
     },
   );
 
+  test('loads and prepares course question bank readiness', () async {
+    final readinessRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse(questionBankReadinessJson(status: 'READY')),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final readiness = await readinessRepository.getQuestionBankReadiness(
+      courseId: 'course-1',
+      questionCount: 5,
+    );
+
+    expect(readiness.status, CourseQuestionBankReadinessStatus.ready);
+    expect(readiness.readyQuestionCount, 10);
+    expect(readiness.canStartQuickRevision, isTrue);
+
+    final prepareAdapter = CapturingHttpClientAdapter(
+      jsonResponse(questionBankReadinessJson(status: 'PREPARING')),
+    );
+    final prepareRepository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = prepareAdapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final preparing = await prepareRepository.prepareQuestionBank(
+      courseId: 'course-1',
+      questionCount: 5,
+    );
+
+    expect(preparing.status, CourseQuestionBankReadinessStatus.preparing);
+    expect(prepareAdapter.lastOptions?.method, 'POST');
+    expect(
+      prepareAdapter.lastOptions?.path,
+      '/courses/course-1/question-bank/prepare',
+    );
+    expect(prepareAdapter.lastOptions?.data, {'questionCount': 5});
+  });
+
   test('loads course progress from the course progress endpoint', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse(courseProgressJson()),
@@ -632,8 +672,38 @@ void main() {
         isA<CourseQuickRevisionUnavailableException>().having(
           (error) => error.message,
           'message',
-          'Course has no ready knowledge unit',
+          "Aucune notion exploitable n'a encore été trouvée pour ce cours.",
         ),
+      ),
+    );
+
+    final preparingRepository = HttpCoursesRepository(
+      dio: Dio()
+        ..httpClientAdapter = CapturingHttpClientAdapter(
+          jsonResponse({
+            'code': 'COURSE_QUICK_REVISION_QUESTIONS_PREPARING',
+            'message':
+                'Les questions sont en préparation. Réessaie dans un instant.',
+            'readiness': questionBankReadinessJson(status: 'PREPARING'),
+          }, statusCode: 409),
+        ),
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      preparingRepository.startCourseQuickRevision(courseId: 'course-1'),
+      throwsA(
+        isA<CourseQuickRevisionUnavailableException>()
+            .having(
+              (error) => error.message,
+              'message',
+              'Les questions sont en préparation. Réessaie dans un instant.',
+            )
+            .having(
+              (error) => error.readiness?.status,
+              'readiness status',
+              CourseQuestionBankReadinessStatus.preparing,
+            ),
       ),
     );
   });
@@ -723,6 +793,20 @@ Map<String, Object?> courseLifecycleJson({
     'canUpdate': status == 'ACTIVE',
     'blockingReasons': const <String>[],
     'userMessage': 'Décision lifecycle cours',
+  };
+}
+
+Map<String, Object?> questionBankReadinessJson({String status = 'READY'}) {
+  return {
+    'courseId': 'course-1',
+    'status': status,
+    'readyQuestionCount': status == 'READY' ? 10 : 0,
+    'targetQuestionCount': 10,
+    'canStartQuickRevision': status == 'READY',
+    'canPrepare': status == 'NOT_PREPARED' || status == 'FAILED',
+    'userMessage': status == 'PREPARING'
+        ? 'Les questions sont en préparation. Réessaie dans un instant.'
+        : 'Les questions sont prêtes.',
   };
 }
 

@@ -554,10 +554,27 @@ class _CourseModes extends ConsumerWidget {
     final quickRevisionState = ref.watch(
       startCourseQuickRevisionControllerProvider,
     );
+    final preparationState = ref.watch(prepareQuestionBankControllerProvider);
+    final readinessState = ref.watch(
+      courseQuestionBankReadinessProvider(detail.course.id),
+    );
+    final readiness = readinessState.maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
     final isStartingQuickRevision = quickRevisionState.isLoading;
+    final isPreparingQuestions = preparationState.isLoading;
     final hasReadySource = detail.sources.any(
       (source) => source.status == CourseDocumentStatus.ready,
     );
+    final quickEnabled =
+        hasReadySource &&
+        !isStartingQuickRevision &&
+        !isPreparingQuestions &&
+        (readiness == null ||
+            readiness.canStartQuickRevision ||
+            readiness.canPrepare ||
+            readiness.status == CourseQuestionBankReadinessStatus.notPrepared);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,15 +582,21 @@ class _CourseModes extends ConsumerWidget {
         Text('Modes de révision', style: RevisionTypography.sectionTitle),
         const SizedBox(height: RevisionSpacing.m),
         RevisionModeCard(
-          title: isStartingQuickRevision ? 'Démarrage...' : 'Révision rapide',
-          description: _quickRevisionActionLabel(detail.sources),
+          title: isStartingQuickRevision || isPreparingQuestions
+              ? 'Préparation...'
+              : 'Révision rapide',
+          description: _quickRevisionActionLabel(
+            detail.sources,
+            readiness,
+            readinessState.isLoading,
+          ),
           icon: Icons.flash_on_rounded,
           accent: RevisionColors.blue,
           trailingLabel: hasReadySource
-              ? null
+              ? _quickRevisionReadinessLabel(readiness)
               : _quickRevisionBlockedLabel(detail.sources),
-          enabled: hasReadySource && !isStartingQuickRevision,
-          onTap: () => _showQuickRevisionSheet(context, ref, detail),
+          enabled: quickEnabled,
+          onTap: () => _handleQuickRevisionTap(context, ref, detail, readiness),
         ),
         const SizedBox(height: RevisionSpacing.m),
         RevisionModeCard(
@@ -593,10 +616,12 @@ class _CourseModes extends ConsumerWidget {
           trailingLabel: 'Bientôt disponible',
           enabled: false,
         ),
-        if (quickRevisionState.hasError) ...[
+        if (quickRevisionState.hasError || preparationState.hasError) ...[
           const SizedBox(height: RevisionSpacing.s),
           Text(
-            'Les questions sont en préparation. Réessaie dans un instant.',
+            quickRevisionErrorLabel(
+              quickRevisionState.error ?? preparationState.error!,
+            ),
             style: RevisionTypography.caption.copyWith(
               color: RevisionColors.red,
             ),
@@ -605,6 +630,48 @@ class _CourseModes extends ConsumerWidget {
       ],
     );
   }
+}
+
+Future<void> _handleQuickRevisionTap(
+  BuildContext context,
+  WidgetRef ref,
+  CourseDetail detail,
+  CourseQuestionBankReadiness? readiness,
+) async {
+  if (readiness?.canStartQuickRevision ?? false) {
+    await _showQuickRevisionSheet(context, ref, detail);
+    return;
+  }
+
+  if (readiness?.canPrepare ?? true) {
+    try {
+      final prepared = await ref
+          .read(prepareQuestionBankControllerProvider.notifier)
+          .prepare(courseId: detail.course.id);
+
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(prepared.userMessage)));
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(quickRevisionErrorLabel(error))));
+    }
+    return;
+  }
+
+  final message =
+      readiness?.userMessage ??
+      'Les questions sont en préparation. Réessaie dans un instant.';
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 Future<void> _showQuickRevisionSheet(
@@ -670,9 +737,36 @@ Future<void> _showCourseManagement(
   ref.invalidate(subjectProgressProvider(detail.course.subjectId));
 }
 
-String _quickRevisionActionLabel(List<CourseDocument> sources) {
+String _quickRevisionActionLabel(
+  List<CourseDocument> sources,
+  CourseQuestionBankReadiness? readiness,
+  bool isLoadingReadiness,
+) {
   if (sources.any((source) => source.status == CourseDocumentStatus.ready)) {
-    return 'Questions rapides depuis une source prête.';
+    if (isLoadingReadiness) {
+      return 'Vérification des questions du cours.';
+    }
+
+    if (readiness == null) {
+      return 'Questions rapides depuis une source prête.';
+    }
+
+    return switch (readiness.status) {
+      CourseQuestionBankReadinessStatus.ready =>
+        '${readiness.readyQuestionCount} questions prêtes.',
+      CourseQuestionBankReadinessStatus.preparing =>
+        'Les questions sont en préparation.',
+      CourseQuestionBankReadinessStatus.notPrepared =>
+        'Prépare les questions avant de commencer.',
+      CourseQuestionBankReadinessStatus.failed =>
+        "Les questions n'ont pas pu être préparées.",
+      CourseQuestionBankReadinessStatus.noKnowledgeUnits =>
+        "Aucune notion exploitable n'a encore été trouvée.",
+      CourseQuestionBankReadinessStatus.noReadySource =>
+        'Ajoute une source prête pour commencer.',
+      CourseQuestionBankReadinessStatus.unknown =>
+        'Questions rapides depuis une source prête.',
+    };
   }
 
   if (sources.any(_isPendingSource)) {
@@ -685,6 +779,22 @@ String _quickRevisionActionLabel(List<CourseDocument> sources) {
   }
 
   return 'Ajoute une source pour réviser';
+}
+
+String? _quickRevisionReadinessLabel(CourseQuestionBankReadiness? readiness) {
+  if (readiness == null) {
+    return null;
+  }
+
+  return switch (readiness.status) {
+    CourseQuestionBankReadinessStatus.ready => null,
+    CourseQuestionBankReadinessStatus.preparing => 'En préparation',
+    CourseQuestionBankReadinessStatus.notPrepared => 'À préparer',
+    CourseQuestionBankReadinessStatus.failed => 'À relancer',
+    CourseQuestionBankReadinessStatus.noKnowledgeUnits => 'Indisponible',
+    CourseQuestionBankReadinessStatus.noReadySource => 'Source requise',
+    CourseQuestionBankReadinessStatus.unknown => null,
+  };
 }
 
 String _quickRevisionBlockedLabel(List<CourseDocument> sources) {

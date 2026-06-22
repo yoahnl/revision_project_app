@@ -87,7 +87,7 @@ Future<void> showQuickRevisionLoadingDialog(
               ),
               const SizedBox(height: RevisionSpacing.s),
               Text(
-                '$questionCount questions sont chargées depuis la banque du cours.',
+                '$questionCount questions sont préparées pour ta session.',
                 textAlign: TextAlign.center,
                 style: RevisionTypography.body,
               ),
@@ -101,10 +101,6 @@ Future<void> showQuickRevisionLoadingDialog(
 
 String quickRevisionErrorLabel(Object error) {
   if (error is CourseQuickRevisionUnavailableException) {
-    if (error.message == 'Course quick revision questions are being prepared') {
-      return 'Les questions sont en préparation. Réessaie dans un instant.';
-    }
-
     return error.message;
   }
 

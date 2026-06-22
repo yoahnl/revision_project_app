@@ -562,6 +562,30 @@ void main() {
     },
   );
 
+  test(
+    'prepareQuestionBankController prepares and refreshes readiness',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail();
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      final readiness = await container
+          .read(prepareQuestionBankControllerProvider.notifier)
+          .prepare(courseId: 'course-1', questionCount: 5);
+
+      expect(readiness.status, CourseQuestionBankReadinessStatus.preparing);
+      expect(readiness.targetQuestionCount, 5);
+      expect(repository.prepareQuestionBankCount, 1);
+      expect(
+        container.read(prepareQuestionBankControllerProvider).hasError,
+        false,
+      );
+    },
+  );
+
   test('startCourseQuickRevisionController exposes readiness errors', () async {
     final repository = InMemoryCoursesRepository()
       ..detailsByCourse['course-1'] = courseDetail()

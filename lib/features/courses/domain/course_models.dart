@@ -198,3 +198,33 @@ enum CourseProgressState {
   practiced,
   unknown,
 }
+
+enum CourseQuestionBankReadinessStatus {
+  noReadySource,
+  noKnowledgeUnits,
+  notPrepared,
+  preparing,
+  ready,
+  failed,
+  unknown,
+}
+
+class CourseQuestionBankReadiness {
+  const CourseQuestionBankReadiness({
+    required this.courseId,
+    required this.status,
+    required this.readyQuestionCount,
+    required this.targetQuestionCount,
+    required this.canStartQuickRevision,
+    required this.canPrepare,
+    required this.userMessage,
+  });
+
+  final String courseId;
+  final CourseQuestionBankReadinessStatus status;
+  final int readyQuestionCount;
+  final int targetQuestionCount;
+  final bool canStartQuickRevision;
+  final bool canPrepare;
+  final String userMessage;
+}

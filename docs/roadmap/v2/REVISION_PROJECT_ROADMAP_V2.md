@@ -80,7 +80,7 @@ Côté Flutter, le produit possède déjà Riverpod, GoRouter, l'auth, l'accueil
 
 ### 2.3 Ce qui reste fragile
 
-- La question bank peut encore générer trop de travail en synchrone.
+- La question bank quick ne génère plus de travail IA long dans le tap utilisateur depuis CORE-10A, mais la sélection multi-notions et la concurrence restent à durcir.
 - La quick revision course-level reste centrée sur une notion sélectionnée.
 - La suppression de source peut devenir dangereuse si une source a déjà servi à des sessions.
 - Le stockage reste local et doit être clarifié avant production.

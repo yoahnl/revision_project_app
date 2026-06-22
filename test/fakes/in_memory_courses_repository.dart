@@ -14,6 +14,10 @@ class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, RevisionSheet?> revisionSheetsByCourse = {};
   final Map<String, RevisionSheet> generatedRevisionSheetsByCourse = {};
   final Map<String, Object> revisionSheetErrorsByCourse = {};
+  final Map<String, CourseQuestionBankReadiness> questionBankReadinessByCourse =
+      {};
+  final Map<String, CourseQuestionBankReadiness> preparedQuestionBankByCourse =
+      {};
   final Map<String, SourceLifecycleDecision> lifecycleByDocumentId = {};
   int createCount = 0;
   int updateCount = 0;
@@ -23,6 +27,8 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int getSubjectProgressCount = 0;
   int getRevisionSheetCount = 0;
   int generateRevisionSheetCount = 0;
+  int getQuestionBankReadinessCount = 0;
+  int prepareQuestionBankCount = 0;
   int uploadCount = 0;
   int deleteDocumentCount = 0;
   int archiveDocumentCount = 0;
@@ -387,6 +393,46 @@ class InMemoryCoursesRepository implements CoursesRepository {
     throw const CourseRevisionSheetNotReadyException(
       'Course has no ready source',
     );
+  }
+
+  @override
+  Future<CourseQuestionBankReadiness> getQuestionBankReadiness({
+    required String courseId,
+    int questionCount = 10,
+  }) async {
+    getQuestionBankReadinessCount += 1;
+    return questionBankReadinessByCourse[courseId] ??
+        CourseQuestionBankReadiness(
+          courseId: courseId,
+          status: CourseQuestionBankReadinessStatus.ready,
+          readyQuestionCount: questionCount,
+          targetQuestionCount: questionCount,
+          canStartQuickRevision: true,
+          canPrepare: false,
+          userMessage: 'Les questions sont prêtes.',
+        );
+  }
+
+  @override
+  Future<CourseQuestionBankReadiness> prepareQuestionBank({
+    required String courseId,
+    int questionCount = 10,
+  }) async {
+    prepareQuestionBankCount += 1;
+    final readiness =
+        preparedQuestionBankByCourse[courseId] ??
+        CourseQuestionBankReadiness(
+          courseId: courseId,
+          status: CourseQuestionBankReadinessStatus.preparing,
+          readyQuestionCount: 0,
+          targetQuestionCount: questionCount,
+          canStartQuickRevision: false,
+          canPrepare: false,
+          userMessage:
+              'Les questions sont en préparation. Réessaie dans un instant.',
+        );
+    questionBankReadinessByCourse[courseId] = readiness;
+    return readiness;
   }
 
   @override
