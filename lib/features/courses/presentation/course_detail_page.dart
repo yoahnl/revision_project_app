@@ -307,34 +307,42 @@ class _CoursePrimaryAction extends ConsumerWidget {
           RevisionColors.glassStrong,
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          RevisionIconTile(icon: action.icon, accent: action.accent, size: 48),
-          const SizedBox(width: RevisionSpacing.m),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Action recommandée',
-                  style: RevisionTypography.caption.copyWith(
-                    color: visual.accent,
-                    fontWeight: FontWeight.w900,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RevisionIconTile(
+                icon: action.icon,
+                accent: action.accent,
+                size: 48,
+              ),
+              const SizedBox(width: RevisionSpacing.m),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Action recommandée',
+                      style: RevisionTypography.caption.copyWith(
+                        color: visual.accent,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: RevisionSpacing.xs),
+                    Text(action.title, style: RevisionTypography.sectionTitle),
+                    const SizedBox(height: RevisionSpacing.xs),
+                    Text(action.message, style: RevisionTypography.body),
+                    const SizedBox(height: RevisionSpacing.m),
+                  ],
                 ),
-                const SizedBox(height: RevisionSpacing.xs),
-                Text(action.title, style: RevisionTypography.sectionTitle),
-                const SizedBox(height: RevisionSpacing.xs),
-                Text(action.message, style: RevisionTypography.body),
-                const SizedBox(height: RevisionSpacing.m),
-                RevisionGradientButton(
-                  label: action.buttonLabel,
-                  icon: action.buttonIcon,
-                  onPressed: () => action.run(context, ref, detail),
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          RevisionGradientButton(
+            label: action.buttonLabel,
+            icon: action.buttonIcon,
+            onPressed: () => action.run(context, ref, detail),
           ),
         ],
       ),
