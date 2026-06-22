@@ -44,11 +44,19 @@ final courseProgressProvider = FutureProvider.family<CourseProgress, String>((
       .getCourseProgress(courseId: courseId);
 });
 
+typedef CourseQuestionBankReadinessKey = ({String courseId, int questionCount});
+
 final courseQuestionBankReadinessProvider =
-    FutureProvider.family<CourseQuestionBankReadiness, String>((ref, courseId) {
+    FutureProvider.family<
+      CourseQuestionBankReadiness,
+      CourseQuestionBankReadinessKey
+    >((ref, key) {
       return ref
           .read(coursesRepositoryProvider)
-          .getQuestionBankReadiness(courseId: courseId);
+          .getQuestionBankReadiness(
+            courseId: key.courseId,
+            questionCount: key.questionCount,
+          );
     });
 
 final subjectProgressProvider = FutureProvider.family<SubjectProgress, String>((
@@ -387,7 +395,12 @@ class PrepareQuestionBankController
       (readiness) => readiness,
     );
 
-    ref.invalidate(courseQuestionBankReadinessProvider(courseId));
+    ref.invalidate(
+      courseQuestionBankReadinessProvider((
+        courseId: courseId,
+        questionCount: questionCount,
+      )),
+    );
 
     if (result.hasError) {
       Error.throwWithStackTrace(result.error!, result.stackTrace!);
@@ -422,7 +435,12 @@ class StartCourseQuickRevisionController
     );
 
     state = result.whenData<RevisionSessionResponse?>((response) => response);
-    ref.invalidate(courseQuestionBankReadinessProvider(resolvedCourseId));
+    ref.invalidate(
+      courseQuestionBankReadinessProvider((
+        courseId: resolvedCourseId,
+        questionCount: questionCount,
+      )),
+    );
 
     if (result.hasError) {
       Error.throwWithStackTrace(result.error!, result.stackTrace!);

@@ -16,8 +16,12 @@ class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, Object> revisionSheetErrorsByCourse = {};
   final Map<String, CourseQuestionBankReadiness> questionBankReadinessByCourse =
       {};
+  final Map<({String courseId, int questionCount}), CourseQuestionBankReadiness>
+  questionBankReadinessByTarget = {};
   final Map<String, CourseQuestionBankReadiness> preparedQuestionBankByCourse =
       {};
+  final Map<({String courseId, int questionCount}), CourseQuestionBankReadiness>
+  preparedQuestionBankByTarget = {};
   final Map<String, SourceLifecycleDecision> lifecycleByDocumentId = {};
   int createCount = 0;
   int updateCount = 0;
@@ -401,7 +405,11 @@ class InMemoryCoursesRepository implements CoursesRepository {
     int questionCount = 10,
   }) async {
     getQuestionBankReadinessCount += 1;
-    return questionBankReadinessByCourse[courseId] ??
+    return questionBankReadinessByTarget[(
+          courseId: courseId,
+          questionCount: questionCount,
+        )] ??
+        questionBankReadinessByCourse[courseId] ??
         CourseQuestionBankReadiness(
           courseId: courseId,
           status: CourseQuestionBankReadinessStatus.ready,
@@ -420,6 +428,10 @@ class InMemoryCoursesRepository implements CoursesRepository {
   }) async {
     prepareQuestionBankCount += 1;
     final readiness =
+        preparedQuestionBankByTarget[(
+          courseId: courseId,
+          questionCount: questionCount,
+        )] ??
         preparedQuestionBankByCourse[courseId] ??
         CourseQuestionBankReadiness(
           courseId: courseId,
@@ -431,6 +443,11 @@ class InMemoryCoursesRepository implements CoursesRepository {
           userMessage:
               'Les questions sont en préparation. Réessaie dans un instant.',
         );
+    questionBankReadinessByTarget[(
+          courseId: courseId,
+          questionCount: questionCount,
+        )] =
+        readiness;
     questionBankReadinessByCourse[courseId] = readiness;
     return readiness;
   }

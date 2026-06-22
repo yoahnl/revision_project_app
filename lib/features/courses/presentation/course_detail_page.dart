@@ -73,6 +73,10 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
   Timer? _pollTimer;
   DateTime? _pollStartedAt;
   bool _pollTimedOut = false;
+  Timer? _questionPollTimer;
+  DateTime? _questionPollStartedAt;
+  int? _questionPollTarget;
+  bool _questionPollTimedOut = false;
 
   @override
   void initState() {
@@ -89,6 +93,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
   @override
   void dispose() {
     _stopPolling(resetTimeout: false);
+    _stopQuestionPolling(resetTimeout: false);
     super.dispose();
   }
 
@@ -100,8 +105,44 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
       '${detail.subject.name} ${course.title}',
     );
     final progress = ref.watch(courseProgressProvider(course.id));
+    final primaryReadinessState = ref.watch(
+      courseQuestionBankReadinessProvider((
+        courseId: course.id,
+        questionCount: 10,
+      )),
+    );
+    final primaryReadiness = primaryReadinessState.maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
+    final preparationReadiness = ref
+        .watch(prepareQuestionBankControllerProvider)
+        .maybeWhen(data: (value) => value, orElse: () => null);
+    final isPreparationPolling =
+        preparationReadiness?.status ==
+        CourseQuestionBankReadinessStatus.preparing;
+    final preparationTarget = isPreparationPolling
+        ? preparationReadiness!.targetQuestionCount
+        : null;
+    final preparationTargetReadiness =
+        preparationTarget != null && preparationTarget != 10
+        ? ref
+              .watch(
+                courseQuestionBankReadinessProvider((
+                  courseId: course.id,
+                  questionCount: preparationTarget,
+                )),
+              )
+              .maybeWhen(data: (value) => value, orElse: () => null)
+        : null;
+    final pollingReadiness =
+        preparationTargetReadiness ??
+        (isPreparationPolling ? preparationReadiness : primaryReadiness);
     final hasReadySource = detail.sources.any(
       (source) => source.status == CourseDocumentStatus.ready,
+    );
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _syncQuestionPolling(pollingReadiness),
     );
 
     return RevisionPageScaffold(
@@ -125,6 +166,13 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
           RevisionGlassCard(
             child: Text(
               'Le traitement continue en arrière-plan. Tu peux revenir plus tard.',
+              style: RevisionTypography.body,
+            ),
+          ),
+        if (_questionPollTimedOut)
+          RevisionGlassCard(
+            child: Text(
+              'La préparation prend plus de temps que prévu. Tu peux réessayer ou revenir plus tard.',
               style: RevisionTypography.body,
             ),
           ),
@@ -168,6 +216,58 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
     _pollStartedAt = null;
     if (resetTimeout && _pollTimedOut && mounted) {
       setState(() => _pollTimedOut = false);
+    }
+  }
+
+  void _syncQuestionPolling(CourseQuestionBankReadiness? readiness) {
+    if (!mounted) {
+      return;
+    }
+
+    if (readiness?.status != CourseQuestionBankReadinessStatus.preparing) {
+      _stopQuestionPolling(resetTimeout: true);
+      return;
+    }
+
+    final target = readiness!.targetQuestionCount;
+    if (_questionPollTarget != null && _questionPollTarget != target) {
+      _stopQuestionPolling(resetTimeout: true);
+    }
+
+    _questionPollTarget = target;
+    _questionPollStartedAt ??= DateTime.now();
+    _questionPollTimer ??= Timer.periodic(_pollInterval, (_) {
+      final startedAt = _questionPollStartedAt;
+      if (startedAt != null &&
+          DateTime.now().difference(startedAt) >= _pollTimeout) {
+        if (mounted) {
+          setState(() => _questionPollTimedOut = true);
+        }
+        _stopQuestionPolling(resetTimeout: false);
+        return;
+      }
+
+      final target = _questionPollTarget;
+      if (target == null) {
+        return;
+      }
+
+      ref.invalidate(
+        courseQuestionBankReadinessProvider((
+          courseId: widget.detail.course.id,
+          questionCount: target,
+        )),
+      );
+    });
+  }
+
+  void _stopQuestionPolling({required bool resetTimeout}) {
+    _questionPollTimer?.cancel();
+    _questionPollTimer = null;
+    _questionPollStartedAt = null;
+    _questionPollTarget = null;
+    if (resetTimeout && _questionPollTimedOut && mounted) {
+      setState(() => _questionPollTimedOut = false);
     }
   }
 }
@@ -295,7 +395,21 @@ class _CoursePrimaryAction extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final action = _primaryActionFor(detail.sources);
+    final readinessState = ref.watch(
+      courseQuestionBankReadinessProvider((
+        courseId: detail.course.id,
+        questionCount: 10,
+      )),
+    );
+    final readiness = readinessState.maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
+    final action = _primaryActionFor(
+      detail.sources,
+      readiness,
+      readinessState.isLoading,
+    );
 
     return RevisionGlassCard(
       borderColor: action.accent.withValues(alpha: 0.34),
@@ -342,7 +456,9 @@ class _CoursePrimaryAction extends ConsumerWidget {
           RevisionGradientButton(
             label: action.buttonLabel,
             icon: action.buttonIcon,
-            onPressed: () => action.run(context, ref, detail),
+            onPressed: action.run == null
+                ? null
+                : () => action.run!(context, ref, detail),
           ),
         ],
       ),
@@ -367,21 +483,77 @@ class _PrimaryCourseAction {
   final IconData icon;
   final IconData buttonIcon;
   final Color accent;
-  final void Function(BuildContext context, WidgetRef ref, CourseDetail detail)
+  final void Function(BuildContext context, WidgetRef ref, CourseDetail detail)?
   run;
 }
 
-_PrimaryCourseAction _primaryActionFor(List<CourseDocument> sources) {
+_PrimaryCourseAction _primaryActionFor(
+  List<CourseDocument> sources,
+  CourseQuestionBankReadiness? readiness,
+  bool isLoadingReadiness,
+) {
   if (sources.any((source) => source.status == CourseDocumentStatus.ready)) {
+    if (isLoadingReadiness || readiness == null) {
+      return const _PrimaryCourseAction(
+        title: 'Questions du cours',
+        message: 'Vérification des questions disponibles.',
+        buttonLabel: 'Vérification...',
+        icon: Icons.flash_on_rounded,
+        buttonIcon: Icons.hourglass_top_rounded,
+        accent: RevisionColors.blue,
+        run: null,
+      );
+    }
+
+    if (readiness.readyQuestionCount >= 5) {
+      final suffix =
+          readiness.status == CourseQuestionBankReadinessStatus.preparing
+          ? ' Plus de questions sont en préparation.'
+          : '';
+      return _PrimaryCourseAction(
+        title: 'Réviser maintenant',
+        message: '${readiness.readyQuestionCount} questions prêtes.$suffix',
+        buttonLabel: 'Réviser maintenant',
+        icon: Icons.flash_on_rounded,
+        buttonIcon: Icons.play_arrow_rounded,
+        accent: RevisionColors.blue,
+        run: (context, ref, detail) =>
+            _showQuickRevisionSheet(context, ref, detail),
+      );
+    }
+
+    if (readiness.status == CourseQuestionBankReadinessStatus.preparing) {
+      return const _PrimaryCourseAction(
+        title: 'Préparation en cours',
+        message: 'Les questions rapides sont en préparation.',
+        buttonLabel: 'Préparation en cours',
+        icon: Icons.auto_awesome_rounded,
+        buttonIcon: Icons.hourglass_top_rounded,
+        accent: RevisionColors.amber,
+        run: null,
+      );
+    }
+
     return _PrimaryCourseAction(
-      title: 'Réviser maintenant',
-      message: 'Une source est prête pour lancer des questions rapides.',
-      buttonLabel: 'Commencer une session rapide',
-      icon: Icons.flash_on_rounded,
-      buttonIcon: Icons.play_arrow_rounded,
+      title: 'Préparer les questions',
+      message: readiness.userMessage,
+      buttonLabel: 'Préparer les questions',
+      icon: Icons.auto_awesome_rounded,
+      buttonIcon: Icons.auto_awesome_rounded,
       accent: RevisionColors.blue,
-      run: (context, ref, detail) =>
-          _showQuickRevisionSheet(context, ref, detail),
+      run: (context, ref, detail) async {
+        final prepared = await ref
+            .read(prepareQuestionBankControllerProvider.notifier)
+            .prepare(courseId: detail.course.id);
+
+        if (!context.mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(prepared.userMessage)));
+      },
     );
   }
 
@@ -556,7 +728,10 @@ class _CourseModes extends ConsumerWidget {
     );
     final preparationState = ref.watch(prepareQuestionBankControllerProvider);
     final readinessState = ref.watch(
-      courseQuestionBankReadinessProvider(detail.course.id),
+      courseQuestionBankReadinessProvider((
+        courseId: detail.course.id,
+        questionCount: 10,
+      )),
     );
     final readiness = readinessState.maybeWhen(
       data: (value) => value,
@@ -564,6 +739,7 @@ class _CourseModes extends ConsumerWidget {
     );
     final isStartingQuickRevision = quickRevisionState.isLoading;
     final isPreparingQuestions = preparationState.isLoading;
+    final hasPartialReadyQuestions = (readiness?.readyQuestionCount ?? 0) >= 5;
     final hasReadySource = detail.sources.any(
       (source) => source.status == CourseDocumentStatus.ready,
     );
@@ -572,6 +748,7 @@ class _CourseModes extends ConsumerWidget {
         !isStartingQuickRevision &&
         !isPreparingQuestions &&
         (readiness == null ||
+            hasPartialReadyQuestions ||
             readiness.canStartQuickRevision ||
             readiness.canPrepare ||
             readiness.status == CourseQuestionBankReadinessStatus.notPrepared);
@@ -638,7 +815,8 @@ Future<void> _handleQuickRevisionTap(
   CourseDetail detail,
   CourseQuestionBankReadiness? readiness,
 ) async {
-  if (readiness?.canStartQuickRevision ?? false) {
+  if ((readiness?.canStartQuickRevision ?? false) ||
+      (readiness?.readyQuestionCount ?? 0) >= 5) {
     await _showQuickRevisionSheet(context, ref, detail);
     return;
   }
@@ -679,24 +857,56 @@ Future<void> _showQuickRevisionSheet(
   WidgetRef ref,
   CourseDetail detail,
 ) async {
-  final questionCount = await showModalBottomSheet<int>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) => const QuickRevisionQuestionCountSheet(),
-  );
+  final selection =
+      await showModalBottomSheet<QuickRevisionQuestionCountSelection>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) =>
+            QuickRevisionQuestionCountSheet(courseId: detail.course.id),
+      );
 
-  if (!context.mounted || questionCount == null) {
+  if (!context.mounted || selection == null) {
     return;
   }
 
-  await startCourseQuickRevisionFlow(
-    context: context,
-    ref: ref,
-    courseId: detail.course.id,
-    questionCount: questionCount,
-  );
+  switch (selection.action) {
+    case QuickRevisionQuestionCountAction.start:
+      await startCourseQuickRevisionFlow(
+        context: context,
+        ref: ref,
+        courseId: detail.course.id,
+        questionCount: selection.questionCount,
+      );
+    case QuickRevisionQuestionCountAction.prepare:
+      try {
+        final prepared = await ref
+            .read(prepareQuestionBankControllerProvider.notifier)
+            .prepare(
+              courseId: detail.course.id,
+              questionCount: selection.questionCount,
+            );
+
+        if (!context.mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(prepared.userMessage)));
+      } catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(quickRevisionErrorLabel(error))));
+      }
+    case QuickRevisionQuestionCountAction.wait:
+      break;
+  }
 }
 
 void _showSourcesSheet(
@@ -755,7 +965,9 @@ String _quickRevisionActionLabel(
       CourseQuestionBankReadinessStatus.ready =>
         '${readiness.readyQuestionCount} questions prêtes.',
       CourseQuestionBankReadinessStatus.preparing =>
-        'Les questions sont en préparation.',
+        readiness.readyQuestionCount >= 5
+            ? '${readiness.readyQuestionCount} questions prêtes. Plus de questions sont en préparation.'
+            : 'Les questions sont en préparation.',
       CourseQuestionBankReadinessStatus.notPrepared =>
         'Prépare les questions avant de commencer.',
       CourseQuestionBankReadinessStatus.failed =>
@@ -784,6 +996,10 @@ String _quickRevisionActionLabel(
 String? _quickRevisionReadinessLabel(CourseQuestionBankReadiness? readiness) {
   if (readiness == null) {
     return null;
+  }
+
+  if (readiness.readyQuestionCount >= 5) {
+    return '${readiness.readyQuestionCount} prêtes';
   }
 
   return switch (readiness.status) {

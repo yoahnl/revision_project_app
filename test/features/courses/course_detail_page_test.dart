@@ -474,7 +474,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Action recommandée'), findsOneWidget);
-    expect(find.text('Commencer une session rapide'), findsOneWidget);
+    expect(find.text('Réviser maintenant'), findsWidgets);
 
     final sheetPill = tester.widget<RevisionHeaderActionPill>(
       find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
@@ -487,6 +487,112 @@ void main() {
     );
     expect(quickCard.enabled, isTrue);
   });
+
+  testWidgets(
+    'quick revision shows partial readiness without contradictory CTA',
+    (tester) async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'ready.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..questionBankReadinessByTarget[(
+          courseId: 'course-1',
+          questionCount: 5,
+        )] = const CourseQuestionBankReadiness(
+          courseId: 'course-1',
+          status: CourseQuestionBankReadinessStatus.ready,
+          readyQuestionCount: 9,
+          targetQuestionCount: 5,
+          canStartQuickRevision: true,
+          canPrepare: false,
+          userMessage: 'Les questions sont prêtes.',
+        )
+        ..questionBankReadinessByTarget[(
+          courseId: 'course-1',
+          questionCount: 10,
+        )] = const CourseQuestionBankReadiness(
+          courseId: 'course-1',
+          status: CourseQuestionBankReadinessStatus.preparing,
+          readyQuestionCount: 9,
+          targetQuestionCount: 10,
+          canStartQuickRevision: false,
+          canPrepare: false,
+          userMessage:
+              'Les questions sont en préparation. Réessaie dans un instant.',
+        )
+        ..questionBankReadinessByTarget[(
+          courseId: 'course-1',
+          questionCount: 20,
+        )] = const CourseQuestionBankReadiness(
+          courseId: 'course-1',
+          status: CourseQuestionBankReadinessStatus.notPrepared,
+          readyQuestionCount: 9,
+          targetQuestionCount: 20,
+          canStartQuickRevision: false,
+          canPrepare: true,
+          userMessage:
+              'Les questions doivent être préparées avant de commencer.',
+        )
+        ..questionBankReadinessByTarget[(
+          courseId: 'course-1',
+          questionCount: 30,
+        )] = const CourseQuestionBankReadiness(
+          courseId: 'course-1',
+          status: CourseQuestionBankReadinessStatus.notPrepared,
+          readyQuestionCount: 9,
+          targetQuestionCount: 30,
+          canStartQuickRevision: false,
+          canPrepare: true,
+          userMessage:
+              'Les questions doivent être préparées avant de commencer.',
+        );
+
+      await tester.pumpWidget(
+        testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Réviser maintenant'), findsWidgets);
+      expect(
+        find.text('9 questions prêtes. Plus de questions sont en préparation.'),
+        findsWidgets,
+      );
+      expect(find.text('Commencer une session rapide'), findsNothing);
+
+      await scrollToQuickRevision(tester);
+      final quickCard = tester.widget<RevisionModeCard>(
+        find.widgetWithText(RevisionModeCard, 'Révision rapide'),
+      );
+      expect(quickCard.enabled, isTrue);
+
+      await tester.tap(
+        find.widgetWithText(RevisionModeCard, 'Révision rapide'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('5 questions'), findsOneWidget);
+      expect(find.text('10 questions'), findsOneWidget);
+      expect(find.text('20 questions'), findsOneWidget);
+      expect(find.text('30 questions'), findsOneWidget);
+      expect(find.text('Prêt'), findsOneWidget);
+      expect(find.text('En préparation'), findsOneWidget);
+      expect(find.text('À préparer'), findsNWidgets(2));
+
+      await tester.tap(find.text('Démarrer'));
+      await tester.pump();
+
+      expect(repository.startQuickRevisionCount, 1);
+      expect(repository.lastQuickRevisionQuestionCount, 5);
+    },
+  );
 
   testWidgets('ready quick revision starts the real revision session route', (
     tester,
@@ -519,7 +625,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Choisis le nombre de questions pour cette session.'),
+      find.text('Choisis une quantité disponible ou prépare la suite.'),
       findsOneWidget,
     );
     await tester.tap(find.text('20 questions'));
