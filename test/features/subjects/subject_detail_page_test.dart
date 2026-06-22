@@ -9,6 +9,7 @@ import 'package:Neralune/app/di/providers.dart';
 import 'package:Neralune/features/courses/application/active_subject_provider.dart';
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 import 'package:Neralune/features/subjects/application/subjects_controller.dart';
 import 'package:Neralune/features/subjects/domain/subject.dart';
 import 'package:Neralune/features/subjects/presentation/subject_detail_page.dart';
@@ -46,6 +47,10 @@ class SingleSubjectRepository implements SubjectsRepository {
 }
 
 class StaticDocumentsApi implements DocumentsApi {
+  StaticDocumentsApi({this.lifecycleDecision});
+
+  final SourceLifecycleDecision? lifecycleDecision;
+
   final documents = <RevisionDocument>[
     const RevisionDocument(
       id: 'document-1',
@@ -75,6 +80,40 @@ class StaticDocumentsApi implements DocumentsApi {
   @override
   Future<void> deleteDocument({required String documentId}) async {
     documents.removeWhere((document) => document.id == documentId);
+  }
+
+  @override
+  Future<SourceLifecycleDecision> getDocumentLifecycle({
+    required String documentId,
+  }) async {
+    return lifecycleDecision ??
+        SourceLifecycleDecision(
+          documentId: documentId,
+          courseId: null,
+          status: SourceLifecycleStatus.active,
+          recommendedAction: SourceLifecycleAction.delete,
+          canDelete: true,
+          canArchive: true,
+          blockingReasons: const [],
+          userMessage: 'Cette source peut être supprimée.',
+        );
+  }
+
+  @override
+  Future<SourceLifecycleDecision> archiveDocument({
+    required String documentId,
+  }) async {
+    documents.removeWhere((document) => document.id == documentId);
+    return SourceLifecycleDecision(
+      documentId: documentId,
+      courseId: null,
+      status: SourceLifecycleStatus.archived,
+      recommendedAction: SourceLifecycleAction.block,
+      canDelete: false,
+      canArchive: false,
+      blockingReasons: const ['ALREADY_ARCHIVED'],
+      userMessage: 'Cette source est archivée.',
+    );
   }
 
   @override
@@ -313,6 +352,51 @@ void main() {
     await tester.tap(find.byTooltip('Supprimer la source'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Supprimer'));
+    await tester.pumpAndSettle();
+
+    expect(documentsApi.documents, isEmpty);
+    expect(find.text('cours.pdf'), findsNothing);
+  });
+
+  testWidgets('archives a used document instead of deleting it', (
+    tester,
+  ) async {
+    final documentsApi = StaticDocumentsApi(
+      lifecycleDecision: const SourceLifecycleDecision(
+        documentId: 'document-1',
+        courseId: null,
+        status: SourceLifecycleStatus.active,
+        recommendedAction: SourceLifecycleAction.archive,
+        canDelete: false,
+        canArchive: true,
+        blockingReasons: ['HAS_KNOWLEDGE_UNITS'],
+        userMessage: 'Cette source peut être archivée.',
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [documentsApiProvider.overrideWithValue(documentsApi)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: SubjectDetailPage(
+              subjectId: 'subject-1',
+              controller: SubjectsController(SingleSubjectRepository()),
+              documentsController: DocumentsController(documentsApi),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Supprimer la source'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Archiver la source ?'), findsOneWidget);
+    expect(find.textContaining('historique déjà créé'), findsOneWidget);
+
+    await tester.tap(find.text('Archiver'));
     await tester.pumpAndSettle();
 
     expect(documentsApi.documents, isEmpty);

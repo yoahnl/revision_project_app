@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../application/documents_controller.dart';
 import '../domain/revision_document.dart';
+import '../domain/source_lifecycle.dart';
 import 'revision_sheet_json.dart';
 
 class HttpDocumentsApi implements DocumentsApi {
@@ -76,12 +77,58 @@ class HttpDocumentsApi implements DocumentsApi {
 
   @override
   Future<void> deleteDocument({required String documentId}) async {
-    await _dio.delete<Object?>(
-      '/documents/$documentId',
+    try {
+      await _dio.delete<Object?>(
+        '/documents/$documentId',
+        options: await _authorizedOptions(
+          'A Firebase ID token is required to delete documents',
+        ),
+      );
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 409) {
+        throw SourceLifecycleException(
+          _responseMessage(error) ?? 'Cette source ne peut pas être supprimée.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<SourceLifecycleDecision> getDocumentLifecycle({
+    required String documentId,
+  }) async {
+    final response = await _dio.get<Object?>(
+      '/documents/$documentId/lifecycle',
       options: await _authorizedOptions(
-        'A Firebase ID token is required to delete documents',
+        'A Firebase ID token is required to load document lifecycle',
       ),
     );
+
+    return SourceLifecycleDecisionJson(response.data).toDecision();
+  }
+
+  @override
+  Future<SourceLifecycleDecision> archiveDocument({
+    required String documentId,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/documents/$documentId/archive',
+        options: await _authorizedOptions(
+          'A Firebase ID token is required to archive documents',
+        ),
+      );
+
+      return SourceLifecycleDecisionJson(response.data).toDecision();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 409) {
+        throw SourceLifecycleException(
+          _responseMessage(error) ?? 'Cette source ne peut pas être archivée.',
+        );
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -190,6 +237,18 @@ class HttpDocumentsApi implements DocumentsApi {
     }
 
     return Options(headers: {'Authorization': 'Bearer $token'});
+  }
+
+  String? _responseMessage(DioException error) {
+    final data = error.response?.data;
+    if (data is Map<String, Object?>) {
+      final message = data['message'];
+      if (message is String) {
+        return message;
+      }
+    }
+
+    return null;
   }
 
   Never _throwArtifactRequestException(DioException error) {

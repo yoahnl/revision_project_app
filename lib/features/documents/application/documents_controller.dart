@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../domain/revision_document.dart';
+import '../domain/source_lifecycle.dart';
 
 abstract interface class DocumentsApi {
   Future<RevisionDocument> uploadCoursePdf({
@@ -16,6 +17,12 @@ abstract interface class DocumentsApi {
   Future<RevisionDocument> getDocument({required String documentId});
 
   Future<void> deleteDocument({required String documentId});
+
+  Future<SourceLifecycleDecision> getDocumentLifecycle({
+    required String documentId,
+  });
+
+  Future<SourceLifecycleDecision> archiveDocument({required String documentId});
 
   Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits({
     required String documentId,
@@ -94,6 +101,26 @@ class DocumentsController {
     }
 
     return _api.deleteDocument(documentId: trimmed);
+  }
+
+  Future<SourceLifecycleDecision> getDocumentLifecycle(String documentId) {
+    final trimmed = documentId.trim();
+
+    if (trimmed.isEmpty) {
+      throw ArgumentError('Document id is required');
+    }
+
+    return _api.getDocumentLifecycle(documentId: trimmed);
+  }
+
+  Future<SourceLifecycleDecision> archiveDocument(String documentId) {
+    final trimmed = documentId.trim();
+
+    if (trimmed.isEmpty) {
+      throw ArgumentError('Document id is required');
+    }
+
+    return _api.archiveDocument(documentId: trimmed);
   }
 
   Future<DocumentKnowledgeUnitsResponse> listDocumentKnowledgeUnits(

@@ -27,6 +27,13 @@ class SubjectDocumentsNotifier extends _$SubjectDocumentsNotifier {
     await ref.read(documentsApiProvider).deleteDocument(documentId: documentId);
     await reload();
   }
+
+  Future<void> archiveDocument(String documentId) async {
+    await ref
+        .read(documentsApiProvider)
+        .archiveDocument(documentId: documentId);
+    await reload();
+  }
 }
 
 final subjectDocumentsNotifierProvider = subjectDocumentsProvider;

@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:Neralune/features/courses/data/http_courses_repository.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
+import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   CapturingHttpClientAdapter(this.response);
@@ -231,6 +232,80 @@ void main() {
         documentId: 'missing-document',
       ),
       throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
+  test(
+    'maps course source delete 409 to a readable request exception',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse({
+          'message': 'Cette source peut être archivée.',
+        }, statusCode: 409),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await expectLater(
+        repository.deleteCourseDocument(
+          courseId: 'course-1',
+          documentId: 'document-1',
+        ),
+        throwsA(
+          isA<CourseRequestException>().having(
+            (error) => error.message,
+            'message',
+            'Cette source peut être archivée.',
+          ),
+        ),
+      );
+    },
+  );
+
+  test('loads course source lifecycle from the encoded endpoint', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(sourceLifecycleJson()),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final decision = await repository.getCourseDocumentLifecycle(
+      courseId: 'course id/1',
+      documentId: 'document id/1',
+    );
+
+    expect(decision.recommendedAction, SourceLifecycleAction.archive);
+    expect(decision.canArchive, true);
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course%20id%2F1/sources/document%20id%2F1/lifecycle',
+    );
+  });
+
+  test('archives a course source through the encoded endpoint', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(sourceLifecycleJson(status: 'ARCHIVED', action: 'BLOCK')),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final decision = await repository.archiveCourseDocument(
+      courseId: 'course id/1',
+      documentId: 'document id/1',
+    );
+
+    expect(decision.status, SourceLifecycleStatus.archived);
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course%20id%2F1/sources/document%20id%2F1/archive',
     );
   });
 
@@ -556,6 +631,22 @@ Map<String, Object?> sourceJsonWith({required String status}) {
     'errorCode': null,
     'createdAt': '2026-06-18T10:00:00.000Z',
     'updatedAt': '2026-06-18T10:00:00.000Z',
+  };
+}
+
+Map<String, Object?> sourceLifecycleJson({
+  String status = 'ACTIVE',
+  String action = 'ARCHIVE',
+}) {
+  return {
+    'documentId': 'document-1',
+    'courseId': 'course-1',
+    'status': status,
+    'recommendedAction': action,
+    'canDelete': action == 'DELETE',
+    'canArchive': action == 'ARCHIVE',
+    'blockingReasons': action == 'ARCHIVE' ? ['HAS_KNOWLEDGE_UNITS'] : [],
+    'userMessage': 'Cette source peut être archivée.',
   };
 }
 

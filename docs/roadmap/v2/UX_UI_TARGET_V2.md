@@ -257,8 +257,8 @@ Statuts autorisés :
 | Supprimer un cours vide | AVAILABLE_NOW | STAB-01B | Garder les erreurs 409 lisibles. |
 | Renommer ou modifier un cours | NEEDS_API | CORE-09C | Ne pas créer de bouton actif sans endpoint. |
 | Ajouter une source | AVAILABLE_NOW | CORE-09A | Disponible depuis le cours. |
-| Supprimer une source inutilisée | AVAILABLE_NOW mais à durcir | CORE-09A | Le wording doit rester prudent jusqu'au lifecycle final. |
-| Archiver une source utilisée | NEEDS_API | CORE-09A | Prioritaire avant les historiques avancés. |
+| Supprimer une source inutilisée | AVAILABLE_NOW | CORE-09A | Autorisé uniquement après décision lifecycle `DELETE`. |
+| Archiver une source utilisée | AVAILABLE_NOW | CORE-09A | Retire la source des listes actives sans casser l'historique pédagogique. |
 | Révision rapide | AVAILABLE_NOW | CORE-10A, CORE-11A | Disponible si source prête et questions préparées. |
 | Révision approfondie | FUTURE | PLUS-01A | Masquer ou verrouiller clairement. |
 | Préparation examen | FUTURE | PLUS-03 | Masquer ou verrouiller clairement. |

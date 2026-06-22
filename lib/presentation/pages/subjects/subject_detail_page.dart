@@ -6,6 +6,7 @@ import 'package:Neralune/features/courses/application/active_subject_provider.da
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/application/subject_documents_notifier.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 import 'package:Neralune/features/subjects/application/subjects_controller.dart';
 import 'package:Neralune/features/subjects/domain/subject.dart';
 import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
@@ -56,12 +57,42 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
   }
 
   Future<void> _deleteDocument(RevisionDocument document) async {
+    SourceLifecycleDecision decision;
+    try {
+      decision = await widget.documentsController.getDocumentLifecycle(
+        document.id,
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible de vérifier cette source.')),
+      );
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    if (decision.recommendedAction == SourceLifecycleAction.archive) {
+      await _archiveDocument(document);
+      return;
+    }
+
+    if (decision.recommendedAction != SourceLifecycleAction.delete) {
+      await _showDocumentLifecycleBlockedDialog(decision);
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Supprimer la source ?'),
         content: Text(
-          'Cette action supprimera les notions et supports liés à ${document.fileName}.',
+          'Le PDF "${document.fileName}" sera retiré de cette matière. Tu pourras le rajouter plus tard si besoin.',
         ),
         actions: [
           TextButton(
@@ -92,6 +123,67 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
         const SnackBar(content: Text('Impossible de supprimer la source')),
       );
     }
+  }
+
+  Future<void> _archiveDocument(RevisionDocument document) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Archiver la source ?'),
+        content: Text(
+          'Le PDF "${document.fileName}" ne sera plus utilisé pour préparer de nouvelles révisions, mais l’historique déjà créé sera conservé.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Archiver'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(subjectDocumentsNotifierProvider(widget.subjectId).notifier)
+          .archiveDocument(document.id);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible d’archiver la source')),
+      );
+    }
+  }
+
+  Future<void> _showDocumentLifecycleBlockedDialog(
+    SourceLifecycleDecision decision,
+  ) {
+    final message = decision.blockingReasons.contains('SOURCE_PROCESSING')
+        ? 'Cette source est encore en cours d’analyse. Réessaie quand elle sera prête.'
+        : 'Cette source ne peut pas être modifiée pour le moment.';
+
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Action indisponible'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Compris'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

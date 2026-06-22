@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../documents/domain/revision_document.dart';
+import '../../documents/domain/source_lifecycle.dart';
 import '../../revision_sessions/domain/revision_session.dart';
 import 'course_models.dart';
 
@@ -21,6 +22,16 @@ abstract interface class CoursesRepository {
   });
 
   Future<void> deleteCourseDocument({
+    required String courseId,
+    required String documentId,
+  });
+
+  Future<SourceLifecycleDecision> getCourseDocumentLifecycle({
+    required String courseId,
+    required String documentId,
+  });
+
+  Future<SourceLifecycleDecision> archiveCourseDocument({
     required String courseId,
     required String documentId,
   });

@@ -2,11 +2,13 @@ import 'dart:typed_data';
 
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 
 class InMemoryDocumentsApi implements DocumentsApi {
   final List<RevisionDocument> documents = [];
   final Map<String, DocumentSummary> summariesByDocumentId = {};
   final Map<String, RevisionSheet> revisionSheetsByDocumentId = {};
+  final Map<String, SourceLifecycleDecision> lifecycleByDocumentId = {};
 
   @override
   Future<RevisionDocument> uploadCoursePdf({
@@ -39,6 +41,43 @@ class InMemoryDocumentsApi implements DocumentsApi {
   @override
   Future<void> deleteDocument({required String documentId}) async {
     documents.removeWhere((document) => document.id == documentId);
+  }
+
+  @override
+  Future<SourceLifecycleDecision> getDocumentLifecycle({
+    required String documentId,
+  }) async {
+    final document = documents.singleWhere(
+      (document) => document.id == documentId,
+    );
+    return lifecycleByDocumentId[documentId] ??
+        SourceLifecycleDecision(
+          documentId: document.id,
+          courseId: null,
+          status: SourceLifecycleStatus.active,
+          recommendedAction: SourceLifecycleAction.delete,
+          canDelete: true,
+          canArchive: true,
+          blockingReasons: const [],
+          userMessage: 'Cette source peut être supprimée.',
+        );
+  }
+
+  @override
+  Future<SourceLifecycleDecision> archiveDocument({
+    required String documentId,
+  }) async {
+    documents.removeWhere((document) => document.id == documentId);
+    return SourceLifecycleDecision(
+      documentId: documentId,
+      courseId: null,
+      status: SourceLifecycleStatus.archived,
+      recommendedAction: SourceLifecycleAction.block,
+      canDelete: false,
+      canArchive: false,
+      blockingReasons: const ['ALREADY_ARCHIVED'],
+      userMessage: 'Cette source est archivée.',
+    );
   }
 
   @override

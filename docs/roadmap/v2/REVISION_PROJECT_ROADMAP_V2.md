@@ -485,6 +485,8 @@ Tests Prisma relations, API 409/404/auth, UI confirmation.
 
 Une source utilisée ne détruit pas l'historique ; une source inutilisée peut être supprimée proprement.
 
+État CORE-09A : la décision delete/archive/block existe, les sources utilisées sont archivées logiquement et les listes actives les excluent. Le cleanup blob/storage et le lifecycle matière/cours restent dans CORE-09B/CORE-09C.
+
 ### Non-objectifs
 
 Pas de multi-source avancé.
@@ -495,7 +497,7 @@ Migration de données si un statut d'archive est ajouté.
 
 ### Rapport attendu
 
-`docs/core/CORE_09_SOURCE_LIFECYCLE_STORAGE_POLICY_REPORT.md`.
+`docs/core/CORE_09A_SOURCE_LIFECYCLE_APP_REPORT.md` côté app et `docs/core/CORE_09A_SOURCE_LIFECYCLE_API_REPORT.md` côté API pour CORE-09A.
 
 ## CORE-10 — Question bank production hardening
 

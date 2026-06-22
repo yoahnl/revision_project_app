@@ -6,6 +6,7 @@ import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import '../../documents/data/revision_sheet_json.dart';
 import '../../documents/domain/revision_document.dart';
+import '../../documents/domain/source_lifecycle.dart';
 import '../../revision_sessions/data/http_revision_sessions_api.dart';
 import '../../revision_sessions/domain/revision_session.dart';
 
@@ -127,6 +128,56 @@ class HttpCoursesRepository implements CoursesRepository {
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         throw const CourseNotFoundException('Course source not found');
+      }
+      if (error.response?.statusCode == 409) {
+        throw CourseRequestException(
+          _responseMessage(error) ?? 'Cette source ne peut pas être supprimée.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<SourceLifecycleDecision> getCourseDocumentLifecycle({
+    required String courseId,
+    required String documentId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/sources/${Uri.encodeComponent(documentId)}/lifecycle',
+        options: await _authorizedOptions(),
+      );
+
+      return SourceLifecycleDecisionJson(response.data).toDecision();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course source not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<SourceLifecycleDecision> archiveCourseDocument({
+    required String courseId,
+    required String documentId,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/sources/${Uri.encodeComponent(documentId)}/archive',
+        options: await _authorizedOptions(),
+      );
+
+      return SourceLifecycleDecisionJson(response.data).toDecision();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course source not found');
+      }
+      if (error.response?.statusCode == 409) {
+        throw CourseRequestException(
+          _responseMessage(error) ?? 'Cette source ne peut pas être archivée.',
+        );
       }
       rethrow;
     }

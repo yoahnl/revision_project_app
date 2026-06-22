@@ -7,6 +7,7 @@ import 'package:Neralune/features/courses/application/courses_providers.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 
@@ -348,6 +349,86 @@ void main() {
       expect(repository.listCoursesCount, initialListReads);
       expect(repository.getCourseProgressCount, initialCourseProgressReads);
       expect(repository.getSubjectProgressCount, initialSubjectProgressReads);
+    },
+  );
+
+  test(
+    'archiveCourseDocumentController archives a source and refreshes course surfaces',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..coursesBySubject['subject-1'] = const [
+          CourseListItem(
+            id: 'course-1',
+            subjectId: 'subject-1',
+            title: 'Droit constitutionnel',
+          ),
+        ]
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'cours.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..progressByCourse['course-1'] = courseProgress()
+        ..progressBySubject['subject-1'] = subjectProgress()
+        ..lifecycleByDocumentId['document-1'] = const SourceLifecycleDecision(
+          documentId: 'document-1',
+          courseId: 'course-1',
+          status: SourceLifecycleStatus.active,
+          recommendedAction: SourceLifecycleAction.archive,
+          canDelete: false,
+          canArchive: true,
+          blockingReasons: ['HAS_KNOWLEDGE_UNITS'],
+          userMessage: 'Cette source peut être archivée.',
+        );
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(courseDetailProvider('course-1').future);
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      final initialDetailReads = repository.getCourseCount;
+      final initialListReads = repository.listCoursesCount;
+      final initialCourseProgressReads = repository.getCourseProgressCount;
+      final initialSubjectProgressReads = repository.getSubjectProgressCount;
+
+      await container
+          .read(archiveCourseDocumentControllerProvider.notifier)
+          .archive(
+            detail: repository.detailsByCourse['course-1']!,
+            documentId: 'document-1',
+          );
+
+      expect(repository.archiveDocumentCount, 1);
+      expect(repository.lastArchivedCourseId, 'course-1');
+      expect(repository.lastArchivedDocumentId, 'document-1');
+      expect(
+        (await container.read(courseDetailProvider('course-1').future)).sources,
+        isEmpty,
+      );
+      await container.read(coursesProvider('subject-1').future);
+      await container.read(courseProgressProvider('course-1').future);
+      await container.read(subjectProgressProvider('subject-1').future);
+
+      expect(repository.getCourseCount, greaterThan(initialDetailReads));
+      expect(repository.listCoursesCount, greaterThan(initialListReads));
+      expect(
+        repository.getCourseProgressCount,
+        greaterThan(initialCourseProgressReads),
+      );
+      expect(
+        repository.getSubjectProgressCount,
+        greaterThan(initialSubjectProgressReads),
+      );
     },
   );
 

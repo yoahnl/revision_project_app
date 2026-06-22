@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
+import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
 
 class InMemoryCoursesRepository implements CoursesRepository {
@@ -13,6 +14,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, RevisionSheet?> revisionSheetsByCourse = {};
   final Map<String, RevisionSheet> generatedRevisionSheetsByCourse = {};
   final Map<String, Object> revisionSheetErrorsByCourse = {};
+  final Map<String, SourceLifecycleDecision> lifecycleByDocumentId = {};
   int createCount = 0;
   int listCoursesCount = 0;
   int getCourseCount = 0;
@@ -22,16 +24,21 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int generateRevisionSheetCount = 0;
   int uploadCount = 0;
   int deleteDocumentCount = 0;
+  int archiveDocumentCount = 0;
+  int getLifecycleCount = 0;
   int startQuickRevisionCount = 0;
   String? lastUploadedCourseId;
   String? lastUploadedFileName;
   Uint8List? lastUploadedBytes;
   String? lastDeletedCourseId;
   String? lastDeletedDocumentId;
+  String? lastArchivedCourseId;
+  String? lastArchivedDocumentId;
   String? lastQuickRevisionCourseId;
   int? lastQuickRevisionQuestionCount;
   Object? uploadError;
   Object? deleteDocumentError;
+  Object? archiveDocumentError;
   Object? quickRevisionError;
   RevisionSessionResponse? quickRevisionResponse;
   Duration uploadDelay = Duration.zero;
@@ -157,6 +164,75 @@ class InMemoryCoursesRepository implements CoursesRepository {
       subject: detail.subject,
       sources: remainingSources,
       progress: detail.progress,
+    );
+  }
+
+  @override
+  Future<SourceLifecycleDecision> getCourseDocumentLifecycle({
+    required String courseId,
+    required String documentId,
+  }) async {
+    getLifecycleCount += 1;
+    final detail = detailsByCourse[courseId];
+    if (detail == null ||
+        !detail.sources.any((source) => source.documentId == documentId)) {
+      throw const CourseNotFoundException('Course source not found');
+    }
+
+    return lifecycleByDocumentId[documentId] ??
+        SourceLifecycleDecision(
+          documentId: documentId,
+          courseId: courseId,
+          status: SourceLifecycleStatus.active,
+          recommendedAction: SourceLifecycleAction.delete,
+          canDelete: true,
+          canArchive: true,
+          blockingReasons: const [],
+          userMessage: 'Cette source peut être supprimée.',
+        );
+  }
+
+  @override
+  Future<SourceLifecycleDecision> archiveCourseDocument({
+    required String courseId,
+    required String documentId,
+  }) async {
+    final error = archiveDocumentError;
+    if (error != null) {
+      throw error;
+    }
+
+    final detail = detailsByCourse[courseId];
+    if (detail == null) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    final remainingSources = detail.sources
+        .where((source) => source.documentId != documentId)
+        .toList(growable: false);
+    if (remainingSources.length == detail.sources.length) {
+      throw const CourseNotFoundException('Course source not found');
+    }
+
+    archiveDocumentCount += 1;
+    lastArchivedCourseId = courseId;
+    lastArchivedDocumentId = documentId;
+    detailsByCourse[courseId] = CourseDetail(
+      course: detail.course,
+      subject: detail.subject,
+      sources: remainingSources,
+      progress: detail.progress,
+    );
+
+    return SourceLifecycleDecision(
+      documentId: documentId,
+      courseId: courseId,
+      status: SourceLifecycleStatus.archived,
+      recommendedAction: SourceLifecycleAction.block,
+      canDelete: false,
+      canArchive: false,
+      blockingReasons: const ['ALREADY_ARCHIVED'],
+      userMessage: 'Cette source est archivée.',
     );
   }
 

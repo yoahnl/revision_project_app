@@ -10,6 +10,7 @@ import 'package:Neralune/features/courses/application/courses_providers.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/courses/presentation/course_detail_page.dart';
+import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
@@ -137,7 +138,7 @@ void main() {
     await openSourcesSheet(tester);
     expect(find.text('cours.pdf'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Supprimer la source cours.pdf'));
+    await tester.tap(find.byTooltip('Gérer la source cours.pdf'));
     await tester.pumpAndSettle();
 
     expect(find.text('Supprimer cette source ?'), findsOneWidget);
@@ -148,6 +149,52 @@ void main() {
     expect(repository.deleteDocumentCount, 1);
     expect(repository.lastDeletedDocumentId, 'document-1');
     expect(find.text('Source supprimée'), findsOneWidget);
+  });
+
+  testWidgets('course detail archives a used source after confirmation', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'cours.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..lifecycleByDocumentId['document-1'] = const SourceLifecycleDecision(
+        documentId: 'document-1',
+        courseId: 'course-1',
+        status: SourceLifecycleStatus.active,
+        recommendedAction: SourceLifecycleAction.archive,
+        canDelete: false,
+        canArchive: true,
+        blockingReasons: ['HAS_KNOWLEDGE_UNITS'],
+        userMessage: 'Cette source peut être archivée.',
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await openSourcesSheet(tester);
+    await tester.tap(find.byTooltip('Gérer la source cours.pdf'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Archiver cette source ?'), findsOneWidget);
+    expect(find.textContaining('historique déjà créé'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Archiver'));
+    await tester.pumpAndSettle();
+
+    expect(repository.archiveDocumentCount, 1);
+    expect(repository.lastArchivedDocumentId, 'document-1');
+    expect(find.text('Source archivée'), findsOneWidget);
   });
 
   testWidgets('course detail shows an error when source deletion fails', (
@@ -175,7 +222,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await openSourcesSheet(tester);
-    await tester.tap(find.byTooltip('Supprimer la source cours.pdf'));
+    await tester.tap(find.byTooltip('Gérer la source cours.pdf'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(TextButton, 'Supprimer'));
