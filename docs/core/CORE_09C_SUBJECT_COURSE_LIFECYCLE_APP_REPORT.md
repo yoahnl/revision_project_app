@@ -111,6 +111,32 @@ rg -n "COURSE_DELETE_BLOCKED|SUBJECT_DELETE_BLOCKED|HAS_REVISION_SESSIONS|HAS_QU
 
 Résultat : 1309 lignes, dominées par routes, repositories, fakes et tests utilisant `subjectId`/`courseId`. Les codes lifecycle techniques ne sont pas affichés dans les libellés utilisateur des sheets.
 
+## CORE-09C-bis hardening fixes
+
+- Le test `HttpCoursesRepository.updateCourse` vérifie maintenant que la réponse `PATCH /courses/:courseId` contient les compteurs complets `sourceCount`, `readySourceCount`, `processingSourceCount` et `failedSourceCount`.
+- Aucun workaround parser n'a été ajouté côté Flutter : le contrat attendu reste corrigé côté API.
+- Aucun lien juridique, rename `Neralune`, workflow CI, Xcode Cloud ou UI produit n'a été modifié par CORE-09C-bis.
+- Note hors lot : `macos/Runner.xcodeproj/xcshareddata/xcodecloud/manifest.json` était déjà modifié dans le working tree avant cette reprise ; il n'a pas été modifié ni revert par ce lot.
+
+Tests ciblés exécutés pendant le durcissement :
+
+- `flutter test test/features/courses/http_courses_repository_test.dart --reporter compact` : OK, 24 tests.
+- `flutter --version` : Flutter 3.44.0, Dart 3.12.0.
+- `flutter pub get` : OK, avec avertissement habituel de dépendances plus récentes incompatibles avec les contraintes.
+- `dart analyze lib test` : OK, aucun issue.
+- `flutter test test/app/router/app_router_test.dart --reporter compact` : OK, 20 tests.
+- `flutter test test/features/courses --reporter compact` : OK, 67 tests.
+- `flutter test test/features/subjects --reporter compact` : OK, 28 tests.
+- `flutter test test/features/documents --reporter compact` : OK, 39 tests.
+- `flutter test test/app/revision_app_test.dart --reporter compact` : OK, 10 tests.
+- `flutter test --reporter compact` : OK, full suite à 477 tests.
+
+Note validation : une tentative parallèle de suites Flutter a échoué sur des locks/artefacts natifs macOS (`startup lock`, `objective_c.dylib`). Les mêmes suites relancées séquentiellement sont vertes.
+
+Confirmation backend Flutter : aucune logique métier app n'a été étendue hors vérification du contrat existant.
+
+Confirmation Git : aucun commit effectué pendant CORE-09C-bis.
+
 ## 12. Limitations
 
 - Pas d'écran d'historique des archives.
@@ -176,7 +202,7 @@ Le contenu complet est disponible dans le diff Git local. Ce rapport ne s'inclut
 
 ## 17. Critique du prompt
 
-Le prompt demande une confirmation `DONE` globale. Côté app, toutes les validations Flutter demandées passent. La réserve restante concerne uniquement le full Jest API GenKit hors scope, documenté côté rapport API.
+Le prompt CORE-09C-bis est bien borné côté app : il évite de compenser un bug de réponse API par un parser permissif Flutter. La seule modification app utile est donc un test de contrat plus strict.
 
 ## 18. Confirmation aucun commit
 

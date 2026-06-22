@@ -82,7 +82,15 @@ void main() {
 
   test('updates a course through the PATCH endpoint', () async {
     final adapter = CapturingHttpClientAdapter(
-      jsonResponse(courseJson(title: 'Droit public')),
+      jsonResponse(
+        courseJson(
+          title: 'Droit public',
+          sourceCount: 4,
+          readySourceCount: 2,
+          processingSourceCount: 1,
+          failedSourceCount: 1,
+        ),
+      ),
     );
     final repository = HttpCoursesRepository(
       dio: Dio()..httpClientAdapter = adapter,
@@ -95,6 +103,10 @@ void main() {
     );
 
     expect(course.title, 'Droit public');
+    expect(course.sourceCount, 4);
+    expect(course.readySourceCount, 2);
+    expect(course.processingSourceCount, 1);
+    expect(course.failedSourceCount, 1);
     expect(adapter.lastOptions?.method, 'PATCH');
     expect(adapter.lastOptions?.path, '/courses/course%20id%2F1');
     expect(adapter.lastOptions?.data, {'title': 'Droit public'});
@@ -677,6 +689,8 @@ Map<String, Object?> revisionSessionJson({required String courseId}) {
 Map<String, Object?> courseJson({
   int sourceCount = 2,
   int readySourceCount = 1,
+  int processingSourceCount = 1,
+  int failedSourceCount = 0,
   String title = 'Droit constitutionnel',
 }) {
   return {
@@ -691,8 +705,8 @@ Map<String, Object?> courseJson({
     'updatedAt': '2026-06-18T10:00:00.000Z',
     'sourceCount': sourceCount,
     'readySourceCount': readySourceCount,
-    'processingSourceCount': 1,
-    'failedSourceCount': 0,
+    'processingSourceCount': processingSourceCount,
+    'failedSourceCount': failedSourceCount,
   };
 }
 
