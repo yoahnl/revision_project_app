@@ -44,6 +44,16 @@ final courseProgressProvider = FutureProvider.family<CourseProgress, String>((
       .getCourseProgress(courseId: courseId);
 });
 
+final resumableCourseRevisionSessionProvider =
+    FutureProvider.family<ResumableCourseRevisionSession?, String>((
+      ref,
+      courseId,
+    ) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getResumableCourseRevisionSession(courseId: courseId);
+    });
+
 typedef CourseQuestionBankReadinessKey = ({String courseId, int questionCount});
 
 final courseQuestionBankReadinessProvider =
@@ -435,6 +445,7 @@ class StartCourseQuickRevisionController
     );
 
     state = result.whenData<RevisionSessionResponse?>((response) => response);
+    ref.invalidate(resumableCourseRevisionSessionProvider(resolvedCourseId));
     ref.invalidate(
       courseQuestionBankReadinessProvider((
         courseId: resolvedCourseId,

@@ -14,18 +14,29 @@ class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
   String? flaggedSessionId;
   String? flaggedQuestionId;
   String? flaggedReason;
+  String? savedDraftSessionId;
+  String? savedDraftQuestionId;
+  List<String>? savedDraftChoiceIds;
+  String? deletedDraftSessionId;
+  String? deletedDraftQuestionId;
   int startCount = 0;
   int loadCount = 0;
   int completeCount = 0;
   int loadResultCount = 0;
   int flagCount = 0;
+  int saveDraftCount = 0;
+  int deleteDraftCount = 0;
   Object? startError;
   Object? loadError;
   Object? completeError;
   Object? loadResultError;
   Object? flagError;
+  Object? saveDraftError;
+  Object? deleteDraftError;
   RevisionSessionResponse startResponse = openQuestionRevisionSessionResponse();
   RevisionSessionResponse loadResponse = minimalRevisionSessionResponse();
+  RevisionSessionResponse? saveDraftResponse;
+  RevisionSessionResponse? deleteDraftResponse;
   RevisionSessionResult completeResponse = revisionSessionResult();
   RevisionSessionResult resultResponse = revisionSessionResult();
 
@@ -85,6 +96,38 @@ class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
       throw error;
     }
     return resultResponse;
+  }
+
+  @override
+  Future<RevisionSessionResponse> saveDraftAnswer({
+    required String sessionId,
+    required String questionId,
+    required List<String> selectedChoiceIds,
+  }) async {
+    saveDraftCount += 1;
+    savedDraftSessionId = sessionId;
+    savedDraftQuestionId = questionId;
+    savedDraftChoiceIds = selectedChoiceIds;
+    final error = saveDraftError;
+    if (error != null) {
+      throw error;
+    }
+    return saveDraftResponse ?? loadResponse;
+  }
+
+  @override
+  Future<RevisionSessionResponse> deleteDraftAnswer({
+    required String sessionId,
+    required String questionId,
+  }) async {
+    deleteDraftCount += 1;
+    deletedDraftSessionId = sessionId;
+    deletedDraftQuestionId = questionId;
+    final error = deleteDraftError;
+    if (error != null) {
+      throw error;
+    }
+    return deleteDraftResponse ?? loadResponse;
   }
 
   @override

@@ -58,6 +58,51 @@ class RevisionSessionController {
     return _api.getRevisionSessionResult(sessionId: trimmedSessionId);
   }
 
+  Future<RevisionSessionResponse> saveDraftAnswer({
+    required String sessionId,
+    required String questionId,
+    required List<String> selectedChoiceIds,
+  }) {
+    final trimmedSessionId = sessionId.trim();
+    final trimmedQuestionId = questionId.trim();
+    final normalizedChoiceIds = _normalizeChoiceIds(selectedChoiceIds);
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Revision session id is required');
+    }
+
+    if (trimmedQuestionId.isEmpty) {
+      throw ArgumentError('Question id is required');
+    }
+
+    return _api.saveDraftAnswer(
+      sessionId: trimmedSessionId,
+      questionId: trimmedQuestionId,
+      selectedChoiceIds: normalizedChoiceIds,
+    );
+  }
+
+  Future<RevisionSessionResponse> deleteDraftAnswer({
+    required String sessionId,
+    required String questionId,
+  }) {
+    final trimmedSessionId = sessionId.trim();
+    final trimmedQuestionId = questionId.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Revision session id is required');
+    }
+
+    if (trimmedQuestionId.isEmpty) {
+      throw ArgumentError('Question id is required');
+    }
+
+    return _api.deleteDraftAnswer(
+      sessionId: trimmedSessionId,
+      questionId: trimmedQuestionId,
+    );
+  }
+
   Future<void> flagQuestion({
     required String sessionId,
     required String questionId,
@@ -87,5 +132,23 @@ class RevisionSessionController {
   String? _trimOptionalId(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  List<String> _normalizeChoiceIds(List<String> choiceIds) {
+    final seen = <String>{};
+    final normalized = <String>[];
+
+    for (final choiceId in choiceIds) {
+      final trimmed = choiceId.trim();
+      if (trimmed.isEmpty) {
+        throw ArgumentError('Choice id is required');
+      }
+      if (!seen.add(trimmed)) {
+        throw ArgumentError('Choice ids must be unique');
+      }
+      normalized.add(trimmed);
+    }
+
+    return List.unmodifiable(normalized);
   }
 }

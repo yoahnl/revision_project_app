@@ -524,6 +524,30 @@ void main() {
     },
   );
 
+  test('loads a resumable course quick revision session', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(resumableRevisionSessionJson(courseId: 'course-1')),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final resumable = await repository.getResumableCourseRevisionSession(
+      courseId: 'course-1',
+    );
+
+    expect(resumable?.session.id, 'revision-session-1');
+    expect(resumable?.session.courseId, 'course-1');
+    expect(resumable?.progress.answeredQuestionCount, 2);
+    expect(resumable?.progress.totalQuestionCount, 5);
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/revision-sessions/resumable',
+    );
+  });
+
   test('loads and prepares course question bank readiness', () async {
     final readinessRepository = HttpCoursesRepository(
       dio: Dio()
@@ -753,6 +777,15 @@ Map<String, Object?> revisionSessionJson({required String courseId}) {
       'payload': null,
     },
     'history': [],
+  };
+}
+
+Map<String, Object?> resumableRevisionSessionJson({required String courseId}) {
+  return {
+    'session': revisionSessionJson(courseId: courseId)['session'],
+    'currentAction': revisionSessionJson(courseId: courseId)['currentAction'],
+    'progress': {'answeredQuestionCount': 2, 'totalQuestionCount': 5},
+    'userMessage': 'Tu as une session en cours.',
   };
 }
 

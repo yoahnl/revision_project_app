@@ -331,6 +331,67 @@ void main() {
     );
   });
 
+  test('saves a draft answer for a revision session question', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(
+        revisionSessionJson(
+          payload: diagnosticQuizPayloadJson(),
+          draftAnswers: [
+            {
+              'questionId': 'question-1',
+              'selectedChoiceIds': ['choice-1'],
+              'updatedAt': '2026-06-15T12:01:00.000Z',
+            },
+          ],
+        ),
+      ),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await api.saveDraftAnswer(
+      sessionId: 'revision-session-1',
+      questionId: 'question-1',
+      selectedChoiceIds: ['choice-1'],
+    );
+
+    expect(adapter.lastOptions?.method, 'PUT');
+    expect(
+      adapter.lastOptions?.path,
+      '/revision-sessions/revision-session-1/questions/question-1/draft-answer',
+    );
+    expect(adapter.lastOptions?.data, {
+      'selectedChoiceIds': ['choice-1'],
+    });
+    expect(response.draftAnswers.single.questionId, 'question-1');
+    expect(response.draftAnswers.single.selectedChoiceIds, ['choice-1']);
+  });
+
+  test('deletes a draft answer for a revision session question', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(revisionSessionJson(payload: diagnosticQuizPayloadJson())),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await api.deleteDraftAnswer(
+      sessionId: 'revision-session-1',
+      questionId: 'question-1',
+    );
+
+    expect(adapter.lastOptions?.method, 'DELETE');
+    expect(
+      adapter.lastOptions?.path,
+      '/revision-sessions/revision-session-1/questions/question-1/draft-answer',
+    );
+  });
+
   test('maps result 404 and 409 responses', () async {
     final adapter = CapturingHttpClientAdapter(
       ResponseBody.fromString(
@@ -396,6 +457,7 @@ ResponseBody jsonResponse(Object? payload) {
 Map<String, Object?> revisionSessionJson({
   required Object? payload,
   String? courseId,
+  List<Map<String, Object?>> draftAnswers = const [],
 }) {
   final actionKind = payload == null ? 'OPEN_QUESTION' : actionKindFor(payload);
   final isRichClosed = actionKind == 'RICH_CLOSED_EXERCISE';
@@ -433,6 +495,7 @@ Map<String, Object?> revisionSessionJson({
         'knowledgeUnitId': 'unit-1',
       },
     ],
+    'draftAnswers': draftAnswers,
   };
 }
 

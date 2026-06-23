@@ -11,6 +11,7 @@ import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/courses/presentation/course_detail_page.dart';
 import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
+import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
 import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
@@ -687,6 +688,48 @@ void main() {
     expect(repository.startQuickRevisionCount, 1);
     expect(repository.lastQuickRevisionCourseId, 'course-1');
     expect(repository.lastQuickRevisionQuestionCount, 20);
+    expect(find.text('Session réelle'), findsOneWidget);
+  });
+
+  testWidgets('course detail prioritizes a resumable quick session', (
+    tester,
+  ) async {
+    final response = quickRevisionSessionResponse('course-1');
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..resumableRevisionSessionByCourse['course-1'] =
+          ResumableCourseRevisionSession(
+            session: response.session,
+            currentAction: response.currentAction,
+            progress: const ResumableCourseRevisionProgress(
+              answeredQuestionCount: 2,
+              totalQuestionCount: 5,
+            ),
+            userMessage: 'Tu as une session en cours.',
+          );
+
+    await tester.pumpWidget(
+      routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Reprendre la session'), findsOneWidget);
+    expect(find.text('2/5 réponses sauvegardées.'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(RevisionGradientButton, 'Reprendre'));
+    await tester.pumpAndSettle();
+
+    expect(repository.startQuickRevisionCount, 0);
     expect(find.text('Session réelle'), findsOneWidget);
   });
 }

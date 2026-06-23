@@ -437,6 +437,80 @@ void main() {
     );
   });
 
+  testWidgets('course quick session restores draft answers on load', (
+    tester,
+  ) async {
+    final revisionApi = InMemoryRevisionSessionsApi()
+      ..loadResponse = _courseQuickRevisionSessionWithDraft();
+    final activityApi = InMemoryActivityApi();
+    final router = _quickRouter(
+      revisionApi: revisionApi,
+      activityApi: activityApi,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(
+            InMemoryCoursesRepository()
+              ..detailsByCourse['course-1'] = _courseDetail(),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Suivant'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Le Parlement'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Terminer'));
+    await tester.pumpAndSettle();
+
+    expect(activityApi.submittedAnswers, hasLength(2));
+    expect(
+      activityApi.submittedAnswers
+          ?.map((answer) => '${answer.questionId}:${answer.choiceId}')
+          .toList(),
+      ['question-1:choice-1', 'question-2:choice-3'],
+    );
+  });
+
+  testWidgets('course quick session saves a draft answer on selection', (
+    tester,
+  ) async {
+    final revisionApi = InMemoryRevisionSessionsApi()
+      ..loadResponse = courseQuickRevisionSessionResponse();
+    final router = _quickRouter(
+      revisionApi: revisionApi,
+      activityApi: InMemoryActivityApi(),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(
+            InMemoryCoursesRepository()
+              ..detailsByCourse['course-1'] = _courseDetail(),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('La séparation des pouvoirs'));
+    await tester.pumpAndSettle();
+
+    expect(revisionApi.saveDraftCount, 1);
+    expect(revisionApi.savedDraftSessionId, 'revision-session-1');
+    expect(revisionApi.savedDraftQuestionId, 'question-1');
+    expect(revisionApi.savedDraftChoiceIds, ['choice-1']);
+  });
+
   testWidgets(
     'retry completion does not submit the diagnostic activity twice',
     (tester) async {
@@ -721,6 +795,22 @@ RevisionSessionResponse _courseQuickRevisionSessionWithCompletedAction() {
       payload: base.currentAction!.payload,
     ),
     history: base.history,
+  );
+}
+
+RevisionSessionResponse _courseQuickRevisionSessionWithDraft() {
+  final base = courseQuickRevisionSessionResponse();
+  return RevisionSessionResponse(
+    session: base.session,
+    currentAction: base.currentAction,
+    history: base.history,
+    draftAnswers: [
+      RevisionSessionDraftAnswer(
+        questionId: 'question-1',
+        selectedChoiceIds: ['choice-1'],
+        updatedAt: DateTime.parse('2026-06-15T12:01:00.000Z'),
+      ),
+    ],
   );
 }
 

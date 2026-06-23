@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -42,8 +44,23 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
   final Set<String> _flaggedQuestionIds = {};
   Object? _submitError;
   Object? _flagError;
+  Object? _draftSaveError;
 
   List<DiagnosticQuizQuestion> get _questions => widget.activity.questions;
+
+  @override
+  void initState() {
+    super.initState();
+    _hydrateDraftAnswers(widget.response);
+  }
+
+  @override
+  void didUpdateWidget(covariant QuickRevisionQuizFlow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.response.session.id != widget.response.session.id) {
+      _hydrateDraftAnswers(widget.response);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -150,6 +167,15 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
                       style: RevisionTypography.caption,
                     ),
                   ),
+                if (_draftSaveError != null) ...[
+                  const SizedBox(height: RevisionSpacing.m),
+                  Text(
+                    'Impossible de sauvegarder la réponse pour le moment.',
+                    style: RevisionTypography.caption.copyWith(
+                      color: RevisionColors.red,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -198,7 +224,7 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
                   const SizedBox(height: RevisionSpacing.s),
                   Text(
                     _activitySubmitted
-                        ? 'Relance uniquement la finalisation côté backend.'
+                        ? 'Relance la finalisation pour afficher ton résultat.'
                         : 'Tes réponses restent sur cet écran.',
                     style: RevisionTypography.body,
                   ),
@@ -226,10 +252,13 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
   }
 
   void _toggleChoice(DiagnosticQuizQuestion question, String choiceId) {
+    late Set<String> selected;
     setState(() {
       final current = {...?_selectedChoiceIds[question.id]};
       if (question.selectionMode == DiagnosticQuizSelectionMode.single) {
-        _selectedChoiceIds[question.id] = {choiceId};
+        selected = {choiceId};
+        _selectedChoiceIds[question.id] = selected;
+        _draftSaveError = null;
         return;
       }
 
@@ -239,8 +268,11 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
         current.add(choiceId);
       }
 
-      _selectedChoiceIds[question.id] = current;
+      selected = current;
+      _selectedChoiceIds[question.id] = selected;
+      _draftSaveError = null;
     });
+    unawaited(_persistDraftAnswer(question.id, selected));
   }
 
   void _continue() {
@@ -372,7 +404,46 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
 
     ref.invalidate(courseDetailProvider(courseId));
     ref.invalidate(courseProgressProvider(courseId));
+    ref.invalidate(resumableCourseRevisionSessionProvider(courseId));
     ref.invalidate(subjectProgressProvider(widget.response.session.subjectId));
+  }
+
+  void _hydrateDraftAnswers(RevisionSessionResponse response) {
+    _selectedChoiceIds
+      ..clear()
+      ..addEntries(
+        response.draftAnswers.map(
+          (answer) =>
+              MapEntry(answer.questionId, answer.selectedChoiceIds.toSet()),
+        ),
+      );
+  }
+
+  Future<void> _persistDraftAnswer(
+    String questionId,
+    Set<String> selectedChoiceIds,
+  ) async {
+    try {
+      if (selectedChoiceIds.isEmpty) {
+        await widget.revisionSessionController.deleteDraftAnswer(
+          sessionId: widget.response.session.id,
+          questionId: questionId,
+        );
+      } else {
+        await widget.revisionSessionController.saveDraftAnswer(
+          sessionId: widget.response.session.id,
+          questionId: questionId,
+          selectedChoiceIds: selectedChoiceIds.toList(growable: false),
+        );
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _draftSaveError = error;
+      });
+    }
   }
 
   Future<void> _confirmExit(BuildContext context) async {
@@ -380,7 +451,7 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Quitter la session ?'),
-        content: const Text('Les réponses non soumises seront perdues.'),
+        content: const Text('Tu pourras reprendre cette session plus tard.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),

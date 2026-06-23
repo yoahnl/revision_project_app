@@ -413,6 +413,29 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<ResumableCourseRevisionSession?> getResumableCourseRevisionSession({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/revision-sessions/resumable',
+        options: await _authorizedOptions(),
+      );
+
+      if (response.data == null) {
+        return null;
+      }
+
+      return _ResumableCourseRevisionSessionJson(response.data).toResumable();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<CourseProgress> getCourseProgress({required String courseId}) async {
     try {
       final response = await _dio.get<Object?>(
@@ -698,6 +721,66 @@ class _CourseQuestionBankReadinessJson {
       canStartQuickRevision: canStartQuickRevision,
       canPrepare: canPrepare,
       userMessage: userMessage,
+    );
+  }
+}
+
+class _ResumableCourseRevisionSessionJson {
+  const _ResumableCourseRevisionSessionJson(this.value);
+
+  final Object? value;
+
+  ResumableCourseRevisionSession toResumable() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException(
+        'Invalid resumable revision session response',
+      );
+    }
+
+    final progress = json['progress'];
+    final userMessage = json['userMessage'];
+
+    if (progress is! Map<String, Object?> || userMessage is! String) {
+      throw const FormatException(
+        'Invalid resumable revision session response',
+      );
+    }
+
+    final parsed = RevisionSessionResponseJson({
+      'session': json['session'],
+      'currentAction': json['currentAction'],
+      'history': const <Object?>[],
+    }).toResponse();
+
+    return ResumableCourseRevisionSession(
+      session: parsed.session,
+      currentAction: parsed.currentAction,
+      progress: _ResumableCourseRevisionProgressJson(progress).toProgress(),
+      userMessage: userMessage,
+    );
+  }
+}
+
+class _ResumableCourseRevisionProgressJson {
+  const _ResumableCourseRevisionProgressJson(this.value);
+
+  final Map<String, Object?> value;
+
+  ResumableCourseRevisionProgress toProgress() {
+    final answeredQuestionCount = value['answeredQuestionCount'];
+    final totalQuestionCount = value['totalQuestionCount'];
+
+    if (answeredQuestionCount is! int || totalQuestionCount is! int) {
+      throw const FormatException(
+        'Invalid resumable revision session response',
+      );
+    }
+
+    return ResumableCourseRevisionProgress(
+      answeredQuestionCount: answeredQuestionCount,
+      totalQuestionCount: totalQuestionCount,
     );
   }
 }

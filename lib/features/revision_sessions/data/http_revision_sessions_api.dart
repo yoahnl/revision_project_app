@@ -118,6 +118,62 @@ class HttpRevisionSessionsApi implements RevisionSessionsApi {
   }
 
   @override
+  Future<RevisionSessionResponse> saveDraftAnswer({
+    required String sessionId,
+    required String questionId,
+    required List<String> selectedChoiceIds,
+  }) async {
+    try {
+      final response = await _dio.put<Object?>(
+        '/revision-sessions/${Uri.encodeComponent(sessionId)}/questions/${Uri.encodeComponent(questionId)}/draft-answer',
+        data: {'selectedChoiceIds': selectedChoiceIds},
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSessionResponseJson(response.data).toResponse();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const RevisionSessionNotFoundException(
+          'Revision session question not found',
+        );
+      }
+      if (error.response?.statusCode == 409) {
+        throw RevisionSessionResultNotReadyException(
+          _responseMessage(error) ?? 'Revision session draft cannot be saved',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RevisionSessionResponse> deleteDraftAnswer({
+    required String sessionId,
+    required String questionId,
+  }) async {
+    try {
+      final response = await _dio.delete<Object?>(
+        '/revision-sessions/${Uri.encodeComponent(sessionId)}/questions/${Uri.encodeComponent(questionId)}/draft-answer',
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSessionResponseJson(response.data).toResponse();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const RevisionSessionNotFoundException(
+          'Revision session question not found',
+        );
+      }
+      if (error.response?.statusCode == 409) {
+        throw RevisionSessionResultNotReadyException(
+          _responseMessage(error) ?? 'Revision session draft cannot be deleted',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> flagRevisionSessionQuestion({
     required String sessionId,
     required String questionId,
@@ -198,6 +254,7 @@ class RevisionSessionResponseJson {
     final session = json['session'];
     final currentAction = json['currentAction'];
     final history = json['history'];
+    final draftAnswers = json['draftAnswers'];
 
     if (session is! Map<String, Object?> || history is! List) {
       throw const FormatException('Invalid revision session response');
@@ -219,6 +276,43 @@ class RevisionSessionResponseJson {
             ).toAction(),
           )
           .toList(growable: false),
+      draftAnswers: draftAnswers is List
+          ? draftAnswers
+                .map(
+                  (draft) => _RevisionSessionDraftAnswerJson(draft).toDraft(),
+                )
+                .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+class _RevisionSessionDraftAnswerJson {
+  const _RevisionSessionDraftAnswerJson(this.value);
+
+  final Object? value;
+
+  RevisionSessionDraftAnswer toDraft() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid revision session draft response');
+    }
+
+    final questionId = json['questionId'];
+    final selectedChoiceIds = json['selectedChoiceIds'];
+    final updatedAt = json['updatedAt'];
+
+    if (questionId is! String ||
+        selectedChoiceIds is! List ||
+        updatedAt is! String) {
+      throw const FormatException('Invalid revision session draft response');
+    }
+
+    return RevisionSessionDraftAnswer(
+      questionId: questionId,
+      selectedChoiceIds: _stringList(selectedChoiceIds),
+      updatedAt: DateTime.parse(updatedAt),
     );
   }
 }

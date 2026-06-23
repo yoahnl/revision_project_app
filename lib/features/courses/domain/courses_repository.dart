@@ -68,6 +68,10 @@ abstract interface class CoursesRepository {
     int questionCount = 10,
   });
 
+  Future<ResumableCourseRevisionSession?> getResumableCourseRevisionSession({
+    required String courseId,
+  });
+
   Future<CourseProgress> getCourseProgress({required String courseId});
 
   Future<SubjectProgress> getSubjectProgress({required String subjectId});

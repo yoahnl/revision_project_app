@@ -26,6 +26,17 @@ abstract interface class RevisionSessionsApi {
     required String sessionId,
   });
 
+  Future<RevisionSessionResponse> saveDraftAnswer({
+    required String sessionId,
+    required String questionId,
+    required List<String> selectedChoiceIds,
+  });
+
+  Future<RevisionSessionResponse> deleteDraftAnswer({
+    required String sessionId,
+    required String questionId,
+  });
+
   Future<void> flagRevisionSessionQuestion({
     required String sessionId,
     required String questionId,

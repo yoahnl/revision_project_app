@@ -65,11 +65,49 @@ class RevisionSessionResponse {
     required this.session,
     required this.currentAction,
     required this.history,
+    this.draftAnswers = const [],
   });
 
   final RevisionSession session;
   final RevisionSessionAction? currentAction;
   final List<RevisionSessionAction> history;
+  final List<RevisionSessionDraftAnswer> draftAnswers;
+}
+
+class RevisionSessionDraftAnswer {
+  const RevisionSessionDraftAnswer({
+    required this.questionId,
+    required this.selectedChoiceIds,
+    required this.updatedAt,
+  });
+
+  final String questionId;
+  final List<String> selectedChoiceIds;
+  final DateTime updatedAt;
+}
+
+class ResumableCourseRevisionSession {
+  const ResumableCourseRevisionSession({
+    required this.session,
+    required this.currentAction,
+    required this.progress,
+    required this.userMessage,
+  });
+
+  final RevisionSession session;
+  final RevisionSessionAction? currentAction;
+  final ResumableCourseRevisionProgress progress;
+  final String userMessage;
+}
+
+class ResumableCourseRevisionProgress {
+  const ResumableCourseRevisionProgress({
+    required this.answeredQuestionCount,
+    required this.totalQuestionCount,
+  });
+
+  final int answeredQuestionCount;
+  final int totalQuestionCount;
 }
 
 sealed class RevisionSessionActionPayload {

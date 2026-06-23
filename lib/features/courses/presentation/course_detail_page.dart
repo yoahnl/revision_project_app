@@ -14,6 +14,7 @@ import '../../../presentation/design_system/tokens/revision_typography.dart';
 import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
+import '../../revision_sessions/domain/revision_session.dart';
 import 'course_not_found_page.dart';
 import 'course_quick_revision_launcher.dart';
 import 'widgets/course_management_sheet.dart';
@@ -405,10 +406,14 @@ class _CoursePrimaryAction extends ConsumerWidget {
       data: (value) => value,
       orElse: () => null,
     );
+    final resumable = ref
+        .watch(resumableCourseRevisionSessionProvider(detail.course.id))
+        .maybeWhen(data: (value) => value, orElse: () => null);
     final action = _primaryActionFor(
       detail.sources,
       readiness,
       readinessState.isLoading,
+      resumable,
     );
 
     return RevisionGlassCard(
@@ -491,7 +496,31 @@ _PrimaryCourseAction _primaryActionFor(
   List<CourseDocument> sources,
   CourseQuestionBankReadiness? readiness,
   bool isLoadingReadiness,
+  ResumableCourseRevisionSession? resumable,
 ) {
+  if (resumable != null) {
+    final progress = resumable.progress.totalQuestionCount > 0
+        ? '${resumable.progress.answeredQuestionCount}/${resumable.progress.totalQuestionCount} réponses sauvegardées.'
+        : 'Tu as une session en cours.';
+    return _PrimaryCourseAction(
+      title: 'Reprendre la session',
+      message: progress,
+      buttonLabel: 'Reprendre',
+      icon: Icons.play_circle_outline_rounded,
+      buttonIcon: Icons.play_arrow_rounded,
+      accent: RevisionColors.green,
+      run: (context, ref, detail) {
+        context.go(
+          AppRoutes.revisionSessionV2(
+            sessionId: resumable.session.id,
+            courseId: detail.course.id,
+            mode: 'quick',
+          ),
+        );
+      },
+    );
+  }
+
   if (sources.any((source) => source.status == CourseDocumentStatus.ready)) {
     if (isLoadingReadiness || readiness == null) {
       return const _PrimaryCourseAction(
