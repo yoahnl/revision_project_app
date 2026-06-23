@@ -2,9 +2,13 @@
 
 ## Verdict
 
-`READY_FOR_RUNTIME`, représenté par `IN_PROGRESS` dans les trackers App car le statut `READY_FOR_RUNTIME` n'est pas listé parmi les statuts autorisés.
+`DONE`, après confirmation opérateur du smoke MVP complet.
 
-L'app CORE-11B est déployée côté Dokploy et le code local contient les routes et providers nécessaires au smoke MVP. Deux corrections runtime minimales ont été appliquées localement : accès réseau client macOS et URL scheme iOS Google Sign-In. Elles devront être commit/push/build avant validation runtime finale. Le smoke utilisateur complet n'a pas été exécuté avec Marionette, car il exige une session authentifiée, un PDF et un parcours backend réel contrôlé.
+L'app CORE-11B est déployée côté Dokploy et le code contient les routes et providers nécessaires au smoke MVP. Deux corrections runtime minimales ont été appliquées : accès réseau client macOS et URL scheme iOS Google Sign-In. Le smoke MVP complet a été confirmé manuellement par l'opérateur humain du projet après le gate RELEASE-01A. Codex n'a pas exécuté ce parcours complet lui-même.
+
+## Confirmation opérateur
+
+Le smoke MVP complet a été confirmé manuellement par l'opérateur humain du projet après le gate RELEASE-01A. Codex n'a pas exécuté ce parcours complet lui-même ; cette clôture documente une confirmation opérateur. Aucun secret, token Firebase, URL privée sensible ou PDF de test n'est documenté dans ce rapport.
 
 ## Audit initial avant correction
 
@@ -68,9 +72,9 @@ Corrections documentaires :
 
 ## Smoke Marionette
 
-Non exécuté.
+Non exécuté par Codex.
 
-Raison : le scénario complet nécessite un compte connecté, un PDF de test, une création de données et une confirmation de worker backend. Le runbook canonique est dans le repo API : `docs/release/RELEASE_01A_MVP_RUNTIME_SMOKE_RUNBOOK.md`.
+Le scénario complet a été confirmé manuellement par l'opérateur humain du projet. Le runbook canonique reste dans le repo API : `docs/release/RELEASE_01A_MVP_RUNTIME_SMOKE_RUNBOOK.md`.
 
 ## Tests exécutés
 
@@ -88,12 +92,12 @@ Résultats :
 
 Pas de blocker App statique détecté.
 
-Blocker de validation : smoke MVP complet non exécuté avec Marionette ou app réelle authentifiée.
+La réserve de validation RELEASE-01A est levée par confirmation opérateur. RELEASE-01A est donc clôturé en `DONE`.
 
 ## Risques restants
 
-- Aucun test runtime n'a confirmé la restauration de draft et l'historique depuis l'app déployée après CORE-11B.
-- Le smoke dépend d'un compte Firebase et d'un PDF de test non fournis à Codex.
+- La preuve runtime complète reste une confirmation opérateur et non une exécution Codex.
+- Les secrets et fichiers de test ne sont volontairement pas documentés.
 
 ## Fichiers créés/modifiés
 
@@ -101,6 +105,7 @@ Créé côté App :
 
 - `docs/release/RELEASE_01A_RUNTIME_SMOKE_APP_REPORT.md`
 - `docs/release/RELEASE_01A_RUNTIME_SMOKE_EVIDENCE_PACK.md`
+- `docs/release/RELEASE_01A_OPERATOR_CONFIRMED_CLOSURE_APP_REPORT.md`
 
 Modifiés côté App :
 
@@ -115,8 +120,8 @@ Modifiés côté App :
 - Aucun changement UI ou feature.
 - Aucun secret copié.
 - Aucune preuve runtime inventée.
-- `DONE` non utilisé.
+- Le statut `DONE` est utilisé uniquement après confirmation opérateur du smoke MVP complet.
 
 ## Confirmation Git
 
-Aucun commit effectué.
+Ce rapport initial a été créé avant le commit/push du gate RELEASE-01A. La clôture operator-confirmed ultérieure est documentée dans `docs/release/RELEASE_01A_OPERATOR_CONFIRMED_CLOSURE_APP_REPORT.md`.

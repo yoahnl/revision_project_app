@@ -2,7 +2,13 @@
 
 ## Verdict
 
-`READY_FOR_RUNTIME`, suivi comme `IN_PROGRESS` dans les trackers.
+`DONE`, après confirmation opérateur du smoke MVP complet.
+
+## Confirmation opérateur
+
+Smoke MVP complet confirmé manuellement par l'opérateur humain.
+Codex n'a pas exécuté le smoke complet.
+Aucun secret, token ou PDF de test n'est documenté.
 
 ## Preuves App
 
@@ -25,9 +31,9 @@
 
 ## Smoke Marionette
 
-Non exécuté.
+Non exécuté par Codex.
 
-Raison : le smoke complet exige une session Firebase connectée et un PDF de test pour créer un vrai parcours. Le runbook de référence est côté API : `docs/release/RELEASE_01A_MVP_RUNTIME_SMOKE_RUNBOOK.md`.
+Le smoke MVP complet a été confirmé manuellement par l'opérateur humain du projet après le gate RELEASE-01A. Le runbook de référence reste côté API : `docs/release/RELEASE_01A_MVP_RUNTIME_SMOKE_RUNBOOK.md`.
 
 ## Commandes locales exécutées
 
@@ -45,6 +51,7 @@ git diff --check -> OK
 
 - `docs/release/RELEASE_01A_RUNTIME_SMOKE_APP_REPORT.md`
 - `docs/release/RELEASE_01A_RUNTIME_SMOKE_EVIDENCE_PACK.md`
+- `docs/release/RELEASE_01A_OPERATOR_CONFIRMED_CLOSURE_APP_REPORT.md`
 
 ## Fichiers modifiés
 
@@ -56,4 +63,4 @@ git diff --check -> OK
 
 ## Limite de preuve
 
-Le runtime App est mieux préparé, mais RELEASE-01A ne passe pas `DONE` tant que le parcours complet n'est pas validé par l'app réelle ou Marionette avec un compte connecté.
+Le runtime App a été préparé par Codex, et le smoke MVP complet a été confirmé manuellement par l'opérateur humain. RELEASE-01A est donc clôturé `DONE` sans prétendre que Codex a exécuté le smoke complet.
