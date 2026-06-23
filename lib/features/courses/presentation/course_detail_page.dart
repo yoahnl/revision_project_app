@@ -162,6 +162,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
           progress: progress,
           onRetry: () => ref.invalidate(courseProgressProvider(course.id)),
         ),
+        _CourseRevisionHistorySection(detail: detail),
         _CourseModes(detail: detail, visual: visual),
         if (_pollTimedOut)
           RevisionGlassCard(
@@ -757,6 +758,130 @@ class _CourseProgressSection extends StatelessWidget {
   }
 }
 
+class _CourseRevisionHistorySection extends ConsumerWidget {
+  const _CourseRevisionHistorySection({required this.detail});
+
+  final CourseDetail detail;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(
+      courseRevisionSessionHistoryProvider(detail.course.id),
+    );
+
+    return RevisionGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.history_rounded,
+                color: RevisionColors.textMuted,
+              ),
+              const SizedBox(width: RevisionSpacing.s),
+              Text('Historique', style: RevisionTypography.sectionTitle),
+            ],
+          ),
+          const SizedBox(height: RevisionSpacing.m),
+          history.when(
+            loading: () => Text(
+              'Chargement des sessions terminées.',
+              style: RevisionTypography.body,
+            ),
+            error: (error, stackTrace) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Historique indisponible pour le moment.',
+                  style: RevisionTypography.body,
+                ),
+                const SizedBox(height: RevisionSpacing.s),
+                TextButton.icon(
+                  onPressed: () => ref.invalidate(
+                    courseRevisionSessionHistoryProvider(detail.course.id),
+                  ),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Réessayer'),
+                ),
+              ],
+            ),
+            data: (history) {
+              if (history.items.isEmpty) {
+                return Text(
+                  'Aucune session terminée pour ce cours.',
+                  style: RevisionTypography.body,
+                );
+              }
+
+              return Column(
+                children: [
+                  for (final item in history.items) ...[
+                    _CourseRevisionHistoryTile(item: item),
+                    if (item != history.items.last)
+                      const Divider(color: RevisionColors.border),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CourseRevisionHistoryTile extends StatelessWidget {
+  const _CourseRevisionHistoryTile({required this.item});
+
+  final RevisionSessionHistoryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = item.summary;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: RevisionSpacing.xs),
+      child: Row(
+        children: [
+          const RevisionIconTile(
+            icon: Icons.check_circle_outline_rounded,
+            accent: RevisionColors.green,
+            size: 44,
+          ),
+          const SizedBox(width: RevisionSpacing.m),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${summary.correctAnswers}/${summary.totalQuestions}',
+                  style: RevisionTypography.sectionTitle,
+                ),
+                const SizedBox(height: RevisionSpacing.xs),
+                Text(
+                  '${_scorePercent(summary.score)} · ${_historyDate(item.session.completedAt)}',
+                  style: RevisionTypography.caption,
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push(
+              AppRoutes.revisionSessionResultV2(
+                sessionId: item.session.id,
+                courseId: item.course.id,
+                mode: 'quick',
+              ),
+            ),
+            child: const Text('Voir le résultat'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CourseModes extends ConsumerWidget {
   const _CourseModes({required this.detail, required this.visual});
 
@@ -986,6 +1111,7 @@ Future<void> _showCourseManagement(
 
   ref.invalidate(courseDetailProvider(detail.course.id));
   ref.invalidate(courseProgressProvider(detail.course.id));
+  ref.invalidate(courseRevisionSessionHistoryProvider(detail.course.id));
   ref.invalidate(subjectProgressProvider(detail.course.subjectId));
 }
 
@@ -1123,6 +1249,17 @@ String _difficultyLabel(CourseDifficulty? difficulty) {
 
 String _percent(double value) {
   return '${(value.clamp(0, 1) * 100).round()}%';
+}
+
+String _scorePercent(double value) {
+  return '${(value.clamp(0, 1) * 100).round()} %';
+}
+
+String _historyDate(DateTime value) {
+  final local = value.toLocal();
+  final day = local.day.toString().padLeft(2, '0');
+  final month = local.month.toString().padLeft(2, '0');
+  return '$day/$month/${local.year}';
 }
 
 bool _isPendingSource(CourseDocument source) {

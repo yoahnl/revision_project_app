@@ -691,6 +691,52 @@ void main() {
     expect(find.text('Session réelle'), findsOneWidget);
   });
 
+  testWidgets('course detail shows an empty completed history state', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail();
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Historique'), 400);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Historique'), findsOneWidget);
+    expect(find.text('Aucune session terminée pour ce cours.'), findsOneWidget);
+    expect(repository.getCourseRevisionSessionHistoryCount, 1);
+  });
+
+  testWidgets('course detail opens a completed session result from history', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..revisionSessionHistoryByCourse['course-1'] = [
+        revisionSessionHistoryItem(),
+      ];
+
+    await tester.pumpWidget(
+      routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Voir le résultat'), 400);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Historique'), findsOneWidget);
+    expect(find.text('4/5'), findsOneWidget);
+    expect(find.textContaining('80 %'), findsOneWidget);
+
+    await tester.tap(find.text('Voir le résultat'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Résultat de session'), findsOneWidget);
+  });
+
   testWidgets('course detail prioritizes a resumable quick session', (
     tester,
   ) async {
@@ -785,6 +831,16 @@ Widget routerTestApp({
           ),
         ),
       ),
+      GoRoute(
+        path: AppRoutes.revisionSessionResultV2Path,
+        builder: (context, state) => Scaffold(
+          body: Text(
+            state.pathParameters['sessionId'] == 'revision-session-1'
+                ? 'Résultat de session'
+                : 'Résultat introuvable',
+          ),
+        ),
+      ),
     ],
   );
 
@@ -851,6 +907,35 @@ CourseProgress courseProgress({
     failedSourceCount: 0,
     lastPracticedAt: DateTime.utc(2026, 6, 18, 12),
     state: state,
+  );
+}
+
+RevisionSessionHistoryItem revisionSessionHistoryItem({
+  String sessionId = 'revision-session-1',
+  int correctAnswers = 4,
+  int totalQuestions = 5,
+  double score = 0.8,
+}) {
+  return RevisionSessionHistoryItem(
+    session: RevisionSessionResultSession(
+      id: sessionId,
+      subjectId: 'subject-1',
+      courseId: 'course-1',
+      mode: RevisionSessionMode.quick,
+      status: RevisionSessionStatus.completed,
+      createdAt: DateTime.utc(2026, 6, 18, 10),
+      completedAt: DateTime.utc(2026, 6, 18, 10, 7),
+    ),
+    summary: RevisionSessionResultSummary(
+      correctAnswers: correctAnswers,
+      totalQuestions: totalQuestions,
+      score: score,
+      durationSeconds: 420,
+    ),
+    course: const RevisionSessionHistoryCourse(
+      id: 'course-1',
+      title: 'Droit constitutionnel',
+    ),
   );
 }
 

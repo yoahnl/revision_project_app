@@ -24,6 +24,8 @@ class InMemoryCoursesRepository implements CoursesRepository {
   preparedQuestionBankByTarget = {};
   final Map<String, ResumableCourseRevisionSession?>
   resumableRevisionSessionByCourse = {};
+  final Map<String, List<RevisionSessionHistoryItem>>
+  revisionSessionHistoryByCourse = {};
   final Map<String, SourceLifecycleDecision> lifecycleByDocumentId = {};
   int createCount = 0;
   int updateCount = 0;
@@ -35,6 +37,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int generateRevisionSheetCount = 0;
   int getQuestionBankReadinessCount = 0;
   int getResumableRevisionSessionCount = 0;
+  int getCourseRevisionSessionHistoryCount = 0;
   int prepareQuestionBankCount = 0;
   int uploadCount = 0;
   int deleteDocumentCount = 0;
@@ -53,6 +56,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastArchivedDocumentId;
   String? lastQuickRevisionCourseId;
   String? lastResumableRevisionSessionCourseId;
+  String? lastCourseRevisionSessionHistoryCourseId;
   int? lastQuickRevisionQuestionCount;
   String? lastArchivedCourseLifecycleId;
   String? lastDeletedCourseLifecycleId;
@@ -493,6 +497,24 @@ class InMemoryCoursesRepository implements CoursesRepository {
     }
 
     return resumableRevisionSessionByCourse[courseId];
+  }
+
+  @override
+  Future<RevisionSessionHistoryResponse> getCourseRevisionSessionHistory({
+    required String courseId,
+    int limit = 5,
+  }) async {
+    getCourseRevisionSessionHistoryCount += 1;
+    lastCourseRevisionSessionHistoryCourseId = courseId;
+
+    if (!detailsByCourse.containsKey(courseId)) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    final items = revisionSessionHistoryByCourse[courseId] ?? const [];
+    return RevisionSessionHistoryResponse(
+      items: List.unmodifiable(items.take(limit)),
+    );
   }
 
   @override

@@ -404,6 +404,7 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
 
     ref.invalidate(courseDetailProvider(courseId));
     ref.invalidate(courseProgressProvider(courseId));
+    ref.invalidate(courseRevisionSessionHistoryProvider(courseId));
     ref.invalidate(resumableCourseRevisionSessionProvider(courseId));
     ref.invalidate(subjectProgressProvider(widget.response.session.subjectId));
   }

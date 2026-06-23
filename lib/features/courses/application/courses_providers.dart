@@ -54,6 +54,16 @@ final resumableCourseRevisionSessionProvider =
           .getResumableCourseRevisionSession(courseId: courseId);
     });
 
+final courseRevisionSessionHistoryProvider =
+    FutureProvider.family<RevisionSessionHistoryResponse, String>((
+      ref,
+      courseId,
+    ) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getCourseRevisionSessionHistory(courseId: courseId);
+    });
+
 typedef CourseQuestionBankReadinessKey = ({String courseId, int questionCount});
 
 final courseQuestionBankReadinessProvider =
@@ -294,6 +304,7 @@ void _invalidateCourseSurfaces(
   ref.invalidate(courseDetailProvider(courseId));
   ref.invalidate(courseLifecycleProvider(courseId));
   ref.invalidate(courseProgressProvider(courseId));
+  ref.invalidate(courseRevisionSessionHistoryProvider(courseId));
   ref.invalidate(coursesProvider(subjectId));
   ref.invalidate(subjectProgressProvider(subjectId));
 }

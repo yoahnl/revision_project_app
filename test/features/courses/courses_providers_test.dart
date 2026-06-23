@@ -8,6 +8,7 @@ import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
 import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
+import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 
@@ -468,6 +469,30 @@ void main() {
     expect(repository.getCourseProgressCount, 1);
   });
 
+  test(
+    'courseRevisionSessionHistoryProvider loads completed sessions',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail()
+        ..revisionSessionHistoryByCourse['course-1'] = [
+          revisionSessionHistoryItem(),
+        ];
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      final history = await container.read(
+        courseRevisionSessionHistoryProvider('course-1').future,
+      );
+
+      expect(history.items.single.session.id, 'revision-session-1');
+      expect(history.items.single.summary.correctAnswers, 4);
+      expect(repository.getCourseRevisionSessionHistoryCount, 1);
+      expect(repository.lastCourseRevisionSessionHistoryCourseId, 'course-1');
+    },
+  );
+
   test('subjectProgressProvider loads real subject progress', () async {
     final repository = InMemoryCoursesRepository()
       ..progressBySubject['subject-1'] = subjectProgress();
@@ -726,6 +751,35 @@ CourseProgress courseProgress() {
     failedSourceCount: 0,
     lastPracticedAt: DateTime.utc(2026, 6, 18, 12),
     state: CourseProgressState.practiced,
+  );
+}
+
+RevisionSessionHistoryItem revisionSessionHistoryItem({
+  String sessionId = 'revision-session-1',
+  int correctAnswers = 4,
+  int totalQuestions = 5,
+  double score = 0.8,
+}) {
+  return RevisionSessionHistoryItem(
+    session: RevisionSessionResultSession(
+      id: sessionId,
+      subjectId: 'subject-1',
+      courseId: 'course-1',
+      mode: RevisionSessionMode.quick,
+      status: RevisionSessionStatus.completed,
+      createdAt: DateTime.utc(2026, 6, 18, 10),
+      completedAt: DateTime.utc(2026, 6, 18, 10, 7),
+    ),
+    summary: RevisionSessionResultSummary(
+      correctAnswers: correctAnswers,
+      totalQuestions: totalQuestions,
+      score: score,
+      durationSeconds: 420,
+    ),
+    course: const RevisionSessionHistoryCourse(
+      id: 'course-1',
+      title: 'Droit constitutionnel',
+    ),
   );
 }
 

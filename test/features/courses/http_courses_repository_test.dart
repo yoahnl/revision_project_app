@@ -8,6 +8,7 @@ import 'package:Neralune/features/courses/data/http_courses_repository.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
+import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
 
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   CapturingHttpClientAdapter(this.response);
@@ -548,6 +549,76 @@ void main() {
     );
   });
 
+  test('loads completed course revision session history', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({
+        'items': [
+          revisionSessionHistoryItemJson(
+            sessionId: 'revision-session-2',
+            correctAnswers: 8,
+            totalQuestions: 10,
+            score: 0.8,
+          ),
+        ],
+      }),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final history = await repository.getCourseRevisionSessionHistory(
+      courseId: 'course-1',
+      limit: 5,
+    );
+
+    expect(history.items, hasLength(1));
+    expect(history.items.single.session.id, 'revision-session-2');
+    expect(
+      history.items.single.session.status,
+      RevisionSessionStatus.completed,
+    );
+    expect(history.items.single.summary.correctAnswers, 8);
+    expect(history.items.single.summary.totalQuestions, 10);
+    expect(history.items.single.summary.score, 0.8);
+    expect(history.items.single.course.title, 'Droit constitutionnel');
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/revision-sessions/history',
+    );
+    expect(adapter.lastOptions?.queryParameters, {'limit': 5});
+  });
+
+  test('loads an empty completed course revision session history', () async {
+    final adapter = CapturingHttpClientAdapter(jsonResponse({'items': []}));
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final history = await repository.getCourseRevisionSessionHistory(
+      courseId: 'course-1',
+    );
+
+    expect(history.items, isEmpty);
+  });
+
+  test('maps course history 404 to CourseNotFoundException', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({'message': 'Course not found'}, statusCode: 404),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    await expectLater(
+      repository.getCourseRevisionSessionHistory(courseId: 'missing-course'),
+      throwsA(isA<CourseNotFoundException>()),
+    );
+  });
+
   test('loads and prepares course question bank readiness', () async {
     final readinessRepository = HttpCoursesRepository(
       dio: Dio()
@@ -786,6 +857,32 @@ Map<String, Object?> resumableRevisionSessionJson({required String courseId}) {
     'currentAction': revisionSessionJson(courseId: courseId)['currentAction'],
     'progress': {'answeredQuestionCount': 2, 'totalQuestionCount': 5},
     'userMessage': 'Tu as une session en cours.',
+  };
+}
+
+Map<String, Object?> revisionSessionHistoryItemJson({
+  String sessionId = 'revision-session-1',
+  int correctAnswers = 4,
+  int totalQuestions = 5,
+  double score = 0.8,
+}) {
+  return {
+    'session': {
+      'id': sessionId,
+      'status': 'COMPLETED',
+      'mode': 'QUICK',
+      'subjectId': 'subject-1',
+      'courseId': 'course-1',
+      'createdAt': '2026-06-18T10:00:00.000Z',
+      'completedAt': '2026-06-18T10:07:00.000Z',
+    },
+    'summary': {
+      'correctAnswers': correctAnswers,
+      'totalQuestions': totalQuestions,
+      'score': score,
+      'durationSeconds': 420,
+    },
+    'course': {'id': 'course-1', 'title': 'Droit constitutionnel'},
   };
 }
 

@@ -173,6 +173,31 @@ class RevisionSessionResult {
   final List<RevisionSessionQuestionCorrection> corrections;
 }
 
+class RevisionSessionHistoryResponse {
+  const RevisionSessionHistoryResponse({required this.items});
+
+  final List<RevisionSessionHistoryItem> items;
+}
+
+class RevisionSessionHistoryItem {
+  const RevisionSessionHistoryItem({
+    required this.session,
+    required this.summary,
+    required this.course,
+  });
+
+  final RevisionSessionResultSession session;
+  final RevisionSessionResultSummary summary;
+  final RevisionSessionHistoryCourse course;
+}
+
+class RevisionSessionHistoryCourse {
+  const RevisionSessionHistoryCourse({required this.id, required this.title});
+
+  final String id;
+  final String title;
+}
+
 class RevisionSessionQuestionCorrection {
   const RevisionSessionQuestionCorrection({
     required this.prompt,

@@ -436,6 +436,27 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<RevisionSessionHistoryResponse> getCourseRevisionSessionHistory({
+    required String courseId,
+    int limit = 5,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/revision-sessions/history',
+        queryParameters: {'limit': limit},
+        options: await _authorizedOptions(),
+      );
+
+      return _RevisionSessionHistoryResponseJson(response.data).toHistory();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<CourseProgress> getCourseProgress({required String courseId}) async {
     try {
       final response = await _dio.get<Object?>(
@@ -782,6 +803,80 @@ class _ResumableCourseRevisionProgressJson {
       answeredQuestionCount: answeredQuestionCount,
       totalQuestionCount: totalQuestionCount,
     );
+  }
+}
+
+class _RevisionSessionHistoryResponseJson {
+  const _RevisionSessionHistoryResponseJson(this.value);
+
+  final Object? value;
+
+  RevisionSessionHistoryResponse toHistory() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid revision session history response');
+    }
+
+    final items = json['items'];
+    if (items is! List) {
+      throw const FormatException('Invalid revision session history response');
+    }
+
+    return RevisionSessionHistoryResponse(
+      items: items
+          .map((item) => _RevisionSessionHistoryItemJson(item).toItem())
+          .toList(growable: false),
+    );
+  }
+}
+
+class _RevisionSessionHistoryItemJson {
+  const _RevisionSessionHistoryItemJson(this.value);
+
+  final Object? value;
+
+  RevisionSessionHistoryItem toItem() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid revision session history response');
+    }
+
+    final course = json['course'];
+    if (course is! Map<String, Object?>) {
+      throw const FormatException('Invalid revision session history response');
+    }
+
+    final parsed = RevisionSessionResultJson({
+      'session': json['session'],
+      'summary': json['summary'],
+      'knowledgeUnits': const <Object?>[],
+      'corrections': const <Object?>[],
+    }).toResult();
+
+    return RevisionSessionHistoryItem(
+      session: parsed.session,
+      summary: parsed.summary,
+      course: _RevisionSessionHistoryCourseJson(course).toCourse(),
+    );
+  }
+}
+
+class _RevisionSessionHistoryCourseJson {
+  const _RevisionSessionHistoryCourseJson(this.value);
+
+  final Map<String, Object?> value;
+
+  RevisionSessionHistoryCourse toCourse() {
+    final id = value['id'];
+    final title = value['title'];
+
+    if (id is! String || title is! String) {
+      throw const FormatException('Invalid revision session history response');
+    }
+
+    return RevisionSessionHistoryCourse(id: id, title: title);
   }
 }
 
