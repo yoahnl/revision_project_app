@@ -47,6 +47,26 @@ void main() {
     expect(find.byType(RevisionConfettiOverlay), findsOneWidget);
   });
 
+  testWidgets('loads exam preparation result when mode is exam', (
+    tester,
+  ) async {
+    final api = InMemoryRevisionSessionsApi();
+
+    await tester.pumpWidget(
+      _Harness(api: api, sessionId: 'exam-session-1', mode: 'exam'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.loadExamResultCount, 1);
+    expect(api.loadedExamResultSessionId, 'exam-session-1');
+    expect(api.loadResultCount, 0);
+    expect(find.text('Examen terminé'), findsOneWidget);
+    expect(find.text('100%'), findsWidgets);
+    expect(find.text('1/1 bonnes réponses'), findsOneWidget);
+    expect(find.text('Tu maîtrises'), findsOneWidget);
+    expect(find.text('Séparation des pouvoirs'), findsOneWidget);
+  });
+
   testWidgets('displays a not-ready error from backend result contract', (
     tester,
   ) async {
@@ -95,15 +115,22 @@ RevisionSessionResult highScoreRevisionSessionResult() {
 }
 
 class _Harness extends StatelessWidget {
-  const _Harness({required this.api});
+  const _Harness({
+    required this.api,
+    this.sessionId = 'revision-session-1',
+    this.mode,
+  });
 
   final InMemoryRevisionSessionsApi api;
+  final String sessionId;
+  final String? mode;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: RevisionSessionResultPage(
-        sessionId: 'revision-session-1',
+        sessionId: sessionId,
+        mode: mode,
         controller: RevisionSessionController(api),
       ),
     );

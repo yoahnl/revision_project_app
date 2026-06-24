@@ -9,8 +9,12 @@ class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
   String? startedKnowledgeUnitId;
   RevisionSessionPreferredAction? startedPreferredAction;
   String? loadedSessionId;
+  String? loadedExamSessionId;
   String? completedSessionId;
+  String? submittedExamSessionId;
   String? loadedResultSessionId;
+  String? loadedExamResultSessionId;
+  List<DiagnosticQuizAnswer>? submittedExamAnswers;
   String? flaggedSessionId;
   String? flaggedQuestionId;
   String? flaggedReason;
@@ -21,24 +25,33 @@ class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
   String? deletedDraftQuestionId;
   int startCount = 0;
   int loadCount = 0;
+  int loadExamCount = 0;
   int completeCount = 0;
+  int submitExamCount = 0;
   int loadResultCount = 0;
+  int loadExamResultCount = 0;
   int flagCount = 0;
   int saveDraftCount = 0;
   int deleteDraftCount = 0;
   Object? startError;
   Object? loadError;
+  Object? loadExamError;
   Object? completeError;
+  Object? submitExamError;
   Object? loadResultError;
+  Object? loadExamResultError;
   Object? flagError;
   Object? saveDraftError;
   Object? deleteDraftError;
   RevisionSessionResponse startResponse = openQuestionRevisionSessionResponse();
   RevisionSessionResponse loadResponse = minimalRevisionSessionResponse();
+  RevisionSessionResponse examLoadResponse = examRevisionSessionResponse();
   RevisionSessionResponse? saveDraftResponse;
   RevisionSessionResponse? deleteDraftResponse;
   RevisionSessionResult completeResponse = revisionSessionResult();
+  RevisionSessionResult submitExamResponse = examRevisionSessionResult();
   RevisionSessionResult resultResponse = revisionSessionResult();
+  RevisionSessionResult examResultResponse = examRevisionSessionResult();
 
   @override
   Future<RevisionSessionResponse> startRevisionSession({
@@ -70,6 +83,47 @@ class InMemoryRevisionSessionsApi implements RevisionSessionsApi {
       throw error;
     }
     return loadResponse;
+  }
+
+  @override
+  Future<RevisionSessionResponse> getExamPreparationSession({
+    required String sessionId,
+  }) async {
+    loadExamCount += 1;
+    loadedExamSessionId = sessionId;
+    final error = loadExamError;
+    if (error != null) {
+      throw error;
+    }
+    return examLoadResponse;
+  }
+
+  @override
+  Future<RevisionSessionResult> submitExamPreparationSession({
+    required String sessionId,
+    required List<DiagnosticQuizAnswer> answers,
+  }) async {
+    submitExamCount += 1;
+    submittedExamSessionId = sessionId;
+    submittedExamAnswers = answers;
+    final error = submitExamError;
+    if (error != null) {
+      throw error;
+    }
+    return submitExamResponse;
+  }
+
+  @override
+  Future<RevisionSessionResult> getExamPreparationSessionResult({
+    required String sessionId,
+  }) async {
+    loadExamResultCount += 1;
+    loadedExamResultSessionId = sessionId;
+    final error = loadExamResultError;
+    if (error != null) {
+      throw error;
+    }
+    return examResultResponse;
   }
 
   @override
@@ -264,6 +318,56 @@ RevisionSessionResponse courseQuickRevisionSessionResponse({
   );
 }
 
+RevisionSessionResponse examRevisionSessionResponse({
+  String courseId = 'course-1',
+}) {
+  return RevisionSessionResponse(
+    session: RevisionSession(
+      id: 'exam-session-1',
+      status: RevisionSessionStatus.started,
+      mode: RevisionSessionMode.exam,
+      subjectId: 'subject-1',
+      courseId: courseId,
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      createdAt: DateTime.parse('2026-06-15T12:00:00.000Z'),
+      completedAt: null,
+    ),
+    currentAction: const RevisionSessionAction(
+      id: 'action-exam-1',
+      kind: RevisionSessionActionKind.diagnosticQuiz,
+      status: RevisionSessionActionStatus.ready,
+      displayOrder: 0,
+      activitySessionId: 'activity-exam-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'unit-1',
+      payload: RevisionSessionDiagnosticQuizPayload(
+        DiagnosticQuizActivity(
+          sessionId: 'activity-exam-1',
+          title: 'Préparation examen',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          questions: [
+            DiagnosticQuizQuestion(
+              id: 'question-1',
+              prompt: 'Quel principe organise les pouvoirs ?',
+              knowledgeUnitId: 'unit-1',
+              choices: [
+                DiagnosticQuizChoice(
+                  id: 'choice-1',
+                  label: 'La séparation des pouvoirs',
+                ),
+                DiagnosticQuizChoice(id: 'choice-2', label: 'Le hasard'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+    history: const [],
+  );
+}
+
 RevisionSessionResponse openQuestionRevisionSessionResponse() {
   return RevisionSessionResponse(
     session: revisionSession(knowledgeUnitId: 'unit-1'),
@@ -422,6 +526,45 @@ RevisionSessionResult revisionSessionResult() {
         selectedAnswers: ['Le préfet'],
         correctAnswers: ['Le Parlement'],
         explanation: 'Le Parlement vote la loi dans ce régime.',
+      ),
+    ],
+  );
+}
+
+RevisionSessionResult examRevisionSessionResult() {
+  return RevisionSessionResult(
+    session: RevisionSessionResultSession(
+      id: 'exam-session-1',
+      subjectId: 'subject-1',
+      courseId: 'course-1',
+      mode: RevisionSessionMode.exam,
+      status: RevisionSessionStatus.completed,
+      createdAt: DateTime.parse('2026-06-15T12:00:00.000Z'),
+      completedAt: DateTime.parse('2026-06-15T12:05:00.000Z'),
+    ),
+    summary: const RevisionSessionResultSummary(
+      correctAnswers: 1,
+      totalQuestions: 1,
+      score: 1,
+      durationSeconds: 300,
+    ),
+    knowledgeUnits: const [
+      RevisionSessionKnowledgeUnitResult(
+        knowledgeUnitId: 'unit-1',
+        title: 'Séparation des pouvoirs',
+        correctAnswers: 1,
+        totalQuestions: 1,
+        score: 1,
+        state: RevisionSessionKnowledgeUnitResultState.mastered,
+      ),
+    ],
+    corrections: const [
+      RevisionSessionQuestionCorrection(
+        prompt: 'Quel principe organise les pouvoirs ?',
+        isCorrect: true,
+        selectedAnswers: ['La séparation des pouvoirs'],
+        correctAnswers: ['La séparation des pouvoirs'],
+        explanation: 'La séparation des pouvoirs structure le régime.',
       ),
     ],
   );

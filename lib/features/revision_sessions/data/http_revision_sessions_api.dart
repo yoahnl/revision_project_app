@@ -65,6 +65,86 @@ class HttpRevisionSessionsApi implements RevisionSessionsApi {
   }
 
   @override
+  Future<RevisionSessionResponse> getExamPreparationSession({
+    required String sessionId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/exam-preparation/sessions/${Uri.encodeComponent(sessionId)}',
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSessionResponseJson(response.data).toResponse();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const RevisionSessionNotFoundException(
+          'Exam preparation session not found',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RevisionSessionResult> submitExamPreparationSession({
+    required String sessionId,
+    required List<DiagnosticQuizAnswer> answers,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/exam-preparation/sessions/${Uri.encodeComponent(sessionId)}/submit',
+        data: {
+          'answers': [
+            for (final answer in answers)
+              _DiagnosticAnswerJson(answer).toJson(),
+          ],
+        },
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSessionResultJson(response.data).toResult();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const RevisionSessionNotFoundException(
+          'Exam preparation session not found',
+        );
+      }
+      if (error.response?.statusCode == 409) {
+        throw RevisionSessionResultNotReadyException(
+          _responseMessage(error) ?? 'Exam preparation session is not ready',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RevisionSessionResult> getExamPreparationSessionResult({
+    required String sessionId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/exam-preparation/sessions/${Uri.encodeComponent(sessionId)}/result',
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSessionResultJson(response.data).toResult();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const RevisionSessionNotFoundException(
+          'Exam preparation session not found',
+        );
+      }
+      if (error.response?.statusCode == 409) {
+        throw RevisionSessionResultNotReadyException(
+          _responseMessage(error) ?? 'Exam preparation result is not ready',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<RevisionSessionResult> completeRevisionSession({
     required String sessionId,
   }) async {
@@ -797,6 +877,12 @@ class _DiagnosticQuizQuestionJson {
       throw const FormatException('Invalid revision quiz payload');
     }
 
+    if (json.containsKey('correctChoiceId') ||
+        json.containsKey('correctChoiceIds') ||
+        json.containsKey('explanation')) {
+      throw const FormatException('Revision quiz payload exposes correction');
+    }
+
     final id = json['id'];
     final knowledgeUnitId = json['knowledgeUnitId'];
     final prompt = json['prompt'];
@@ -899,6 +985,10 @@ class _DiagnosticQuizChoiceJson {
 
     if (json is! Map<String, Object?>) {
       throw const FormatException('Invalid revision quiz payload');
+    }
+
+    if (json.containsKey('feedback') || json.containsKey('isCorrect')) {
+      throw const FormatException('Revision quiz payload exposes correction');
     }
 
     final id = json['id'];
@@ -1253,5 +1343,20 @@ class _OpenQuestionSourceJson {
       pageNumber: pageNumber is int ? pageNumber : null,
       index: index,
     );
+  }
+}
+
+class _DiagnosticAnswerJson {
+  const _DiagnosticAnswerJson(this.answer);
+
+  final DiagnosticQuizAnswer answer;
+
+  Map<String, Object?> toJson() {
+    final choiceId = answer.choiceId;
+    if (choiceId != null) {
+      return {'questionId': answer.questionId, 'choiceId': choiceId};
+    }
+
+    return {'questionId': answer.questionId, 'choiceIds': answer.choiceIds};
   }
 }

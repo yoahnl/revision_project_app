@@ -680,6 +680,84 @@ void main() {
     );
   });
 
+  test('starts a course exam preparation session', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(
+        revisionSessionJson(
+          courseId: 'course-1',
+          sessionId: 'exam-session-1',
+          mode: 'EXAM',
+        ),
+      ),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await repository.startCourseExamPreparation(
+      courseId: 'course-1',
+      config: const CourseExamPreparationConfig(
+        scopeKind: CourseExamPreparationScopeKind.source,
+        scopeId: 'document-1',
+        questionCount: 10,
+        complexityProfile: 'exam',
+      ),
+    );
+
+    expect(response.session.id, 'exam-session-1');
+    expect(response.session.mode, RevisionSessionMode.exam);
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/exam-preparation/sessions',
+    );
+    expect(adapter.lastOptions?.data, {
+      'scopeKind': 'source',
+      'scopeId': 'document-1',
+      'questionCount': 10,
+      'complexityProfile': 'exam',
+    });
+  });
+
+  test('loads completed course exam preparation history', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({
+        'items': [
+          revisionSessionHistoryItemJson(
+            sessionId: 'exam-session-2',
+            correctAnswers: 9,
+            totalQuestions: 10,
+            score: 0.9,
+            mode: 'EXAM',
+          ),
+        ],
+      }),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final history = await repository.getCourseExamPreparationHistory(
+      courseId: 'course-1',
+      limit: 3,
+    );
+
+    expect(history.items, hasLength(1));
+    expect(history.items.single.session.id, 'exam-session-2');
+    expect(history.items.single.session.mode, RevisionSessionMode.exam);
+    expect(history.items.single.summary.correctAnswers, 9);
+    expect(history.items.single.summary.totalQuestions, 10);
+    expect(history.items.single.summary.score, 0.9);
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/exam-preparation/history',
+    );
+    expect(adapter.lastOptions?.queryParameters, {'limit': 3});
+  });
+
   test('maps course history 404 to CourseNotFoundException', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({'message': 'Course not found'}, statusCode: 404),
@@ -973,17 +1051,22 @@ Map<String, Object?> examPreparationOptionsJson({
     },
     'nextStep': {
       'kind': 'configuration_ready',
-      'userMessage': 'Configuration prête. La session complète arrive ensuite.',
+      'userMessage':
+          'Configuration prête. Tu peux démarrer un entraînement examen.',
     },
   };
 }
 
-Map<String, Object?> revisionSessionJson({required String courseId}) {
+Map<String, Object?> revisionSessionJson({
+  required String courseId,
+  String sessionId = 'revision-session-1',
+  String mode = 'QUICK',
+}) {
   return {
     'session': {
-      'id': 'revision-session-1',
+      'id': sessionId,
       'status': 'STARTED',
-      'mode': 'QUICK',
+      'mode': mode,
       'subjectId': 'subject-1',
       'courseId': courseId,
       'documentId': 'document-1',
@@ -1019,12 +1102,13 @@ Map<String, Object?> revisionSessionHistoryItemJson({
   int correctAnswers = 4,
   int totalQuestions = 5,
   double score = 0.8,
+  String mode = 'QUICK',
 }) {
   return {
     'session': {
       'id': sessionId,
       'status': 'COMPLETED',
-      'mode': 'QUICK',
+      'mode': mode,
       'subjectId': 'subject-1',
       'courseId': 'course-1',
       'createdAt': '2026-06-18T10:00:00.000Z',

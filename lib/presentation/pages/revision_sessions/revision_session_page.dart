@@ -6,6 +6,7 @@ import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dar
 import 'package:Neralune/features/revision_sessions/application/revision_session_controller.dart';
 import 'package:Neralune/features/revision_sessions/data/revision_sessions_api.dart';
 import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
+import 'package:Neralune/features/revision_sessions/presentation/exam_revision_session_flow.dart';
 import 'package:Neralune/features/revision_sessions/presentation/quick_revision_quiz_flow.dart';
 import 'package:Neralune/core/routing/route_paths.dart';
 import 'package:Neralune/presentation/pages/activities/diagnostic_quiz_page.dart';
@@ -26,6 +27,7 @@ class RevisionSessionPage extends StatefulWidget {
     this.documentId,
     this.knowledgeUnitId,
     this.preferredAction,
+    this.mode,
     super.key,
   });
 
@@ -36,6 +38,7 @@ class RevisionSessionPage extends StatefulWidget {
   final String? documentId;
   final String? knowledgeUnitId;
   final RevisionSessionPreferredAction? preferredAction;
+  final String? mode;
 
   @override
   State<RevisionSessionPage> createState() => _RevisionSessionPageState();
@@ -58,7 +61,8 @@ class _RevisionSessionPageState extends State<RevisionSessionPage> {
         _normalizeId(oldWidget.subjectId) != _trimmedSubjectId ||
         _normalizeId(oldWidget.documentId) != _trimmedDocumentId ||
         _normalizeId(oldWidget.knowledgeUnitId) != _trimmedKnowledgeUnitId ||
-        oldWidget.preferredAction != widget.preferredAction) {
+        oldWidget.preferredAction != widget.preferredAction ||
+        oldWidget.mode != widget.mode) {
       setState(() {
         _session = _loadFromParams();
       });
@@ -104,12 +108,25 @@ class _RevisionSessionPageState extends State<RevisionSessionPage> {
           return _CompletedCourseQuickSessionRedirect(response: response);
         }
 
+        if (_isCompletedCourseExamSession(response)) {
+          return _CompletedCourseExamSessionRedirect(response: response);
+        }
+
         final premiumActivity = _premiumQuickActivity(response);
         if (premiumActivity != null) {
           return QuickRevisionQuizFlow(
             response: response,
             activity: premiumActivity,
             activityController: widget.activityController,
+            revisionSessionController: widget.revisionSessionController,
+          );
+        }
+
+        final examActivity = _examActivity(response);
+        if (examActivity != null) {
+          return ExamRevisionSessionFlow(
+            response: response,
+            activity: examActivity,
             revisionSessionController: widget.revisionSessionController,
           );
         }
@@ -137,6 +154,11 @@ class _RevisionSessionPageState extends State<RevisionSessionPage> {
   Future<RevisionSessionResponse>? _loadFromParams() {
     final sessionId = _trimmedSessionId;
     if (sessionId != null) {
+      if (_isExamMode) {
+        return widget.revisionSessionController.loadExamPreparationSession(
+          sessionId: sessionId,
+        );
+      }
       return widget.revisionSessionController.loadSession(sessionId: sessionId);
     }
 
@@ -163,6 +185,8 @@ class _RevisionSessionPageState extends State<RevisionSessionPage> {
       _session = _loadFromParams();
     });
   }
+
+  bool get _isExamMode => widget.mode?.trim().toLowerCase() == 'exam';
 }
 
 DiagnosticQuizActivity? _premiumQuickActivity(
@@ -186,9 +210,34 @@ DiagnosticQuizActivity? _premiumQuickActivity(
   return payload.activity;
 }
 
+DiagnosticQuizActivity? _examActivity(RevisionSessionResponse response) {
+  final action = response.currentAction;
+  final payload = action?.payload;
+  if (response.session.status != RevisionSessionStatus.started ||
+      response.session.mode != RevisionSessionMode.exam ||
+      response.session.courseId == null ||
+      action?.kind != RevisionSessionActionKind.diagnosticQuiz ||
+      action?.status != RevisionSessionActionStatus.ready ||
+      payload is! RevisionSessionDiagnosticQuizPayload) {
+    return null;
+  }
+
+  if (payload.activity.questions.isEmpty) {
+    return null;
+  }
+
+  return payload.activity;
+}
+
 bool _isCompletedCourseQuickSession(RevisionSessionResponse response) {
   return response.session.status == RevisionSessionStatus.completed &&
       response.session.mode == RevisionSessionMode.quick &&
+      response.session.courseId != null;
+}
+
+bool _isCompletedCourseExamSession(RevisionSessionResponse response) {
+  return response.session.status == RevisionSessionStatus.completed &&
+      response.session.mode == RevisionSessionMode.exam &&
       response.session.courseId != null;
 }
 
@@ -198,6 +247,46 @@ bool _isCompletedCourseQuickAction(RevisionSessionResponse response) {
       response.session.courseId != null &&
       action?.kind == RevisionSessionActionKind.diagnosticQuiz &&
       action?.status == RevisionSessionActionStatus.completed;
+}
+
+class _CompletedCourseExamSessionRedirect extends StatefulWidget {
+  const _CompletedCourseExamSessionRedirect({required this.response});
+
+  final RevisionSessionResponse response;
+
+  @override
+  State<_CompletedCourseExamSessionRedirect> createState() =>
+      _CompletedCourseExamSessionRedirectState();
+}
+
+class _CompletedCourseExamSessionRedirectState
+    extends State<_CompletedCourseExamSessionRedirect> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      context.go(
+        AppRoutes.revisionSessionResultV2(
+          sessionId: widget.response.session.id,
+          courseId: widget.response.session.courseId,
+          mode: 'exam',
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const RevisionPage(
+      title: 'Préparation examen terminée',
+      subtitle: 'Ouverture du résultat.',
+      children: [Center(child: CircularProgressIndicator())],
+    );
+  }
 }
 
 class _CompletedCourseQuickSessionRedirect extends StatefulWidget {

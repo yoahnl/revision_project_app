@@ -15,11 +15,13 @@ class RevisionSessionResultPage extends StatefulWidget {
   const RevisionSessionResultPage({
     required this.sessionId,
     required this.controller,
+    this.mode,
     super.key,
   });
 
   final String sessionId;
   final RevisionSessionController controller;
+  final String? mode;
 
   @override
   State<RevisionSessionResultPage> createState() =>
@@ -38,7 +40,8 @@ class _RevisionSessionResultPageState extends State<RevisionSessionResultPage> {
   @override
   void didUpdateWidget(covariant RevisionSessionResultPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.sessionId != widget.sessionId) {
+    if (oldWidget.sessionId != widget.sessionId ||
+        oldWidget.mode != widget.mode) {
       _result = _load();
     }
   }
@@ -80,6 +83,12 @@ class _RevisionSessionResultPageState extends State<RevisionSessionResultPage> {
   }
 
   Future<RevisionSessionResult> _load() {
+    if (widget.mode?.trim().toLowerCase() == 'exam') {
+      return widget.controller.loadExamPreparationResult(
+        sessionId: widget.sessionId,
+      );
+    }
+
     return widget.controller.loadResult(sessionId: widget.sessionId);
   }
 }
@@ -115,7 +124,9 @@ class _ResultContent extends StatelessWidget {
         RevisionPageScaffold(
           children: [
             Text(
-              'Session terminée',
+              result.session.mode == RevisionSessionMode.exam
+                  ? 'Examen terminé'
+                  : 'Session terminée',
               textAlign: TextAlign.center,
               style: RevisionTypography.sectionTitle,
             ),

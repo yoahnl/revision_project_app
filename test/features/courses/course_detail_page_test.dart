@@ -709,6 +709,7 @@ void main() {
     expect(find.text('Aucune session terminée pour ce cours.'), findsOneWidget);
     expect(repository.getCourseRevisionSessionHistoryCount, 1);
     expect(repository.getCourseRichClosedHistoryCount, 1);
+    expect(repository.getCourseExamPreparationHistoryCount, 1);
   });
 
   testWidgets('course detail opens a completed session result from history', (
@@ -761,6 +762,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Résultat questions riches'), findsOneWidget);
+  });
+
+  testWidgets('course detail opens an exam result from history', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..examPreparationHistoryByCourse['course-1'] = [
+        revisionSessionHistoryItem(
+          sessionId: 'exam-session-1',
+          correctAnswers: 9,
+          totalQuestions: 10,
+          score: 0.9,
+          mode: RevisionSessionMode.exam,
+        ),
+      ];
+
+    await tester.pumpWidget(
+      routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('9/10'), 400);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Historique'), findsOneWidget);
+    expect(find.text('9/10'), findsOneWidget);
+    expect(find.textContaining('Entraînement examen'), findsOneWidget);
+    expect(find.textContaining('90 %'), findsOneWidget);
+
+    await tester.tap(find.text('Voir le résultat'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Résultat examen'), findsOneWidget);
   });
 
   testWidgets(
@@ -899,7 +934,10 @@ Widget routerTestApp({
         path: AppRoutes.revisionSessionResultV2Path,
         builder: (context, state) => Scaffold(
           body: Text(
-            state.pathParameters['sessionId'] == 'revision-session-1'
+            state.pathParameters['sessionId'] == 'exam-session-1' &&
+                    state.uri.queryParameters['mode'] == 'exam'
+                ? 'Résultat examen'
+                : state.pathParameters['sessionId'] == 'revision-session-1'
                 ? 'Résultat de session'
                 : 'Résultat introuvable',
           ),
@@ -995,13 +1033,14 @@ RevisionSessionHistoryItem revisionSessionHistoryItem({
   int correctAnswers = 4,
   int totalQuestions = 5,
   double score = 0.8,
+  RevisionSessionMode mode = RevisionSessionMode.quick,
 }) {
   return RevisionSessionHistoryItem(
     session: RevisionSessionResultSession(
       id: sessionId,
       subjectId: 'subject-1',
       courseId: 'course-1',
-      mode: RevisionSessionMode.quick,
+      mode: mode,
       status: RevisionSessionStatus.completed,
       createdAt: DateTime.utc(2026, 6, 18, 10),
       completedAt: DateTime.utc(2026, 6, 18, 10, 7),
@@ -1089,7 +1128,8 @@ CourseExamPreparationOptions examPreparationOptionsFixture({
     ),
     nextStep: const CourseExamPreparationNextStep(
       kind: 'configuration_ready',
-      userMessage: 'Configuration prête. La session complète arrive ensuite.',
+      userMessage:
+          'Configuration prête. Tu peux démarrer un entraînement examen.',
     ),
   );
 }

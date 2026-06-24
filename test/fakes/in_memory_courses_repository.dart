@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
@@ -28,6 +29,8 @@ class InMemoryCoursesRepository implements CoursesRepository {
   revisionSessionHistoryByCourse = {};
   final Map<String, List<CourseRichClosedHistoryItem>>
   richClosedHistoryByCourse = {};
+  final Map<String, List<RevisionSessionHistoryItem>>
+  examPreparationHistoryByCourse = {};
   final Map<String, CourseExamPreparationOptions>
   examPreparationOptionsByCourse = {};
   final Map<String, SourceLifecycleDecision> lifecycleByDocumentId = {};
@@ -44,6 +47,8 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int getCourseRevisionSessionHistoryCount = 0;
   int getCourseRichClosedHistoryCount = 0;
   int getExamPreparationOptionsCount = 0;
+  int getCourseExamPreparationHistoryCount = 0;
+  int startExamPreparationCount = 0;
   int prepareQuestionBankCount = 0;
   int uploadCount = 0;
   int deleteDocumentCount = 0;
@@ -65,6 +70,9 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastCourseRevisionSessionHistoryCourseId;
   String? lastCourseRichClosedHistoryCourseId;
   String? lastExamPreparationOptionsCourseId;
+  String? lastCourseExamPreparationHistoryCourseId;
+  String? lastExamPreparationCourseId;
+  CourseExamPreparationConfig? lastExamPreparationConfig;
   int? lastQuickRevisionQuestionCount;
   String? lastArchivedCourseLifecycleId;
   String? lastDeletedCourseLifecycleId;
@@ -73,7 +81,9 @@ class InMemoryCoursesRepository implements CoursesRepository {
   Object? deleteDocumentError;
   Object? archiveDocumentError;
   Object? quickRevisionError;
+  Object? examPreparationError;
   RevisionSessionResponse? quickRevisionResponse;
+  RevisionSessionResponse? examPreparationResponse;
   Duration uploadDelay = Duration.zero;
   Duration quickRevisionDelay = Duration.zero;
 
@@ -585,6 +595,41 @@ class InMemoryCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<RevisionSessionResponse> startCourseExamPreparation({
+    required String courseId,
+    required CourseExamPreparationConfig config,
+  }) async {
+    startExamPreparationCount += 1;
+    lastExamPreparationCourseId = courseId;
+    lastExamPreparationConfig = config;
+
+    final error = examPreparationError;
+    if (error != null) {
+      throw error;
+    }
+
+    return examPreparationResponse ?? examPreparationSessionResponse(courseId);
+  }
+
+  @override
+  Future<RevisionSessionHistoryResponse> getCourseExamPreparationHistory({
+    required String courseId,
+    int limit = 5,
+  }) async {
+    getCourseExamPreparationHistoryCount += 1;
+    lastCourseExamPreparationHistoryCourseId = courseId;
+
+    if (!detailsByCourse.containsKey(courseId)) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    final items = examPreparationHistoryByCourse[courseId] ?? const [];
+    return RevisionSessionHistoryResponse(
+      items: List.unmodifiable(items.take(limit)),
+    );
+  }
+
+  @override
   Future<CourseProgress> getCourseProgress({required String courseId}) {
     getCourseProgressCount += 1;
     final progress = progressByCourse[courseId];
@@ -631,6 +676,51 @@ RevisionSessionResponse quickRevisionSessionResponse(String courseId) {
       documentId: 'document-1',
       knowledgeUnitId: 'knowledge-unit-1',
       payload: null,
+    ),
+    history: const [],
+  );
+}
+
+RevisionSessionResponse examPreparationSessionResponse(String courseId) {
+  return RevisionSessionResponse(
+    session: RevisionSession(
+      id: 'exam-session-1',
+      status: RevisionSessionStatus.started,
+      mode: RevisionSessionMode.exam,
+      subjectId: 'subject-1',
+      courseId: courseId,
+      documentId: 'document-1',
+      knowledgeUnitId: 'knowledge-unit-1',
+      createdAt: DateTime.utc(2026, 6, 18, 12),
+      completedAt: null,
+    ),
+    currentAction: const RevisionSessionAction(
+      id: 'action-exam-1',
+      kind: RevisionSessionActionKind.diagnosticQuiz,
+      status: RevisionSessionActionStatus.ready,
+      displayOrder: 0,
+      activitySessionId: 'activity-exam-1',
+      documentId: 'document-1',
+      knowledgeUnitId: 'knowledge-unit-1',
+      payload: RevisionSessionDiagnosticQuizPayload(
+        DiagnosticQuizActivity(
+          sessionId: 'activity-exam-1',
+          title: 'Préparation examen',
+          questions: [
+            DiagnosticQuizQuestion(
+              id: 'question-1',
+              prompt: 'Quel principe organise les pouvoirs ?',
+              choices: [
+                DiagnosticQuizChoice(
+                  id: 'choice-a',
+                  label: 'La séparation des pouvoirs',
+                ),
+                DiagnosticQuizChoice(id: 'choice-b', label: 'Le hasard'),
+              ],
+            ),
+          ],
+        ),
+      ),
     ),
     history: const [],
   );

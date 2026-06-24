@@ -493,6 +493,33 @@ void main() {
     },
   );
 
+  test(
+    'courseExamPreparationHistoryProvider loads completed exam sessions',
+    () async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail()
+        ..examPreparationHistoryByCourse['course-1'] = [
+          revisionSessionHistoryItem(
+            sessionId: 'exam-session-1',
+            mode: RevisionSessionMode.exam,
+          ),
+        ];
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      final history = await container.read(
+        courseExamPreparationHistoryProvider('course-1').future,
+      );
+
+      expect(history.items.single.session.id, 'exam-session-1');
+      expect(history.items.single.session.mode, RevisionSessionMode.exam);
+      expect(repository.getCourseExamPreparationHistoryCount, 1);
+      expect(repository.lastCourseExamPreparationHistoryCourseId, 'course-1');
+    },
+  );
+
   test('subjectProgressProvider loads real subject progress', () async {
     final repository = InMemoryCoursesRepository()
       ..progressBySubject['subject-1'] = subjectProgress();
@@ -759,13 +786,14 @@ RevisionSessionHistoryItem revisionSessionHistoryItem({
   int correctAnswers = 4,
   int totalQuestions = 5,
   double score = 0.8,
+  RevisionSessionMode mode = RevisionSessionMode.quick,
 }) {
   return RevisionSessionHistoryItem(
     session: RevisionSessionResultSession(
       id: sessionId,
       subjectId: 'subject-1',
       courseId: 'course-1',
-      mode: RevisionSessionMode.quick,
+      mode: mode,
       status: RevisionSessionStatus.completed,
       createdAt: DateTime.utc(2026, 6, 18, 10),
       completedAt: DateTime.utc(2026, 6, 18, 10, 7),

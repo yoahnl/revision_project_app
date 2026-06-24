@@ -771,6 +771,9 @@ class _CourseRevisionHistorySection extends ConsumerWidget {
     final richClosedHistory = ref.watch(
       courseRichClosedHistoryProvider(detail.course.id),
     );
+    final examHistory = ref.watch(
+      courseExamPreparationHistoryProvider(detail.course.id),
+    );
 
     return RevisionGlassCard(
       child: Column(
@@ -790,11 +793,15 @@ class _CourseRevisionHistorySection extends ConsumerWidget {
           _CourseHistoryContent(
             quickHistory: quickHistory,
             richClosedHistory: richClosedHistory,
+            examHistory: examHistory,
             onRetry: () {
               ref.invalidate(
                 courseRevisionSessionHistoryProvider(detail.course.id),
               );
               ref.invalidate(courseRichClosedHistoryProvider(detail.course.id));
+              ref.invalidate(
+                courseExamPreparationHistoryProvider(detail.course.id),
+              );
             },
           ),
         ],
@@ -807,20 +814,32 @@ class _CourseHistoryContent extends StatelessWidget {
   const _CourseHistoryContent({
     required this.quickHistory,
     required this.richClosedHistory,
+    required this.examHistory,
     required this.onRetry,
   });
 
   final AsyncValue<RevisionSessionHistoryResponse> quickHistory;
   final AsyncValue<CourseRichClosedHistoryResponse> richClosedHistory;
+  final AsyncValue<RevisionSessionHistoryResponse> examHistory;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     final quickItems = quickHistory.asData?.value.items ?? const [];
     final richClosedItems = richClosedHistory.asData?.value.items ?? const [];
-    final hasAnyData = quickHistory.hasValue || richClosedHistory.hasValue;
-    final isLoading = quickHistory.isLoading || richClosedHistory.isLoading;
-    final hasError = quickHistory.hasError || richClosedHistory.hasError;
+    final examItems = examHistory.asData?.value.items ?? const [];
+    final hasAnyData =
+        quickHistory.hasValue ||
+        richClosedHistory.hasValue ||
+        examHistory.hasValue;
+    final isLoading =
+        quickHistory.isLoading ||
+        richClosedHistory.isLoading ||
+        examHistory.isLoading;
+    final hasError =
+        quickHistory.hasError ||
+        richClosedHistory.hasError ||
+        examHistory.hasError;
 
     if (isLoading && !hasAnyData) {
       return Text(
@@ -847,7 +866,7 @@ class _CourseHistoryContent extends StatelessWidget {
       );
     }
 
-    if (quickItems.isEmpty && richClosedItems.isEmpty) {
+    if (quickItems.isEmpty && richClosedItems.isEmpty && examItems.isEmpty) {
       return Text(
         'Aucune session terminée pour ce cours.',
         style: RevisionTypography.body,
@@ -855,6 +874,7 @@ class _CourseHistoryContent extends StatelessWidget {
     }
 
     final rows = <Widget>[
+      for (final item in examItems) _CourseExamHistoryTile(item: item),
       for (final item in quickItems) _CourseRevisionHistoryTile(item: item),
       for (final item in richClosedItems)
         _CourseRichClosedHistoryTile(item: item),
@@ -868,6 +888,57 @@ class _CourseHistoryContent extends StatelessWidget {
             const Divider(color: RevisionColors.border),
         ],
       ],
+    );
+  }
+}
+
+class _CourseExamHistoryTile extends StatelessWidget {
+  const _CourseExamHistoryTile({required this.item});
+
+  final RevisionSessionHistoryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = item.summary;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: RevisionSpacing.xs),
+      child: Row(
+        children: [
+          const RevisionIconTile(
+            icon: Icons.gps_fixed_rounded,
+            accent: RevisionColors.pink,
+            size: 44,
+          ),
+          const SizedBox(width: RevisionSpacing.m),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${summary.correctAnswers}/${summary.totalQuestions}',
+                  style: RevisionTypography.sectionTitle,
+                ),
+                const SizedBox(height: RevisionSpacing.xs),
+                Text(
+                  '${_scorePercent(summary.score)} · Entraînement examen · ${_historyDate(item.session.completedAt)}',
+                  style: RevisionTypography.caption,
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push(
+              AppRoutes.revisionSessionResultV2(
+                sessionId: item.session.id,
+                courseId: item.course.id,
+                mode: 'exam',
+              ),
+            ),
+            child: const Text('Voir le résultat'),
+          ),
+        ],
+      ),
     );
   }
 }

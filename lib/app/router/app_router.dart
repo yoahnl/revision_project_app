@@ -194,6 +194,7 @@ GoRouter createAppRouter({
             revisionSessionController: revisionSessionController,
             activityController: activityController,
             sessionId: state.pathParameters['sessionId'] ?? '',
+            mode: state.uri.queryParameters['mode'],
           ),
         ),
       ),
@@ -203,6 +204,7 @@ GoRouter createAppRouter({
           child: RevisionSessionResultPage(
             sessionId: state.pathParameters['sessionId'] ?? '',
             controller: revisionSessionController,
+            mode: state.uri.queryParameters['mode'],
           ),
         ),
       ),

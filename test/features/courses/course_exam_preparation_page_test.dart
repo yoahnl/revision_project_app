@@ -1,46 +1,64 @@
+import 'package:Neralune/app/router/app_routes.dart';
 import 'package:Neralune/features/courses/application/courses_providers.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/presentation/course_exam_preparation_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 
 void main() {
-  testWidgets(
-    'exam preparation page displays ready options without fake start',
-    (tester) async {
-      final repository = InMemoryCoursesRepository()
-        ..detailsByCourse['course-1'] = courseDetail()
-        ..examPreparationOptionsByCourse['course-1'] =
-            examPreparationOptionsFixture();
+  testWidgets('exam preparation page starts a real exam training session', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..examPreparationOptionsByCourse['course-1'] =
+          examPreparationOptionsFixture();
 
-      await tester.pumpWidget(testApp(repository));
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(testApp(repository));
+    await tester.pumpAndSettle();
 
-      expect(repository.getExamPreparationOptionsCount, 1);
-      expect(repository.lastExamPreparationOptionsCourseId, 'course-1');
-      expect(find.text('Préparation examen'), findsOneWidget);
-      expect(find.text('Prêt'), findsOneWidget);
-      expect(find.text('Tout le cours'), findsOneWidget);
-      expect(find.text('CM.pdf'), findsOneWidget);
-      expect(find.text('20 questions'), findsOneWidget);
-      expect(find.text('Types de questions'), findsOneWidget);
-      expect(find.text('choix simple, choix multiple'), findsOneWidget);
-      expect(find.text('Configuration prête'), findsOneWidget);
-      expect(find.textContaining('session complète arrive'), findsOneWidget);
-      expect(find.textContaining('Démarrer'), findsNothing);
+    expect(repository.getExamPreparationOptionsCount, 1);
+    expect(repository.lastExamPreparationOptionsCourseId, 'course-1');
+    expect(find.text('Préparation examen'), findsOneWidget);
+    expect(find.text('Prêt'), findsOneWidget);
+    expect(find.text('Tout le cours'), findsOneWidget);
+    expect(find.text('CM.pdf'), findsOneWidget);
+    expect(find.text('20 questions'), findsOneWidget);
+    expect(find.text('Types de questions'), findsOneWidget);
+    expect(find.text('choix simple, choix multiple'), findsOneWidget);
+    expect(find.text('Configuration prête'), findsOneWidget);
+    expect(
+      find.textContaining('démarrer un entraînement examen'),
+      findsOneWidget,
+    );
+    expect(find.text('Démarrer l’entraînement'), findsOneWidget);
 
-      final tenQuestionsChip = find.widgetWithText(ChoiceChip, '10 questions');
-      await tester.ensureVisible(tenQuestionsChip);
-      await tester.tap(tenQuestionsChip);
-      await tester.pumpAndSettle();
+    final tenQuestionsChip = find.widgetWithText(ChoiceChip, '10 questions');
+    await tester.ensureVisible(tenQuestionsChip);
+    await tester.tap(tenQuestionsChip);
+    await tester.pumpAndSettle();
 
-      final selectedChip = tester.widget<ChoiceChip>(tenQuestionsChip);
-      expect(selectedChip.selected, isTrue);
-    },
-  );
+    final selectedChip = tester.widget<ChoiceChip>(tenQuestionsChip);
+    expect(selectedChip.selected, isTrue);
+
+    await tester.ensureVisible(find.text('Démarrer l’entraînement'));
+    await tester.tap(find.text('Démarrer l’entraînement'));
+    await tester.pumpAndSettle();
+
+    expect(repository.startExamPreparationCount, 1);
+    expect(repository.lastExamPreparationCourseId, 'course-1');
+    expect(
+      repository.lastExamPreparationConfig?.scopeKind,
+      CourseExamPreparationScopeKind.course,
+    );
+    expect(repository.lastExamPreparationConfig?.scopeId, 'course-1');
+    expect(repository.lastExamPreparationConfig?.questionCount, 10);
+    expect(find.text('Session examen exam-session-1 exam'), findsOneWidget);
+  });
 
   testWidgets('exam preparation page explains blocked state without options', (
     tester,
@@ -70,11 +88,30 @@ void main() {
 }
 
 Widget testApp(InMemoryCoursesRepository repository) {
+  final router = GoRouter(
+    initialLocation: AppRoutes.courseExamPreparation('course-1'),
+    routes: [
+      GoRoute(
+        path: AppRoutes.courseExamPreparationPath,
+        builder: (context, state) => CourseExamPreparationPage(
+          courseId: state.pathParameters['courseId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.revisionSessionV2Path,
+        builder: (context, state) => Scaffold(
+          body: Text(
+            'Session examen ${state.pathParameters['sessionId']} '
+            '${state.uri.queryParameters['mode']}',
+          ),
+        ),
+      ),
+    ],
+  );
+
   return ProviderScope(
     overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
-    child: const MaterialApp(
-      home: CourseExamPreparationPage(courseId: 'course-1'),
-    ),
+    child: MaterialApp.router(routerConfig: router),
   );
 }
 
@@ -160,7 +197,7 @@ CourseExamPreparationOptions examPreparationOptionsFixture({
     nextStep: CourseExamPreparationNextStep(
       kind: canPrepare ? 'configuration_ready' : 'blocked',
       userMessage: canPrepare
-          ? 'Configuration prête. La session complète arrive ensuite.'
+          ? 'Configuration prête. Tu peux démarrer un entraînement examen.'
           : 'Ajoute une source prête avant de configurer une préparation examen.',
     ),
   );

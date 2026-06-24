@@ -497,6 +497,58 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<RevisionSessionResponse> startCourseExamPreparation({
+    required String courseId,
+    required CourseExamPreparationConfig config,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/exam-preparation/sessions',
+        data: {
+          'scopeKind': _examPreparationScopeKindJson(config.scopeKind),
+          'scopeId': config.scopeId,
+          'questionCount': config.questionCount,
+          'complexityProfile': config.complexityProfile,
+        },
+        options: await _authorizedOptions(),
+      );
+
+      return RevisionSessionResponseJson(response.data).toResponse();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      if (error.response?.statusCode == 409) {
+        throw CourseRequestException(
+          _responseMessage(error) ?? 'Préparation examen indisponible',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RevisionSessionHistoryResponse> getCourseExamPreparationHistory({
+    required String courseId,
+    int limit = 5,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/exam-preparation/history',
+        queryParameters: {'limit': limit},
+        options: await _authorizedOptions(),
+      );
+
+      return _RevisionSessionHistoryResponseJson(response.data).toHistory();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<CourseProgress> getCourseProgress({required String courseId}) async {
     try {
       final response = await _dio.get<Object?>(
@@ -1515,5 +1567,13 @@ CourseExamPreparationScopeKind _parseExamPreparationScopeKind(String value) {
     'course' => CourseExamPreparationScopeKind.course,
     'source' => CourseExamPreparationScopeKind.source,
     _ => CourseExamPreparationScopeKind.unknown,
+  };
+}
+
+String _examPreparationScopeKindJson(CourseExamPreparationScopeKind value) {
+  return switch (value) {
+    CourseExamPreparationScopeKind.course => 'course',
+    CourseExamPreparationScopeKind.source => 'source',
+    CourseExamPreparationScopeKind.unknown => 'unknown',
   };
 }

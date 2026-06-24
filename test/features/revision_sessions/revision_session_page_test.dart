@@ -215,6 +215,75 @@ void main() {
     },
   );
 
+  testWidgets(
+    'exam preparation session loads and submits through exam endpoints',
+    (tester) async {
+      _useTallSurface(tester);
+      final revisionApi = InMemoryRevisionSessionsApi();
+      final activityApi = InMemoryActivityApi();
+      final router = _quickRouter(
+        revisionApi: revisionApi,
+        activityApi: activityApi,
+        initialLocation: AppRoutes.revisionSessionV2(
+          sessionId: 'exam-session-1',
+          courseId: 'course-1',
+          mode: 'exam',
+        ),
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            coursesRepositoryProvider.overrideWithValue(
+              InMemoryCoursesRepository()
+                ..detailsByCourse['course-1'] = _courseDetail(),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(revisionApi.loadExamCount, 1);
+      expect(revisionApi.loadedExamSessionId, 'exam-session-1');
+      expect(revisionApi.loadCount, 0);
+      expect(find.text('Préparation examen'), findsWidgets);
+      expect(find.text('Question 1 sur 1'), findsOneWidget);
+      expect(
+        find.text('Quel principe organise les pouvoirs ?'),
+        findsOneWidget,
+      );
+      expect(find.text('correctChoiceId'), findsNothing);
+
+      await tester.tap(find.text('La séparation des pouvoirs'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Valider'));
+      await tester.pumpAndSettle();
+
+      expect(revisionApi.submitExamCount, 1);
+      expect(revisionApi.submittedExamSessionId, 'exam-session-1');
+      expect(
+        revisionApi.submittedExamAnswers
+            ?.map((answer) => '${answer.questionId}:${answer.choiceId}')
+            .toList(),
+        ['question-1:choice-1'],
+      );
+      expect(revisionApi.completeCount, 0);
+      expect(revisionApi.saveDraftCount, 0);
+      expect(activityApi.submittedDiagnosticQuizCount, 0);
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        '/revision-sessions/exam-session-1/result',
+      );
+      expect(
+        router.routeInformationProvider.value.uri.queryParameters['mode'],
+        'exam',
+      );
+      expect(find.text('Result route exam'), findsOneWidget);
+    },
+  );
+
   testWidgets('course quick session renders diagnostic question visuals', (
     tester,
   ) async {
@@ -306,6 +375,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Result route'), findsOneWidget);
+    expect(find.text('Quel principe organise les pouvoirs ?'), findsNothing);
+  });
+
+  testWidgets('completed exam preparation session redirects to exam result', (
+    tester,
+  ) async {
+    final revisionApi = InMemoryRevisionSessionsApi()
+      ..examLoadResponse = _completedCourseExamRevisionSessionResponse();
+    final router = _quickRouter(
+      revisionApi: revisionApi,
+      activityApi: InMemoryActivityApi(),
+      initialLocation: AppRoutes.revisionSessionV2(
+        sessionId: 'exam-session-1',
+        courseId: 'course-1',
+        mode: 'exam',
+      ),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coursesRepositoryProvider.overrideWithValue(
+            InMemoryCoursesRepository()
+              ..detailsByCourse['course-1'] = _courseDetail(),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(revisionApi.loadExamCount, 1);
+    expect(find.text('Result route exam'), findsOneWidget);
     expect(find.text('Quel principe organise les pouvoirs ?'), findsNothing);
   });
 
@@ -673,11 +776,12 @@ CourseDetail _courseDetail() {
 GoRouter _quickRouter({
   required InMemoryRevisionSessionsApi revisionApi,
   required InMemoryActivityApi activityApi,
+  String? initialLocation,
 }) {
   return GoRouter(
-    initialLocation: AppRoutes.revisionSessionV2(
-      sessionId: 'revision-session-1',
-    ),
+    initialLocation:
+        initialLocation ??
+        AppRoutes.revisionSessionV2(sessionId: 'revision-session-1'),
     routes: [
       GoRoute(
         path: AppRoutes.revisionSessionV2Path,
@@ -685,11 +789,16 @@ GoRouter _quickRouter({
           revisionSessionController: RevisionSessionController(revisionApi),
           activityController: ActivityController(activityApi),
           sessionId: state.pathParameters['sessionId'],
+          mode: state.uri.queryParameters['mode'],
         ),
       ),
       GoRoute(
         path: AppRoutes.revisionSessionResultV2Path,
-        builder: (context, state) => const Text('Result route'),
+        builder: (context, state) => Text(
+          state.uri.queryParameters['mode'] == 'exam'
+              ? 'Result route exam'
+              : 'Result route',
+        ),
       ),
       GoRoute(
         path: AppRoutes.coursePath,
@@ -774,6 +883,25 @@ RevisionSessionResponse _completedCourseQuickRevisionSessionResponse() {
       knowledgeUnitId: base.session.knowledgeUnitId,
       createdAt: base.session.createdAt,
       completedAt: DateTime.parse('2026-06-15T12:04:12.000Z'),
+    ),
+    currentAction: base.currentAction,
+    history: base.history,
+  );
+}
+
+RevisionSessionResponse _completedCourseExamRevisionSessionResponse() {
+  final base = examRevisionSessionResponse();
+  return RevisionSessionResponse(
+    session: RevisionSession(
+      id: base.session.id,
+      status: RevisionSessionStatus.completed,
+      mode: RevisionSessionMode.exam,
+      subjectId: base.session.subjectId,
+      courseId: base.session.courseId,
+      documentId: base.session.documentId,
+      knowledgeUnitId: base.session.knowledgeUnitId,
+      createdAt: base.session.createdAt,
+      completedAt: DateTime.parse('2026-06-15T12:05:00.000Z'),
     ),
     currentAction: base.currentAction,
     history: base.history,

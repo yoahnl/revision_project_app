@@ -84,6 +84,16 @@ final courseExamPreparationOptionsProvider =
           .getExamPreparationOptions(courseId: courseId);
     });
 
+final courseExamPreparationHistoryProvider =
+    FutureProvider.family<RevisionSessionHistoryResponse, String>((
+      ref,
+      courseId,
+    ) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getCourseExamPreparationHistory(courseId: courseId);
+    });
+
 typedef CourseQuestionBankReadinessKey = ({String courseId, int questionCount});
 
 final courseQuestionBankReadinessProvider =

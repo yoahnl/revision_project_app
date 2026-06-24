@@ -1,3 +1,4 @@
+import '../../activities/domain/diagnostic_quiz_activity.dart';
 import '../data/revision_sessions_api.dart';
 import '../domain/revision_session.dart';
 
@@ -38,6 +39,34 @@ class RevisionSessionController {
     return _api.getRevisionSession(sessionId: trimmedSessionId);
   }
 
+  Future<RevisionSessionResponse> loadExamPreparationSession({
+    required String sessionId,
+  }) {
+    final trimmedSessionId = sessionId.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Revision session id is required');
+    }
+
+    return _api.getExamPreparationSession(sessionId: trimmedSessionId);
+  }
+
+  Future<RevisionSessionResult> submitExamPreparationSession({
+    required String sessionId,
+    required List<DiagnosticQuizAnswer> answers,
+  }) {
+    final trimmedSessionId = sessionId.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Revision session id is required');
+    }
+
+    return _api.submitExamPreparationSession(
+      sessionId: trimmedSessionId,
+      answers: answers,
+    );
+  }
+
   Future<RevisionSessionResult> completeSession({required String sessionId}) {
     final trimmedSessionId = sessionId.trim();
 
@@ -56,6 +85,18 @@ class RevisionSessionController {
     }
 
     return _api.getRevisionSessionResult(sessionId: trimmedSessionId);
+  }
+
+  Future<RevisionSessionResult> loadExamPreparationResult({
+    required String sessionId,
+  }) {
+    final trimmedSessionId = sessionId.trim();
+
+    if (trimmedSessionId.isEmpty) {
+      throw ArgumentError('Revision session id is required');
+    }
+
+    return _api.getExamPreparationSessionResult(sessionId: trimmedSessionId);
   }
 
   Future<RevisionSessionResponse> saveDraftAnswer({

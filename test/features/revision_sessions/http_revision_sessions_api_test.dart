@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
 import 'package:Neralune/features/revision_sessions/data/http_revision_sessions_api.dart';
 import 'package:Neralune/features/revision_sessions/data/revision_sessions_api.dart';
 import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
@@ -304,6 +305,129 @@ void main() {
     expect(result.corrections.single.correctAnswers, ['Le Parlement']);
   });
 
+  test(
+    'gets an exam preparation session with diagnostic quiz payload',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(
+          revisionSessionJson(
+            payload: diagnosticQuizPayloadJson(),
+            courseId: 'course-1',
+            mode: 'EXAM',
+            sessionId: 'exam-session-1',
+          ),
+        ),
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final api = HttpRevisionSessionsApi(
+        dio: dio,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      final response = await api.getExamPreparationSession(
+        sessionId: 'exam-session-1',
+      );
+
+      expect(
+        adapter.lastOptions?.path,
+        '/exam-preparation/sessions/exam-session-1',
+      );
+      expect(response.session.id, 'exam-session-1');
+      expect(response.session.mode, RevisionSessionMode.exam);
+      expect(
+        response.currentAction?.payload,
+        isA<RevisionSessionDiagnosticQuizPayload>(),
+      );
+    },
+  );
+
+  test('submits exam preparation answers', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(
+        revisionSessionResultJson(mode: 'EXAM', sessionId: 'exam-session-1'),
+      ),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.submitExamPreparationSession(
+      sessionId: 'exam-session-1',
+      answers: const [
+        DiagnosticQuizAnswer(questionId: 'question-1', choiceId: 'choice-1'),
+        DiagnosticQuizAnswer(
+          questionId: 'question-2',
+          choiceIds: ['choice-2', 'choice-3'],
+        ),
+      ],
+    );
+
+    expect(
+      adapter.lastOptions?.path,
+      '/exam-preparation/sessions/exam-session-1/submit',
+    );
+    expect(adapter.lastOptions?.data, {
+      'answers': [
+        {'questionId': 'question-1', 'choiceId': 'choice-1'},
+        {
+          'questionId': 'question-2',
+          'choiceIds': ['choice-2', 'choice-3'],
+        },
+      ],
+    });
+    expect(result.session.mode, RevisionSessionMode.exam);
+  });
+
+  test('gets an exam preparation result', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(
+        revisionSessionResultJson(mode: 'EXAM', sessionId: 'exam-session-1'),
+      ),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final result = await api.getExamPreparationSessionResult(
+      sessionId: 'exam-session-1',
+    );
+
+    expect(
+      adapter.lastOptions?.path,
+      '/exam-preparation/sessions/exam-session-1/result',
+    );
+    expect(result.session.id, 'exam-session-1');
+    expect(result.session.mode, RevisionSessionMode.exam);
+  });
+
+  test('rejects diagnostic quiz correction leaks before submit', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(
+        revisionSessionJson(
+          payload: diagnosticQuizPayloadJson(includeCorrectionLeak: true),
+        ),
+      ),
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = HttpRevisionSessionsApi(
+      dio: dio,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await api.getRevisionSession(
+      sessionId: 'revision-session-1',
+    );
+
+    expect(
+      response.currentAction?.payload,
+      isA<RevisionSessionUnknownPayload>(),
+    );
+  });
+
   test('flags a revision session question', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({'status': 'flagged'}),
@@ -457,6 +581,8 @@ ResponseBody jsonResponse(Object? payload) {
 Map<String, Object?> revisionSessionJson({
   required Object? payload,
   String? courseId,
+  String mode = 'QUICK',
+  String sessionId = 'revision-session-1',
   List<Map<String, Object?>> draftAnswers = const [],
 }) {
   final actionKind = payload == null ? 'OPEN_QUESTION' : actionKindFor(payload);
@@ -464,9 +590,9 @@ Map<String, Object?> revisionSessionJson({
 
   return {
     'session': {
-      'id': 'revision-session-1',
+      'id': sessionId,
       'status': 'STARTED',
-      'mode': 'QUICK',
+      'mode': mode,
       'subjectId': 'subject-1',
       'courseId': courseId,
       'documentId': null,
@@ -502,13 +628,15 @@ Map<String, Object?> revisionSessionJson({
 Map<String, Object?> revisionSessionResultJson({
   String? state = 'TO_REVIEW',
   String? courseId = 'course-1',
+  String mode = 'QUICK',
+  String sessionId = 'revision-session-1',
 }) {
   return {
     'session': {
-      'id': 'revision-session-1',
+      'id': sessionId,
       'subjectId': 'subject-1',
       'courseId': courseId,
-      'mode': 'QUICK',
+      'mode': mode,
       'status': 'COMPLETED',
       'createdAt': '2026-06-15T12:00:00.000Z',
       'completedAt': '2026-06-15T12:04:12.000Z',
@@ -555,7 +683,37 @@ Map<String, Object?> minimalPayloadJson() {
   return {'type': 'open_question', 'sessionId': 'open-session-1'};
 }
 
-Map<String, Object?> diagnosticQuizPayloadJson() {
+Map<String, Object?> diagnosticQuizPayloadJson({
+  bool includeCorrectionLeak = false,
+}) {
+  final question = <String, Object?>{
+    'id': 'question-1',
+    'knowledgeUnitId': 'unit-1',
+    'prompt': 'Question test',
+    'difficulty': 'MEDIUM',
+    'sources': [
+      {
+        'chunkId': 'chunk-1',
+        'pageNumber': null,
+        'index': 0,
+        'text': 'Texte source complet interdit.',
+      },
+    ],
+    'choices': [
+      {'id': 'choice-1', 'label': 'Réponse A'},
+      {'id': 'choice-2', 'label': 'Réponse B'},
+    ],
+  };
+  if (includeCorrectionLeak) {
+    question
+      ..['correctChoiceId'] = 'choice-1'
+      ..['explanation'] = 'Ne doit pas être mappé.'
+      ..['choices'] = [
+        {'id': 'choice-1', 'label': 'Réponse A', 'feedback': 'Interdit'},
+        {'id': 'choice-2', 'label': 'Réponse B'},
+      ];
+  }
+
   return {
     'sessionId': 'quiz-session-1',
     'type': 'diagnostic_quiz',
@@ -563,28 +721,7 @@ Map<String, Object?> diagnosticQuizPayloadJson() {
     'title': 'QCM de session',
     'documentId': null,
     'subjectId': 'subject-1',
-    'questions': [
-      {
-        'id': 'question-1',
-        'knowledgeUnitId': 'unit-1',
-        'prompt': 'Question test',
-        'difficulty': 'MEDIUM',
-        'correctChoiceId': 'choice-1',
-        'explanation': 'Ne doit pas être mappé.',
-        'sources': [
-          {
-            'chunkId': 'chunk-1',
-            'pageNumber': null,
-            'index': 0,
-            'text': 'Texte source complet interdit.',
-          },
-        ],
-        'choices': [
-          {'id': 'choice-1', 'label': 'Réponse A', 'feedback': 'Interdit'},
-          {'id': 'choice-2', 'label': 'Réponse B'},
-        ],
-      },
-    ],
+    'questions': [question],
   };
 }
 

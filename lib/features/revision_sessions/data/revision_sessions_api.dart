@@ -1,3 +1,4 @@
+import '../../activities/domain/diagnostic_quiz_activity.dart';
 import '../domain/revision_session.dart';
 
 enum RevisionSessionPreferredAction {
@@ -15,6 +16,19 @@ abstract interface class RevisionSessionsApi {
   });
 
   Future<RevisionSessionResponse> getRevisionSession({
+    required String sessionId,
+  });
+
+  Future<RevisionSessionResponse> getExamPreparationSession({
+    required String sessionId,
+  });
+
+  Future<RevisionSessionResult> submitExamPreparationSession({
+    required String sessionId,
+    required List<DiagnosticQuizAnswer> answers,
+  });
+
+  Future<RevisionSessionResult> getExamPreparationSessionResult({
     required String sessionId,
   });
 

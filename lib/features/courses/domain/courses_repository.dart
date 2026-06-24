@@ -86,6 +86,16 @@ abstract interface class CoursesRepository {
     required String courseId,
   });
 
+  Future<RevisionSessionResponse> startCourseExamPreparation({
+    required String courseId,
+    required CourseExamPreparationConfig config,
+  });
+
+  Future<RevisionSessionHistoryResponse> getCourseExamPreparationHistory({
+    required String courseId,
+    int limit = 5,
+  });
+
   Future<CourseProgress> getCourseProgress({required String courseId});
 
   Future<SubjectProgress> getSubjectProgress({required String subjectId});

@@ -66,19 +66,22 @@ class CourseExamPreparationPage extends ConsumerWidget {
   }
 }
 
-class _ExamPreparationContent extends StatefulWidget {
+class _ExamPreparationContent extends ConsumerStatefulWidget {
   const _ExamPreparationContent({required this.options});
 
   final CourseExamPreparationOptions options;
 
   @override
-  State<_ExamPreparationContent> createState() =>
+  ConsumerState<_ExamPreparationContent> createState() =>
       _ExamPreparationContentState();
 }
 
-class _ExamPreparationContentState extends State<_ExamPreparationContent> {
+class _ExamPreparationContentState
+    extends ConsumerState<_ExamPreparationContent> {
   String? _selectedScopeId;
   int? _selectedQuestionCount;
+  bool _isStarting = false;
+  Object? _startError;
 
   @override
   void initState() {
@@ -99,6 +102,13 @@ class _ExamPreparationContentState extends State<_ExamPreparationContent> {
   @override
   Widget build(BuildContext context) {
     final options = widget.options;
+    final selectedScope = _selectedScope(options);
+    final canStart =
+        options.readiness.canPrepare &&
+        selectedScope != null &&
+        selectedScope.canSelect &&
+        _selectedQuestionCount != null &&
+        selectedScope.kind != CourseExamPreparationScopeKind.unknown;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,38 +167,135 @@ class _ExamPreparationContentState extends State<_ExamPreparationContent> {
           const SizedBox(height: RevisionSpacing.m),
         ],
         RevisionGlassCard(
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const RevisionIconTile(
-                icon: Icons.flag_rounded,
-                accent: RevisionColors.pink,
-                size: 44,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const RevisionIconTile(
+                    icon: Icons.flag_rounded,
+                    accent: RevisionColors.pink,
+                    size: 44,
+                  ),
+                  const SizedBox(width: RevisionSpacing.m),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          options.readiness.canPrepare
+                              ? 'Configuration prête'
+                              : 'Configuration indisponible',
+                          style: RevisionTypography.sectionTitle,
+                        ),
+                        const SizedBox(height: RevisionSpacing.xs),
+                        Text(
+                          options.nextStep.userMessage,
+                          style: RevisionTypography.body,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: RevisionSpacing.m),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      options.readiness.canPrepare
-                          ? 'Configuration prête'
-                          : 'Configuration indisponible',
-                      style: RevisionTypography.sectionTitle,
-                    ),
-                    const SizedBox(height: RevisionSpacing.xs),
-                    Text(
-                      options.nextStep.userMessage,
-                      style: RevisionTypography.body,
-                    ),
-                  ],
+              if (canStart) ...[
+                const SizedBox(height: RevisionSpacing.m),
+                RevisionGradientButton(
+                  label: _isStarting
+                      ? 'Préparation...'
+                      : 'Démarrer l’entraînement',
+                  icon: Icons.play_arrow_rounded,
+                  expanded: true,
+                  onPressed: _isStarting ? null : () => _start(selectedScope),
                 ),
-              ),
+              ],
+              if (_startError != null) ...[
+                const SizedBox(height: RevisionSpacing.m),
+                Text(
+                  'Impossible de démarrer cette préparation pour le moment.',
+                  style: RevisionTypography.caption.copyWith(
+                    color: RevisionColors.red,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ],
     );
+  }
+
+  CourseExamPreparationScopeOption? _selectedScope(
+    CourseExamPreparationOptions options,
+  ) {
+    final scopeId = _selectedScopeId;
+    if (scopeId == null) {
+      return null;
+    }
+
+    for (final option in options.scopeOptions) {
+      if (option.id == scopeId) {
+        return option;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _start(CourseExamPreparationScopeOption scope) async {
+    final questionCount = _selectedQuestionCount;
+    if (questionCount == null) {
+      return;
+    }
+
+    setState(() {
+      _isStarting = true;
+      _startError = null;
+    });
+
+    try {
+      final response = await ref
+          .read(coursesRepositoryProvider)
+          .startCourseExamPreparation(
+            courseId: widget.options.course.id,
+            config: CourseExamPreparationConfig(
+              scopeKind: scope.kind,
+              scopeId: scope.id,
+              questionCount: questionCount,
+              complexityProfile: 'exam',
+            ),
+          );
+
+      ref.invalidate(
+        courseExamPreparationOptionsProvider(widget.options.course.id),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      context.go(
+        AppRoutes.revisionSessionV2(
+          sessionId: response.session.id,
+          courseId: widget.options.course.id,
+          mode: 'exam',
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _startError = error;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isStarting = false;
+        });
+      }
+    }
   }
 }
 
