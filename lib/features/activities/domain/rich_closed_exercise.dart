@@ -2537,6 +2537,8 @@ const _forbiddenPreSubmitKeys = {
   'textAnswer',
   'score',
   'partialScore',
+  'minAcceptedYear',
+  'maxAcceptedYear',
   'workedSteps',
   'expectedValue',
   'answersPayload',

@@ -304,6 +304,8 @@ void main() {
         'correctValues',
         'correctErrorId',
         'correctYear',
+        'minAcceptedYear',
+        'maxAcceptedYear',
         'explanation',
         'score',
         'modelAnswer',
