@@ -604,6 +604,46 @@ void main() {
     expect(history.items, isEmpty);
   });
 
+  test('loads completed course rich closed history', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse({
+        'items': [
+          richClosedHistoryItemJson(
+            sessionId: 'rich-session-2',
+            correctAnswers: 5,
+            totalQuestions: 6,
+            score: 0.833,
+          ),
+        ],
+      }),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final history = await repository.getCourseRichClosedHistory(
+      courseId: 'course-1',
+      limit: 5,
+    );
+
+    expect(history.items, hasLength(1));
+    expect(history.items.single.sessionId, 'rich-session-2');
+    expect(history.items.single.type, 'rich_closed_exercise');
+    expect(history.items.single.correctAnswers, 5);
+    expect(history.items.single.totalQuestions, 6);
+    expect(history.items.single.score, 0.833);
+    expect(history.items.single.course.title, 'Droit constitutionnel');
+    expect(history.items.single.knowledgeUnit.title, 'Séparation des pouvoirs');
+    expect(
+      history.items.single.resultPath,
+      '/activities/rich-closed/rich-session-2/result',
+    );
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(adapter.lastOptions?.path, '/courses/course-1/rich-closed/history');
+    expect(adapter.lastOptions?.queryParameters, {'limit': 5});
+  });
+
   test('maps course history 404 to CourseNotFoundException', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({'message': 'Course not found'}, statusCode: 404),
@@ -822,6 +862,30 @@ void main() {
       throwsFormatException,
     );
   });
+}
+
+Map<String, Object?> richClosedHistoryItemJson({
+  String sessionId = 'rich-session-1',
+  int correctAnswers = 4,
+  int totalQuestions = 6,
+  double score = 0.667,
+}) {
+  return {
+    'id': sessionId,
+    'sessionId': sessionId,
+    'type': 'rich_closed_exercise',
+    'status': 'completed',
+    'title': 'Questions riches - Constitution',
+    'subjectId': 'subject-1',
+    'documentId': 'document-1',
+    'knowledgeUnit': {'id': 'unit-1', 'title': 'Séparation des pouvoirs'},
+    'course': {'id': 'course-1', 'title': 'Droit constitutionnel'},
+    'correctAnswers': correctAnswers,
+    'totalQuestions': totalQuestions,
+    'score': score,
+    'completedAt': '2026-06-18T10:07:00.000Z',
+    'resultPath': '/activities/rich-closed/$sessionId/result',
+  };
 }
 
 Map<String, Object?> revisionSessionJson({required String courseId}) {

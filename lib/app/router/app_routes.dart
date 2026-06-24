@@ -18,6 +18,8 @@ class AppRoutes {
   static const revisionSessionSegment = 'session';
   static const revisionSessionPath = '/activities/session';
   static const richClosedExercisePath = '/activities/rich-closed';
+  static const richClosedExerciseResultPath =
+      '/activities/rich-closed/:sessionId/result';
   static const profile = '/profile';
   static const onboarding = '/onboarding';
   static const signIn = '/sign-in';
@@ -136,6 +138,21 @@ class AppRoutes {
 
     return Uri(
       path: richClosedExercisePath,
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    ).toString();
+  }
+
+  static String richClosedExerciseResult({
+    required String sessionId,
+    String? courseId,
+  }) {
+    final queryParameters = <String, String>{};
+    if (courseId != null && courseId.trim().isNotEmpty) {
+      queryParameters['courseId'] = courseId.trim();
+    }
+
+    return Uri(
+      path: '/activities/rich-closed/${sessionId.trim()}/result',
       queryParameters: queryParameters.isEmpty ? null : queryParameters,
     ).toString();
   }

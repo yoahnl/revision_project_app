@@ -64,6 +64,16 @@ final courseRevisionSessionHistoryProvider =
           .getCourseRevisionSessionHistory(courseId: courseId);
     });
 
+final courseRichClosedHistoryProvider =
+    FutureProvider.family<CourseRichClosedHistoryResponse, String>((
+      ref,
+      courseId,
+    ) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getCourseRichClosedHistory(courseId: courseId);
+    });
+
 typedef CourseQuestionBankReadinessKey = ({String courseId, int questionCount});
 
 final courseQuestionBankReadinessProvider =

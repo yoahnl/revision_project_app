@@ -228,3 +228,60 @@ class CourseQuestionBankReadiness {
   final bool canPrepare;
   final String userMessage;
 }
+
+class CourseRichClosedHistoryResponse {
+  const CourseRichClosedHistoryResponse({required this.items});
+
+  final List<CourseRichClosedHistoryItem> items;
+}
+
+class CourseRichClosedHistoryItem {
+  const CourseRichClosedHistoryItem({
+    required this.id,
+    required this.sessionId,
+    required this.type,
+    required this.status,
+    required this.title,
+    required this.subjectId,
+    required this.documentId,
+    required this.knowledgeUnit,
+    required this.course,
+    required this.correctAnswers,
+    required this.totalQuestions,
+    required this.score,
+    required this.completedAt,
+    required this.resultPath,
+  });
+
+  final String id;
+  final String sessionId;
+  final String type;
+  final String status;
+  final String title;
+  final String subjectId;
+  final String? documentId;
+  final CourseRichClosedHistoryKnowledgeUnit knowledgeUnit;
+  final CourseRichClosedHistoryCourse course;
+  final int correctAnswers;
+  final int totalQuestions;
+  final double score;
+  final DateTime completedAt;
+  final String resultPath;
+}
+
+class CourseRichClosedHistoryKnowledgeUnit {
+  const CourseRichClosedHistoryKnowledgeUnit({
+    required this.id,
+    required this.title,
+  });
+
+  final String id;
+  final String title;
+}
+
+class CourseRichClosedHistoryCourse {
+  const CourseRichClosedHistoryCourse({required this.id, required this.title});
+
+  final String id;
+  final String title;
+}

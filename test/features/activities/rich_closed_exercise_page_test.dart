@@ -9,6 +9,7 @@ import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
 import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_answer_controller.dart';
 import 'package:Neralune/features/activities/presentation/rich_closed/rich_closed_question_renderer.dart';
 import 'package:Neralune/presentation/pages/activities/rich_closed_exercise_page.dart';
+import 'package:Neralune/presentation/pages/activities/rich_closed_exercise_result_page.dart';
 import 'package:Neralune/presentation/widgets/revision_button.dart';
 
 import 'fixtures/rich_closed_exercise_fixtures.dart';
@@ -667,6 +668,40 @@ void main() {
     expect(find.text('Valeur attendue : 289'), findsWidgets);
   });
 
+  testWidgets(
+    'result page reloads a completed rich closed result by session id',
+    (tester) async {
+      final api = _FakeRichClosedActivityApi(
+        exercise: exercise,
+        result: result,
+      );
+
+      await tester.pumpWidget(
+        _TestHost(
+          child: RichClosedExerciseResultPage(
+            controller: ActivityController(api),
+            sessionId: 'rich-session-1',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(api.getExerciseCallCount, 1);
+      expect(api.getResultCallCount, 1);
+      expect(api.submitCallCount, 0);
+      expect(find.text('Score backend'), findsOneWidget);
+      expect(find.text('0.833'), findsOneWidget);
+      expect(
+        find.text('Quel critère caractérise un régime parlementaire ?'),
+        findsWidgets,
+      );
+      expect(
+        find.text('La responsabilité politique est centrale.'),
+        findsWidgets,
+      );
+    },
+  );
+
   testWidgets('page submit et affiche les corrections V1-022', (tester) async {
     final v1dExercise = RichClosedExercise.fromJson(
       richClosedV1DImageChoiceExerciseJson(),
@@ -993,6 +1028,8 @@ class _FakeRichClosedActivityApi implements ActivityApi {
   List<RichClosedAnswer>? submittedAnswers;
   int startCount = 0;
   int submitCallCount = 0;
+  int getExerciseCallCount = 0;
+  int getResultCallCount = 0;
 
   @override
   Future<DiagnosticQuizActivity> startNextActivity({
@@ -1048,6 +1085,7 @@ class _FakeRichClosedActivityApi implements ActivityApi {
 
   @override
   Future<RichClosedExercise> getRichClosedExercise(String sessionId) async {
+    getExerciseCallCount += 1;
     return exercise;
   }
 
@@ -1071,6 +1109,7 @@ class _FakeRichClosedActivityApi implements ActivityApi {
   Future<RichClosedExerciseResult> getRichClosedExerciseResult(
     String sessionId,
   ) async {
+    getResultCallCount += 1;
     return result;
   }
 }

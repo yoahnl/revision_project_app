@@ -708,6 +708,7 @@ void main() {
     expect(find.text('Historique'), findsOneWidget);
     expect(find.text('Aucune session terminée pour ce cours.'), findsOneWidget);
     expect(repository.getCourseRevisionSessionHistoryCount, 1);
+    expect(repository.getCourseRichClosedHistoryCount, 1);
   });
 
   testWidgets('course detail opens a completed session result from history', (
@@ -735,6 +736,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Résultat de session'), findsOneWidget);
+  });
+
+  testWidgets('course detail opens a rich closed result from history', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..richClosedHistoryByCourse['course-1'] = [richClosedHistoryItem()];
+
+    await tester.pumpWidget(
+      routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('5/6'), 400);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Historique'), findsOneWidget);
+    expect(find.text('5/6'), findsOneWidget);
+    expect(find.textContaining('83 %'), findsOneWidget);
+
+    await tester.tap(find.text('Voir le résultat'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Résultat questions riches'), findsOneWidget);
   });
 
   testWidgets('course detail prioritizes a resumable quick session', (
@@ -841,6 +867,17 @@ Widget routerTestApp({
           ),
         ),
       ),
+      GoRoute(
+        path: AppRoutes.richClosedExerciseResultPath,
+        builder: (context, state) => Scaffold(
+          body: Text(
+            state.pathParameters['sessionId'] == 'rich-session-1' &&
+                    state.uri.queryParameters['courseId'] == 'course-1'
+                ? 'Résultat questions riches'
+                : 'Résultat introuvable',
+          ),
+        ),
+      ),
     ],
   );
 
@@ -936,6 +973,36 @@ RevisionSessionHistoryItem revisionSessionHistoryItem({
       id: 'course-1',
       title: 'Droit constitutionnel',
     ),
+  );
+}
+
+CourseRichClosedHistoryItem richClosedHistoryItem({
+  String sessionId = 'rich-session-1',
+  int correctAnswers = 5,
+  int totalQuestions = 6,
+  double score = 0.833,
+}) {
+  return CourseRichClosedHistoryItem(
+    id: sessionId,
+    sessionId: sessionId,
+    type: 'rich_closed_exercise',
+    status: 'completed',
+    title: 'Questions riches - Constitution',
+    subjectId: 'subject-1',
+    documentId: 'document-1',
+    knowledgeUnit: const CourseRichClosedHistoryKnowledgeUnit(
+      id: 'unit-1',
+      title: 'Séparation des pouvoirs',
+    ),
+    course: const CourseRichClosedHistoryCourse(
+      id: 'course-1',
+      title: 'Droit constitutionnel',
+    ),
+    correctAnswers: correctAnswers,
+    totalQuestions: totalQuestions,
+    score: score,
+    completedAt: DateTime.utc(2026, 6, 18, 10, 7),
+    resultPath: '/activities/rich-closed/$sessionId/result',
   );
 }
 

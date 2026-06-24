@@ -20,6 +20,7 @@ import '../../features/today/application/today_controller.dart';
 import '../../presentation/pages/activities/activities_page.dart';
 import '../../presentation/pages/auth/sign_in_page.dart';
 import '../../presentation/pages/activities/rich_closed_exercise_page.dart';
+import '../../presentation/pages/activities/rich_closed_exercise_result_page.dart';
 import '../../presentation/pages/onboarding/onboarding_page.dart';
 import '../../presentation/pages/profile/profile_page.dart';
 import '../../presentation/pages/documents/document_detail_page.dart';
@@ -223,6 +224,16 @@ GoRouter createAppRouter({
             subjectId: state.uri.queryParameters['subjectId'],
             documentId: state.uri.queryParameters['documentId'],
             knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.richClosedExerciseResultPath,
+        builder: (context, state) => _ImmersiveRouteScaffold(
+          child: RichClosedExerciseResultPage(
+            controller: activityController,
+            sessionId: state.pathParameters['sessionId'] ?? '',
+            courseId: state.uri.queryParameters['courseId'],
           ),
         ),
       ),

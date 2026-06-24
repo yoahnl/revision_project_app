@@ -1814,6 +1814,12 @@ class RichClosedExerciseResult {
     required this.sessionId,
     required this.type,
     required this.status,
+    required this.subjectId,
+    required this.documentId,
+    required this.knowledgeUnitId,
+    required this.createdAt,
+    required this.completedAt,
+    required this.durationSeconds,
     required this.correctAnswers,
     required this.totalQuestions,
     required this.score,
@@ -1845,6 +1851,18 @@ class RichClosedExerciseResult {
       sessionId: _readString(json['sessionId'], 'Invalid result session id'),
       type: type,
       status: status,
+      subjectId: _readString(json['subjectId'], 'Invalid result subject id'),
+      documentId: _readOptionalString(json['documentId']),
+      knowledgeUnitId: _readString(
+        json['knowledgeUnitId'],
+        'Invalid result knowledge unit id',
+      ),
+      createdAt: _readDate(json['createdAt'], 'Invalid result createdAt'),
+      completedAt: _readDate(json['completedAt'], 'Invalid result completedAt'),
+      durationSeconds: _readNullableInt(
+        json['durationSeconds'],
+        'Invalid result duration',
+      ),
       correctAnswers: _readInt(
         json['correctAnswers'],
         'Invalid result correct answers',
@@ -1864,6 +1882,12 @@ class RichClosedExerciseResult {
   final String sessionId;
   final String type;
   final String status;
+  final String subjectId;
+  final String? documentId;
+  final String knowledgeUnitId;
+  final DateTime createdAt;
+  final DateTime completedAt;
+  final int? durationSeconds;
   final int correctAnswers;
   final int totalQuestions;
   final double score;
@@ -2435,6 +2459,26 @@ String? _readOptionalString(Object? value) {
 int _readInt(Object? value, String message) {
   if (value is int) {
     return value;
+  }
+
+  throw RichClosedExerciseParseException(message);
+}
+
+int? _readNullableInt(Object? value, String message) {
+  if (value == null) {
+    return null;
+  }
+
+  return _readInt(value, message);
+}
+
+DateTime _readDate(Object? value, String message) {
+  if (value is String) {
+    try {
+      return DateTime.parse(value);
+    } on FormatException {
+      throw RichClosedExerciseParseException(message);
+    }
   }
 
   throw RichClosedExerciseParseException(message);

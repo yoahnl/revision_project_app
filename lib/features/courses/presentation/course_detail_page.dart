@@ -765,8 +765,11 @@ class _CourseRevisionHistorySection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(
+    final quickHistory = ref.watch(
       courseRevisionSessionHistoryProvider(detail.course.id),
+    );
+    final richClosedHistory = ref.watch(
+      courseRichClosedHistoryProvider(detail.course.id),
     );
 
     return RevisionGlassCard(
@@ -784,49 +787,87 @@ class _CourseRevisionHistorySection extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: RevisionSpacing.m),
-          history.when(
-            loading: () => Text(
-              'Chargement des sessions terminées.',
-              style: RevisionTypography.body,
-            ),
-            error: (error, stackTrace) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Historique indisponible pour le moment.',
-                  style: RevisionTypography.body,
-                ),
-                const SizedBox(height: RevisionSpacing.s),
-                TextButton.icon(
-                  onPressed: () => ref.invalidate(
-                    courseRevisionSessionHistoryProvider(detail.course.id),
-                  ),
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Réessayer'),
-                ),
-              ],
-            ),
-            data: (history) {
-              if (history.items.isEmpty) {
-                return Text(
-                  'Aucune session terminée pour ce cours.',
-                  style: RevisionTypography.body,
-                );
-              }
-
-              return Column(
-                children: [
-                  for (final item in history.items) ...[
-                    _CourseRevisionHistoryTile(item: item),
-                    if (item != history.items.last)
-                      const Divider(color: RevisionColors.border),
-                  ],
-                ],
+          _CourseHistoryContent(
+            quickHistory: quickHistory,
+            richClosedHistory: richClosedHistory,
+            onRetry: () {
+              ref.invalidate(
+                courseRevisionSessionHistoryProvider(detail.course.id),
               );
+              ref.invalidate(courseRichClosedHistoryProvider(detail.course.id));
             },
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CourseHistoryContent extends StatelessWidget {
+  const _CourseHistoryContent({
+    required this.quickHistory,
+    required this.richClosedHistory,
+    required this.onRetry,
+  });
+
+  final AsyncValue<RevisionSessionHistoryResponse> quickHistory;
+  final AsyncValue<CourseRichClosedHistoryResponse> richClosedHistory;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final quickItems = quickHistory.asData?.value.items ?? const [];
+    final richClosedItems = richClosedHistory.asData?.value.items ?? const [];
+    final hasAnyData = quickHistory.hasValue || richClosedHistory.hasValue;
+    final isLoading = quickHistory.isLoading || richClosedHistory.isLoading;
+    final hasError = quickHistory.hasError || richClosedHistory.hasError;
+
+    if (isLoading && !hasAnyData) {
+      return Text(
+        'Chargement des sessions terminées.',
+        style: RevisionTypography.body,
+      );
+    }
+
+    if (hasError && !hasAnyData) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Historique indisponible pour le moment.',
+            style: RevisionTypography.body,
+          ),
+          const SizedBox(height: RevisionSpacing.s),
+          TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Réessayer'),
+          ),
+        ],
+      );
+    }
+
+    if (quickItems.isEmpty && richClosedItems.isEmpty) {
+      return Text(
+        'Aucune session terminée pour ce cours.',
+        style: RevisionTypography.body,
+      );
+    }
+
+    final rows = <Widget>[
+      for (final item in quickItems) _CourseRevisionHistoryTile(item: item),
+      for (final item in richClosedItems)
+        _CourseRichClosedHistoryTile(item: item),
+    ];
+
+    return Column(
+      children: [
+        for (final indexed in rows.indexed) ...[
+          indexed.$2,
+          if (indexed.$1 != rows.length - 1)
+            const Divider(color: RevisionColors.border),
+        ],
+      ],
     );
   }
 }
@@ -872,6 +913,54 @@ class _CourseRevisionHistoryTile extends StatelessWidget {
                 sessionId: item.session.id,
                 courseId: item.course.id,
                 mode: 'quick',
+              ),
+            ),
+            child: const Text('Voir le résultat'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CourseRichClosedHistoryTile extends StatelessWidget {
+  const _CourseRichClosedHistoryTile({required this.item});
+
+  final CourseRichClosedHistoryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: RevisionSpacing.xs),
+      child: Row(
+        children: [
+          const RevisionIconTile(
+            icon: Icons.extension_rounded,
+            accent: RevisionColors.blue,
+            size: 44,
+          ),
+          const SizedBox(width: RevisionSpacing.m),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${item.correctAnswers}/${item.totalQuestions}',
+                  style: RevisionTypography.sectionTitle,
+                ),
+                const SizedBox(height: RevisionSpacing.xs),
+                Text(
+                  '${_scorePercent(item.score)} · Questions riches · ${_historyDate(item.completedAt)}',
+                  style: RevisionTypography.caption,
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push(
+              AppRoutes.richClosedExerciseResult(
+                sessionId: item.sessionId,
+                courseId: item.course.id,
               ),
             ),
             child: const Text('Voir le résultat'),
@@ -1112,6 +1201,7 @@ Future<void> _showCourseManagement(
   ref.invalidate(courseDetailProvider(detail.course.id));
   ref.invalidate(courseProgressProvider(detail.course.id));
   ref.invalidate(courseRevisionSessionHistoryProvider(detail.course.id));
+  ref.invalidate(courseRichClosedHistoryProvider(detail.course.id));
   ref.invalidate(subjectProgressProvider(detail.course.subjectId));
 }
 

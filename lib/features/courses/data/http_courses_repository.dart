@@ -457,6 +457,27 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<CourseRichClosedHistoryResponse> getCourseRichClosedHistory({
+    required String courseId,
+    int limit = 5,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/rich-closed/history',
+        queryParameters: {'limit': limit},
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseRichClosedHistoryResponseJson(response.data).toHistory();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<CourseProgress> getCourseProgress({required String courseId}) async {
     try {
       final response = await _dio.get<Object?>(
@@ -880,6 +901,117 @@ class _RevisionSessionHistoryCourseJson {
   }
 }
 
+class _CourseRichClosedHistoryResponseJson {
+  const _CourseRichClosedHistoryResponseJson(this.value);
+
+  final Object? value;
+
+  CourseRichClosedHistoryResponse toHistory() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid rich closed history response');
+    }
+
+    final items = json['items'];
+    if (items is! List) {
+      throw const FormatException('Invalid rich closed history response');
+    }
+
+    return CourseRichClosedHistoryResponse(
+      items: items
+          .map((item) => _CourseRichClosedHistoryItemJson(item).toItem())
+          .toList(growable: false),
+    );
+  }
+}
+
+class _CourseRichClosedHistoryItemJson {
+  const _CourseRichClosedHistoryItemJson(this.value);
+
+  final Object? value;
+
+  CourseRichClosedHistoryItem toItem() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid rich closed history response');
+    }
+
+    final score = json['score'];
+    final knowledgeUnit = json['knowledgeUnit'];
+    final course = json['course'];
+
+    if (score is! num ||
+        knowledgeUnit is! Map<String, Object?> ||
+        course is! Map<String, Object?>) {
+      throw const FormatException('Invalid rich closed history response');
+    }
+
+    return CourseRichClosedHistoryItem(
+      id: _requiredString(json['id'], 'Invalid rich closed history response'),
+      sessionId: _requiredString(
+        json['sessionId'],
+        'Invalid rich closed history response',
+      ),
+      type: _requiredString(
+        json['type'],
+        'Invalid rich closed history response',
+      ),
+      status: _requiredString(
+        json['status'],
+        'Invalid rich closed history response',
+      ),
+      title: _requiredString(
+        json['title'],
+        'Invalid rich closed history response',
+      ),
+      subjectId: _requiredString(
+        json['subjectId'],
+        'Invalid rich closed history response',
+      ),
+      documentId: _optionalString(json['documentId']),
+      knowledgeUnit: CourseRichClosedHistoryKnowledgeUnit(
+        id: _requiredString(
+          knowledgeUnit['id'],
+          'Invalid rich closed history response',
+        ),
+        title: _requiredString(
+          knowledgeUnit['title'],
+          'Invalid rich closed history response',
+        ),
+      ),
+      course: CourseRichClosedHistoryCourse(
+        id: _requiredString(
+          course['id'],
+          'Invalid rich closed history response',
+        ),
+        title: _requiredString(
+          course['title'],
+          'Invalid rich closed history response',
+        ),
+      ),
+      correctAnswers: _requiredInt(
+        json['correctAnswers'],
+        'Invalid rich closed history response',
+      ),
+      totalQuestions: _requiredInt(
+        json['totalQuestions'],
+        'Invalid rich closed history response',
+      ),
+      score: score.toDouble(),
+      completedAt: _requiredDate(
+        json['completedAt'],
+        'Invalid rich closed history response',
+      ),
+      resultPath: _requiredString(
+        json['resultPath'],
+        'Invalid rich closed history response',
+      ),
+    );
+  }
+}
+
 class _CourseProgressJson {
   const _CourseProgressJson(this.value);
 
@@ -1109,4 +1241,37 @@ DateTime? _parseOptionalDate(Object? value) {
   }
 
   return DateTime.parse(value);
+}
+
+String _requiredString(Object? value, String message) {
+  if (value is String && value.trim().isNotEmpty) {
+    return value.trim();
+  }
+
+  throw FormatException(message);
+}
+
+String? _optionalString(Object? value) {
+  if (value == null) {
+    return null;
+  }
+
+  return _requiredString(value, 'Invalid optional string response');
+}
+
+int _requiredInt(Object? value, String message) {
+  if (value is int) {
+    return value;
+  }
+
+  throw FormatException(message);
+}
+
+DateTime _requiredDate(Object? value, String message) {
+  final parsed = _parseOptionalDate(value);
+  if (parsed == null) {
+    throw FormatException(message);
+  }
+
+  return parsed;
 }

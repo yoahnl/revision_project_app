@@ -77,6 +77,11 @@ abstract interface class CoursesRepository {
     int limit = 5,
   });
 
+  Future<CourseRichClosedHistoryResponse> getCourseRichClosedHistory({
+    required String courseId,
+    int limit = 5,
+  });
+
   Future<CourseProgress> getCourseProgress({required String courseId});
 
   Future<SubjectProgress> getSubjectProgress({required String subjectId});

@@ -26,6 +26,8 @@ class InMemoryCoursesRepository implements CoursesRepository {
   resumableRevisionSessionByCourse = {};
   final Map<String, List<RevisionSessionHistoryItem>>
   revisionSessionHistoryByCourse = {};
+  final Map<String, List<CourseRichClosedHistoryItem>>
+  richClosedHistoryByCourse = {};
   final Map<String, SourceLifecycleDecision> lifecycleByDocumentId = {};
   int createCount = 0;
   int updateCount = 0;
@@ -38,6 +40,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int getQuestionBankReadinessCount = 0;
   int getResumableRevisionSessionCount = 0;
   int getCourseRevisionSessionHistoryCount = 0;
+  int getCourseRichClosedHistoryCount = 0;
   int prepareQuestionBankCount = 0;
   int uploadCount = 0;
   int deleteDocumentCount = 0;
@@ -57,6 +60,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastQuickRevisionCourseId;
   String? lastResumableRevisionSessionCourseId;
   String? lastCourseRevisionSessionHistoryCourseId;
+  String? lastCourseRichClosedHistoryCourseId;
   int? lastQuickRevisionQuestionCount;
   String? lastArchivedCourseLifecycleId;
   String? lastDeletedCourseLifecycleId;
@@ -513,6 +517,24 @@ class InMemoryCoursesRepository implements CoursesRepository {
 
     final items = revisionSessionHistoryByCourse[courseId] ?? const [];
     return RevisionSessionHistoryResponse(
+      items: List.unmodifiable(items.take(limit)),
+    );
+  }
+
+  @override
+  Future<CourseRichClosedHistoryResponse> getCourseRichClosedHistory({
+    required String courseId,
+    int limit = 5,
+  }) async {
+    getCourseRichClosedHistoryCount += 1;
+    lastCourseRichClosedHistoryCourseId = courseId;
+
+    if (!detailsByCourse.containsKey(courseId)) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    final items = richClosedHistoryByCourse[courseId] ?? const [];
+    return CourseRichClosedHistoryResponse(
       items: List.unmodifiable(items.take(limit)),
     );
   }

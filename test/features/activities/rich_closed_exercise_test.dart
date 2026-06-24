@@ -950,6 +950,12 @@ void main() {
       expect(result.sessionId, 'rich-session-1');
       expect(result.type, richClosedExerciseType);
       expect(result.status, 'completed');
+      expect(result.subjectId, 'subject-1');
+      expect(result.documentId, 'document-1');
+      expect(result.knowledgeUnitId, 'unit-1');
+      expect(result.createdAt, DateTime.parse('2026-06-18T10:00:00.000Z'));
+      expect(result.completedAt, DateTime.parse('2026-06-18T10:07:00.000Z'));
+      expect(result.durationSeconds, 420);
       expect(result.correctAnswers, 5);
       expect(result.totalQuestions, 6);
       expect(result.score, 0.833);
