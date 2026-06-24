@@ -7,6 +7,8 @@ class AppRoutes {
   static const revisions = '/revisions';
   static const sources = '/sources';
   static const coursePath = '/courses/:courseId';
+  static const courseExamPreparationPath =
+      '/courses/:courseId/exam-preparation';
   static const courseSheetPath = '/courses/:courseId/sheet';
   static const courseSheetSourcesPath = '/courses/:courseId/sheet/sources';
   static const revisionSessionV2Path = '/revision-sessions/:sessionId';
@@ -27,6 +29,10 @@ class AppRoutes {
   static String subjectDetail(String subjectId) => '/subjects/$subjectId';
 
   static String course(String courseId) => '/courses/$courseId';
+
+  static String courseExamPreparation(String courseId) {
+    return '/courses/$courseId/exam-preparation';
+  }
 
   static String courseSheet(String courseId) => '/courses/$courseId/sheet';
 

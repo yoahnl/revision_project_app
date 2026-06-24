@@ -229,6 +229,112 @@ class CourseQuestionBankReadiness {
   final String userMessage;
 }
 
+enum CourseExamPreparationReadinessState {
+  ready,
+  partiallyReady,
+  notReady,
+  blocked,
+  unknown,
+}
+
+enum CourseExamPreparationScopeKind { course, source, unknown }
+
+class CourseExamPreparationOptions {
+  const CourseExamPreparationOptions({
+    required this.course,
+    required this.readiness,
+    required this.scopeOptions,
+    required this.questionCountOptions,
+    required this.defaultQuestionCount,
+    required this.supportedQuestionKinds,
+    required this.defaultConfig,
+    required this.nextStep,
+  });
+
+  final CourseExamPreparationCourse course;
+  final CourseExamPreparationReadiness readiness;
+  final List<CourseExamPreparationScopeOption> scopeOptions;
+  final List<int> questionCountOptions;
+  final int? defaultQuestionCount;
+  final List<String> supportedQuestionKinds;
+  final CourseExamPreparationConfig? defaultConfig;
+  final CourseExamPreparationNextStep nextStep;
+}
+
+class CourseExamPreparationCourse {
+  const CourseExamPreparationCourse({
+    required this.id,
+    required this.title,
+    required this.subjectId,
+  });
+
+  final String id;
+  final String title;
+  final String subjectId;
+}
+
+class CourseExamPreparationReadiness {
+  const CourseExamPreparationReadiness({
+    required this.canPrepare,
+    required this.state,
+    required this.userMessage,
+    required this.blockers,
+    required this.readySourceCount,
+    required this.readyKnowledgeUnitCount,
+    required this.availableQuestionCount,
+  });
+
+  final bool canPrepare;
+  final CourseExamPreparationReadinessState state;
+  final String userMessage;
+  final List<String> blockers;
+  final int readySourceCount;
+  final int readyKnowledgeUnitCount;
+  final int availableQuestionCount;
+}
+
+class CourseExamPreparationScopeOption {
+  const CourseExamPreparationScopeOption({
+    required this.kind,
+    required this.id,
+    required this.label,
+    required this.readyQuestionCount,
+    required this.readyKnowledgeUnitCount,
+    required this.canSelect,
+  });
+
+  final CourseExamPreparationScopeKind kind;
+  final String id;
+  final String label;
+  final int readyQuestionCount;
+  final int readyKnowledgeUnitCount;
+  final bool canSelect;
+}
+
+class CourseExamPreparationConfig {
+  const CourseExamPreparationConfig({
+    required this.scopeKind,
+    required this.scopeId,
+    required this.questionCount,
+    required this.complexityProfile,
+  });
+
+  final CourseExamPreparationScopeKind scopeKind;
+  final String scopeId;
+  final int questionCount;
+  final String complexityProfile;
+}
+
+class CourseExamPreparationNextStep {
+  const CourseExamPreparationNextStep({
+    required this.kind,
+    required this.userMessage,
+  });
+
+  final String kind;
+  final String userMessage;
+}
+
 class CourseRichClosedHistoryResponse {
   const CourseRichClosedHistoryResponse({required this.items});
 

@@ -74,6 +74,16 @@ final courseRichClosedHistoryProvider =
           .getCourseRichClosedHistory(courseId: courseId);
     });
 
+final courseExamPreparationOptionsProvider =
+    FutureProvider.family<CourseExamPreparationOptions, String>((
+      ref,
+      courseId,
+    ) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getExamPreparationOptions(courseId: courseId);
+    });
+
 typedef CourseQuestionBankReadinessKey = ({String courseId, int questionCount});
 
 final courseQuestionBankReadinessProvider =

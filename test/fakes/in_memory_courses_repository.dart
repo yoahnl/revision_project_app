@@ -28,6 +28,8 @@ class InMemoryCoursesRepository implements CoursesRepository {
   revisionSessionHistoryByCourse = {};
   final Map<String, List<CourseRichClosedHistoryItem>>
   richClosedHistoryByCourse = {};
+  final Map<String, CourseExamPreparationOptions>
+  examPreparationOptionsByCourse = {};
   final Map<String, SourceLifecycleDecision> lifecycleByDocumentId = {};
   int createCount = 0;
   int updateCount = 0;
@@ -41,6 +43,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int getResumableRevisionSessionCount = 0;
   int getCourseRevisionSessionHistoryCount = 0;
   int getCourseRichClosedHistoryCount = 0;
+  int getExamPreparationOptionsCount = 0;
   int prepareQuestionBankCount = 0;
   int uploadCount = 0;
   int deleteDocumentCount = 0;
@@ -61,6 +64,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastResumableRevisionSessionCourseId;
   String? lastCourseRevisionSessionHistoryCourseId;
   String? lastCourseRichClosedHistoryCourseId;
+  String? lastExamPreparationOptionsCourseId;
   int? lastQuickRevisionQuestionCount;
   String? lastArchivedCourseLifecycleId;
   String? lastDeletedCourseLifecycleId;
@@ -537,6 +541,47 @@ class InMemoryCoursesRepository implements CoursesRepository {
     return CourseRichClosedHistoryResponse(
       items: List.unmodifiable(items.take(limit)),
     );
+  }
+
+  @override
+  Future<CourseExamPreparationOptions> getExamPreparationOptions({
+    required String courseId,
+  }) async {
+    getExamPreparationOptionsCount += 1;
+    lastExamPreparationOptionsCourseId = courseId;
+
+    if (!detailsByCourse.containsKey(courseId)) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    return examPreparationOptionsByCourse[courseId] ??
+        CourseExamPreparationOptions(
+          course: CourseExamPreparationCourse(
+            id: courseId,
+            title: detailsByCourse[courseId]!.course.title,
+            subjectId: detailsByCourse[courseId]!.course.subjectId,
+          ),
+          readiness: const CourseExamPreparationReadiness(
+            canPrepare: false,
+            state: CourseExamPreparationReadinessState.blocked,
+            userMessage:
+                'Ajoute une source prête avant de configurer une préparation examen.',
+            blockers: ['NO_READY_SOURCE'],
+            readySourceCount: 0,
+            readyKnowledgeUnitCount: 0,
+            availableQuestionCount: 0,
+          ),
+          scopeOptions: const [],
+          questionCountOptions: const [],
+          defaultQuestionCount: null,
+          supportedQuestionKinds: const ['single_choice', 'multiple_choice'],
+          defaultConfig: null,
+          nextStep: const CourseExamPreparationNextStep(
+            kind: 'blocked',
+            userMessage:
+                'Ajoute une source prête avant de configurer une préparation examen.',
+          ),
+        );
   }
 
   @override

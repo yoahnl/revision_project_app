@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/activities/application/activity_controller.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/courses/presentation/course_detail_page.dart';
+import '../../features/courses/presentation/course_exam_preparation_page.dart';
 import '../../features/courses/presentation/course_revision_sheet_page.dart';
 import '../../features/courses/presentation/courses_home_page.dart';
 import '../../features/courses/presentation/revisions_pending_page.dart';
@@ -96,6 +97,12 @@ GoRouter createAppRouter({
               GoRoute(
                 path: AppRoutes.coursePath,
                 builder: (context, state) => CourseDetailPage(
+                  courseId: state.pathParameters['courseId'] ?? '',
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.courseExamPreparationPath,
+                builder: (context, state) => CourseExamPreparationPage(
                   courseId: state.pathParameters['courseId'] ?? '',
                 ),
               ),

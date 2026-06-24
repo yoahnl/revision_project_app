@@ -82,6 +82,10 @@ abstract interface class CoursesRepository {
     int limit = 5,
   });
 
+  Future<CourseExamPreparationOptions> getExamPreparationOptions({
+    required String courseId,
+  });
+
   Future<CourseProgress> getCourseProgress({required String courseId});
 
   Future<SubjectProgress> getSubjectProgress({required String subjectId});

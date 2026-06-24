@@ -763,6 +763,44 @@ void main() {
     expect(find.text('Résultat questions riches'), findsOneWidget);
   });
 
+  testWidgets(
+    'course detail opens the exam preparation page from a real card',
+    (tester) async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'CM.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..examPreparationOptionsByCourse['course-1'] =
+            examPreparationOptionsFixture();
+
+      await tester.pumpWidget(
+        routerTestApp(
+          repository: repository,
+          picker: FakeCoursePdfPicker(null),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(find.text('Préparation examen'), 400);
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.widgetWithText(RevisionModeCard, 'Préparation examen'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Préparation examen dédiée'), findsOneWidget);
+    },
+  );
+
   testWidgets('course detail prioritizes a resumable quick session', (
     tester,
   ) async {
@@ -877,6 +915,11 @@ Widget routerTestApp({
                 : 'Résultat introuvable',
           ),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.courseExamPreparationPath,
+        builder: (context, state) =>
+            const Scaffold(body: Text('Préparation examen dédiée')),
       ),
     ],
   );
@@ -1003,6 +1046,51 @@ CourseRichClosedHistoryItem richClosedHistoryItem({
     score: score,
     completedAt: DateTime.utc(2026, 6, 18, 10, 7),
     resultPath: '/activities/rich-closed/$sessionId/result',
+  );
+}
+
+CourseExamPreparationOptions examPreparationOptionsFixture({
+  CourseExamPreparationReadinessState state =
+      CourseExamPreparationReadinessState.ready,
+}) {
+  return CourseExamPreparationOptions(
+    course: const CourseExamPreparationCourse(
+      id: 'course-1',
+      title: 'Droit constitutionnel',
+      subjectId: 'subject-1',
+    ),
+    readiness: CourseExamPreparationReadiness(
+      canPrepare: state == CourseExamPreparationReadinessState.ready,
+      state: state,
+      userMessage: 'Ton cours est prêt pour une préparation examen.',
+      blockers: const [],
+      readySourceCount: 1,
+      readyKnowledgeUnitCount: 2,
+      availableQuestionCount: 20,
+    ),
+    scopeOptions: const [
+      CourseExamPreparationScopeOption(
+        kind: CourseExamPreparationScopeKind.course,
+        id: 'course-1',
+        label: 'Tout le cours',
+        readyQuestionCount: 20,
+        readyKnowledgeUnitCount: 2,
+        canSelect: true,
+      ),
+    ],
+    questionCountOptions: const [10, 20],
+    defaultQuestionCount: 20,
+    supportedQuestionKinds: const ['single_choice', 'multiple_choice'],
+    defaultConfig: const CourseExamPreparationConfig(
+      scopeKind: CourseExamPreparationScopeKind.course,
+      scopeId: 'course-1',
+      questionCount: 20,
+      complexityProfile: 'exam',
+    ),
+    nextStep: const CourseExamPreparationNextStep(
+      kind: 'configuration_ready',
+      userMessage: 'Configuration prête. La session complète arrive ensuite.',
+    ),
   );
 }
 

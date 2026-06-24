@@ -1043,11 +1043,14 @@ class _CourseModes extends ConsumerWidget {
         const SizedBox(height: RevisionSpacing.m),
         RevisionModeCard(
           title: 'Préparation examen',
-          description: 'Entraînements et sujets corrigés.',
+          description:
+              'Construis un entraînement plus proche d’un sujet d’examen.',
           icon: Icons.gps_fixed_rounded,
           accent: RevisionColors.pink,
-          trailingLabel: 'Bientôt disponible',
-          enabled: false,
+          trailingLabel: 'Configurer',
+          enabled: true,
+          onTap: () =>
+              context.push(AppRoutes.courseExamPreparation(detail.course.id)),
         ),
         if (quickRevisionState.hasError || preparationState.hasError) ...[
           const SizedBox(height: RevisionSpacing.s),

@@ -644,6 +644,42 @@ void main() {
     expect(adapter.lastOptions?.queryParameters, {'limit': 5});
   });
 
+  test('loads course exam preparation options without answer data', () async {
+    final response = examPreparationOptionsJson();
+    final adapter = CapturingHttpClientAdapter(jsonResponse(response));
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final options = await repository.getExamPreparationOptions(
+      courseId: 'course-1',
+    );
+
+    expect(options.course.title, 'Droit constitutionnel');
+    expect(options.readiness.state, CourseExamPreparationReadinessState.ready);
+    expect(options.readiness.canPrepare, isTrue);
+    expect(options.scopeOptions, hasLength(2));
+    expect(
+      options.scopeOptions.first.kind,
+      CourseExamPreparationScopeKind.course,
+    );
+    expect(options.scopeOptions.first.canSelect, isTrue);
+    expect(options.questionCountOptions, [10, 20]);
+    expect(options.defaultQuestionCount, 20);
+    expect(options.defaultConfig?.complexityProfile, 'exam');
+    expect(options.supportedQuestionKinds, [
+      'single_choice',
+      'multiple_choice',
+    ]);
+    expect(jsonEncode(response), isNot(contains('correctAnswer')));
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/exam-preparation/options',
+    );
+  });
+
   test('maps course history 404 to CourseNotFoundException', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({'message': 'Course not found'}, statusCode: 404),
@@ -885,6 +921,60 @@ Map<String, Object?> richClosedHistoryItemJson({
     'score': score,
     'completedAt': '2026-06-18T10:07:00.000Z',
     'resultPath': '/activities/rich-closed/$sessionId/result',
+  };
+}
+
+Map<String, Object?> examPreparationOptionsJson({
+  String state = 'READY',
+  bool canPrepare = true,
+  int availableQuestionCount = 24,
+}) {
+  return {
+    'course': {
+      'id': 'course-1',
+      'title': 'Droit constitutionnel',
+      'subjectId': 'subject-1',
+    },
+    'readiness': {
+      'canPrepare': canPrepare,
+      'state': state,
+      'userMessage': 'Ton cours est prêt pour une préparation examen.',
+      'blockers': <String>[],
+      'readySourceCount': 1,
+      'readyKnowledgeUnitCount': 2,
+      'availableQuestionCount': availableQuestionCount,
+    },
+    'scopeOptions': [
+      {
+        'kind': 'course',
+        'id': 'course-1',
+        'label': 'Tout le cours',
+        'readyQuestionCount': availableQuestionCount,
+        'readyKnowledgeUnitCount': 2,
+        'canSelect': true,
+      },
+      {
+        'kind': 'source',
+        'id': 'document-1',
+        'label': 'CM.pdf',
+        'readyQuestionCount': 16,
+        'readyKnowledgeUnitCount': 1,
+        'canSelect': true,
+      },
+    ],
+    'questionCountOptions': [10, 20],
+    'defaultQuestionCount': 20,
+    'supportedQuestionKinds': ['single_choice', 'multiple_choice'],
+    'defaultConfig': {
+      'scopeKind': 'course',
+      'scopeId': 'course-1',
+      'questionCount': 20,
+      'complexityProfile': 'exam',
+    },
+    'nextStep': {
+      'kind': 'configuration_ready',
+      'userMessage': 'Configuration prête. La session complète arrive ensuite.',
+    },
   };
 }
 

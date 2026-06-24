@@ -478,6 +478,25 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<CourseExamPreparationOptions> getExamPreparationOptions({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/exam-preparation/options',
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseExamPreparationOptionsJson(response.data).toOptions();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<CourseProgress> getCourseProgress({required String courseId}) async {
     try {
       final response = await _dio.get<Object?>(
@@ -1012,6 +1031,193 @@ class _CourseRichClosedHistoryItemJson {
   }
 }
 
+class _CourseExamPreparationOptionsJson {
+  const _CourseExamPreparationOptionsJson(this.value);
+
+  final Object? value;
+
+  CourseExamPreparationOptions toOptions() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid exam preparation response');
+    }
+
+    final course = json['course'];
+    final readiness = json['readiness'];
+    final scopeOptions = json['scopeOptions'];
+    final questionCountOptions = json['questionCountOptions'];
+    final supportedQuestionKinds = json['supportedQuestionKinds'];
+    final nextStep = json['nextStep'];
+
+    if (course is! Map<String, Object?> ||
+        readiness is! Map<String, Object?> ||
+        scopeOptions is! List ||
+        questionCountOptions is! List ||
+        supportedQuestionKinds is! List ||
+        nextStep is! Map<String, Object?>) {
+      throw const FormatException('Invalid exam preparation response');
+    }
+
+    return CourseExamPreparationOptions(
+      course: CourseExamPreparationCourse(
+        id: _requiredString(course['id'], 'Invalid exam preparation response'),
+        title: _requiredString(
+          course['title'],
+          'Invalid exam preparation response',
+        ),
+        subjectId: _requiredString(
+          course['subjectId'],
+          'Invalid exam preparation response',
+        ),
+      ),
+      readiness: _CourseExamPreparationReadinessJson(readiness).toReadiness(),
+      scopeOptions: scopeOptions
+          .map((item) => _CourseExamPreparationScopeOptionJson(item).toOption())
+          .toList(growable: false),
+      questionCountOptions: questionCountOptions
+          .map(
+            (item) => _requiredInt(item, 'Invalid exam preparation response'),
+          )
+          .toList(growable: false),
+      defaultQuestionCount: _optionalInt(json['defaultQuestionCount']),
+      supportedQuestionKinds: supportedQuestionKinds
+          .map(
+            (item) =>
+                _requiredString(item, 'Invalid exam preparation response'),
+          )
+          .toList(growable: false),
+      defaultConfig: json['defaultConfig'] == null
+          ? null
+          : _CourseExamPreparationConfigJson(json['defaultConfig']).toConfig(),
+      nextStep: CourseExamPreparationNextStep(
+        kind: _requiredString(
+          nextStep['kind'],
+          'Invalid exam preparation response',
+        ),
+        userMessage: _requiredString(
+          nextStep['userMessage'],
+          'Invalid exam preparation response',
+        ),
+      ),
+    );
+  }
+}
+
+class _CourseExamPreparationReadinessJson {
+  const _CourseExamPreparationReadinessJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseExamPreparationReadiness toReadiness() {
+    final blockers = value['blockers'];
+    if (blockers is! List) {
+      throw const FormatException('Invalid exam preparation response');
+    }
+
+    return CourseExamPreparationReadiness(
+      canPrepare: _requiredBool(
+        value['canPrepare'],
+        'Invalid exam preparation response',
+      ),
+      state: _parseExamPreparationReadinessState(
+        _requiredString(value['state'], 'Invalid exam preparation response'),
+      ),
+      userMessage: _requiredString(
+        value['userMessage'],
+        'Invalid exam preparation response',
+      ),
+      blockers: blockers
+          .map(
+            (item) =>
+                _requiredString(item, 'Invalid exam preparation response'),
+          )
+          .toList(growable: false),
+      readySourceCount: _requiredInt(
+        value['readySourceCount'],
+        'Invalid exam preparation response',
+      ),
+      readyKnowledgeUnitCount: _requiredInt(
+        value['readyKnowledgeUnitCount'],
+        'Invalid exam preparation response',
+      ),
+      availableQuestionCount: _requiredInt(
+        value['availableQuestionCount'],
+        'Invalid exam preparation response',
+      ),
+    );
+  }
+}
+
+class _CourseExamPreparationScopeOptionJson {
+  const _CourseExamPreparationScopeOptionJson(this.value);
+
+  final Object? value;
+
+  CourseExamPreparationScopeOption toOption() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid exam preparation response');
+    }
+
+    return CourseExamPreparationScopeOption(
+      kind: _parseExamPreparationScopeKind(
+        _requiredString(json['kind'], 'Invalid exam preparation response'),
+      ),
+      id: _requiredString(json['id'], 'Invalid exam preparation response'),
+      label: _requiredString(
+        json['label'],
+        'Invalid exam preparation response',
+      ),
+      readyQuestionCount: _requiredInt(
+        json['readyQuestionCount'],
+        'Invalid exam preparation response',
+      ),
+      readyKnowledgeUnitCount: _requiredInt(
+        json['readyKnowledgeUnitCount'],
+        'Invalid exam preparation response',
+      ),
+      canSelect: _requiredBool(
+        json['canSelect'],
+        'Invalid exam preparation response',
+      ),
+    );
+  }
+}
+
+class _CourseExamPreparationConfigJson {
+  const _CourseExamPreparationConfigJson(this.value);
+
+  final Object? value;
+
+  CourseExamPreparationConfig toConfig() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid exam preparation response');
+    }
+
+    return CourseExamPreparationConfig(
+      scopeKind: _parseExamPreparationScopeKind(
+        _requiredString(json['scopeKind'], 'Invalid exam preparation response'),
+      ),
+      scopeId: _requiredString(
+        json['scopeId'],
+        'Invalid exam preparation response',
+      ),
+      questionCount: _requiredInt(
+        json['questionCount'],
+        'Invalid exam preparation response',
+      ),
+      complexityProfile: _requiredString(
+        json['complexityProfile'],
+        'Invalid exam preparation response',
+      ),
+    );
+  }
+}
+
 class _CourseProgressJson {
   const _CourseProgressJson(this.value);
 
@@ -1267,6 +1473,22 @@ int _requiredInt(Object? value, String message) {
   throw FormatException(message);
 }
 
+int? _optionalInt(Object? value) {
+  if (value == null) {
+    return null;
+  }
+
+  return _requiredInt(value, 'Invalid optional int response');
+}
+
+bool _requiredBool(Object? value, String message) {
+  if (value is bool) {
+    return value;
+  }
+
+  throw FormatException(message);
+}
+
 DateTime _requiredDate(Object? value, String message) {
   final parsed = _parseOptionalDate(value);
   if (parsed == null) {
@@ -1274,4 +1496,24 @@ DateTime _requiredDate(Object? value, String message) {
   }
 
   return parsed;
+}
+
+CourseExamPreparationReadinessState _parseExamPreparationReadinessState(
+  String value,
+) {
+  return switch (value) {
+    'READY' => CourseExamPreparationReadinessState.ready,
+    'PARTIALLY_READY' => CourseExamPreparationReadinessState.partiallyReady,
+    'NOT_READY' => CourseExamPreparationReadinessState.notReady,
+    'BLOCKED' => CourseExamPreparationReadinessState.blocked,
+    _ => CourseExamPreparationReadinessState.unknown,
+  };
+}
+
+CourseExamPreparationScopeKind _parseExamPreparationScopeKind(String value) {
+  return switch (value) {
+    'course' => CourseExamPreparationScopeKind.course,
+    'source' => CourseExamPreparationScopeKind.source,
+    _ => CourseExamPreparationScopeKind.unknown,
+  };
 }
