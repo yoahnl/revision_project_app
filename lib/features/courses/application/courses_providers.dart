@@ -82,6 +82,13 @@ final courseRichRevisionOptionsProvider =
           .getRichRevisionOptions(courseId: courseId);
     });
 
+final courseDeepRevisionOptionsProvider =
+    FutureProvider.family<CourseDeepRevisionOptions, String>((ref, courseId) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getDeepRevisionOptions(courseId: courseId);
+    });
+
 final courseExamPreparationOptionsProvider =
     FutureProvider.family<CourseExamPreparationOptions, String>((
       ref,
@@ -334,6 +341,7 @@ class UploadCourseDocumentController
     ref.invalidate(courseDetailProvider(detail.course.id));
     ref.invalidate(courseProgressProvider(detail.course.id));
     ref.invalidate(courseRichRevisionOptionsProvider(detail.course.id));
+    ref.invalidate(courseDeepRevisionOptionsProvider(detail.course.id));
     ref.invalidate(coursesProvider(detail.course.subjectId));
     ref.invalidate(subjectProgressProvider(detail.course.subjectId));
 
@@ -351,6 +359,7 @@ void _invalidateCourseSurfaces(
   ref.invalidate(courseProgressProvider(courseId));
   ref.invalidate(courseRevisionSessionHistoryProvider(courseId));
   ref.invalidate(courseRichRevisionOptionsProvider(courseId));
+  ref.invalidate(courseDeepRevisionOptionsProvider(courseId));
   ref.invalidate(courseRichClosedHistoryProvider(courseId));
   ref.invalidate(coursesProvider(subjectId));
   ref.invalidate(subjectProgressProvider(subjectId));
@@ -381,6 +390,7 @@ class DeleteCourseDocumentController extends Notifier<AsyncValue<void>> {
 
     ref.invalidate(courseDetailProvider(detail.course.id));
     ref.invalidate(courseProgressProvider(detail.course.id));
+    ref.invalidate(courseDeepRevisionOptionsProvider(detail.course.id));
     ref.invalidate(coursesProvider(detail.course.subjectId));
     ref.invalidate(subjectProgressProvider(detail.course.subjectId));
   }
@@ -411,6 +421,7 @@ class ArchiveCourseDocumentController extends Notifier<AsyncValue<void>> {
 
     ref.invalidate(courseDetailProvider(detail.course.id));
     ref.invalidate(courseProgressProvider(detail.course.id));
+    ref.invalidate(courseDeepRevisionOptionsProvider(detail.course.id));
     ref.invalidate(coursesProvider(detail.course.subjectId));
     ref.invalidate(subjectProgressProvider(detail.course.subjectId));
   }

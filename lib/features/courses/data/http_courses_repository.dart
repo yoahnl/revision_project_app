@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import '../../activities/domain/open_question_activity.dart';
 import '../../activities/domain/rich_closed_exercise.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
@@ -522,6 +523,83 @@ class HttpCoursesRepository implements CoursesRepository {
       if (error.response?.statusCode == 409) {
         throw CourseRequestException(
           _responseMessage(error) ?? 'QCM complet indisponible',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CourseDeepRevisionOptions> getDeepRevisionOptions({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/deep-revision/options',
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseDeepRevisionOptionsJson(response.data).toOptions();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CourseDeepRevisionSession> startCourseDeepRevision({
+    required String courseId,
+    required CourseDeepRevisionConfig config,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/deep-revision/sessions',
+        data: {
+          'scopeKind': _deepRevisionScopeKindJson(config.scopeKind),
+          'scopeId': config.scopeId,
+        },
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseDeepRevisionSessionJson(response.data).toSession();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      if (error.response?.statusCode == 409) {
+        throw CourseRequestException(
+          _responseMessage(error) ?? 'Révision approfondie indisponible',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CourseDeepRevisionSubmitResponse> submitCourseDeepRevisionAnswer({
+    required String courseId,
+    required String sessionId,
+    required String answer,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/deep-revision/sessions/${Uri.encodeComponent(sessionId)}/submit',
+        data: {'answer': answer},
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseDeepRevisionSubmitResponseJson(response.data).toResponse();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      if (error.response?.statusCode == 400 ||
+          error.response?.statusCode == 409) {
+        throw CourseRequestException(
+          _responseMessage(error) ??
+              'Impossible de corriger cette réponse pour le moment.',
         );
       }
       rethrow;
@@ -1317,6 +1395,454 @@ class _CourseRichRevisionConfigJson {
   }
 }
 
+class _CourseDeepRevisionOptionsJson {
+  const _CourseDeepRevisionOptionsJson(this.value);
+
+  final Object? value;
+
+  CourseDeepRevisionOptions toOptions() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision response');
+    }
+
+    final course = json['course'];
+    final readiness = json['readiness'];
+    final scopeOptions = json['scopeOptions'];
+    final answerGuidelines = json['answerGuidelines'];
+    final nextStep = json['nextStep'];
+
+    if (course is! Map<String, Object?> ||
+        readiness is! Map<String, Object?> ||
+        scopeOptions is! List ||
+        answerGuidelines is! Map<String, Object?> ||
+        nextStep is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision response');
+    }
+
+    return CourseDeepRevisionOptions(
+      course: CourseDeepRevisionCourse(
+        id: _requiredString(course['id'], 'Invalid deep revision response'),
+        title: _requiredString(
+          course['title'],
+          'Invalid deep revision response',
+        ),
+        subjectId: _requiredString(
+          course['subjectId'],
+          'Invalid deep revision response',
+        ),
+      ),
+      readiness: _CourseDeepRevisionReadinessJson(readiness).toReadiness(),
+      scopeOptions: scopeOptions
+          .map((item) => _CourseDeepRevisionScopeOptionJson(item).toOption())
+          .toList(growable: false),
+      answerGuidelines: _CourseDeepRevisionAnswerGuidelinesJson(
+        answerGuidelines,
+      ).toGuidelines(),
+      defaultConfig: json['defaultConfig'] == null
+          ? null
+          : _CourseDeepRevisionConfigJson(json['defaultConfig']).toConfig(),
+      nextStep: CourseDeepRevisionNextStep(
+        kind: _requiredString(
+          nextStep['kind'],
+          'Invalid deep revision response',
+        ),
+        userMessage: _requiredString(
+          nextStep['userMessage'],
+          'Invalid deep revision response',
+        ),
+      ),
+    );
+  }
+}
+
+class _CourseDeepRevisionReadinessJson {
+  const _CourseDeepRevisionReadinessJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseDeepRevisionReadiness toReadiness() {
+    final blockers = value['blockers'];
+    if (blockers is! List) {
+      throw const FormatException('Invalid deep revision response');
+    }
+
+    return CourseDeepRevisionReadiness(
+      canStart: _requiredBool(
+        value['canStart'],
+        'Invalid deep revision response',
+      ),
+      state: _parseDeepRevisionReadinessState(
+        _requiredString(value['state'], 'Invalid deep revision response'),
+      ),
+      userMessage: _requiredString(
+        value['userMessage'],
+        'Invalid deep revision response',
+      ),
+      blockers: blockers
+          .map(
+            (item) => _requiredString(item, 'Invalid deep revision response'),
+          )
+          .toList(growable: false),
+      readySourceCount: _requiredInt(
+        value['readySourceCount'],
+        'Invalid deep revision response',
+      ),
+      readyKnowledgeUnitCount: _requiredInt(
+        value['readyKnowledgeUnitCount'],
+        'Invalid deep revision response',
+      ),
+    );
+  }
+}
+
+class _CourseDeepRevisionScopeOptionJson {
+  const _CourseDeepRevisionScopeOptionJson(this.value);
+
+  final Object? value;
+
+  CourseDeepRevisionScopeOption toOption() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision response');
+    }
+
+    return CourseDeepRevisionScopeOption(
+      kind: _parseDeepRevisionScopeKind(
+        _requiredString(json['kind'], 'Invalid deep revision response'),
+      ),
+      id: _requiredString(json['id'], 'Invalid deep revision response'),
+      documentId: _requiredString(
+        json['documentId'],
+        'Invalid deep revision response',
+      ),
+      label: _requiredString(json['label'], 'Invalid deep revision response'),
+      sourceLabel: _requiredString(
+        json['sourceLabel'],
+        'Invalid deep revision response',
+      ),
+      canSelect: _requiredBool(
+        json['canSelect'],
+        'Invalid deep revision response',
+      ),
+    );
+  }
+}
+
+class _CourseDeepRevisionAnswerGuidelinesJson {
+  const _CourseDeepRevisionAnswerGuidelinesJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseDeepRevisionAnswerGuidelines toGuidelines() {
+    return CourseDeepRevisionAnswerGuidelines(
+      minLength: _requiredInt(
+        value['minLength'],
+        'Invalid deep revision response',
+      ),
+      maxLength: _requiredInt(
+        value['maxLength'],
+        'Invalid deep revision response',
+      ),
+      userMessage: _requiredString(
+        value['userMessage'] ??
+            'Rédige une réponse structurée avec tes propres mots.',
+        'Invalid deep revision response',
+      ),
+    );
+  }
+}
+
+class _CourseDeepRevisionConfigJson {
+  const _CourseDeepRevisionConfigJson(this.value);
+
+  final Object? value;
+
+  CourseDeepRevisionConfig toConfig() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision response');
+    }
+
+    return CourseDeepRevisionConfig(
+      scopeKind: _parseDeepRevisionScopeKind(
+        _requiredString(json['scopeKind'], 'Invalid deep revision response'),
+      ),
+      scopeId: _requiredString(
+        json['scopeId'],
+        'Invalid deep revision response',
+      ),
+    );
+  }
+}
+
+class _CourseDeepRevisionSessionJson {
+  const _CourseDeepRevisionSessionJson(this.value);
+
+  final Object? value;
+
+  CourseDeepRevisionSession toSession() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision session response');
+    }
+
+    final session = json['session'];
+    final question = json['question'];
+    final scope = json['scope'];
+    final answerGuidelines = json['answerGuidelines'];
+
+    if (session is! Map<String, Object?> ||
+        question is! Map<String, Object?> ||
+        scope is! Map<String, Object?> ||
+        answerGuidelines is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision session response');
+    }
+
+    return CourseDeepRevisionSession(
+      session: _CourseDeepRevisionSessionSummaryJson(
+        session,
+      ).toSessionSummary(),
+      question: _OpenQuestionJson(question).toQuestion(),
+      scope: _CourseDeepRevisionScopeJson(scope).toScope(),
+      answerGuidelines: _CourseDeepRevisionAnswerGuidelinesJson(
+        answerGuidelines,
+      ).toGuidelines(),
+    );
+  }
+}
+
+class _CourseDeepRevisionSubmitResponseJson {
+  const _CourseDeepRevisionSubmitResponseJson(this.value);
+
+  final Object? value;
+
+  CourseDeepRevisionSubmitResponse toResponse() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision submit response');
+    }
+
+    final session = json['session'];
+    final evaluation = json['evaluation'];
+
+    if (session is! Map<String, Object?> ||
+        evaluation is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision submit response');
+    }
+
+    return CourseDeepRevisionSubmitResponse(
+      session: _CourseDeepRevisionSessionSummaryJson(
+        session,
+      ).toSessionSummary(),
+      evaluation: _OpenAnswerEvaluationJson(evaluation).toEvaluation(),
+    );
+  }
+}
+
+class _CourseDeepRevisionSessionSummaryJson {
+  const _CourseDeepRevisionSessionSummaryJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseDeepRevisionSessionSummary toSessionSummary() {
+    return CourseDeepRevisionSessionSummary(
+      id: _requiredString(
+        value['id'],
+        'Invalid deep revision session response',
+      ),
+      mode: _requiredString(
+        value['mode'],
+        'Invalid deep revision session response',
+      ),
+      status: _requiredString(
+        value['status'],
+        'Invalid deep revision session response',
+      ),
+      courseId: _requiredString(
+        value['courseId'],
+        'Invalid deep revision session response',
+      ),
+    );
+  }
+}
+
+class _CourseDeepRevisionScopeJson {
+  const _CourseDeepRevisionScopeJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseDeepRevisionScope toScope() {
+    return CourseDeepRevisionScope(
+      kind: _parseDeepRevisionScopeKind(
+        _requiredString(
+          value['kind'],
+          'Invalid deep revision session response',
+        ),
+      ),
+      id: _requiredString(
+        value['id'],
+        'Invalid deep revision session response',
+      ),
+      label: _requiredString(
+        value['label'],
+        'Invalid deep revision session response',
+      ),
+      sourceLabel: _requiredString(
+        value['sourceLabel'],
+        'Invalid deep revision session response',
+      ),
+    );
+  }
+}
+
+class _OpenQuestionJson {
+  const _OpenQuestionJson(this.value);
+
+  final Map<String, Object?> value;
+
+  OpenQuestion toQuestion() {
+    final id = value['id'];
+    final prompt = value['prompt'];
+    final instructions = value['instructions'];
+    final maxAnswerLength = value['maxAnswerLength'];
+    final sources = value['sources'];
+
+    if (id is! String || prompt is! String || maxAnswerLength is! int) {
+      throw const FormatException('Invalid deep revision open question');
+    }
+
+    return OpenQuestion(
+      id: id,
+      prompt: prompt,
+      instructions: instructions is String ? instructions : null,
+      maxAnswerLength: maxAnswerLength,
+      sources: sources is List
+          ? sources
+                .map((source) => _OpenQuestionSourceJson(source).toSource())
+                .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+class _OpenQuestionSourceJson {
+  const _OpenQuestionSourceJson(this.value);
+
+  final Object? value;
+
+  OpenQuestionSource toSource() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision open question source');
+    }
+
+    final chunkId = json['chunkId'];
+    final pageNumber = json['pageNumber'];
+    final index = json['index'];
+
+    if (chunkId is! String || index is! int) {
+      throw const FormatException('Invalid deep revision open question source');
+    }
+
+    return OpenQuestionSource(
+      chunkId: chunkId,
+      pageNumber: pageNumber is int ? pageNumber : null,
+      index: index,
+    );
+  }
+}
+
+class _OpenAnswerEvaluationJson {
+  const _OpenAnswerEvaluationJson(this.value);
+
+  final Map<String, Object?> value;
+
+  OpenAnswerEvaluation toEvaluation() {
+    final id = value['id'];
+    final status = value['status'];
+    final score = value['score'];
+    final maxScore = value['maxScore'];
+    final feedback = value['feedback'];
+    final presentPoints = value['presentPoints'];
+    final missingPoints = value['missingPoints'];
+    final errors = value['errors'];
+    final modelAnswer = value['modelAnswer'];
+    final advice = value['advice'];
+    final sources = value['sources'];
+
+    if (id is! String || status is! String) {
+      throw const FormatException('Invalid deep revision evaluation response');
+    }
+
+    return OpenAnswerEvaluation(
+      id: id,
+      status: _parseOpenAnswerEvaluationStatus(status),
+      score: score is num ? score.toDouble() : null,
+      maxScore: maxScore is num ? maxScore.toDouble() : null,
+      feedback: feedback is String ? feedback : null,
+      presentPoints: presentPoints is List
+          ? _stringList(
+              presentPoints,
+              'Invalid deep revision evaluation response',
+            )
+          : const [],
+      missingPoints: missingPoints is List
+          ? _stringList(
+              missingPoints,
+              'Invalid deep revision evaluation response',
+            )
+          : const [],
+      errors: errors is List
+          ? _stringList(errors, 'Invalid deep revision evaluation response')
+          : const [],
+      modelAnswer: modelAnswer is String ? modelAnswer : null,
+      advice: advice is String ? advice : null,
+      sources: sources is List
+          ? sources
+                .map((source) => _OpenAnswerSourceJson(source).toSource())
+                .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+class _OpenAnswerSourceJson {
+  const _OpenAnswerSourceJson(this.value);
+
+  final Object? value;
+
+  OpenAnswerCorrectionSource toSource() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision evaluation source');
+    }
+
+    final chunkId = json['chunkId'];
+    final text = json['text'];
+    final pageNumber = json['pageNumber'];
+    final index = json['index'];
+
+    if (chunkId is! String || text is! String || index is! int) {
+      throw const FormatException('Invalid deep revision evaluation source');
+    }
+
+    return OpenAnswerCorrectionSource(
+      chunkId: chunkId,
+      text: text,
+      pageNumber: pageNumber is int ? pageNumber : null,
+      index: index,
+    );
+  }
+}
+
 class _CourseExamPreparationOptionsJson {
   const _CourseExamPreparationOptionsJson(this.value);
 
@@ -1775,6 +2301,18 @@ bool _requiredBool(Object? value, String message) {
   throw FormatException(message);
 }
 
+List<String> _stringList(List<Object?> values, String errorMessage) {
+  return values
+      .map((value) {
+        if (value is String) {
+          return value;
+        }
+
+        throw FormatException(errorMessage);
+      })
+      .toList(growable: false);
+}
+
 DateTime _requiredDate(Object? value, String message) {
   final parsed = _parseOptionalDate(value);
   if (parsed == null) {
@@ -1808,6 +2346,17 @@ CourseRichRevisionReadinessState _parseRichRevisionReadinessState(
   };
 }
 
+CourseDeepRevisionReadinessState _parseDeepRevisionReadinessState(
+  String value,
+) {
+  return switch (value) {
+    'READY' => CourseDeepRevisionReadinessState.ready,
+    'NOT_READY' => CourseDeepRevisionReadinessState.notReady,
+    'BLOCKED' => CourseDeepRevisionReadinessState.blocked,
+    _ => CourseDeepRevisionReadinessState.unknown,
+  };
+}
+
 CourseRichRevisionScopeKind _parseRichRevisionScopeKind(String value) {
   return switch (value) {
     'knowledge_unit' => CourseRichRevisionScopeKind.knowledgeUnit,
@@ -1815,10 +2364,24 @@ CourseRichRevisionScopeKind _parseRichRevisionScopeKind(String value) {
   };
 }
 
+CourseDeepRevisionScopeKind _parseDeepRevisionScopeKind(String value) {
+  return switch (value) {
+    'knowledge_unit' => CourseDeepRevisionScopeKind.knowledgeUnit,
+    _ => CourseDeepRevisionScopeKind.unknown,
+  };
+}
+
 String _richRevisionScopeKindJson(CourseRichRevisionScopeKind value) {
   return switch (value) {
     CourseRichRevisionScopeKind.knowledgeUnit => 'knowledge_unit',
     CourseRichRevisionScopeKind.unknown => 'unknown',
+  };
+}
+
+String _deepRevisionScopeKindJson(CourseDeepRevisionScopeKind value) {
+  return switch (value) {
+    CourseDeepRevisionScopeKind.knowledgeUnit => 'knowledge_unit',
+    CourseDeepRevisionScopeKind.unknown => 'unknown',
   };
 }
 
@@ -1835,5 +2398,14 @@ String _examPreparationScopeKindJson(CourseExamPreparationScopeKind value) {
     CourseExamPreparationScopeKind.course => 'course',
     CourseExamPreparationScopeKind.source => 'source',
     CourseExamPreparationScopeKind.unknown => 'unknown',
+  };
+}
+
+OpenAnswerEvaluationStatus _parseOpenAnswerEvaluationStatus(String status) {
+  return switch (status) {
+    'PENDING' => OpenAnswerEvaluationStatus.pending,
+    'READY' => OpenAnswerEvaluationStatus.ready,
+    'FAILED' => OpenAnswerEvaluationStatus.failed,
+    _ => throw const FormatException('Invalid deep revision evaluation status'),
   };
 }

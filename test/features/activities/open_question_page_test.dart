@@ -69,9 +69,9 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextField), 'Réponse assez longue.');
-    await tester.ensureVisible(find.text('Valider ma réponse'));
+    await tester.ensureVisible(find.text('Envoyer ma réponse'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Valider ma réponse'));
+    await tester.tap(find.text('Envoyer ma réponse'));
     await tester.pump();
 
     expect(find.text('Correction en cours...'), findsNWidgets(2));
@@ -102,9 +102,9 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextField), 'Réponse assez longue.');
-    await tester.ensureVisible(find.text('Valider ma réponse'));
+    await tester.ensureVisible(find.text('Envoyer ma réponse'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Valider ma réponse'));
+    await tester.tap(find.text('Envoyer ma réponse'));
     await tester.pumpAndSettle();
 
     expect(find.text("La correction n'a pas pu être générée."), findsOneWidget);
@@ -126,9 +126,9 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextField), 'Réponse assez longue.');
-    await tester.ensureVisible(find.text('Valider ma réponse'));
+    await tester.ensureVisible(find.text('Envoyer ma réponse'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Valider ma réponse'));
+    await tester.tap(find.text('Envoyer ma réponse'));
     await tester.pumpAndSettle();
 
     expect(
@@ -193,7 +193,8 @@ OpenQuestionActivity longOpenQuestionActivity() {
     knowledgeUnitId: 'unit-1',
     question: OpenQuestion(
       id: 'open-question-long',
-      prompt: 'Explique longuement ${List.filled(12, 'un principe').join(' ')}.',
+      prompt:
+          'Explique longuement ${List.filled(12, 'un principe').join(' ')}.',
       instructions:
           'Structure ta réponse en plusieurs phrases et appuie-toi sur le cours.',
       maxAnswerLength: 4000,

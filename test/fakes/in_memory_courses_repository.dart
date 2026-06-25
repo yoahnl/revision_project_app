@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:Neralune/features/activities/domain/open_question_activity.dart';
 import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
@@ -33,6 +34,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, List<CourseRichClosedHistoryItem>>
   richClosedHistoryByCourse = {};
   final Map<String, CourseRichRevisionOptions> richRevisionOptionsByCourse = {};
+  final Map<String, CourseDeepRevisionOptions> deepRevisionOptionsByCourse = {};
   final Map<String, List<RevisionSessionHistoryItem>>
   examPreparationHistoryByCourse = {};
   final Map<String, CourseExamPreparationOptions>
@@ -51,10 +53,13 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int getCourseRevisionSessionHistoryCount = 0;
   int getCourseRichClosedHistoryCount = 0;
   int getRichRevisionOptionsCount = 0;
+  int getDeepRevisionOptionsCount = 0;
   int getExamPreparationOptionsCount = 0;
   int getCourseExamPreparationHistoryCount = 0;
   int startExamPreparationCount = 0;
   int startRichRevisionCount = 0;
+  int startDeepRevisionCount = 0;
+  int submitDeepRevisionAnswerCount = 0;
   int prepareQuestionBankCount = 0;
   int uploadCount = 0;
   int deleteDocumentCount = 0;
@@ -76,12 +81,18 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastCourseRevisionSessionHistoryCourseId;
   String? lastCourseRichClosedHistoryCourseId;
   String? lastRichRevisionOptionsCourseId;
+  String? lastDeepRevisionOptionsCourseId;
   String? lastExamPreparationOptionsCourseId;
   String? lastCourseExamPreparationHistoryCourseId;
   String? lastExamPreparationCourseId;
   CourseExamPreparationConfig? lastExamPreparationConfig;
   String? lastRichRevisionCourseId;
   CourseRichRevisionConfig? lastRichRevisionConfig;
+  String? lastDeepRevisionCourseId;
+  CourseDeepRevisionConfig? lastDeepRevisionConfig;
+  String? lastDeepRevisionSubmitCourseId;
+  String? lastDeepRevisionSubmitSessionId;
+  String? lastDeepRevisionAnswer;
   int? lastQuickRevisionQuestionCount;
   String? lastArchivedCourseLifecycleId;
   String? lastDeletedCourseLifecycleId;
@@ -92,12 +103,17 @@ class InMemoryCoursesRepository implements CoursesRepository {
   Object? quickRevisionError;
   Object? examPreparationError;
   Object? richRevisionError;
+  Object? deepRevisionError;
+  Object? deepRevisionSubmitError;
   RevisionSessionResponse? quickRevisionResponse;
   RevisionSessionResponse? examPreparationResponse;
   RichClosedExercise? richRevisionResponse;
+  CourseDeepRevisionSession? deepRevisionResponse;
+  CourseDeepRevisionSubmitResponse? deepRevisionSubmitResponse;
   Duration uploadDelay = Duration.zero;
   Duration quickRevisionDelay = Duration.zero;
   Duration richRevisionDelay = Duration.zero;
+  Duration deepRevisionDelay = Duration.zero;
 
   @override
   Future<List<CourseListItem>> listCourses({required String subjectId}) async {
@@ -631,6 +647,86 @@ class InMemoryCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<CourseDeepRevisionOptions> getDeepRevisionOptions({
+    required String courseId,
+  }) async {
+    getDeepRevisionOptionsCount += 1;
+    lastDeepRevisionOptionsCourseId = courseId;
+
+    if (!detailsByCourse.containsKey(courseId)) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    return deepRevisionOptionsByCourse[courseId] ??
+        CourseDeepRevisionOptions(
+          course: CourseDeepRevisionCourse(
+            id: courseId,
+            title: detailsByCourse[courseId]!.course.title,
+            subjectId: detailsByCourse[courseId]!.course.subjectId,
+          ),
+          readiness: const CourseDeepRevisionReadiness(
+            canStart: false,
+            state: CourseDeepRevisionReadinessState.blocked,
+            userMessage: 'Ajoute une source pour rédiger une réponse.',
+            blockers: ['NO_READY_SOURCE'],
+            readySourceCount: 0,
+            readyKnowledgeUnitCount: 0,
+          ),
+          scopeOptions: const [],
+          answerGuidelines: const CourseDeepRevisionAnswerGuidelines(
+            minLength: 12,
+            maxLength: 4000,
+            userMessage: 'Rédige une réponse structurée avec tes propres mots.',
+          ),
+          defaultConfig: null,
+          nextStep: const CourseDeepRevisionNextStep(
+            kind: 'blocked',
+            userMessage: 'Ajoute une source pour rédiger une réponse.',
+          ),
+        );
+  }
+
+  @override
+  Future<CourseDeepRevisionSession> startCourseDeepRevision({
+    required String courseId,
+    required CourseDeepRevisionConfig config,
+  }) async {
+    if (deepRevisionDelay > Duration.zero) {
+      await Future<void>.delayed(deepRevisionDelay);
+    }
+
+    startDeepRevisionCount += 1;
+    lastDeepRevisionCourseId = courseId;
+    lastDeepRevisionConfig = config;
+
+    final error = deepRevisionError;
+    if (error != null) {
+      throw error;
+    }
+
+    return deepRevisionResponse ?? deepRevisionSessionResponse(courseId);
+  }
+
+  @override
+  Future<CourseDeepRevisionSubmitResponse> submitCourseDeepRevisionAnswer({
+    required String courseId,
+    required String sessionId,
+    required String answer,
+  }) async {
+    submitDeepRevisionAnswerCount += 1;
+    lastDeepRevisionSubmitCourseId = courseId;
+    lastDeepRevisionSubmitSessionId = sessionId;
+    lastDeepRevisionAnswer = answer;
+
+    final error = deepRevisionSubmitError;
+    if (error != null) {
+      throw error;
+    }
+
+    return deepRevisionSubmitResponse ?? deepRevisionSubmitResponseFixture();
+  }
+
+  @override
   Future<CourseExamPreparationOptions> getExamPreparationOptions({
     required String courseId,
   }) async {
@@ -800,5 +896,67 @@ RevisionSessionResponse examPreparationSessionResponse(String courseId) {
       ),
     ),
     history: const [],
+  );
+}
+
+CourseDeepRevisionSession deepRevisionSessionResponse(String courseId) {
+  return CourseDeepRevisionSession(
+    session: CourseDeepRevisionSessionSummary(
+      id: 'deep-session-1',
+      mode: 'DEEP',
+      status: 'STARTED',
+      courseId: courseId,
+    ),
+    question: const OpenQuestion(
+      id: 'open-question-1',
+      prompt: 'Explique une notion du cours.',
+      instructions: 'Structure ta réponse en deux idées.',
+      maxAnswerLength: 4000,
+      sources: [
+        OpenQuestionSource(chunkId: 'chunk-1', pageNumber: 1, index: 0),
+      ],
+    ),
+    scope: const CourseDeepRevisionScope(
+      kind: CourseDeepRevisionScopeKind.knowledgeUnit,
+      id: 'knowledge-unit-1',
+      label: 'Notion du cours',
+      sourceLabel: 'CM.pdf',
+    ),
+    answerGuidelines: const CourseDeepRevisionAnswerGuidelines(
+      minLength: 12,
+      maxLength: 4000,
+      userMessage: 'Rédige une réponse structurée avec tes propres mots.',
+    ),
+  );
+}
+
+CourseDeepRevisionSubmitResponse deepRevisionSubmitResponseFixture() {
+  return const CourseDeepRevisionSubmitResponse(
+    session: CourseDeepRevisionSessionSummary(
+      id: 'deep-session-1',
+      mode: 'DEEP',
+      status: 'SUBMITTED',
+      courseId: 'course-1',
+    ),
+    evaluation: OpenAnswerEvaluation(
+      id: 'evaluation-1',
+      status: OpenAnswerEvaluationStatus.ready,
+      score: 0.8,
+      maxScore: 1,
+      feedback: 'Réponse claire.',
+      presentPoints: ['Idée principale'],
+      missingPoints: ['Nuance attendue'],
+      errors: [],
+      modelAnswer: 'Une réponse modèle complète la notion.',
+      advice: 'Revois les exemples du cours.',
+      sources: [
+        OpenAnswerCorrectionSource(
+          chunkId: 'chunk-1',
+          text: 'Extrait source du cours.',
+          pageNumber: 1,
+          index: 0,
+        ),
+      ],
+    ),
   );
 }

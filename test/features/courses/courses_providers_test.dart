@@ -68,6 +68,71 @@ void main() {
     );
   });
 
+  test('courseDeepRevisionOptionsProvider loads real deep options', () async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'CM.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..deepRevisionOptionsByCourse['course-1'] = CourseDeepRevisionOptions(
+        course: const CourseDeepRevisionCourse(
+          id: 'course-1',
+          title: 'Droit constitutionnel',
+          subjectId: 'subject-1',
+        ),
+        readiness: const CourseDeepRevisionReadiness(
+          canStart: true,
+          state: CourseDeepRevisionReadinessState.ready,
+          userMessage: 'Ton cours est prêt pour une révision approfondie.',
+          blockers: [],
+          readySourceCount: 1,
+          readyKnowledgeUnitCount: 1,
+        ),
+        scopeOptions: const [
+          CourseDeepRevisionScopeOption(
+            kind: CourseDeepRevisionScopeKind.knowledgeUnit,
+            id: 'ku-1',
+            documentId: 'document-1',
+            label: 'Responsabilité politique',
+            sourceLabel: 'CM.pdf',
+            canSelect: true,
+          ),
+        ],
+        answerGuidelines: const CourseDeepRevisionAnswerGuidelines(
+          minLength: 12,
+          maxLength: 4000,
+          userMessage: 'Rédige une réponse structurée avec tes propres mots.',
+        ),
+        defaultConfig: const CourseDeepRevisionConfig(
+          scopeKind: CourseDeepRevisionScopeKind.knowledgeUnit,
+          scopeId: 'ku-1',
+        ),
+        nextStep: const CourseDeepRevisionNextStep(
+          kind: 'configuration_ready',
+          userMessage: 'Choisis une notion et démarre la question ouverte.',
+        ),
+      );
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final options = await container.read(
+      courseDeepRevisionOptionsProvider('course-1').future,
+    );
+
+    expect(options.readiness.canStart, isTrue);
+    expect(options.scopeOptions.single.label, 'Responsabilité politique');
+    expect(repository.getDeepRevisionOptionsCount, 1);
+  });
+
   test(
     'uploadCourseDocumentController does nothing when picking is cancelled',
     () async {

@@ -790,6 +790,109 @@ void main() {
     });
   });
 
+  test('loads course deep revision options without correction data', () async {
+    final response = deepRevisionOptionsJson();
+    final adapter = CapturingHttpClientAdapter(jsonResponse(response));
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final options = await repository.getDeepRevisionOptions(
+      courseId: 'course-1',
+    );
+
+    expect(options.course.title, 'Droit constitutionnel');
+    expect(options.readiness.state, CourseDeepRevisionReadinessState.ready);
+    expect(options.readiness.canStart, isTrue);
+    expect(options.scopeOptions, hasLength(1));
+    expect(
+      options.scopeOptions.single.kind,
+      CourseDeepRevisionScopeKind.knowledgeUnit,
+    );
+    expect(options.scopeOptions.single.id, 'ku-1');
+    expect(options.scopeOptions.single.documentId, 'document-1');
+    expect(options.answerGuidelines.minLength, 12);
+    expect(options.answerGuidelines.maxLength, 4000);
+    expect(options.defaultConfig?.scopeId, 'ku-1');
+    expect(jsonEncode(response), isNot(contains('modelAnswer')));
+    expect(jsonEncode(response), isNot(contains('evaluation')));
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/deep-revision/options',
+    );
+  });
+
+  test('starts a course deep revision question', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(deepRevisionSessionJson()),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await repository.startCourseDeepRevision(
+      courseId: 'course-1',
+      config: const CourseDeepRevisionConfig(
+        scopeKind: CourseDeepRevisionScopeKind.knowledgeUnit,
+        scopeId: 'ku-1',
+      ),
+    );
+
+    expect(response.session.id, 'deep-session-1');
+    expect(response.session.status, 'STARTED');
+    expect(response.scope.label, 'Responsabilité politique');
+    expect(response.question.prompt, contains('responsabilité politique'));
+    expect(response.question.sources, hasLength(1));
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/deep-revision/sessions',
+    );
+    expect(adapter.lastOptions?.data, {
+      'scopeKind': 'knowledge_unit',
+      'scopeId': 'ku-1',
+    });
+  });
+
+  test('submits a course deep revision answer', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(deepRevisionSubmitJson()),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final response = await repository.submitCourseDeepRevisionAnswer(
+      courseId: 'course-1',
+      sessionId: 'deep-session-1',
+      answer:
+          'La responsabilité politique permet au Parlement de contrôler le Gouvernement.',
+    );
+
+    expect(response.session.id, 'deep-session-1');
+    expect(response.evaluation.score, 0.72);
+    expect(response.evaluation.feedback, contains('Bonne structure'));
+    expect(
+      response.evaluation.presentPoints,
+      contains('Contrôle parlementaire'),
+    );
+    expect(response.evaluation.modelAnswer, contains('réponse modèle'));
+    expect(response.evaluation.sources, hasLength(1));
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/deep-revision/sessions/deep-session-1/submit',
+    );
+    expect(adapter.lastOptions?.data, {
+      'answer':
+          'La responsabilité politique permet au Parlement de contrôler le Gouvernement.',
+    });
+  });
+
   test('loads completed course exam preparation history', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({
@@ -1169,6 +1272,113 @@ Map<String, Object?> examPreparationOptionsJson({
       'userMessage':
           'Configuration prête. Tu peux démarrer un entraînement examen.',
     },
+  };
+}
+
+Map<String, Object?> deepRevisionOptionsJson({
+  String state = 'READY',
+  bool canStart = true,
+}) {
+  return {
+    'course': {
+      'id': 'course-1',
+      'title': 'Droit constitutionnel',
+      'subjectId': 'subject-1',
+    },
+    'readiness': {
+      'canStart': canStart,
+      'state': state,
+      'userMessage': 'Ton cours est prêt pour une révision approfondie.',
+      'blockers': <String>[],
+      'readySourceCount': 1,
+      'readyKnowledgeUnitCount': 1,
+    },
+    'scopeOptions': [
+      {
+        'kind': 'knowledge_unit',
+        'id': 'ku-1',
+        'documentId': 'document-1',
+        'label': 'Responsabilité politique',
+        'sourceLabel': 'CM.pdf',
+        'canSelect': true,
+      },
+    ],
+    'answerGuidelines': {
+      'minLength': 12,
+      'maxLength': 4000,
+      'userMessage': 'Rédige une réponse structurée avec tes propres mots.',
+    },
+    'defaultConfig': {'scopeKind': 'knowledge_unit', 'scopeId': 'ku-1'},
+    'nextStep': {
+      'kind': 'configuration_ready',
+      'userMessage': 'Choisis une notion et démarre la question ouverte.',
+    },
+  };
+}
+
+Map<String, Object?> deepRevisionSessionJson() {
+  return {
+    'session': {
+      'id': 'deep-session-1',
+      'mode': 'DEEP',
+      'status': 'STARTED',
+      'courseId': 'course-1',
+    },
+    'question': openQuestionJson(),
+    'scope': {
+      'kind': 'knowledge_unit',
+      'id': 'ku-1',
+      'label': 'Responsabilité politique',
+      'sourceLabel': 'CM.pdf',
+    },
+    'answerGuidelines': {'minLength': 12, 'maxLength': 4000},
+  };
+}
+
+Map<String, Object?> deepRevisionSubmitJson() {
+  return {
+    'session': {
+      'id': 'deep-session-1',
+      'mode': 'DEEP',
+      'status': 'SUBMITTED',
+      'courseId': 'course-1',
+    },
+    'evaluation': openAnswerEvaluationJson(),
+  };
+}
+
+Map<String, Object?> openQuestionJson() {
+  return {
+    'id': 'open-question-1',
+    'prompt': 'Explique la responsabilité politique du Gouvernement.',
+    'instructions': 'Structure ta réponse en deux idées.',
+    'maxAnswerLength': 4000,
+    'sources': [
+      {'chunkId': 'chunk-1', 'pageNumber': 4, 'index': 0},
+    ],
+  };
+}
+
+Map<String, Object?> openAnswerEvaluationJson() {
+  return {
+    'id': 'evaluation-1',
+    'status': 'READY',
+    'score': 0.72,
+    'maxScore': 1,
+    'feedback': 'Bonne structure, mais il manque une nuance.',
+    'presentPoints': ['Contrôle parlementaire'],
+    'missingPoints': ['Responsabilité collective'],
+    'errors': ['Confusion légère avec la responsabilité pénale'],
+    'modelAnswer': 'Une réponse modèle rappelle le contrôle politique.',
+    'advice': 'Reprends les conditions de mise en jeu.',
+    'sources': [
+      {
+        'chunkId': 'chunk-1',
+        'text': 'Le Gouvernement est responsable devant le Parlement.',
+        'pageNumber': 4,
+        'index': 0,
+      },
+    ],
   };
 }
 

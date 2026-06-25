@@ -1,3 +1,5 @@
+import '../../activities/domain/open_question_activity.dart';
+
 class CourseListItem {
   const CourseListItem({
     required this.id,
@@ -439,6 +441,183 @@ class CourseRichRevisionNextStep {
 
   final String kind;
   final String userMessage;
+}
+
+enum CourseDeepRevisionReadinessState { ready, notReady, blocked, unknown }
+
+enum CourseDeepRevisionScopeKind { knowledgeUnit, unknown }
+
+class CourseDeepRevisionOptions {
+  const CourseDeepRevisionOptions({
+    required this.course,
+    required this.readiness,
+    required this.scopeOptions,
+    required this.answerGuidelines,
+    required this.defaultConfig,
+    required this.nextStep,
+  });
+
+  final CourseDeepRevisionCourse course;
+  final CourseDeepRevisionReadiness readiness;
+  final List<CourseDeepRevisionScopeOption> scopeOptions;
+  final CourseDeepRevisionAnswerGuidelines answerGuidelines;
+  final CourseDeepRevisionConfig? defaultConfig;
+  final CourseDeepRevisionNextStep nextStep;
+}
+
+class CourseDeepRevisionCourse {
+  const CourseDeepRevisionCourse({
+    required this.id,
+    required this.title,
+    required this.subjectId,
+  });
+
+  final String id;
+  final String title;
+  final String subjectId;
+}
+
+class CourseDeepRevisionReadiness {
+  const CourseDeepRevisionReadiness({
+    required this.canStart,
+    required this.state,
+    required this.userMessage,
+    required this.blockers,
+    required this.readySourceCount,
+    required this.readyKnowledgeUnitCount,
+  });
+
+  final bool canStart;
+  final CourseDeepRevisionReadinessState state;
+  final String userMessage;
+  final List<String> blockers;
+  final int readySourceCount;
+  final int readyKnowledgeUnitCount;
+}
+
+class CourseDeepRevisionScopeOption {
+  const CourseDeepRevisionScopeOption({
+    required this.kind,
+    required this.id,
+    required this.documentId,
+    required this.label,
+    required this.sourceLabel,
+    required this.canSelect,
+  });
+
+  final CourseDeepRevisionScopeKind kind;
+  final String id;
+  final String documentId;
+  final String label;
+  final String sourceLabel;
+  final bool canSelect;
+}
+
+class CourseDeepRevisionAnswerGuidelines {
+  const CourseDeepRevisionAnswerGuidelines({
+    required this.minLength,
+    required this.maxLength,
+    required this.userMessage,
+  });
+
+  final int minLength;
+  final int maxLength;
+  final String userMessage;
+}
+
+class CourseDeepRevisionConfig {
+  const CourseDeepRevisionConfig({
+    required this.scopeKind,
+    required this.scopeId,
+  });
+
+  final CourseDeepRevisionScopeKind scopeKind;
+  final String scopeId;
+}
+
+class CourseDeepRevisionNextStep {
+  const CourseDeepRevisionNextStep({
+    required this.kind,
+    required this.userMessage,
+  });
+
+  final String kind;
+  final String userMessage;
+}
+
+class CourseDeepRevisionSessionSummary {
+  const CourseDeepRevisionSessionSummary({
+    required this.id,
+    required this.mode,
+    required this.status,
+    required this.courseId,
+  });
+
+  final String id;
+  final String mode;
+  final String status;
+  final String courseId;
+}
+
+class CourseDeepRevisionScope {
+  const CourseDeepRevisionScope({
+    required this.kind,
+    required this.id,
+    required this.label,
+    required this.sourceLabel,
+  });
+
+  final CourseDeepRevisionScopeKind kind;
+  final String id;
+  final String label;
+  final String sourceLabel;
+}
+
+class CourseDeepRevisionSession {
+  const CourseDeepRevisionSession({
+    required this.session,
+    required this.question,
+    required this.scope,
+    required this.answerGuidelines,
+  });
+
+  final CourseDeepRevisionSessionSummary session;
+  final OpenQuestion question;
+  final CourseDeepRevisionScope scope;
+  final CourseDeepRevisionAnswerGuidelines answerGuidelines;
+
+  OpenQuestionActivity toOpenQuestionActivity({
+    required CourseDeepRevisionCourse course,
+  }) {
+    return OpenQuestionActivity(
+      sessionId: session.id,
+      type: 'open_question',
+      version: null,
+      subjectId: course.subjectId,
+      documentId: null,
+      knowledgeUnitId: scope.id,
+      question: question,
+    );
+  }
+}
+
+class CourseDeepRevisionSubmitResponse {
+  const CourseDeepRevisionSubmitResponse({
+    required this.session,
+    required this.evaluation,
+  });
+
+  final CourseDeepRevisionSessionSummary session;
+  final OpenAnswerEvaluation evaluation;
+
+  OpenAnswerSubmissionResult toOpenAnswerSubmissionResult() {
+    return OpenAnswerSubmissionResult(
+      sessionId: session.id,
+      type: 'open_question',
+      status: session.status,
+      evaluation: evaluation,
+    );
+  }
 }
 
 class CourseRichClosedHistoryResponse {

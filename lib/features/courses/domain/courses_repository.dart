@@ -92,6 +92,21 @@ abstract interface class CoursesRepository {
     required CourseRichRevisionConfig config,
   });
 
+  Future<CourseDeepRevisionOptions> getDeepRevisionOptions({
+    required String courseId,
+  });
+
+  Future<CourseDeepRevisionSession> startCourseDeepRevision({
+    required String courseId,
+    required CourseDeepRevisionConfig config,
+  });
+
+  Future<CourseDeepRevisionSubmitResponse> submitCourseDeepRevisionAnswer({
+    required String courseId,
+    required String sessionId,
+    required String answer,
+  });
+
   Future<CourseExamPreparationOptions> getExamPreparationOptions({
     required String courseId,
   });

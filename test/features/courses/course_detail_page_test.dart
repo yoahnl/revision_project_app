@@ -151,7 +151,8 @@ void main() {
           ),
         ],
       )
-      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture();
+      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture()
+      ..deepRevisionOptionsByCourse['course-1'] = deepRevisionOptionsFixture();
 
     await tester.pumpWidget(
       testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
@@ -419,6 +420,14 @@ void main() {
     );
     expect(emptyRichCard.enabled, isFalse);
     expect(find.text('Ajoute une source pour t’entraîner.'), findsOneWidget);
+    final emptyDeepCard = tester.widget<RevisionModeCard>(
+      find.widgetWithText(RevisionModeCard, 'Révision approfondie'),
+    );
+    expect(emptyDeepCard.enabled, isFalse);
+    expect(
+      find.text('Ajoute une source pour rédiger une réponse.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('course sheet CTA waits while a source is processing', (
@@ -436,7 +445,8 @@ void main() {
           ),
         ],
       )
-      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture();
+      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture()
+      ..deepRevisionOptionsByCourse['course-1'] = deepRevisionOptionsFixture();
 
     await tester.pumpWidget(
       testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
@@ -458,6 +468,11 @@ void main() {
     );
     expect(processingQuickCard.enabled, isFalse);
     expect(find.text('Révision disponible après traitement'), findsOneWidget);
+    final processingDeepCard = tester.widget<RevisionModeCard>(
+      find.widgetWithText(RevisionModeCard, 'Révision approfondie'),
+    );
+    expect(processingDeepCard.enabled, isFalse);
+    expect(find.text('Disponible après traitement.'), findsWidgets);
   });
 
   testWidgets('course sheet CTA is enabled when a READY source exists', (
@@ -475,7 +490,8 @@ void main() {
           ),
         ],
       )
-      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture();
+      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture()
+      ..deepRevisionOptionsByCourse['course-1'] = deepRevisionOptionsFixture();
 
     await tester.pumpWidget(
       testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
@@ -512,7 +528,8 @@ void main() {
           ),
         ],
       )
-      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture();
+      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture()
+      ..deepRevisionOptionsByCourse['course-1'] = deepRevisionOptionsFixture();
 
     await tester.pumpWidget(
       testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
@@ -537,7 +554,7 @@ void main() {
       find.widgetWithText(RevisionModeCard, 'Préparation examen - QCM'),
       findsOneWidget,
     );
-    expect(find.text('Bientôt'), findsOneWidget);
+    expect(find.text('Bientôt'), findsNothing);
 
     final qcmCard = tester.widget<RevisionModeCard>(
       find.widgetWithText(RevisionModeCard, 'QCM complet'),
@@ -548,8 +565,8 @@ void main() {
     final deepCard = tester.widget<RevisionModeCard>(
       find.widgetWithText(RevisionModeCard, 'Révision approfondie'),
     );
-    expect(deepCard.enabled, isFalse);
-    expect(deepCard.onTap, isNull);
+    expect(deepCard.enabled, isTrue);
+    expect(deepCard.onTap, isNotNull);
 
     final examCard = tester.widget<RevisionModeCard>(
       find.widgetWithText(RevisionModeCard, 'Préparation examen - QCM'),
@@ -983,6 +1000,45 @@ void main() {
     expect(find.text('QCM complet dédiée'), findsOneWidget);
   });
 
+  testWidgets(
+    'course detail opens the Révision approfondie page from a real card',
+    (tester) async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'CM.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture()
+        ..deepRevisionOptionsByCourse['course-1'] =
+            deepRevisionOptionsFixture();
+
+      await tester.pumpWidget(
+        routerTestApp(
+          repository: repository,
+          picker: FakeCoursePdfPicker(null),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(find.text('Révision approfondie'), 400);
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.widgetWithText(RevisionModeCard, 'Révision approfondie'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Révision approfondie dédiée'), findsOneWidget);
+    },
+  );
+
   testWidgets('course detail prioritizes a resumable quick session', (
     tester,
   ) async {
@@ -1105,6 +1161,11 @@ Widget routerTestApp({
         path: AppRoutes.courseRichRevisionPath,
         builder: (context, state) =>
             const Scaffold(body: Text('QCM complet dédiée')),
+      ),
+      GoRoute(
+        path: AppRoutes.courseDeepRevisionPath,
+        builder: (context, state) =>
+            const Scaffold(body: Text('Révision approfondie dédiée')),
       ),
       GoRoute(
         path: AppRoutes.courseExamPreparationPath,
@@ -1340,6 +1401,61 @@ CourseRichRevisionOptions richRevisionOptionsFixture({
       kind: canStart ? 'configuration_ready' : 'blocked',
       userMessage: canStart
           ? 'Choisis une notion et démarre le QCM complet.'
+          : "Aucune notion exploitable n'est disponible pour ce cours.",
+    ),
+  );
+}
+
+CourseDeepRevisionOptions deepRevisionOptionsFixture({
+  CourseDeepRevisionReadinessState state =
+      CourseDeepRevisionReadinessState.ready,
+  String? blocker,
+}) {
+  final canStart = state == CourseDeepRevisionReadinessState.ready;
+
+  return CourseDeepRevisionOptions(
+    course: const CourseDeepRevisionCourse(
+      id: 'course-1',
+      title: 'Droit constitutionnel',
+      subjectId: 'subject-1',
+    ),
+    readiness: CourseDeepRevisionReadiness(
+      canStart: canStart,
+      state: state,
+      userMessage: canStart
+          ? 'Ton cours est prêt pour une révision approfondie.'
+          : "Aucune notion exploitable n'est disponible pour ce cours.",
+      blockers: blocker == null ? const [] : [blocker],
+      readySourceCount: 1,
+      readyKnowledgeUnitCount: canStart ? 1 : 0,
+    ),
+    scopeOptions: canStart
+        ? const [
+            CourseDeepRevisionScopeOption(
+              kind: CourseDeepRevisionScopeKind.knowledgeUnit,
+              id: 'ku-1',
+              documentId: 'document-1',
+              label: 'Responsabilité politique',
+              sourceLabel: 'CM.pdf',
+              canSelect: true,
+            ),
+          ]
+        : const [],
+    answerGuidelines: const CourseDeepRevisionAnswerGuidelines(
+      minLength: 12,
+      maxLength: 4000,
+      userMessage: 'Rédige une réponse structurée avec tes propres mots.',
+    ),
+    defaultConfig: canStart
+        ? const CourseDeepRevisionConfig(
+            scopeKind: CourseDeepRevisionScopeKind.knowledgeUnit,
+            scopeId: 'ku-1',
+          )
+        : null,
+    nextStep: CourseDeepRevisionNextStep(
+      kind: canStart ? 'configuration_ready' : 'blocked',
+      userMessage: canStart
+          ? 'Choisis une notion et démarre la question ouverte.'
           : "Aucune notion exploitable n'est disponible pour ce cours.",
     ),
   );

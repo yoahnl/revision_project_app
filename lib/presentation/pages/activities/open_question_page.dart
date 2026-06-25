@@ -129,7 +129,10 @@ class _OpenQuestionHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Question ouverte', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Question ouverte',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: AppSpacing.s),
           Wrap(
             spacing: AppSpacing.s,
@@ -174,7 +177,7 @@ class _QuestionPanel extends StatelessWidget {
           if (question.sources.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.l),
             Text(
-              'Sources disponibles après correction',
+              'Sources du cours',
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: AppSpacing.s),
@@ -272,7 +275,7 @@ class _AnswerPanel extends StatelessWidget {
               icon: Icons.check,
               label: controller.isSubmitting
                   ? 'Correction en cours...'
-                  : 'Valider ma réponse',
+                  : 'Envoyer ma réponse',
             ),
           ),
         ],
@@ -292,7 +295,10 @@ class _SubmittedAnswerPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Réponse envoyée', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Réponse envoyée',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: AppSpacing.s),
           Text(answerText),
         ],
@@ -354,12 +360,24 @@ class _ReadyEvaluationPanel extends StatelessWidget {
             const SizedBox(height: AppSpacing.l),
             Text(evaluation.feedback!),
           ],
-          _PointSection(title: 'Points présents', items: evaluation.presentPoints),
-          _PointSection(title: 'Points à compléter', items: evaluation.missingPoints),
-          _PointSection(title: 'Erreurs ou confusions', items: evaluation.errors),
+          _PointSection(
+            title: 'Points réussis',
+            items: evaluation.presentPoints,
+          ),
+          _PointSection(
+            title: 'Points à compléter',
+            items: evaluation.missingPoints,
+          ),
+          _PointSection(
+            title: 'Erreurs ou confusions',
+            items: evaluation.errors,
+          ),
           if (evaluation.modelAnswer != null) ...[
             const SizedBox(height: AppSpacing.l),
-            Text('Réponse modèle', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Réponse modèle',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: AppSpacing.s),
             Text(evaluation.modelAnswer!),
           ],
@@ -371,7 +389,10 @@ class _ReadyEvaluationPanel extends StatelessWidget {
           ],
           if (evaluation.sources.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.l),
-            Text('Sources', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Sources du cours',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: AppSpacing.s),
             Column(
               spacing: AppSpacing.s,

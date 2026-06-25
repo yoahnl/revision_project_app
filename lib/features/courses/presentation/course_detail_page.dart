@@ -1071,6 +1071,13 @@ class _CourseModes extends ConsumerWidget {
       detail.sources,
       richRevisionState,
     );
+    final deepRevisionState = ref.watch(
+      courseDeepRevisionOptionsProvider(detail.course.id),
+    );
+    final deepRevisionAction = _deepRevisionActionFor(
+      detail.sources,
+      deepRevisionState,
+    );
     final isStartingQuickRevision = quickRevisionState.isLoading;
     final isPreparingQuestions = preparationState.isLoading;
     final hasPartialReadyQuestions = (readiness?.readyQuestionCount ?? 0) >= 5;
@@ -1125,11 +1132,15 @@ class _CourseModes extends ConsumerWidget {
         const SizedBox(height: RevisionSpacing.m),
         RevisionModeCard(
           title: 'Révision approfondie',
-          description: 'Question ouverte, rédaction et correction détaillée.',
+          description: deepRevisionAction.description,
           icon: Icons.menu_book_rounded,
           accent: RevisionColors.violet,
-          trailingLabel: 'Bientôt',
-          enabled: false,
+          trailingLabel: deepRevisionAction.trailingLabel,
+          enabled: deepRevisionAction.enabled,
+          onTap: deepRevisionAction.enabled
+              ? () =>
+                    context.push(AppRoutes.courseDeepRevision(detail.course.id))
+              : null,
         ),
         const SizedBox(height: RevisionSpacing.m),
         RevisionModeCard(
@@ -1161,6 +1172,18 @@ class _CourseModes extends ConsumerWidget {
 
 class _RichRevisionCardAction {
   const _RichRevisionCardAction({
+    required this.description,
+    required this.trailingLabel,
+    required this.enabled,
+  });
+
+  final String description;
+  final String trailingLabel;
+  final bool enabled;
+}
+
+class _DeepRevisionCardAction {
+  const _DeepRevisionCardAction({
     required this.description,
     required this.trailingLabel,
     required this.enabled,
@@ -1229,6 +1252,70 @@ _RichRevisionCardAction _richRevisionActionFor(
   }
 
   return _RichRevisionCardAction(
+    description: options.readiness.userMessage,
+    trailingLabel: 'Indisponible',
+    enabled: false,
+  );
+}
+
+_DeepRevisionCardAction _deepRevisionActionFor(
+  List<CourseDocument> sources,
+  AsyncValue<CourseDeepRevisionOptions> optionsState,
+) {
+  final hasReadySource = sources.any(
+    (source) => source.status == CourseDocumentStatus.ready,
+  );
+
+  if (!hasReadySource) {
+    if (sources.any(_isPendingSource)) {
+      return const _DeepRevisionCardAction(
+        description: 'Disponible après traitement.',
+        trailingLabel: 'En analyse',
+        enabled: false,
+      );
+    }
+
+    return const _DeepRevisionCardAction(
+      description: 'Ajoute une source pour rédiger une réponse.',
+      trailingLabel: 'Source requise',
+      enabled: false,
+    );
+  }
+
+  if (optionsState.isLoading && !optionsState.hasValue) {
+    return const _DeepRevisionCardAction(
+      description: 'Vérification des notions disponibles.',
+      trailingLabel: 'Vérification...',
+      enabled: false,
+    );
+  }
+
+  final options = optionsState.asData?.value;
+  if (options == null) {
+    return const _DeepRevisionCardAction(
+      description: 'Rédige une réponse et reçois une correction détaillée.',
+      trailingLabel: 'Indisponible',
+      enabled: false,
+    );
+  }
+
+  if (options.readiness.canStart && options.scopeOptions.isNotEmpty) {
+    return const _DeepRevisionCardAction(
+      description: 'Rédige une réponse et reçois une correction détaillée.',
+      trailingLabel: 'Configurer',
+      enabled: true,
+    );
+  }
+
+  if (options.readiness.blockers.contains('NO_KNOWLEDGE_UNITS')) {
+    return const _DeepRevisionCardAction(
+      description: 'Aucune notion exploitable.',
+      trailingLabel: 'Indisponible',
+      enabled: false,
+    );
+  }
+
+  return _DeepRevisionCardAction(
     description: options.readiness.userMessage,
     trailingLabel: 'Indisponible',
     enabled: false,
