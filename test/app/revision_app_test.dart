@@ -96,6 +96,7 @@ void main() {
     expect(find.text('Progrès'), findsOneWidget);
     expect(find.text('Réviser'), findsNothing);
     expect(find.text('Profil'), findsNothing);
+    expect(find.byTooltip('Profil'), findsOneWidget);
     expect(find.text('Math'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);
@@ -111,6 +112,30 @@ void main() {
     expect(shellScaffold, findsOneWidget);
     expect(tester.widget<Scaffold>(shellScaffold).extendBody, isTrue);
     expect(testApp.authController.isSignedIn, isTrue);
+  });
+
+  testWidgets('profile stays secondary and opens outside the main tab bar', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_createTestApp().widget);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aujourd’hui'), findsOneWidget);
+    expect(find.text('Cours'), findsOneWidget);
+    expect(find.text('Progrès'), findsOneWidget);
+    expect(find.text('Profil'), findsNothing);
+    expect(find.byTooltip('Profil'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Profil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Profil'), findsOneWidget);
+    expect(
+      find.text('Gère ton compte et tes préférences d’affichage.'),
+      findsOneWidget,
+    );
+    expect(find.byType(RevisionBottomNavigation), findsNothing);
+    expect(find.byType(RevisionNavigationRail), findsNothing);
   });
 
   testWidgets('bottom navigation opens honest real-ready pages', (

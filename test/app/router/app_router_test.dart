@@ -436,6 +436,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Activites'), findsWidgets);
 
+    harness.router.go(AppRoutes.revisions);
+    await tester.pumpAndSettle();
+    expect(find.text('Réviser'), findsWidgets);
+    expect(find.byType(RevisionBottomNavigation), findsNothing);
+    expect(find.byType(RevisionNavigationRail), findsNothing);
+
+    harness.router.go(AppRoutes.profile);
+    await tester.pumpAndSettle();
+    expect(find.text('Profil'), findsOneWidget);
+    expect(
+      find.text('Gère ton compte et tes préférences d’affichage.'),
+      findsOneWidget,
+    );
+    expect(find.byType(RevisionBottomNavigation), findsNothing);
+    expect(find.byType(RevisionNavigationRail), findsNothing);
+
     harness.router.go(AppRoutes.sources);
     await tester.pumpAndSettle();
     expect(find.text('Sources depuis les cours'), findsOneWidget);
