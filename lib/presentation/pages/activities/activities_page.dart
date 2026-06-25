@@ -304,7 +304,7 @@ class _ActivityActions extends StatelessWidget {
                   ? onRichClosedSelected
                   : null,
               icon: Icons.extension_outlined,
-              label: 'Questions riches',
+              label: 'QCM complet',
               style: RevisionButtonStyle.ghost,
             ),
           ],
@@ -313,7 +313,7 @@ class _ActivityActions extends StatelessWidget {
           const SizedBox(height: AppSpacing.s),
           RevisionMessage(
             message:
-                'Question ouverte et questions riches disponibles depuis une notion précise du cours.',
+                'Question ouverte et QCM complet disponibles depuis une notion précise du cours.',
             color: Theme.of(context).colorScheme.secondary,
             icon: Icons.info_outline,
           ),

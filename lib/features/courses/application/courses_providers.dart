@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/di/providers.dart';
+import '../../activities/domain/rich_closed_exercise.dart';
 import '../../documents/domain/revision_document.dart';
 import '../../revision_sessions/domain/revision_session.dart';
 import '../data/http_courses_repository.dart';
@@ -72,6 +73,13 @@ final courseRichClosedHistoryProvider =
       return ref
           .read(coursesRepositoryProvider)
           .getCourseRichClosedHistory(courseId: courseId);
+    });
+
+final courseRichRevisionOptionsProvider =
+    FutureProvider.family<CourseRichRevisionOptions, String>((ref, courseId) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getRichRevisionOptions(courseId: courseId);
     });
 
 final courseExamPreparationOptionsProvider =
@@ -178,6 +186,12 @@ final startCourseQuickRevisionControllerProvider =
       StartCourseQuickRevisionController,
       AsyncValue<RevisionSessionResponse?>
     >(StartCourseQuickRevisionController.new);
+
+final startCourseRichRevisionControllerProvider =
+    NotifierProvider<
+      StartCourseRichRevisionController,
+      AsyncValue<RichClosedExercise?>
+    >(StartCourseRichRevisionController.new);
 
 class CreateCourseController extends Notifier<AsyncValue<void>> {
   @override
@@ -319,6 +333,7 @@ class UploadCourseDocumentController
     final uploaded = result.requireValue;
     ref.invalidate(courseDetailProvider(detail.course.id));
     ref.invalidate(courseProgressProvider(detail.course.id));
+    ref.invalidate(courseRichRevisionOptionsProvider(detail.course.id));
     ref.invalidate(coursesProvider(detail.course.subjectId));
     ref.invalidate(subjectProgressProvider(detail.course.subjectId));
 
@@ -335,6 +350,8 @@ void _invalidateCourseSurfaces(
   ref.invalidate(courseLifecycleProvider(courseId));
   ref.invalidate(courseProgressProvider(courseId));
   ref.invalidate(courseRevisionSessionHistoryProvider(courseId));
+  ref.invalidate(courseRichRevisionOptionsProvider(courseId));
+  ref.invalidate(courseRichClosedHistoryProvider(courseId));
   ref.invalidate(coursesProvider(subjectId));
   ref.invalidate(subjectProgressProvider(subjectId));
 }
@@ -499,5 +516,40 @@ class StartCourseQuickRevisionController
     }
 
     return result.requireValue;
+  }
+}
+
+class StartCourseRichRevisionController
+    extends Notifier<AsyncValue<RichClosedExercise?>> {
+  @override
+  AsyncValue<RichClosedExercise?> build() => const AsyncData(null);
+
+  Future<RichClosedExercise> start({
+    required String courseId,
+    required CourseRichRevisionConfig config,
+  }) async {
+    if (state.isLoading) {
+      throw StateError('QCM complet en cours de préparation');
+    }
+
+    state = const AsyncLoading();
+    final repository = ref.read(coursesRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.startCourseRichRevision(
+        courseId: courseId,
+        config: config,
+      ),
+    );
+    state = result.whenData<RichClosedExercise?>((exercise) => exercise);
+
+    if (result.hasError) {
+      Error.throwWithStackTrace(result.error!, result.stackTrace!);
+    }
+
+    final exercise = result.requireValue;
+    ref.invalidate(courseRichRevisionOptionsProvider(courseId));
+    ref.invalidate(courseRichClosedHistoryProvider(courseId));
+
+    return exercise;
   }
 }

@@ -6,6 +6,7 @@ import '../../features/activities/application/activity_controller.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/courses/presentation/course_detail_page.dart';
 import '../../features/courses/presentation/course_exam_preparation_page.dart';
+import '../../features/courses/presentation/course_rich_revision_page.dart';
 import '../../features/courses/presentation/course_revision_sheet_page.dart';
 import '../../features/courses/presentation/courses_home_page.dart';
 import '../../features/courses/presentation/revisions_pending_page.dart';
@@ -97,6 +98,12 @@ GoRouter createAppRouter({
               GoRoute(
                 path: AppRoutes.coursePath,
                 builder: (context, state) => CourseDetailPage(
+                  courseId: state.pathParameters['courseId'] ?? '',
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.courseRichRevisionPath,
+                builder: (context, state) => CourseRichRevisionPage(
                   courseId: state.pathParameters['courseId'] ?? '',
                 ),
               ),

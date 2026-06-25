@@ -1,11 +1,14 @@
 import 'dart:typed_data';
 
 import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
+import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
 import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
+
+import '../features/activities/fixtures/rich_closed_exercise_fixtures.dart';
 
 class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, List<CourseListItem>> coursesBySubject = {};
@@ -29,6 +32,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   revisionSessionHistoryByCourse = {};
   final Map<String, List<CourseRichClosedHistoryItem>>
   richClosedHistoryByCourse = {};
+  final Map<String, CourseRichRevisionOptions> richRevisionOptionsByCourse = {};
   final Map<String, List<RevisionSessionHistoryItem>>
   examPreparationHistoryByCourse = {};
   final Map<String, CourseExamPreparationOptions>
@@ -46,9 +50,11 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int getResumableRevisionSessionCount = 0;
   int getCourseRevisionSessionHistoryCount = 0;
   int getCourseRichClosedHistoryCount = 0;
+  int getRichRevisionOptionsCount = 0;
   int getExamPreparationOptionsCount = 0;
   int getCourseExamPreparationHistoryCount = 0;
   int startExamPreparationCount = 0;
+  int startRichRevisionCount = 0;
   int prepareQuestionBankCount = 0;
   int uploadCount = 0;
   int deleteDocumentCount = 0;
@@ -69,10 +75,13 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastResumableRevisionSessionCourseId;
   String? lastCourseRevisionSessionHistoryCourseId;
   String? lastCourseRichClosedHistoryCourseId;
+  String? lastRichRevisionOptionsCourseId;
   String? lastExamPreparationOptionsCourseId;
   String? lastCourseExamPreparationHistoryCourseId;
   String? lastExamPreparationCourseId;
   CourseExamPreparationConfig? lastExamPreparationConfig;
+  String? lastRichRevisionCourseId;
+  CourseRichRevisionConfig? lastRichRevisionConfig;
   int? lastQuickRevisionQuestionCount;
   String? lastArchivedCourseLifecycleId;
   String? lastDeletedCourseLifecycleId;
@@ -82,10 +91,13 @@ class InMemoryCoursesRepository implements CoursesRepository {
   Object? archiveDocumentError;
   Object? quickRevisionError;
   Object? examPreparationError;
+  Object? richRevisionError;
   RevisionSessionResponse? quickRevisionResponse;
   RevisionSessionResponse? examPreparationResponse;
+  RichClosedExercise? richRevisionResponse;
   Duration uploadDelay = Duration.zero;
   Duration quickRevisionDelay = Duration.zero;
+  Duration richRevisionDelay = Duration.zero;
 
   @override
   Future<List<CourseListItem>> listCourses({required String subjectId}) async {
@@ -551,6 +563,71 @@ class InMemoryCoursesRepository implements CoursesRepository {
     return CourseRichClosedHistoryResponse(
       items: List.unmodifiable(items.take(limit)),
     );
+  }
+
+  @override
+  Future<CourseRichRevisionOptions> getRichRevisionOptions({
+    required String courseId,
+  }) async {
+    getRichRevisionOptionsCount += 1;
+    lastRichRevisionOptionsCourseId = courseId;
+
+    if (!detailsByCourse.containsKey(courseId)) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    return richRevisionOptionsByCourse[courseId] ??
+        CourseRichRevisionOptions(
+          course: CourseRichRevisionCourse(
+            id: courseId,
+            title: detailsByCourse[courseId]!.course.title,
+            subjectId: detailsByCourse[courseId]!.course.subjectId,
+          ),
+          readiness: const CourseRichRevisionReadiness(
+            canStart: false,
+            state: CourseRichRevisionReadinessState.blocked,
+            userMessage: 'Ajoute une source pour lancer un QCM complet.',
+            blockers: ['NO_READY_SOURCE'],
+            readySourceCount: 0,
+            readyKnowledgeUnitCount: 0,
+          ),
+          scopeOptions: const [],
+          questionCountOptions: const [],
+          defaultQuestionCount: null,
+          supportedQuestionKinds: const [
+            'single_choice',
+            'multiple_choice',
+            'matching',
+          ],
+          complexityProfiles: const ['standard', 'advanced'],
+          defaultConfig: null,
+          nextStep: const CourseRichRevisionNextStep(
+            kind: 'blocked',
+            userMessage: 'Ajoute une source pour lancer un QCM complet.',
+          ),
+        );
+  }
+
+  @override
+  Future<RichClosedExercise> startCourseRichRevision({
+    required String courseId,
+    required CourseRichRevisionConfig config,
+  }) async {
+    if (richRevisionDelay > Duration.zero) {
+      await Future<void>.delayed(richRevisionDelay);
+    }
+
+    startRichRevisionCount += 1;
+    lastRichRevisionCourseId = courseId;
+    lastRichRevisionConfig = config;
+
+    final error = richRevisionError;
+    if (error != null) {
+      throw error;
+    }
+
+    return richRevisionResponse ??
+        RichClosedExercise.fromJson(richClosedExerciseJson());
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../documents/domain/revision_document.dart';
+import '../../activities/domain/rich_closed_exercise.dart';
 import '../../documents/domain/source_lifecycle.dart';
 import '../../revision_sessions/domain/revision_session.dart';
 import 'course_models.dart';
@@ -80,6 +81,15 @@ abstract interface class CoursesRepository {
   Future<CourseRichClosedHistoryResponse> getCourseRichClosedHistory({
     required String courseId,
     int limit = 5,
+  });
+
+  Future<CourseRichRevisionOptions> getRichRevisionOptions({
+    required String courseId,
+  });
+
+  Future<RichClosedExercise> startCourseRichRevision({
+    required String courseId,
+    required CourseRichRevisionConfig config,
   });
 
   Future<CourseExamPreparationOptions> getExamPreparationOptions({

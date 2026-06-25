@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import '../../activities/domain/rich_closed_exercise.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import '../../documents/data/revision_sheet_json.dart';
@@ -472,6 +473,56 @@ class HttpCoursesRepository implements CoursesRepository {
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CourseRichRevisionOptions> getRichRevisionOptions({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/rich-revision/options',
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseRichRevisionOptionsJson(response.data).toOptions();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<RichClosedExercise> startCourseRichRevision({
+    required String courseId,
+    required CourseRichRevisionConfig config,
+  }) async {
+    try {
+      final response = await _dio.post<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/rich-revision/sessions',
+        data: {
+          'scopeKind': _richRevisionScopeKindJson(config.scopeKind),
+          'scopeId': config.scopeId,
+          'questionCount': config.questionCount,
+          'complexityProfile': config.complexityProfile,
+        },
+        options: await _authorizedOptions(),
+      );
+
+      return RichClosedExercise.fromJson(response.data);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      if (error.response?.statusCode == 409) {
+        throw CourseRequestException(
+          _responseMessage(error) ?? 'QCM complet indisponible',
+        );
       }
       rethrow;
     }
@@ -1083,6 +1134,189 @@ class _CourseRichClosedHistoryItemJson {
   }
 }
 
+class _CourseRichRevisionOptionsJson {
+  const _CourseRichRevisionOptionsJson(this.value);
+
+  final Object? value;
+
+  CourseRichRevisionOptions toOptions() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid rich revision response');
+    }
+
+    final course = json['course'];
+    final readiness = json['readiness'];
+    final scopeOptions = json['scopeOptions'];
+    final questionCountOptions = json['questionCountOptions'];
+    final supportedQuestionKinds = json['supportedQuestionKinds'];
+    final complexityProfiles = json['complexityProfiles'];
+    final nextStep = json['nextStep'];
+
+    if (course is! Map<String, Object?> ||
+        readiness is! Map<String, Object?> ||
+        scopeOptions is! List ||
+        questionCountOptions is! List ||
+        supportedQuestionKinds is! List ||
+        complexityProfiles is! List ||
+        nextStep is! Map<String, Object?>) {
+      throw const FormatException('Invalid rich revision response');
+    }
+
+    return CourseRichRevisionOptions(
+      course: CourseRichRevisionCourse(
+        id: _requiredString(course['id'], 'Invalid rich revision response'),
+        title: _requiredString(
+          course['title'],
+          'Invalid rich revision response',
+        ),
+        subjectId: _requiredString(
+          course['subjectId'],
+          'Invalid rich revision response',
+        ),
+      ),
+      readiness: _CourseRichRevisionReadinessJson(readiness).toReadiness(),
+      scopeOptions: scopeOptions
+          .map((item) => _CourseRichRevisionScopeOptionJson(item).toOption())
+          .toList(growable: false),
+      questionCountOptions: questionCountOptions
+          .map((item) => _requiredInt(item, 'Invalid rich revision response'))
+          .toList(growable: false),
+      defaultQuestionCount: _optionalInt(json['defaultQuestionCount']),
+      supportedQuestionKinds: supportedQuestionKinds
+          .map(
+            (item) => _requiredString(item, 'Invalid rich revision response'),
+          )
+          .toList(growable: false),
+      complexityProfiles: complexityProfiles
+          .map(
+            (item) => _requiredString(item, 'Invalid rich revision response'),
+          )
+          .toList(growable: false),
+      defaultConfig: json['defaultConfig'] == null
+          ? null
+          : _CourseRichRevisionConfigJson(json['defaultConfig']).toConfig(),
+      nextStep: CourseRichRevisionNextStep(
+        kind: _requiredString(
+          nextStep['kind'],
+          'Invalid rich revision response',
+        ),
+        userMessage: _requiredString(
+          nextStep['userMessage'],
+          'Invalid rich revision response',
+        ),
+      ),
+    );
+  }
+}
+
+class _CourseRichRevisionReadinessJson {
+  const _CourseRichRevisionReadinessJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseRichRevisionReadiness toReadiness() {
+    final blockers = value['blockers'];
+    if (blockers is! List) {
+      throw const FormatException('Invalid rich revision response');
+    }
+
+    return CourseRichRevisionReadiness(
+      canStart: _requiredBool(
+        value['canStart'],
+        'Invalid rich revision response',
+      ),
+      state: _parseRichRevisionReadinessState(
+        _requiredString(value['state'], 'Invalid rich revision response'),
+      ),
+      userMessage: _requiredString(
+        value['userMessage'],
+        'Invalid rich revision response',
+      ),
+      blockers: blockers
+          .map(
+            (item) => _requiredString(item, 'Invalid rich revision response'),
+          )
+          .toList(growable: false),
+      readySourceCount: _requiredInt(
+        value['readySourceCount'],
+        'Invalid rich revision response',
+      ),
+      readyKnowledgeUnitCount: _requiredInt(
+        value['readyKnowledgeUnitCount'],
+        'Invalid rich revision response',
+      ),
+    );
+  }
+}
+
+class _CourseRichRevisionScopeOptionJson {
+  const _CourseRichRevisionScopeOptionJson(this.value);
+
+  final Object? value;
+
+  CourseRichRevisionScopeOption toOption() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid rich revision response');
+    }
+
+    return CourseRichRevisionScopeOption(
+      kind: _parseRichRevisionScopeKind(
+        _requiredString(json['kind'], 'Invalid rich revision response'),
+      ),
+      id: _requiredString(json['id'], 'Invalid rich revision response'),
+      documentId: _requiredString(
+        json['documentId'],
+        'Invalid rich revision response',
+      ),
+      label: _requiredString(json['label'], 'Invalid rich revision response'),
+      sourceLabel: _requiredString(
+        json['sourceLabel'],
+        'Invalid rich revision response',
+      ),
+      canSelect: _requiredBool(
+        json['canSelect'],
+        'Invalid rich revision response',
+      ),
+    );
+  }
+}
+
+class _CourseRichRevisionConfigJson {
+  const _CourseRichRevisionConfigJson(this.value);
+
+  final Object? value;
+
+  CourseRichRevisionConfig toConfig() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid rich revision response');
+    }
+
+    return CourseRichRevisionConfig(
+      scopeKind: _parseRichRevisionScopeKind(
+        _requiredString(json['scopeKind'], 'Invalid rich revision response'),
+      ),
+      scopeId: _requiredString(
+        json['scopeId'],
+        'Invalid rich revision response',
+      ),
+      questionCount: _requiredInt(
+        json['questionCount'],
+        'Invalid rich revision response',
+      ),
+      complexityProfile: _requiredString(
+        json['complexityProfile'],
+        'Invalid rich revision response',
+      ),
+    );
+  }
+}
+
 class _CourseExamPreparationOptionsJson {
   const _CourseExamPreparationOptionsJson(this.value);
 
@@ -1559,6 +1793,32 @@ CourseExamPreparationReadinessState _parseExamPreparationReadinessState(
     'NOT_READY' => CourseExamPreparationReadinessState.notReady,
     'BLOCKED' => CourseExamPreparationReadinessState.blocked,
     _ => CourseExamPreparationReadinessState.unknown,
+  };
+}
+
+CourseRichRevisionReadinessState _parseRichRevisionReadinessState(
+  String value,
+) {
+  return switch (value) {
+    'READY' => CourseRichRevisionReadinessState.ready,
+    'PARTIALLY_READY' => CourseRichRevisionReadinessState.partiallyReady,
+    'NOT_READY' => CourseRichRevisionReadinessState.notReady,
+    'BLOCKED' => CourseRichRevisionReadinessState.blocked,
+    _ => CourseRichRevisionReadinessState.unknown,
+  };
+}
+
+CourseRichRevisionScopeKind _parseRichRevisionScopeKind(String value) {
+  return switch (value) {
+    'knowledge_unit' => CourseRichRevisionScopeKind.knowledgeUnit,
+    _ => CourseRichRevisionScopeKind.unknown,
+  };
+}
+
+String _richRevisionScopeKindJson(CourseRichRevisionScopeKind value) {
+  return switch (value) {
+    CourseRichRevisionScopeKind.knowledgeUnit => 'knowledge_unit',
+    CourseRichRevisionScopeKind.unknown => 'unknown',
   };
 }
 

@@ -1064,6 +1064,13 @@ class _CourseModes extends ConsumerWidget {
       data: (value) => value,
       orElse: () => null,
     );
+    final richRevisionState = ref.watch(
+      courseRichRevisionOptionsProvider(detail.course.id),
+    );
+    final richRevisionAction = _richRevisionActionFor(
+      detail.sources,
+      richRevisionState,
+    );
     final isStartingQuickRevision = quickRevisionState.isLoading;
     final isPreparingQuestions = preparationState.isLoading;
     final hasPartialReadyQuestions = (readiness?.readyQuestionCount ?? 0) >= 5;
@@ -1105,11 +1112,15 @@ class _CourseModes extends ConsumerWidget {
         const SizedBox(height: RevisionSpacing.m),
         RevisionModeCard(
           title: 'QCM complet',
-          description: 'Questions variées pour t’entraîner plus sérieusement.',
+          description: richRevisionAction.description,
           icon: Icons.extension_rounded,
           accent: RevisionColors.green,
-          trailingLabel: 'Bientôt',
-          enabled: false,
+          trailingLabel: richRevisionAction.trailingLabel,
+          enabled: richRevisionAction.enabled,
+          onTap: richRevisionAction.enabled
+              ? () =>
+                    context.push(AppRoutes.courseRichRevision(detail.course.id))
+              : null,
         ),
         const SizedBox(height: RevisionSpacing.m),
         RevisionModeCard(
@@ -1146,6 +1157,82 @@ class _CourseModes extends ConsumerWidget {
       ],
     );
   }
+}
+
+class _RichRevisionCardAction {
+  const _RichRevisionCardAction({
+    required this.description,
+    required this.trailingLabel,
+    required this.enabled,
+  });
+
+  final String description;
+  final String trailingLabel;
+  final bool enabled;
+}
+
+_RichRevisionCardAction _richRevisionActionFor(
+  List<CourseDocument> sources,
+  AsyncValue<CourseRichRevisionOptions> optionsState,
+) {
+  final hasReadySource = sources.any(
+    (source) => source.status == CourseDocumentStatus.ready,
+  );
+
+  if (!hasReadySource) {
+    if (sources.any(_isPendingSource)) {
+      return const _RichRevisionCardAction(
+        description: 'Disponible après traitement.',
+        trailingLabel: 'En analyse',
+        enabled: false,
+      );
+    }
+
+    return const _RichRevisionCardAction(
+      description: 'Ajoute une source pour t’entraîner.',
+      trailingLabel: 'Source requise',
+      enabled: false,
+    );
+  }
+
+  if (optionsState.isLoading && !optionsState.hasValue) {
+    return const _RichRevisionCardAction(
+      description: 'Vérification des notions disponibles.',
+      trailingLabel: 'Vérification...',
+      enabled: false,
+    );
+  }
+
+  final options = optionsState.asData?.value;
+  if (options == null) {
+    return const _RichRevisionCardAction(
+      description: 'Questions variées pour t’entraîner plus sérieusement.',
+      trailingLabel: 'Indisponible',
+      enabled: false,
+    );
+  }
+
+  if (options.readiness.canStart && options.scopeOptions.isNotEmpty) {
+    return const _RichRevisionCardAction(
+      description: 'Questions variées pour t’entraîner plus sérieusement.',
+      trailingLabel: 'Configurer',
+      enabled: true,
+    );
+  }
+
+  if (options.readiness.blockers.contains('NO_KNOWLEDGE_UNITS')) {
+    return const _RichRevisionCardAction(
+      description: 'Aucune notion exploitable.',
+      trailingLabel: 'Indisponible',
+      enabled: false,
+    );
+  }
+
+  return _RichRevisionCardAction(
+    description: options.readiness.userMessage,
+    trailingLabel: 'Indisponible',
+    enabled: false,
+  );
 }
 
 Future<void> _handleQuickRevisionTap(

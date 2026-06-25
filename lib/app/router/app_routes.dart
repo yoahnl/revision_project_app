@@ -7,6 +7,7 @@ class AppRoutes {
   static const revisions = '/revisions';
   static const sources = '/sources';
   static const coursePath = '/courses/:courseId';
+  static const courseRichRevisionPath = '/courses/:courseId/rich-revision';
   static const courseExamPreparationPath =
       '/courses/:courseId/exam-preparation';
   static const courseSheetPath = '/courses/:courseId/sheet';
@@ -29,6 +30,10 @@ class AppRoutes {
   static String subjectDetail(String subjectId) => '/subjects/$subjectId';
 
   static String course(String courseId) => '/courses/$courseId';
+
+  static String courseRichRevision(String courseId) {
+    return '/courses/$courseId/rich-revision';
+  }
 
   static String courseExamPreparation(String courseId) {
     return '/courses/$courseId/exam-preparation';

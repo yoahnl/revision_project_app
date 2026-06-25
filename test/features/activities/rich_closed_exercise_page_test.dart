@@ -341,7 +341,7 @@ void main() {
     expect(api.startCount, 1);
     expect(api.startedSubjectId, 'subject-1');
     expect(api.startedKnowledgeUnitId, 'unit-1');
-    expect(find.text('Questions riches'), findsOneWidget);
+    expect(find.text('QCM complet'), findsOneWidget);
     expect(find.text('1 / 6 répondues'), findsOneWidget);
     expect(_submitButton(tester).onPressed, isNull);
     expect(
@@ -772,7 +772,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('Impossible de charger les questions riches'),
+      find.textContaining('Impossible de charger le QCM complet'),
       findsOneWidget,
     );
     expect(find.text('Réessayer'), findsOneWidget);

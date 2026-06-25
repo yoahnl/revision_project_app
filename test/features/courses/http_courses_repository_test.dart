@@ -10,6 +10,8 @@ import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
 
+import '../activities/fixtures/rich_closed_exercise_fixtures.dart';
+
 class CapturingHttpClientAdapter implements HttpClientAdapter {
   CapturingHttpClientAdapter(this.response);
 
@@ -644,6 +646,74 @@ void main() {
     expect(adapter.lastOptions?.queryParameters, {'limit': 5});
   });
 
+  test('loads course QCM complet options without answer data', () async {
+    final response = richRevisionOptionsJson();
+    final adapter = CapturingHttpClientAdapter(jsonResponse(response));
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final options = await repository.getRichRevisionOptions(
+      courseId: 'course-1',
+    );
+
+    expect(options.course.title, 'Droit constitutionnel');
+    expect(options.readiness.state, CourseRichRevisionReadinessState.ready);
+    expect(options.readiness.canStart, isTrue);
+    expect(options.scopeOptions, hasLength(1));
+    expect(
+      options.scopeOptions.single.kind,
+      CourseRichRevisionScopeKind.knowledgeUnit,
+    );
+    expect(options.scopeOptions.single.id, 'ku-1');
+    expect(options.scopeOptions.single.documentId, 'document-1');
+    expect(options.questionCountOptions, [6, 10, 13]);
+    expect(options.questionCountOptions, isNot(contains(14)));
+    expect(options.defaultQuestionCount, 6);
+    expect(options.defaultConfig?.complexityProfile, 'standard');
+    expect(options.complexityProfiles, ['standard', 'advanced']);
+    expect(jsonEncode(response), isNot(contains('correctAnswer')));
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/rich-revision/options',
+    );
+  });
+
+  test('starts a course QCM complet session', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(richClosedExerciseJson()),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final exercise = await repository.startCourseRichRevision(
+      courseId: 'course-1',
+      config: const CourseRichRevisionConfig(
+        scopeKind: CourseRichRevisionScopeKind.knowledgeUnit,
+        scopeId: 'ku-1',
+        questionCount: 13,
+        complexityProfile: 'advanced',
+      ),
+    );
+
+    expect(exercise.sessionId, 'rich-session-1');
+    expect(adapter.lastOptions?.method, 'POST');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/rich-revision/sessions',
+    );
+    expect(adapter.lastOptions?.data, {
+      'scopeKind': 'knowledge_unit',
+      'scopeId': 'ku-1',
+      'questionCount': 13,
+      'complexityProfile': 'advanced',
+    });
+  });
+
   test('loads course exam preparation options without answer data', () async {
     final response = examPreparationOptionsJson();
     final adapter = CapturingHttpClientAdapter(jsonResponse(response));
@@ -999,6 +1069,51 @@ Map<String, Object?> richClosedHistoryItemJson({
     'score': score,
     'completedAt': '2026-06-18T10:07:00.000Z',
     'resultPath': '/activities/rich-closed/$sessionId/result',
+  };
+}
+
+Map<String, Object?> richRevisionOptionsJson({
+  String state = 'READY',
+  bool canStart = true,
+}) {
+  return {
+    'course': {
+      'id': 'course-1',
+      'title': 'Droit constitutionnel',
+      'subjectId': 'subject-1',
+    },
+    'readiness': {
+      'canStart': canStart,
+      'state': state,
+      'userMessage': 'Ton cours est prêt pour un QCM complet.',
+      'blockers': <String>[],
+      'readySourceCount': 1,
+      'readyKnowledgeUnitCount': 1,
+    },
+    'scopeOptions': [
+      {
+        'kind': 'knowledge_unit',
+        'id': 'ku-1',
+        'documentId': 'document-1',
+        'label': 'Responsabilité politique',
+        'sourceLabel': 'CM.pdf',
+        'canSelect': true,
+      },
+    ],
+    'questionCountOptions': [6, 10, 13],
+    'defaultQuestionCount': 6,
+    'supportedQuestionKinds': ['single_choice', 'multiple_choice', 'matching'],
+    'complexityProfiles': ['standard', 'advanced'],
+    'defaultConfig': {
+      'scopeKind': 'knowledge_unit',
+      'scopeId': 'ku-1',
+      'questionCount': 6,
+      'complexityProfile': 'standard',
+    },
+    'nextStep': {
+      'kind': 'configuration_ready',
+      'userMessage': 'Choisis une notion et démarre le QCM complet.',
+    },
   };
 }
 

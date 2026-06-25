@@ -61,8 +61,9 @@ class _RichClosedExercisePageState extends State<RichClosedExercisePage> {
     final state = _flowController.state;
 
     return RevisionPage(
-      title: 'Questions riches',
-      subtitle: 'Un exercice fermé structuré, corrigé par le backend.',
+      title: 'QCM complet',
+      subtitle:
+          'Un entraînement structuré avec plusieurs formats de questions.',
       children: [
         if (!_hasLoadContext)
           _MissingContextPanel()
@@ -154,7 +155,7 @@ class _RichClosedExercisePageState extends State<RichClosedExercisePage> {
 
   String _failureMessage(RichClosedExerciseFlowState state) {
     if (state.exercise == null) {
-      return 'Impossible de charger les questions riches. Réessaie dans un instant.';
+      return 'Impossible de charger le QCM complet. Réessaie dans un instant.';
     }
 
     return 'Impossible de corriger les réponses. Réessaie dans un instant.';
@@ -351,7 +352,7 @@ class _MissingContextPanel extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.l),
       child: RevisionMessage(
         message:
-            'Sélectionne une notion depuis une matière pour démarrer des questions riches.',
+            'Sélectionne une notion depuis un cours pour démarrer un QCM complet.',
         color: Theme.of(context).colorScheme.secondary,
         icon: Icons.info_outline,
       ),

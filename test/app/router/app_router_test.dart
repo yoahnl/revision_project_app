@@ -125,6 +125,13 @@ void main() {
     );
   });
 
+  test('AppRoutes builds course QCM complet route', () {
+    expect(
+      AppRoutes.courseRichRevision('course-1'),
+      '/courses/course-1/rich-revision',
+    );
+  });
+
   test('shell keeps only primary destinations and sessions outside shell', () {
     final harness = _RouterHarness();
     addTearDown(harness.dispose);
@@ -387,7 +394,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Questions riches'), findsOneWidget);
+      expect(find.text('QCM complet'), findsOneWidget);
       expect(find.byType(RevisionBottomNavigation), findsNothing);
       expect(find.byType(RevisionNavigationRail), findsNothing);
     },
@@ -485,7 +492,7 @@ void main() {
         harness.router.routeInformationProvider.value.uri.toString(),
         '/activities/rich-closed?subjectId=subject-1&documentId=document-1&knowledgeUnitId=unit-1',
       );
-      expect(find.text('Questions riches'), findsOneWidget);
+      expect(find.text('QCM complet'), findsOneWidget);
       expect(harness.activityApi.startedRichClosedCount, 1);
       expect(harness.activityApi.startedRichClosedSubjectId, 'subject-1');
       expect(harness.activityApi.startedRichClosedDocumentId, 'document-1');
@@ -527,7 +534,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Questions riches'), findsOneWidget);
+      expect(find.text('QCM complet'), findsOneWidget);
       expect(find.text('Exercice institutions politiques'), findsOneWidget);
       expect(harness.activityApi.startedRichClosedCount, 1);
       expect(harness.activityApi.startedDiagnosticQuizCount, 0);
@@ -551,10 +558,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(RevisionButton, 'Questions riches'));
+    await tester.tap(find.widgetWithText(RevisionButton, 'QCM complet'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Questions riches'), findsOneWidget);
+    expect(find.text('QCM complet'), findsOneWidget);
     expect(harness.activityApi.startedRichClosedCount, 1);
     expect(harness.activityApi.startedRichClosedSubjectId, 'subject-1');
     expect(harness.activityApi.startedRichClosedKnowledgeUnitId, 'unit-1');
@@ -580,7 +587,7 @@ void main() {
         harness.router.routeInformationProvider.value.uri.toString(),
         '/activities/rich-closed?subjectId=subject-1&documentId=document-1&knowledgeUnitId=unit-1',
       );
-      expect(find.text('Questions riches'), findsOneWidget);
+      expect(find.text('QCM complet'), findsOneWidget);
       expect(harness.activityApi.startedRichClosedCount, 1);
       expect(harness.activityApi.startedRichClosedSubjectId, 'subject-1');
       expect(harness.activityApi.startedRichClosedKnowledgeUnitId, 'unit-1');

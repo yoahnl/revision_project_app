@@ -335,6 +335,112 @@ class CourseExamPreparationNextStep {
   final String userMessage;
 }
 
+enum CourseRichRevisionReadinessState {
+  ready,
+  partiallyReady,
+  notReady,
+  blocked,
+  unknown,
+}
+
+enum CourseRichRevisionScopeKind { knowledgeUnit, unknown }
+
+class CourseRichRevisionOptions {
+  const CourseRichRevisionOptions({
+    required this.course,
+    required this.readiness,
+    required this.scopeOptions,
+    required this.questionCountOptions,
+    required this.defaultQuestionCount,
+    required this.supportedQuestionKinds,
+    required this.complexityProfiles,
+    required this.defaultConfig,
+    required this.nextStep,
+  });
+
+  final CourseRichRevisionCourse course;
+  final CourseRichRevisionReadiness readiness;
+  final List<CourseRichRevisionScopeOption> scopeOptions;
+  final List<int> questionCountOptions;
+  final int? defaultQuestionCount;
+  final List<String> supportedQuestionKinds;
+  final List<String> complexityProfiles;
+  final CourseRichRevisionConfig? defaultConfig;
+  final CourseRichRevisionNextStep nextStep;
+}
+
+class CourseRichRevisionCourse {
+  const CourseRichRevisionCourse({
+    required this.id,
+    required this.title,
+    required this.subjectId,
+  });
+
+  final String id;
+  final String title;
+  final String subjectId;
+}
+
+class CourseRichRevisionReadiness {
+  const CourseRichRevisionReadiness({
+    required this.canStart,
+    required this.state,
+    required this.userMessage,
+    required this.blockers,
+    required this.readySourceCount,
+    required this.readyKnowledgeUnitCount,
+  });
+
+  final bool canStart;
+  final CourseRichRevisionReadinessState state;
+  final String userMessage;
+  final List<String> blockers;
+  final int readySourceCount;
+  final int readyKnowledgeUnitCount;
+}
+
+class CourseRichRevisionScopeOption {
+  const CourseRichRevisionScopeOption({
+    required this.kind,
+    required this.id,
+    required this.documentId,
+    required this.label,
+    required this.sourceLabel,
+    required this.canSelect,
+  });
+
+  final CourseRichRevisionScopeKind kind;
+  final String id;
+  final String documentId;
+  final String label;
+  final String sourceLabel;
+  final bool canSelect;
+}
+
+class CourseRichRevisionConfig {
+  const CourseRichRevisionConfig({
+    required this.scopeKind,
+    required this.scopeId,
+    required this.questionCount,
+    required this.complexityProfile,
+  });
+
+  final CourseRichRevisionScopeKind scopeKind;
+  final String scopeId;
+  final int questionCount;
+  final String complexityProfile;
+}
+
+class CourseRichRevisionNextStep {
+  const CourseRichRevisionNextStep({
+    required this.kind,
+    required this.userMessage,
+  });
+
+  final String kind;
+  final String userMessage;
+}
+
 class CourseRichClosedHistoryResponse {
   const CourseRichClosedHistoryResponse({required this.items});
 
