@@ -80,25 +80,28 @@ class FakeKvStorage implements KvStoragePort {
 }
 
 void main() {
-  testWidgets('shows a real-ready home without fixture courses', (
-    tester,
-  ) async {
+  testWidgets('opens on Today with the V4 three-tab shell', (tester) async {
     final testApp = _createTestApp();
 
     await tester.pumpWidget(testApp.widget);
     await tester.pumpAndSettle();
 
-    expect(find.text('Accueil'), findsWidgets);
-    expect(find.text('Commence par créer une matière.'), findsOneWidget);
-    expect(find.text('Créer une matière'), findsOneWidget);
+    expect(find.text('Plan du jour'), findsOneWidget);
+    expect(
+      find.text('Aucune action prioritaire pour aujourd’hui.'),
+      findsOneWidget,
+    );
+    expect(find.text('Aujourd’hui'), findsOneWidget);
+    expect(find.text('Cours'), findsOneWidget);
+    expect(find.text('Progrès'), findsOneWidget);
+    expect(find.text('Réviser'), findsNothing);
+    expect(find.text('Profil'), findsNothing);
     expect(find.text('Math'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);
     expect(find.text('12'), findsNothing);
     expect(find.text('870'), findsNothing);
     expect(find.text('7 jours'), findsNothing);
-    expect(find.text('Progrès'), findsOneWidget);
-    expect(find.text('Réviser'), findsOneWidget);
     expect(find.text('Sources'), findsNothing);
     expect(find.byType(RevisionBottomNavigation), findsOneWidget);
     final shellScaffold = find.ancestor(
@@ -127,12 +130,11 @@ void main() {
     expect(find.text('78%'), findsNothing);
     expect(find.textContaining('CORE-06 branchera'), findsNothing);
 
-    await tester.tap(find.text('Réviser'));
+    await tester.tap(find.text('Cours'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Réviser'), findsWidgets);
-    expect(find.text('Choisis une session courte et utile.'), findsOneWidget);
-    expect(find.text('Aucune matière disponible'), findsOneWidget);
+    expect(find.text('Commence par créer une matière.'), findsOneWidget);
+    expect(find.text('Créer une matière'), findsOneWidget);
     expect(find.textContaining('CORE-05 branchera'), findsNothing);
     expect(find.textContaining('à brancher en CORE-05'), findsNothing);
     expect(find.text('Sources'), findsNothing);
@@ -155,6 +157,7 @@ void main() {
       ).widget,
     );
     await tester.pumpAndSettle();
+    await _openCoursesTab(tester);
 
     expect(find.text('Droit constitutionnel'), findsWidgets);
     expect(find.text('Aucun cours pour le moment'), findsOneWidget);
@@ -178,6 +181,7 @@ void main() {
       ).widget,
     );
     await tester.pumpAndSettle();
+    await _openCoursesTab(tester);
 
     await tester.tap(find.text('Droits').first);
     await tester.pumpAndSettle();
@@ -236,6 +240,7 @@ void main() {
       ).widget,
     );
     await tester.pumpAndSettle();
+    await _openCoursesTab(tester);
 
     expect(find.text('Institutions de la Ve République'), findsWidgets);
     expect(find.text('Chapitre 2 · 35 min'), findsOneWidget);
@@ -276,6 +281,7 @@ void main() {
       ).widget,
     );
     await tester.pumpAndSettle();
+    await _openCoursesTab(tester);
 
     expect(find.text('Droits'), findsWidgets);
     expect(find.text('Continue ton progrès'), findsOneWidget);
@@ -325,6 +331,7 @@ void main() {
       ).widget,
     );
     await tester.pumpAndSettle();
+    await _openCoursesTab(tester);
 
     await tester.ensureVisible(
       find.widgetWithText(FilledButton, 'Créer un cours'),
@@ -380,12 +387,10 @@ void main() {
     expect(find.byType(RevisionNavigationRail), findsOneWidget);
     expect(find.byType(RevisionBottomNavigation), findsNothing);
 
-    await tester.tap(find.text('Réviser'));
+    await tester.tap(find.text('Cours'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Réviser'), findsWidgets);
-    expect(find.text('Choisis une session courte et utile.'), findsOneWidget);
-    expect(find.text('Aucune matière disponible'), findsOneWidget);
+    expect(find.text('Commence par créer une matière.'), findsOneWidget);
     expect(find.textContaining('CORE-05 branchera'), findsNothing);
   });
 
@@ -473,6 +478,11 @@ _RevisionTestApp _createTestApp({
     activityApi: activityApi,
     todayRepository: todayRepository,
   );
+}
+
+Future<void> _openCoursesTab(WidgetTester tester) async {
+  await tester.tap(find.text('Cours'));
+  await tester.pumpAndSettle();
 }
 
 String _subjectNameFor(List<Subject> subjects, String subjectId) {

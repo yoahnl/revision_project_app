@@ -64,7 +64,7 @@ GoRouter createAppRouter({
   VoidCallback? onSubjectCreated,
 }) {
   return GoRouter(
-    initialLocation: AppRoutes.home,
+    initialLocation: AppRoutes.today,
     refreshListenable: authController,
     redirect: (context, state) {
       return executeRevisionRedirect(authController, state);
@@ -72,7 +72,7 @@ GoRouter createAppRouter({
     routes: [
       GoRoute(
         path: AppRoutes.root,
-        redirect: (context, state) => AppRoutes.home,
+        redirect: (context, state) => AppRoutes.today,
       ),
       GoRoute(
         path: AppRoutes.signIn,
@@ -91,6 +91,14 @@ GoRouter createAppRouter({
           return RevisionHomeShell(navigationShell: navigationShell);
         },
         branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.today,
+                builder: (context, state) => const TodayPage(),
+              ),
+            ],
+          ),
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -171,38 +179,30 @@ GoRouter createAppRouter({
                 path: AppRoutes.progress,
                 builder: (context, state) => const SubjectProgressPage(),
               ),
-              GoRoute(
-                path: AppRoutes.today,
-                builder: (context, state) => const TodayPage(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.revisions,
-                builder: (context, state) => const RevisionsPendingPage(),
-              ),
-              GoRoute(
-                path: AppRoutes.activities,
-                builder: (context, state) => ActivitiesPage(
-                  controller: activityController,
-                  subjectId: state.uri.queryParameters['subjectId'],
-                  knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
-                ),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.profile,
-                builder: (context, state) =>
-                    ProfilePage(authController: authController),
-              ),
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.revisions,
+        builder: (context, state) =>
+            const _ImmersiveRouteScaffold(child: RevisionsPendingPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.activities,
+        builder: (context, state) => _ImmersiveRouteScaffold(
+          child: ActivitiesPage(
+            controller: activityController,
+            subjectId: state.uri.queryParameters['subjectId'],
+            knowledgeUnitId: state.uri.queryParameters['knowledgeUnitId'],
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (context, state) => _ImmersiveRouteScaffold(
+          child: ProfilePage(authController: authController),
+        ),
       ),
       GoRoute(
         path: AppRoutes.sources,
@@ -310,7 +310,7 @@ String? executeRevisionRedirect(
   }
 
   if (isSigningIn) {
-    return AppRoutes.home;
+    return AppRoutes.today;
   }
 
   return null;

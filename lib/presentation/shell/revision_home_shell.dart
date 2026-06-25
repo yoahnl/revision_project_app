@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:Neralune/core/routing/route_paths.dart';
 import 'package:Neralune/presentation/widgets/revision_background.dart';
 import 'package:Neralune/presentation/widgets/revision_navigation.dart';
 
@@ -89,54 +88,20 @@ class _WideHomeScaffold extends StatelessWidget {
   }
 }
 
-const List<_RevisionDestination> _destinations = [
-  _RevisionDestination(
-    path: homeRoutePath,
-    label: 'Accueil',
+const List<RevisionNavigationDestination> _navigationDestinations = [
+  RevisionNavigationDestination(
+    label: 'Aujourd’hui',
     icon: Icons.home_outlined,
-    selectedIcon: Icons.home,
+    selectedIcon: Icons.home_rounded,
   ),
-  _RevisionDestination(
-    path: progressRoutePath,
+  RevisionNavigationDestination(
+    label: 'Cours',
+    icon: Icons.menu_book_outlined,
+    selectedIcon: Icons.menu_book_rounded,
+  ),
+  RevisionNavigationDestination(
     label: 'Progrès',
     icon: Icons.trending_up_rounded,
     selectedIcon: Icons.trending_up_rounded,
   ),
-  _RevisionDestination(
-    path: revisionsRoutePath,
-    label: 'Réviser',
-    icon: Icons.track_changes_rounded,
-    selectedIcon: Icons.track_changes_rounded,
-  ),
-  _RevisionDestination(
-    path: profileRoutePath,
-    label: 'Profil',
-    icon: Icons.person_outline,
-    selectedIcon: Icons.person,
-  ),
 ];
-
-final List<RevisionNavigationDestination> _navigationDestinations =
-    _destinations
-        .map(
-          (destination) => RevisionNavigationDestination(
-            label: destination.label,
-            icon: destination.icon,
-            selectedIcon: destination.selectedIcon,
-          ),
-        )
-        .toList(growable: false);
-
-class _RevisionDestination {
-  const _RevisionDestination({
-    required this.path,
-    required this.label,
-    required this.icon,
-    required this.selectedIcon,
-  });
-
-  final String path;
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-}

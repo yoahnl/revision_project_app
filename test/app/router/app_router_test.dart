@@ -52,52 +52,49 @@ class FakeAuthRepository implements AuthRepository {
 }
 
 void main() {
-  test(
-    'appRouterProvider exposes a GoRouter with Revision initial location',
-    () {
-      final authController = AuthController(
-        FakeAuthRepository(),
-        initialSession: const AuthSession.signedIn(
-          AuthenticatedUser(
-            uid: 'firebase-123',
-            email: 'student@example.com',
-            displayName: 'Karim',
-          ),
+  test('appRouterProvider exposes a GoRouter with Today initial location', () {
+    final authController = AuthController(
+      FakeAuthRepository(),
+      initialSession: const AuthSession.signedIn(
+        AuthenticatedUser(
+          uid: 'firebase-123',
+          email: 'student@example.com',
+          displayName: 'Karim',
         ),
-      );
-      addTearDown(authController.dispose);
+      ),
+    );
+    addTearDown(authController.dispose);
 
-      final container = ProviderContainer(
-        overrides: [
-          authControllerProvider.overrideWithValue(authController),
-          subjectsControllerProvider.overrideWithValue(
-            SubjectsController(InMemorySubjectsRepository()),
-          ),
-          revisionGoalsControllerProvider.overrideWithValue(
-            RevisionGoalsController(InMemoryRevisionGoalsRepository()),
-          ),
-          documentsControllerProvider.overrideWithValue(
-            DocumentsController(InMemoryDocumentsApi()),
-          ),
-          activityControllerProvider.overrideWithValue(
-            ActivityController(InMemoryActivityApi()),
-          ),
-          revisionSessionControllerProvider.overrideWithValue(
-            RevisionSessionController(InMemoryRevisionSessionsApi()),
-          ),
-          todayControllerProvider.overrideWithValue(
-            TodayController(InMemoryTodayRepository()),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
+    final container = ProviderContainer(
+      overrides: [
+        authControllerProvider.overrideWithValue(authController),
+        subjectsControllerProvider.overrideWithValue(
+          SubjectsController(InMemorySubjectsRepository()),
+        ),
+        revisionGoalsControllerProvider.overrideWithValue(
+          RevisionGoalsController(InMemoryRevisionGoalsRepository()),
+        ),
+        documentsControllerProvider.overrideWithValue(
+          DocumentsController(InMemoryDocumentsApi()),
+        ),
+        activityControllerProvider.overrideWithValue(
+          ActivityController(InMemoryActivityApi()),
+        ),
+        revisionSessionControllerProvider.overrideWithValue(
+          RevisionSessionController(InMemoryRevisionSessionsApi()),
+        ),
+        todayControllerProvider.overrideWithValue(
+          TodayController(InMemoryTodayRepository()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
 
-      final router = container.read(appRouterProvider);
+    final router = container.read(appRouterProvider);
 
-      expect(router, isA<GoRouter>());
-      expect(router.routeInformationProvider.value.uri.path, AppRoutes.home);
-    },
-  );
+    expect(router, isA<GoRouter>());
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.today);
+  });
 
   test('AppRoutes builds revision session routes with query params', () {
     final route = AppRoutes.revisionSession(
@@ -168,17 +165,18 @@ void main() {
         .map((route) => route.path)
         .toSet();
 
-    expect(branchRoots, [
-      AppRoutes.home,
-      AppRoutes.progress,
-      AppRoutes.revisions,
-      AppRoutes.profile,
-    ]);
+    expect(branchRoots, [AppRoutes.today, AppRoutes.home, AppRoutes.progress]);
+    expect(shellPaths, isNot(contains(AppRoutes.revisions)));
+    expect(shellPaths, isNot(contains(AppRoutes.activities)));
+    expect(shellPaths, isNot(contains(AppRoutes.profile)));
     expect(shellPaths, isNot(contains(AppRoutes.sources)));
     expect(shellPaths, isNot(contains(AppRoutes.revisionSessionV2Path)));
     expect(shellPaths, isNot(contains(AppRoutes.revisionSessionResultV2Path)));
     expect(shellPaths, isNot(contains(AppRoutes.revisionSessionPath)));
     expect(shellPaths, isNot(contains(AppRoutes.richClosedExercisePath)));
+    expect(topLevelPaths, contains(AppRoutes.revisions));
+    expect(topLevelPaths, contains(AppRoutes.activities));
+    expect(topLevelPaths, contains(AppRoutes.profile));
     expect(topLevelPaths, contains(AppRoutes.sources));
     expect(topLevelPaths, contains(AppRoutes.revisionSessionV2Path));
     expect(topLevelPaths, contains(AppRoutes.revisionSessionResultV2Path));
@@ -193,9 +191,10 @@ void main() {
     addTearDown(harness.dispose);
 
     await tester.pumpWidget(harness.buildApp());
+    harness.router.go(AppRoutes.home);
     await tester.pumpAndSettle();
 
-    expect(find.text('Accueil'), findsWidgets);
+    expect(find.text('Cours'), findsWidgets);
     expect(find.text('Commence par créer une matière.'), findsOneWidget);
     expect(find.text('Math'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
@@ -280,6 +279,7 @@ void main() {
     addTearDown(harness.dispose);
 
     await tester.pumpWidget(harness.buildApp());
+    harness.router.go(AppRoutes.home);
     await tester.pumpAndSettle();
 
     expect(
@@ -321,6 +321,7 @@ void main() {
     addTearDown(harness.dispose);
 
     await tester.pumpWidget(harness.buildApp());
+    harness.router.go(AppRoutes.home);
     await tester.pumpAndSettle();
 
     harness.router.push(AppRoutes.course('course-1'));

@@ -45,8 +45,8 @@ Difference entre roadmap canonique et tracker :
 
 | Area | Status | Last completed lot | Current / next lot | Main risk | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Documentation / governance | `IN_PROGRESS` | `V4-DOC-01` | `V4-DOC-02` | Tracker trop lourd ou non maintenu | Roadmap canonique existante ; tracker a valider. |
-| Shell & navigation | `NOT_STARTED` | Aucun | `V4-01A` | Casser routes legacy ou acces profil | Premier vrai lot produit recommande. |
+| Documentation / governance | `DONE` | `V4-DOC-02` | `V4-01B` | Tracker non maintenu apres les lots | Roadmap et tracker existent. |
+| Shell & navigation | `IN_PROGRESS` | `V4-01A` | `V4-01B` | Acces profil secondaire absent | Trois onglets visibles livres ; profil secondaire a traiter. |
 | Aujourd'hui | `NOT_STARTED` | Aucun | `V4-02A` | Refaire trop tot le planner backend | Commencer frontend-first avec donnees existantes. |
 | Cours | `NOT_STARTED` | Aucun | `V4-03A` | Garder trop de gestion/source en surface | S'appuyer sur `CoursesHomePage` et subject picker. |
 | Learning path | `NOT_STARTED` | Aucun | `V4-04A` | Etats pedagogiques mal calibres | Contrat backend avant timeline finale. |
@@ -62,8 +62,8 @@ Difference entre roadmap canonique et tracker :
 
 | Phase | Title | Status | Product goal | Main deliverable | Depends on | Evidence expected | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Phase 0 | Roadmap, contrats produit et inventaire vérité | `IN_PROGRESS` | Eviter des lots contradictoires. | Roadmap canonique, tracker, conventions evidence. | Aucune | Diff documentation, commandes de lecture, tracker relu. | `V4-DOC-01` existe ; `V4-DOC-02` reste a valider. |
-| Phase 1 | Shell V4 et navigation simplifiée | `NOT_STARTED` | Rendre l'app comprehensible en deux secondes. | Navigation visible Aujourd'hui, Cours, Progres ; profil secondaire. | Phase 0 | Captures mobile/desktop, router/widget tests. | Ne pas supprimer les routes legacy. |
+| Phase 0 | Roadmap, contrats produit et inventaire vérité | `DONE` | Eviter des lots contradictoires. | Roadmap canonique, tracker, conventions evidence. | Aucune | Diff documentation, commandes de lecture, tracker relu. | Roadmap et tracker crees. |
+| Phase 1 | Shell V4 et navigation simplifiée | `IN_PROGRESS` | Rendre l'app comprehensible en deux secondes. | Navigation visible Aujourd'hui, Cours, Progres ; profil secondaire. | Phase 0 | Captures mobile/desktop, router/widget tests. | Shell trois onglets livre ; profil secondaire reste a faire. |
 | Phase 2 | Aujourd’hui V4 | `NOT_STARTED` | Montrer quoi travailler, combien de temps et pourquoi. | Today V4 avec action principale, objectif semaine, continuation discrete. | Phase 1 | Captures, tests Today, contrat Today documente si modifie. | Frontend-first avant nouveau planner. |
 | Phase 3 | Cours V4 et sélecteur matière | `NOT_STARTED` | Transformer Cours en bibliotheque vivante. | Matiere active, reviser toute la matiere, liste compacte, selecteur. | Phase 1 | Captures 0/1/n cours, tests subject picker. | Sources et gestion en secondaire. |
 | Phase 4 | Learning path du cours | `NOT_STARTED` | Montrer le parcours de notions du cours. | Endpoint ou contrat learning path, timeline verticale. | Phase 3 | Contrat API, fixtures, captures, tests. | Utiliser `KnowledgeUnit` et `MasteryState` d'abord. |
@@ -80,8 +80,8 @@ Difference entre roadmap canonique et tracker :
 | Lot ID | Title | Type | Status | Repository | Scope | Depends on | Files / areas expected | Tests expected | Evidence pack path | Completion date | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `V4-DOC-01` | Roadmap canonique V4 | Docs | `DONE` | Frontend doc + API audit | Source canonique produit/tech | Aucune | `docs/roadmap/v4/NERALUNE_PRODUCT_TECH_ROADMAP_V4.md` | Relecture documentaire | À confirmer | 2026-06-25 | Roadmap presente et coherent avec l'audit. Evidence pack non cree avant convention. |
-| `V4-DOC-02` | Execution tracker V4 | Docs | `IN_PROGRESS` | Frontend doc | Tracker phases/lots/risques/decisions | `V4-DOC-01` | `docs/roadmap/v4/EXECUTION_TRACKER_V4.md` | Relecture, `git diff --check` | `docs/roadmap/v4/evidence/V4-DOC-02_execution_tracker_v4_EVIDENCE_PACK.md` | À confirmer | Ce fichier est la sortie du lot ; passer `DONE` apres validation. |
-| `V4-01A` | Shell trois onglets | Frontend | `NOT_STARTED` | Frontend | Navigation Aujourd'hui, Cours, Progres | `V4-DOC-02` | Shell, router, navigation widgets | Router tests, widget shell, responsive | `docs/roadmap/v4/evidence/V4-01A_shell_trois_onglets_EVIDENCE_PACK.md` | À confirmer | Ne pas refaire Today dans ce lot. |
+| `V4-DOC-02` | Execution tracker V4 | Docs | `DONE` | Frontend doc | Tracker phases/lots/risques/decisions | `V4-DOC-01` | `docs/roadmap/v4/EXECUTION_TRACKER_V4.md` | Relecture, `git diff --check` | À confirmer | 2026-06-25 | Tracker cree et utilise pour piloter `V4-01A`. |
+| `V4-01A` | Shell trois onglets | Frontend | `DONE` | Frontend | Navigation Aujourd'hui, Cours, Progres | `V4-DOC-02` | Shell, router, navigation widgets | Router tests, widget shell, responsive | `docs/roadmap/v4/evidence/V4-01A_shell_trois_onglets_EVIDENCE_PACK.md` | 2026-06-25 | Trois onglets visibles livres ; profil secondaire reporte a `V4-01B`. |
 | `V4-01B` | Profil secondaire et routes legacy préservées | Frontend | `NOT_STARTED` | Frontend | Sortir Profil de la nav principale sans casser les deep links | `V4-01A` | Shell, router, routes profil/legacy | Router tests, smoke legacy | `docs/roadmap/v4/evidence/V4-01B_profil_routes_legacy_EVIDENCE_PACK.md` | À confirmer | Profil accessible via menu secondaire. |
 | `V4-02A` | Aujourd’hui V4 frontend-first | Frontend | `NOT_STARTED` | Frontend | UI Today V4 avec donnees existantes | `V4-01A` | `TodayPage`, widgets Today, states | Widget tests loading/error/empty/data | `docs/roadmap/v4/evidence/V4-02A_aujourdhui_frontend_first_EVIDENCE_PACK.md` | À confirmer | Pas de nouveau planner backend. |
 | `V4-02B` | Today backend enrichment | Backend | `NOT_STARTED` | API | Enrichir Today pour recommendation/weekly/continue | `V4-02A` | Revision module, Today use case/controller | Unit/controller tests | `docs/roadmap/v4/evidence/V4-02B_today_backend_enrichment_EVIDENCE_PACK.md` | À confirmer | Garder compat avec Today existant. |
@@ -113,30 +113,30 @@ Difference entre roadmap canonique et tracker :
 
 ## 6. Next recommended lots
 
-1. `V4-DOC-02` — Execution tracker V4
-   - Pourquoi maintenant : la roadmap demande une source operationnelle pour suivre les lots.
-   - Ne doit pas faire : modifier du code, creer des evidence packs, changer Git.
-   - Risque principal : creer un tracker trop long que personne ne maintient.
-
-2. `V4-01A` — Shell trois onglets
-   - Pourquoi maintenant : la navigation cible conditionne tout le reste.
-   - Ne doit pas faire : refondre Today, Cours ou Progres.
-   - Risque principal : casser la navigation legacy ou masquer un acces encore utile.
-
-3. `V4-01B` — Profil secondaire et routes legacy préservées
+1. `V4-01B` — Profil secondaire et routes legacy préservées
    - Pourquoi maintenant : supprimer l'onglet Profil sans perdre les reglages ni les deep links.
    - Ne doit pas faire : supprimer les routes historiques.
    - Risque principal : rendre le profil difficile a retrouver.
 
-4. `V4-02A` — Aujourd’hui V4 frontend-first
+2. `V4-02A` — Aujourd’hui V4 frontend-first
    - Pourquoi maintenant : la valeur V4 commence par la recommandation quotidienne.
    - Ne doit pas faire : attendre un nouveau planner backend complet.
    - Risque principal : construire une UI trop ambitieuse pour les donnees existantes.
 
-5. `V4-02B` — Today backend enrichment
+3. `V4-02B` — Today backend enrichment
    - Pourquoi maintenant : completer les champs manquants apres avoir stabilise la surface Today.
    - Ne doit pas faire : transformer `/today` en moteur de session complet.
    - Risque principal : introduire un contrat backend trop specifique a une premiere maquette.
+
+4. `V4-03A` — Cours V4 frontend
+   - Pourquoi maintenant : l'onglet Cours existe maintenant comme destination principale.
+   - Ne doit pas faire : ajouter learning path ou duration picker.
+   - Risque principal : refaire trop largement la bibliotheque au lieu de la simplifier.
+
+5. `V4-03B` — Sélecteur matière et action “Réviser toute la matière”
+   - Pourquoi maintenant : completer la surface Cours avant les sessions V4.
+   - Ne doit pas faire : brancher Study Session V4.
+   - Risque principal : exposer trop tot des actions qui dependent du duration picker.
 
 ## 7. Evidence pack convention
 
@@ -180,12 +180,15 @@ Ne pas creer les evidence packs en avance. Ils sont crees uniquement a la fin du
 | 2026-06-25 | Luna est une presence sobre, pas une mascotte envahissante. | Accepted | Garder un ton premium et serieux. | Integration limitee aux moments utiles. | Phase 10. |
 | 2026-06-25 | Login non prioritaire. | Accepted | La page login est deja satisfaisante. | Les premiers lots doivent viser la boucle de revision. | Si incoherence visuelle majeure apparait. |
 | 2026-06-25 | La roadmap canonique reste la source de verite, le tracker suit l'execution. | Accepted | Evite de dupliquer la strategie. | Les changements strategiques passent par le decision log. | Apres chaque lot. |
+| 2026-06-25 | `Aujourd'hui` devient la route initiale signee-in. | Accepted | La V4 doit ouvrir sur la priorite du jour. | `AppRoutes.today` remplace `AppRoutes.home` comme initial location. | Si Today V4 bloque l'usage avant `V4-02A`. |
+| 2026-06-25 | `/home` reste la route Cours legacy. | Accepted | Evite de casser les liens existants vers la bibliotheque de cours. | L'onglet `Cours` pointe vers l'existant `CoursesHomePage`. | Phase 3. |
+| 2026-06-25 | `/revisions`, `/activities` et `/profile` sortent du shell visible. | Accepted | Masquer les destinations techniques sans supprimer les routes. | Ces routes restent accessibles hors navigation principale. | `V4-01B` et `V4-11A`. |
 
 ## 9. Open risks
 
 | Risk ID | Risk | Severity | Area | Mitigation | Owner / next lot | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `R-V4-001` | Big bang frontend. | High | Frontend | Decouper shell, Today, Cours, sessions. | `V4-01A` | Open |
+| `R-V4-001` | Big bang frontend. | High | Frontend | Decouper shell, Today, Cours, sessions. | `V4-02A` | Mitigated |
 | `R-V4-002` | Confusion entre quick/rich/deep/exam dans le code. | High | Frontend + API | Creer une facade Study Session et garder les moteurs internes. | `V4-05B` | Open |
 | `R-V4-003` | `questionCount` encore trop central. | High | API + Frontend | Masquer cote UI, mapper temporairement si necessaire, puis planner duration. | `V4-05A`, `V4-05B` | Open |
 | `R-V4-004` | Cout IA des sessions variees. | Medium | IA + API | Budget par duree, cache question bank, fallback questions pretes. | `V4-05B` | Open |
@@ -237,12 +240,12 @@ Regles pratiques :
 
 Etat initial au 2026-06-25 :
 
-- `V4-DOC-01` est considere comme realise parce que la roadmap canonique existe, couvre frontend et API, et contient phases, backlog, risques et ordre recommande.
-- `V4-DOC-02` est le lot en cours : ce fichier cree le tracker d'execution.
-- Le prochain vrai lot produit recommande est `V4-01A`.
-- Toutes les phases produit apres Phase 0 sont `NOT_STARTED`.
-- Aucun evidence pack n'est cree maintenant ; seule la convention est definie.
-- Aucun fichier Dart, TypeScript, Prisma, route, test ou configuration ne doit etre modifie par ce lot.
+- `V4-DOC-01` est realise parce que la roadmap canonique existe, couvre frontend et API, et contient phases, backlog, risques et ordre recommande.
+- `V4-DOC-02` est realise parce que ce tracker existe et sert deja au suivi des lots.
+- `V4-01A` est realise : le shell visible contient `Aujourd'hui`, `Cours`, `Progres`.
+- Le prochain lot recommande est `V4-01B`.
+- Les phases produit apres Phase 1 restent `NOT_STARTED`.
+- Aucun fichier backend ou Prisma n'a ete modifie par `V4-01A`.
 
 Controles de coherence effectues pour creer ce tracker :
 
@@ -264,7 +267,7 @@ Points solides :
 
 Points a surveiller :
 
-- `V4-DOC-02` est marque `IN_PROGRESS` tant que le user ne valide pas ce tracker.
-- `V4-DOC-01` est marque `DONE` sur la preuve de l'existence de la roadmap, mais son evidence pack n'existait pas encore.
+- `V4-DOC-02` est marque `DONE` sans evidence pack dedie ; la preuve reste le fichier tracker committe au lot precedent.
+- `V4-01A` est marque `DONE`, mais `flutter analyze` a crashe cote outil et devra etre relance.
 - Les lots backend API sont references meme si le repository concerne par ce fichier est le frontend ; cela reste necessaire car la roadmap V4 depend explicitement du backend.
 - Le decoupage `V4-01A`, `V4-01B`, etc. simplifie le pilotage par rapport aux IDs bruts du backlog canonique ; il ne doit pas faire oublier les tickets detailles de la roadmap source.
