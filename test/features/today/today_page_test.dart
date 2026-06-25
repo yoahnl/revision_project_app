@@ -11,25 +11,41 @@ import 'package:Neralune/presentation/pages/today/today_page.dart';
 import '../../fakes/in_memory_today_repository.dart';
 
 void main() {
-  testWidgets('affiche un état de chargement', (tester) async {
+  testWidgets('affiche un état de chargement premium', (tester) async {
     final repository = _PendingTodayRepository();
 
     await tester.pumpWidget(_buildApp(repository: repository));
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Préparation de ta session du jour...'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
 
-  testWidgets('affiche un état vide propre', (tester) async {
+  testWidgets('affiche un état vide sans fausse session', (tester) async {
     final repository = InMemoryTodayRepository();
+    final router = _router(repository);
 
-    await tester.pumpWidget(_buildApp(repository: repository));
+    await tester.pumpWidget(
+      _buildScopedApp(repository: repository, router: router),
+    );
+    addTearDown(router.dispose);
     await tester.pump();
 
+    expect(find.text('Aujourd’hui'), findsOneWidget);
+    expect(find.text('Rien de prêt pour aujourd’hui'), findsOneWidget);
     expect(
-      find.text('Aucune action prioritaire pour aujourd’hui.'),
+      find.text(
+        'Ajoute un cours ou une source pour que Neralune prépare ta prochaine session.',
+      ),
       findsOneWidget,
     );
-    expect(find.text('Voir mes matières'), findsOneWidget);
+    expect(find.text('Voir mes cours'), findsOneWidget);
+    expect(find.text('Ta session du jour'), findsNothing);
+    expect(find.text('Réviser maintenant'), findsNothing);
+
+    await tester.tap(find.text('Voir mes cours'));
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/home');
   });
 
   testWidgets('affiche une erreur et permet de réessayer', (tester) async {
@@ -40,7 +56,10 @@ void main() {
     await tester.pumpWidget(_buildApp(repository: repository));
     await tester.pump();
 
-    expect(find.text('Impossible de charger le plan'), findsOneWidget);
+    expect(
+      find.text('Impossible de charger ta session du jour.'),
+      findsOneWidget,
+    );
 
     repository.error = null;
     await tester.tap(find.text('Réessayer'));
@@ -48,69 +67,61 @@ void main() {
     await tester.pump();
 
     expect(repository.getTodayPlanCalls, 2);
-    expect(find.text('QCM ciblé'), findsOneWidget);
+    expect(find.text('Ta session du jour'), findsOneWidget);
+    expect(find.text('Réviser maintenant'), findsOneWidget);
   });
 
-  testWidgets('affiche plusieurs actions Today v2', (tester) async {
+  testWidgets('affiche une carte principale Today V4', (tester) async {
     final repository = InMemoryTodayRepository()..plan = todayPlan();
 
     await tester.pumpWidget(_buildApp(repository: repository));
     await tester.pump();
 
-    expect(find.text('4 actions'), findsOneWidget);
-    expect(find.text('63 min'), findsOneWidget);
-    expect(find.text('QCM ciblé'), findsOneWidget);
-    expect(find.text('Question ouverte'), findsOneWidget);
-    expect(find.text('Questions riches'), findsOneWidget);
-    expect(find.text('Session de révision IA'), findsOneWidget);
-    expect(find.text('À revoir en priorité.'), findsOneWidget);
-    expect(find.text('Change de format.'), findsOneWidget);
-    expect(find.text('Questions riches recommandées.'), findsOneWidget);
-    expect(find.text('Lance une session guidée.'), findsOneWidget);
-    expect(find.text('8 min'), findsOneWidget);
-    expect(find.text('12 min'), findsOneWidget);
-    expect(find.text('Priorité 610'), findsOneWidget);
-    expect(find.text('Maîtrise 20 %'), findsOneWidget);
-    expect(find.text('Maîtrise non mesurée'), findsOneWidget);
-    expect(find.text('Démarrer le QCM'), findsOneWidget);
-    expect(find.text('Répondre à la question'), findsOneWidget);
-    expect(find.text('Commencer'), findsOneWidget);
-    expect(find.text('Lancer la session'), findsOneWidget);
+    expect(find.text('Aujourd’hui'), findsOneWidget);
+    expect(find.text('Ta session du jour'), findsOneWidget);
+    expect(find.text('ANATOMIE'), findsOneWidget);
+    expect(find.text('Cycle cardiaque'), findsOneWidget);
+    expect(find.text('12 min · session guidée'), findsOneWidget);
+    expect(
+      find.text(
+        'Cette notion semble fragile : la revoir maintenant aidera à consolider tes bases.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Réviser maintenant'), findsOneWidget);
+    expect(find.text('Continuer'), findsOneWidget);
+    expect(find.text('Valves'), findsWidgets);
   });
 
-  testWidgets(
-    'ne montre pas de barre de progression pour maîtrise non mesurée',
-    (tester) async {
-      final repository = InMemoryTodayRepository()
-        ..plan = TodayPlan(
-          generatedAt: DateTime.parse('2026-06-15T10:00:00.000Z'),
-          items: [openQuestionItem()],
-        );
+  testWidgets('masque le jargon technique Today', (tester) async {
+    final repository = InMemoryTodayRepository()..plan = todayPlan();
 
-      await tester.pumpWidget(_buildApp(repository: repository));
-      await tester.pump();
+    await tester.pumpWidget(_buildApp(repository: repository));
+    await tester.pump();
 
-      expect(find.text('Maîtrise non mesurée'), findsOneWidget);
-      expect(find.byType(LinearProgressIndicator), findsNothing);
-    },
-  );
+    for (final forbidden in _forbiddenTodayLabels) {
+      expect(find.text(forbidden), findsNothing, reason: forbidden);
+      expect(find.textContaining(forbidden), findsNothing, reason: forbidden);
+    }
+    expect(find.text('Priorité 610'), findsNothing);
+    expect(find.text('priority'), findsNothing);
+    expect(find.text('reasonCode'), findsNothing);
+    expect(find.text('payload'), findsNothing);
+  });
 
-  testWidgets('navigue vers Activities pour QCM sans forcer question ouverte', (
+  testWidgets('navigue vers Activities pour la session du jour QCM', (
     tester,
   ) async {
     final repository = InMemoryTodayRepository()..plan = todayPlan();
     final router = _router(repository);
 
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [todayRepositoryProvider.overrideWithValue(repository)],
-        child: MaterialApp.router(routerConfig: router),
-      ),
+      _buildScopedApp(repository: repository, router: router),
     );
     addTearDown(router.dispose);
     await tester.pump();
 
-    await tester.tap(find.text('Démarrer le QCM'));
+    await tester.tap(find.text('Réviser maintenant'));
     await tester.pumpAndSettle();
 
     expect(
@@ -122,21 +133,20 @@ void main() {
   testWidgets('navigue vers Activities avec notion pour question ouverte', (
     tester,
   ) async {
-    final repository = InMemoryTodayRepository()..plan = todayPlan();
+    final repository = InMemoryTodayRepository()
+      ..plan = TodayPlan(
+        generatedAt: DateTime.parse('2026-06-15T10:00:00.000Z'),
+        items: [openQuestionItem()],
+      );
     final router = _router(repository);
 
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [todayRepositoryProvider.overrideWithValue(repository)],
-        child: MaterialApp.router(routerConfig: router),
-      ),
+      _buildScopedApp(repository: repository, router: router),
     );
     addTearDown(router.dispose);
     await tester.pump();
 
-    await tester.ensureVisible(find.text('Répondre à la question'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Répondre à la question'));
+    await tester.tap(find.text('Réviser maintenant'));
     await tester.pumpAndSettle();
 
     expect(
@@ -145,24 +155,23 @@ void main() {
     );
   });
 
-  testWidgets('navigue vers Questions riches avec notion et document', (
+  testWidgets('navigue vers rich closed avec notion et document', (
     tester,
   ) async {
-    final repository = InMemoryTodayRepository()..plan = todayPlan();
+    final repository = InMemoryTodayRepository()
+      ..plan = TodayPlan(
+        generatedAt: DateTime.parse('2026-06-15T10:00:00.000Z'),
+        items: [richClosedItem()],
+      );
     final router = _router(repository);
 
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [todayRepositoryProvider.overrideWithValue(repository)],
-        child: MaterialApp.router(routerConfig: router),
-      ),
+      _buildScopedApp(repository: repository, router: router),
     );
     addTearDown(router.dispose);
     await tester.pump();
 
-    await tester.ensureVisible(find.text('Commencer'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Commencer'));
+    await tester.tap(find.text('Réviser maintenant'));
     await tester.pumpAndSettle();
 
     expect(
@@ -171,22 +180,21 @@ void main() {
     );
   });
 
-  testWidgets('navigue vers la session de révision IA', (tester) async {
-    final repository = InMemoryTodayRepository()..plan = todayPlan();
+  testWidgets('navigue vers la session existante', (tester) async {
+    final repository = InMemoryTodayRepository()
+      ..plan = TodayPlan(
+        generatedAt: DateTime.parse('2026-06-15T10:00:00.000Z'),
+        items: [revisionSessionItem()],
+      );
     final router = _router(repository);
 
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [todayRepositoryProvider.overrideWithValue(repository)],
-        child: MaterialApp.router(routerConfig: router),
-      ),
+      _buildScopedApp(repository: repository, router: router),
     );
     addTearDown(router.dispose);
     await tester.pump();
 
-    await tester.ensureVisible(find.text('Lancer la session'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Lancer la session'));
+    await tester.tap(find.text('Réviser maintenant'));
     await tester.pumpAndSettle();
 
     expect(
@@ -195,7 +203,7 @@ void main() {
     );
   });
 
-  testWidgets('désactive une question ouverte sans notion', (tester) async {
+  testWidgets('désactive une action sans notion requise', (tester) async {
     final repository = InMemoryTodayRepository()
       ..plan = TodayPlan(
         generatedAt: DateTime.parse('2026-06-15T10:00:00.000Z'),
@@ -211,15 +219,23 @@ void main() {
     await tester.pumpWidget(_buildApp(repository: repository));
     await tester.pump();
 
-    expect(find.text('Action indisponible'), findsOneWidget);
-    expect(find.text('Répondre à la question'), findsNothing);
+    expect(find.text('Session indisponible'), findsOneWidget);
+    expect(find.text('Réviser maintenant'), findsNothing);
   });
 }
 
 Widget _buildApp({required InMemoryTodayRepository repository}) {
+  final router = _router(repository);
+  return _buildScopedApp(repository: repository, router: router);
+}
+
+Widget _buildScopedApp({
+  required InMemoryTodayRepository repository,
+  required GoRouter router,
+}) {
   return ProviderScope(
     overrides: [todayRepositoryProvider.overrideWithValue(repository)],
-    child: MaterialApp.router(routerConfig: _router(repository)),
+    child: MaterialApp.router(routerConfig: router),
   );
 }
 
@@ -228,6 +244,10 @@ GoRouter _router(InMemoryTodayRepository repository) {
     initialLocation: '/today',
     routes: [
       GoRoute(path: '/today', builder: (context, state) => const TodayPage()),
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const Scaffold(body: Text('Cours')),
+      ),
       GoRoute(
         path: '/subjects',
         builder: (context, state) => const Scaffold(body: Text('Matières')),
@@ -242,8 +262,7 @@ GoRouter _router(InMemoryTodayRepository repository) {
       ),
       GoRoute(
         path: '/activities/rich-closed',
-        builder: (context, state) =>
-            const Scaffold(body: Text('Questions riches')),
+        builder: (context, state) => const Scaffold(body: Text('Session')),
       ),
     ],
   );
@@ -256,6 +275,23 @@ class _PendingTodayRepository extends InMemoryTodayRepository {
     return Completer<TodayPlan>().future;
   }
 }
+
+const _forbiddenTodayLabels = [
+  'QCM ciblé',
+  'Questions riches',
+  'Question ouverte',
+  'Session de révision IA',
+  'diagnostic_quiz',
+  'open_question',
+  'rich_closed_exercise',
+  'QCM simple',
+  'QCM complet',
+  'Révision rapide',
+  'MVP',
+  'legacy',
+  'backend',
+  'GenUI',
+];
 
 TodayPlan todayPlan() {
   return TodayPlan(
@@ -281,21 +317,25 @@ TodayPlan todayPlan() {
       ),
       openQuestionItem(),
       richClosedItem(),
-      const TodayPlanItem(
-        id: 'subject-2:session:revision_session',
-        subjectId: 'subject-2',
-        subjectName: 'Droit',
-        knowledgeUnitId: null,
-        knowledgeUnitTitle: null,
-        masteryScore: 0.7,
-        action: TodayPlanActionType.revisionSession,
-        estimatedMinutes: 25,
-        priority: 500,
-        reasonCode: TodayPlanReasonCode.startRevisionSession,
-        reason: 'Lance une session guidée.',
-        startPayload: TodayPlanStartPayload(subjectId: 'subject-2'),
-      ),
+      revisionSessionItem(),
     ],
+  );
+}
+
+TodayPlanItem revisionSessionItem() {
+  return const TodayPlanItem(
+    id: 'subject-2:session:revision_session',
+    subjectId: 'subject-2',
+    subjectName: 'Droit',
+    knowledgeUnitId: null,
+    knowledgeUnitTitle: null,
+    masteryScore: 0.7,
+    action: TodayPlanActionType.revisionSession,
+    estimatedMinutes: 25,
+    priority: 500,
+    reasonCode: TodayPlanReasonCode.startRevisionSession,
+    reason: 'Lance une session guidée.',
+    startPayload: TodayPlanStartPayload(subjectId: 'subject-2'),
   );
 }
 

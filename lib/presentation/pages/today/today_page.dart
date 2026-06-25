@@ -4,15 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:Neralune/core/routing/route_paths.dart';
 import 'package:Neralune/features/today/application/today_notifier.dart';
 import 'package:Neralune/features/today/domain/today_plan.dart';
-import 'package:Neralune/presentation/theme/app_colors.dart';
-import 'package:Neralune/presentation/theme/app_spacing.dart';
-import 'package:Neralune/presentation/widgets/revision_button.dart';
-import 'package:Neralune/presentation/widgets/revision_icon_badge.dart';
-import 'package:Neralune/presentation/widgets/revision_message.dart';
-import 'package:Neralune/presentation/widgets/revision_page.dart';
-import 'package:Neralune/presentation/widgets/revision_panel.dart';
-import 'package:Neralune/presentation/widgets/revision_progress_bar.dart';
-import 'package:Neralune/presentation/widgets/revision_status_pill.dart';
+import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
+import 'package:Neralune/presentation/design_system/components/revision_states.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_colors.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_spacing.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_subject_visuals.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_typography.dart';
 
 class TodayPage extends ConsumerWidget {
   const TodayPage({super.key});
@@ -22,19 +19,21 @@ class TodayPage extends ConsumerWidget {
     final plan = ref.watch(todayNotifierProvider);
     final notifier = ref.read(todayNotifierProvider.notifier);
 
-    return RevisionPage(
-      title: 'Plan du jour',
-      subtitle: 'Actions prioritaires pour avancer sans te disperser.',
-      trailing: IconButton(
-        onPressed: notifier.reload,
-        icon: const Icon(Icons.refresh),
-        tooltip: 'Recharger',
-      ),
+    return RevisionPageScaffold(
+      maxWidth: 760,
+      headerChildren: const [_TodayHeader()],
       children: [
         plan.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stackTrace) =>
-              _TodayErrorState(onRetry: notifier.reload),
+          loading: () => const RevisionLoadingState(
+            label: 'Préparation de ta session du jour...',
+          ),
+          error: (error, stackTrace) => RevisionErrorState(
+            title: 'Impossible de charger ta session du jour.',
+            message:
+                'Réessaie dans un instant pour retrouver la recommandation du jour.',
+            actionLabel: 'Réessayer',
+            onAction: notifier.reload,
+          ),
           data: (plan) {
             if (plan.items.isEmpty) {
               return const _TodayEmptyState();
@@ -48,6 +47,39 @@ class TodayPage extends ConsumerWidget {
   }
 }
 
+class _TodayHeader extends StatelessWidget {
+  const _TodayHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('Aujourd’hui', style: RevisionTypography.pageTitle),
+              SizedBox(height: RevisionSpacing.xs),
+              Text(
+                'Une priorité claire pour avancer sans te disperser.',
+                style: RevisionTypography.body,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: RevisionSpacing.m),
+        const RevisionIconTile(
+          icon: Icons.auto_awesome_rounded,
+          accent: RevisionColors.cyan,
+          size: 48,
+          iconSize: 23,
+        ),
+      ],
+    );
+  }
+}
+
 class _TodayPlanContent extends StatelessWidget {
   const _TodayPlanContent({required this.plan});
 
@@ -55,246 +87,177 @@ class _TodayPlanContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryItem = plan.items.first;
+    final secondaryItems = plan.items.skip(1).take(2).toList(growable: false);
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacing.itemGap,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        RevisionPanel(
-          child: Wrap(
-            spacing: AppSpacing.s,
-            runSpacing: AppSpacing.s,
-            children: [
-              RevisionStatusPill(
-                label: '${plan.items.length} actions',
-                icon: Icons.playlist_add_check,
-                color: AppColors.primaryDark,
-              ),
-              RevisionStatusPill(
-                label: '${plan.totalEstimatedMinutes} min',
-                icon: Icons.schedule,
-                color: AppColors.aqua,
-              ),
-            ],
-          ),
-        ),
-        for (final item in plan.items) _TodayPlanItemCard(item: item),
+        _PrimarySessionCard(item: primaryItem),
+        if (secondaryItems.isNotEmpty) ...[
+          const SizedBox(height: RevisionSpacing.l),
+          _ContinuationSection(items: secondaryItems),
+        ],
       ],
     );
   }
 }
 
-class _TodayPlanItemCard extends StatelessWidget {
-  const _TodayPlanItemCard({required this.item});
+class _PrimarySessionCard extends StatelessWidget {
+  const _PrimarySessionCard({required this.item});
 
   final TodayPlanItem item;
 
   @override
   Widget build(BuildContext context) {
-    final action = _TodayActionPresentation.from(item.action);
+    final visual = revisionSubjectVisualThemeFor(item.subjectName);
     final canStart = _canStartAction(item);
-    final masteryScore = item.masteryScore;
+    final route = canStart ? _routeFor(item) : null;
 
-    return RevisionPanel(
+    return RevisionGlassCard(
+      padding: const EdgeInsets.all(RevisionSpacing.xl),
+      borderColor: visual.accent.withValues(alpha: 0.46),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          visual.accent.withValues(alpha: 0.34),
+          RevisionColors.blueDeep.withValues(alpha: 0.20),
+          RevisionColors.glassStrong,
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              RevisionIconBadge(icon: action.icon, color: action.color),
-              const SizedBox(width: AppSpacing.l),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      action.title,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      'Ta session du jour',
+                      style: RevisionTypography.caption.copyWith(
+                        color: RevisionColors.text.withValues(alpha: 0.76),
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      _targetLabel(item),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    const SizedBox(height: RevisionSpacing.m),
+                    _SubjectBadge(item: item, visual: visual),
                   ],
                 ),
               ),
+              RevisionIconTile(
+                icon: visual.icon,
+                accent: visual.accent,
+                size: 50,
+                iconSize: 25,
+              ),
             ],
           ),
-          const SizedBox(height: AppSpacing.l),
+          const SizedBox(height: RevisionSpacing.xl),
+          Text(_targetTitle(item), style: RevisionTypography.pageTitle),
+          const SizedBox(height: RevisionSpacing.s),
           Text(
-            item.reason,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: AppSpacing.m),
-          Wrap(
-            spacing: AppSpacing.s,
-            runSpacing: AppSpacing.s,
-            children: [
-              RevisionStatusPill(
-                label: '${item.estimatedMinutes} min',
-                icon: Icons.schedule,
-                color: AppColors.aqua,
-              ),
-              RevisionStatusPill(
-                label: 'Priorité ${item.priority}',
-                icon: Icons.flag,
-                color: AppColors.amber,
-              ),
-              RevisionStatusPill(
-                label: _reasonCodeLabel(item.reasonCode),
-                icon: Icons.lightbulb_outline,
-                color: AppColors.violet,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.l),
-          if (masteryScore == null)
-            Text(
-              'Maîtrise non mesurée',
-              style: Theme.of(context).textTheme.bodyMedium,
-            )
-          else ...[
-            RevisionProgressBar(value: masteryScore),
-            const SizedBox(height: AppSpacing.s),
-            Text(
-              'Maîtrise ${(_clampMastery(masteryScore) * 100).round()} %',
-              style: Theme.of(context).textTheme.bodyMedium,
+            _sessionMeta(item),
+            style: RevisionTypography.body.copyWith(
+              color: RevisionColors.text.withValues(alpha: 0.84),
             ),
-          ],
-          const SizedBox(height: AppSpacing.l),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: RevisionButton(
-              onPressed: canStart ? () => context.go(_routeFor(item)) : null,
-              icon: canStart ? action.icon : Icons.lock_outline,
-              label: canStart ? action.buttonLabel : 'Action indisponible',
-            ),
+          ),
+          const SizedBox(height: RevisionSpacing.l),
+          Text(_recommendationReason(item), style: RevisionTypography.body),
+          const SizedBox(height: RevisionSpacing.xl),
+          RevisionGradientButton(
+            label: canStart ? 'Réviser maintenant' : 'Session indisponible',
+            icon: canStart
+                ? Icons.play_arrow_rounded
+                : Icons.lock_outline_rounded,
+            expanded: true,
+            onPressed: route == null ? null : () => context.go(route),
           ),
         ],
       ),
     );
   }
+}
 
-  bool _canStartAction(TodayPlanItem item) {
-    final subjectId = item.startPayload.subjectId.trim();
-    if (subjectId.isEmpty) {
-      return false;
-    }
+class _SubjectBadge extends StatelessWidget {
+  const _SubjectBadge({required this.item, required this.visual});
 
-    if (item.action == TodayPlanActionType.openQuestion ||
-        item.action == TodayPlanActionType.richClosedExercise) {
-      return item.startPayload.knowledgeUnitId?.trim().isNotEmpty ?? false;
-    }
+  final TodayPlanItem item;
+  final RevisionSubjectVisualTheme visual;
 
-    return true;
-  }
+  @override
+  Widget build(BuildContext context) {
+    final subjectName = item.subjectName.trim();
 
-  String _routeFor(TodayPlanItem item) {
-    final payload = item.startPayload;
-
-    return switch (item.action) {
-      TodayPlanActionType.diagnosticQuiz => Uri(
-        path: activitiesRoutePath,
-        queryParameters: {'subjectId': payload.subjectId},
-      ).toString(),
-      TodayPlanActionType.openQuestion => Uri(
-        path: activitiesRoutePath,
-        queryParameters: {
-          'subjectId': payload.subjectId,
-          'knowledgeUnitId': payload.knowledgeUnitId!,
-        },
-      ).toString(),
-      TodayPlanActionType.richClosedExercise => richClosedExerciseRoutePathFor(
-        subjectId: payload.subjectId,
-        documentId: payload.documentId ?? item.documentId,
-        knowledgeUnitId: payload.knowledgeUnitId,
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: RevisionSpacing.m,
+        vertical: RevisionSpacing.s,
       ),
-      TodayPlanActionType.revisionSession => revisionSessionRoutePathFor(
-        subjectId: payload.subjectId,
-        documentId: payload.documentId ?? item.documentId,
-        knowledgeUnitId: payload.knowledgeUnitId,
-        preferredAction: _preferredActionValue(payload.preferredAction),
+      decoration: BoxDecoration(
+        color: RevisionColors.glassStrong.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: visual.accent.withValues(alpha: 0.48)),
       ),
-    };
-  }
-
-  String _targetLabel(TodayPlanItem item) {
-    final knowledgeUnitTitle = item.knowledgeUnitTitle?.trim();
-    if (knowledgeUnitTitle == null || knowledgeUnitTitle.isEmpty) {
-      return item.subjectName;
-    }
-
-    return '${item.subjectName} • $knowledgeUnitTitle';
-  }
-
-  String _reasonCodeLabel(TodayPlanReasonCode reasonCode) {
-    return switch (reasonCode) {
-      TodayPlanReasonCode.lowMastery => 'Maîtrise fragile',
-      TodayPlanReasonCode.stalePractice => 'À entretenir',
-      TodayPlanReasonCode.highPrioritySubject => 'Matière prioritaire',
-      TodayPlanReasonCode.mixActivityType => 'Format varié',
-      TodayPlanReasonCode.richClosedPractice => 'Exercice structuré',
-      TodayPlanReasonCode.startRevisionSession => 'Session guidée',
-      TodayPlanReasonCode.continueProgress => 'Progression',
-    };
-  }
-
-  String? _preferredActionValue(TodayPlanPreferredAction? preferredAction) {
-    return switch (preferredAction) {
-      TodayPlanPreferredAction.diagnosticQuiz => 'diagnostic_quiz',
-      TodayPlanPreferredAction.openQuestion => 'open_question',
-      null => null,
-    };
-  }
-
-  double _clampMastery(double score) {
-    return score.clamp(0, 1).toDouble();
+      child: Text(
+        subjectName.isEmpty ? 'MATIÈRE' : subjectName.toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: RevisionTypography.caption.copyWith(
+          color: visual.accent,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
   }
 }
 
-class _TodayActionPresentation {
-  const _TodayActionPresentation({
-    required this.title,
-    required this.buttonLabel,
-    required this.icon,
-    required this.color,
-  });
+class _ContinuationSection extends StatelessWidget {
+  const _ContinuationSection({required this.items});
 
-  final String title;
-  final String buttonLabel;
-  final IconData icon;
-  final Color color;
+  final List<TodayPlanItem> items;
 
-  static _TodayActionPresentation from(TodayPlanActionType action) {
-    return switch (action) {
-      TodayPlanActionType.diagnosticQuiz => const _TodayActionPresentation(
-        title: 'QCM ciblé',
-        buttonLabel: 'Démarrer le QCM',
-        icon: Icons.quiz,
-        color: AppColors.primaryDark,
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Continuer', style: RevisionTypography.sectionTitle),
+        const SizedBox(height: RevisionSpacing.m),
+        for (final item in items) ...[
+          _ContinuationTile(item: item),
+          if (item != items.last) const SizedBox(height: RevisionSpacing.m),
+        ],
+      ],
+    );
+  }
+}
+
+class _ContinuationTile extends StatelessWidget {
+  const _ContinuationTile({required this.item});
+
+  final TodayPlanItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final visual = revisionSubjectVisualThemeFor(item.subjectName);
+    final canStart = _canStartAction(item);
+    final route = canStart ? _routeFor(item) : null;
+
+    return RevisionActionListTile(
+      title: _targetTitle(item),
+      subtitle: '${item.subjectName} · ${_shortSessionMeta(item)}',
+      icon: visual.icon,
+      accent: visual.accent,
+      enabled: canStart,
+      onTap: route == null ? null : () => context.go(route),
+      trailing: Icon(
+        canStart ? Icons.arrow_forward_rounded : Icons.lock_outline_rounded,
+        color: canStart ? RevisionColors.textMuted : RevisionColors.textFaint,
       ),
-      TodayPlanActionType.openQuestion => const _TodayActionPresentation(
-        title: 'Question ouverte',
-        buttonLabel: 'Répondre à la question',
-        icon: Icons.edit_note,
-        color: AppColors.aqua,
-      ),
-      TodayPlanActionType.richClosedExercise => const _TodayActionPresentation(
-        title: 'Questions riches',
-        buttonLabel: 'Commencer',
-        icon: Icons.fact_check,
-        color: AppColors.amber,
-      ),
-      TodayPlanActionType.revisionSession => const _TodayActionPresentation(
-        title: 'Session de révision IA',
-        buttonLabel: 'Lancer la session',
-        icon: Icons.auto_awesome,
-        color: AppColors.violet,
-      ),
-    };
+    );
   }
 }
 
@@ -303,55 +266,111 @@ class _TodayEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RevisionPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Aucune action prioritaire pour aujourd’hui.',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.s),
-          Text(
-            'Ajoute une matière, importe un document ou définis un objectif pour générer ton plan.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: AppSpacing.l),
-          RevisionButton(
-            onPressed: () => context.go(subjectsRoutePath),
-            icon: Icons.menu_book,
-            label: 'Voir mes matières',
-            style: RevisionButtonStyle.ghost,
-          ),
-        ],
-      ),
+    return RevisionEmptyState(
+      title: 'Rien de prêt pour aujourd’hui',
+      message:
+          'Ajoute un cours ou une source pour que Neralune prépare ta prochaine session.',
+      icon: Icons.auto_stories_outlined,
+      actionLabel: 'Voir mes cours',
+      onAction: () => context.go(homeRoutePath),
     );
   }
 }
 
-class _TodayErrorState extends StatelessWidget {
-  const _TodayErrorState({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RevisionMessage(
-          message: 'Impossible de charger le plan',
-          icon: Icons.error_outline,
-          color: AppColors.danger,
-        ),
-        const SizedBox(height: AppSpacing.m),
-        RevisionButton(
-          onPressed: onRetry,
-          icon: Icons.refresh,
-          label: 'Réessayer',
-          style: RevisionButtonStyle.ghost,
-        ),
-      ],
-    );
+bool _canStartAction(TodayPlanItem item) {
+  final subjectId = item.startPayload.subjectId.trim();
+  if (subjectId.isEmpty) {
+    return false;
   }
+
+  if (item.action == TodayPlanActionType.openQuestion ||
+      item.action == TodayPlanActionType.richClosedExercise) {
+    return item.startPayload.knowledgeUnitId?.trim().isNotEmpty ?? false;
+  }
+
+  return true;
+}
+
+String _routeFor(TodayPlanItem item) {
+  final payload = item.startPayload;
+
+  return switch (item.action) {
+    TodayPlanActionType.diagnosticQuiz => Uri(
+      path: activitiesRoutePath,
+      queryParameters: {'subjectId': payload.subjectId},
+    ).toString(),
+    TodayPlanActionType.openQuestion => Uri(
+      path: activitiesRoutePath,
+      queryParameters: {
+        'subjectId': payload.subjectId,
+        'knowledgeUnitId': payload.knowledgeUnitId!,
+      },
+    ).toString(),
+    TodayPlanActionType.richClosedExercise => richClosedExerciseRoutePathFor(
+      subjectId: payload.subjectId,
+      documentId: payload.documentId ?? item.documentId,
+      knowledgeUnitId: payload.knowledgeUnitId,
+    ),
+    TodayPlanActionType.revisionSession => revisionSessionRoutePathFor(
+      subjectId: payload.subjectId,
+      documentId: payload.documentId ?? item.documentId,
+      knowledgeUnitId: payload.knowledgeUnitId,
+      preferredAction: _preferredActionValue(payload.preferredAction),
+    ),
+  };
+}
+
+String _targetTitle(TodayPlanItem item) {
+  final knowledgeUnitTitle = item.knowledgeUnitTitle?.trim();
+  if (knowledgeUnitTitle != null && knowledgeUnitTitle.isNotEmpty) {
+    return knowledgeUnitTitle;
+  }
+
+  final subjectName = item.subjectName.trim();
+  return subjectName.isEmpty ? 'À travailler aujourd’hui' : subjectName;
+}
+
+String _sessionMeta(TodayPlanItem item) {
+  final minutes = item.estimatedMinutes;
+  if (minutes <= 0) {
+    return 'Session guidée';
+  }
+
+  return '$minutes min · session guidée';
+}
+
+String _shortSessionMeta(TodayPlanItem item) {
+  final minutes = item.estimatedMinutes;
+  if (minutes <= 0) {
+    return 'session guidée';
+  }
+
+  return '$minutes min';
+}
+
+String _recommendationReason(TodayPlanItem item) {
+  return switch (item.reasonCode) {
+    TodayPlanReasonCode.lowMastery =>
+      'Cette notion semble fragile : la revoir maintenant aidera à consolider tes bases.',
+    TodayPlanReasonCode.stalePractice =>
+      'Tu ne l’as pas travaillée récemment. C’est un bon moment pour l’entretenir.',
+    TodayPlanReasonCode.highPrioritySubject =>
+      'Cette matière est prioritaire dans ton plan de révision.',
+    TodayPlanReasonCode.mixActivityType =>
+      'Changer d’angle peut t’aider à mieux ancrer la notion.',
+    TodayPlanReasonCode.richClosedPractice =>
+      'Cette notion mérite une session cadrée avec feedback.',
+    TodayPlanReasonCode.startRevisionSession =>
+      'Neralune a assez de contexte pour te guider sans te disperser.',
+    TodayPlanReasonCode.continueProgress =>
+      'Tu as déjà commencé ici : reprendre maintenant garde l’élan.',
+  };
+}
+
+String? _preferredActionValue(TodayPlanPreferredAction? preferredAction) {
+  return switch (preferredAction) {
+    TodayPlanPreferredAction.diagnosticQuiz => 'diagnostic_quiz',
+    TodayPlanPreferredAction.openQuestion => 'open_question',
+    null => null,
+  };
 }

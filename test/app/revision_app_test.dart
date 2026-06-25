@@ -86,12 +86,10 @@ void main() {
     await tester.pumpWidget(testApp.widget);
     await tester.pumpAndSettle();
 
-    expect(find.text('Plan du jour'), findsOneWidget);
-    expect(
-      find.text('Aucune action prioritaire pour aujourd’hui.'),
-      findsOneWidget,
-    );
-    expect(find.text('Aujourd’hui'), findsOneWidget);
+    expect(find.text('Aujourd’hui'), findsWidgets);
+    expect(find.text('Rien de prêt pour aujourd’hui'), findsOneWidget);
+    expect(find.text('Voir mes cours'), findsOneWidget);
+    expect(find.text('Aujourd’hui'), findsWidgets);
     expect(find.text('Cours'), findsOneWidget);
     expect(find.text('Progrès'), findsOneWidget);
     expect(find.text('Réviser'), findsNothing);
@@ -120,7 +118,7 @@ void main() {
     await tester.pumpWidget(_createTestApp().widget);
     await tester.pumpAndSettle();
 
-    expect(find.text('Aujourd’hui'), findsOneWidget);
+    expect(find.text('Aujourd’hui'), findsWidgets);
     expect(find.text('Cours'), findsOneWidget);
     expect(find.text('Progrès'), findsOneWidget);
     expect(find.text('Profil'), findsNothing);

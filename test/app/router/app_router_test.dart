@@ -430,7 +430,7 @@ void main() {
 
     harness.router.go(AppRoutes.today);
     await tester.pumpAndSettle();
-    expect(find.text('Plan du jour'), findsOneWidget);
+    expect(find.text('Rien de prêt pour aujourd’hui'), findsOneWidget);
 
     harness.router.go(AppRoutes.activities);
     await tester.pumpAndSettle();
@@ -613,8 +613,8 @@ void main() {
       harness.router.go(AppRoutes.today);
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Commencer'));
-      await tester.tap(find.text('Commencer'));
+      await tester.ensureVisible(find.text('Réviser maintenant'));
+      await tester.tap(find.text('Réviser maintenant'));
       await tester.pumpAndSettle();
 
       expect(
