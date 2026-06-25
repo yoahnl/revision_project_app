@@ -10,6 +10,7 @@ import '../../../presentation/design_system/tokens/revision_colors.dart';
 import '../../../presentation/design_system/tokens/revision_spacing.dart';
 import '../../../presentation/design_system/tokens/revision_typography.dart';
 import '../../../presentation/pages/activities/open_question_page.dart';
+import '../../../presentation/widgets/revision_button.dart';
 import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
@@ -279,6 +280,14 @@ class _CourseDeepRevisionContentState
           answer: answer,
         );
 
+    ref.invalidate(courseDeepRevisionHistoryProvider(widget.options.course.id));
+    ref.invalidate(
+      courseDeepRevisionResultProvider((
+        courseId: widget.options.course.id,
+        sessionId: session.session.id,
+      )),
+    );
+
     return response.toOpenAnswerSubmissionResult();
   }
 }
@@ -332,8 +341,51 @@ class _OpenQuestionRevision extends StatelessWidget {
         OpenQuestionPage(
           activity: session.toOpenQuestionActivity(course: options.course),
           onSubmit: onSubmit,
+          afterEvaluationBuilder: (context, result) =>
+              _DeepRevisionCompletionActions(
+                courseId: options.course.id,
+                sessionId: session.session.id,
+              ),
         ),
       ],
+    );
+  }
+}
+
+class _DeepRevisionCompletionActions extends StatelessWidget {
+  const _DeepRevisionCompletionActions({
+    required this.courseId,
+    required this.sessionId,
+  });
+
+  final String courseId;
+  final String sessionId;
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionGlassCard(
+      child: Wrap(
+        spacing: RevisionSpacing.s,
+        runSpacing: RevisionSpacing.s,
+        children: [
+          RevisionButton(
+            label: 'Voir le résultat',
+            icon: Icons.open_in_new_rounded,
+            onPressed: () => context.push(
+              AppRoutes.courseDeepRevisionResult(
+                courseId: courseId,
+                sessionId: sessionId,
+              ),
+            ),
+          ),
+          RevisionButton(
+            label: 'Retour au cours',
+            icon: Icons.arrow_back_rounded,
+            style: RevisionButtonStyle.ghost,
+            onPressed: () => _popOrGo(context, AppRoutes.course(courseId)),
+          ),
+        ],
+      ),
     );
   }
 }

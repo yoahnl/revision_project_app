@@ -139,6 +139,16 @@ void main() {
     );
   });
 
+  test('AppRoutes builds course deep revision result route', () {
+    expect(
+      AppRoutes.courseDeepRevisionResult(
+        courseId: 'course-1',
+        sessionId: 'deep-session-1',
+      ),
+      '/courses/course-1/deep-revision/sessions/deep-session-1/result',
+    );
+  });
+
   test('shell keeps only primary destinations and sessions outside shell', () {
     final harness = _RouterHarness();
     addTearDown(harness.dispose);

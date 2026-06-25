@@ -98,6 +98,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Sources du cours'), findsWidgets);
+    expect(find.text('Voir le résultat'), findsOneWidget);
+    expect(find.text('Retour au cours'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Voir le résultat'));
+    await tester.tap(find.text('Voir le résultat'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Résultat réel de révision approfondie'), findsOneWidget);
   });
 
   testWidgets('deep revision page explains blocked state without fake button', (
@@ -132,6 +140,11 @@ Widget testApp(InMemoryCoursesRepository repository) {
         path: AppRoutes.courseDeepRevisionPath,
         builder: (context, state) =>
             CourseDeepRevisionPage(courseId: state.pathParameters['courseId']!),
+      ),
+      GoRoute(
+        path: AppRoutes.courseDeepRevisionResultPath,
+        builder: (context, state) =>
+            const Scaffold(body: Text('Résultat réel de révision approfondie')),
       ),
       GoRoute(
         path: AppRoutes.coursePath,
@@ -257,14 +270,17 @@ CourseDeepRevisionSession deepRevisionSessionFixture() {
 }
 
 CourseDeepRevisionSubmitResponse deepRevisionSubmitResponseFixture() {
-  return const CourseDeepRevisionSubmitResponse(
+  return CourseDeepRevisionSubmitResponse(
     session: CourseDeepRevisionSessionSummary(
       id: 'deep-session-1',
       mode: 'DEEP',
-      status: 'SUBMITTED',
+      status: 'COMPLETED',
       courseId: 'course-1',
+      completedAt: DateTime.parse('2026-06-25T12:00:00.000Z'),
     ),
-    evaluation: OpenAnswerEvaluation(
+    resultPath:
+        '/courses/course-1/deep-revision/sessions/deep-session-1/result',
+    evaluation: const OpenAnswerEvaluation(
       id: 'evaluation-1',
       status: OpenAnswerEvaluationStatus.ready,
       score: 0.72,

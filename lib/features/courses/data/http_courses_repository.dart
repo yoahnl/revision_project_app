@@ -593,13 +593,70 @@ class HttpCoursesRepository implements CoursesRepository {
       return _CourseDeepRevisionSubmitResponseJson(response.data).toResponse();
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
-        throw const CourseNotFoundException('Course not found');
+        final message = _responseMessage(error);
+        if (message == 'Course not found') {
+          throw const CourseNotFoundException('Course not found');
+        }
+        throw const CourseRequestException('Résultat indisponible');
       }
       if (error.response?.statusCode == 400 ||
           error.response?.statusCode == 409) {
         throw CourseRequestException(
           _responseMessage(error) ??
               'Impossible de corriger cette réponse pour le moment.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CourseDeepRevisionHistoryResponse> getCourseDeepRevisionHistory({
+    required String courseId,
+    int limit = 5,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/deep-revision/history',
+        queryParameters: {'limit': limit},
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseDeepRevisionHistoryJson(response.data).toHistory();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CourseDeepRevisionResult> getCourseDeepRevisionResult({
+    required String courseId,
+    required String sessionId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/deep-revision/sessions/${Uri.encodeComponent(sessionId)}/result',
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseDeepRevisionResultJson(response.data).toResult();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        final message = _responseMessage(error);
+        if (message == 'Course not found') {
+          throw const CourseNotFoundException('Course not found');
+        }
+
+        throw const CourseRequestException('Résultat indisponible');
+      }
+      if (error.response?.statusCode == 400 ||
+          error.response?.statusCode == 409) {
+        throw CourseRequestException(
+          _responseMessage(error) ??
+              'Impossible de relire ce résultat pour le moment.',
         );
       }
       rethrow;
@@ -1630,6 +1687,7 @@ class _CourseDeepRevisionSubmitResponseJson {
 
     final session = json['session'];
     final evaluation = json['evaluation'];
+    final resultPath = json['resultPath'];
 
     if (session is! Map<String, Object?> ||
         evaluation is! Map<String, Object?>) {
@@ -1641,6 +1699,170 @@ class _CourseDeepRevisionSubmitResponseJson {
         session,
       ).toSessionSummary(),
       evaluation: _OpenAnswerEvaluationJson(evaluation).toEvaluation(),
+      resultPath: resultPath is String ? resultPath : null,
+    );
+  }
+}
+
+class _CourseDeepRevisionHistoryJson {
+  const _CourseDeepRevisionHistoryJson(this.value);
+
+  final Object? value;
+
+  CourseDeepRevisionHistoryResponse toHistory() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision history response');
+    }
+
+    final items = json['items'];
+    if (items is! List) {
+      throw const FormatException('Invalid deep revision history response');
+    }
+
+    return CourseDeepRevisionHistoryResponse(
+      items: items
+          .map((item) => _CourseDeepRevisionHistoryItemJson(item).toItem())
+          .toList(growable: false),
+    );
+  }
+}
+
+class _CourseDeepRevisionHistoryItemJson {
+  const _CourseDeepRevisionHistoryItemJson(this.value);
+
+  final Object? value;
+
+  CourseDeepRevisionHistoryItem toItem() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision history response');
+    }
+
+    final course = json['course'];
+    final knowledgeUnit = json['knowledgeUnit'];
+
+    if (course is! Map<String, Object?> ||
+        knowledgeUnit is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision history response');
+    }
+
+    return CourseDeepRevisionHistoryItem(
+      sessionId: _requiredString(
+        json['sessionId'],
+        'Invalid deep revision history response',
+      ),
+      title: _requiredString(
+        json['title'],
+        'Invalid deep revision history response',
+      ),
+      course: CourseDeepRevisionHistoryCourse(
+        id: _requiredString(
+          course['id'],
+          'Invalid deep revision history response',
+        ),
+        title: _requiredString(
+          course['title'],
+          'Invalid deep revision history response',
+        ),
+      ),
+      knowledgeUnit: CourseDeepRevisionHistoryKnowledgeUnit(
+        id: _requiredString(
+          knowledgeUnit['id'],
+          'Invalid deep revision history response',
+        ),
+        title: _requiredString(
+          knowledgeUnit['title'],
+          'Invalid deep revision history response',
+        ),
+      ),
+      score: json['score'] is num ? (json['score'] as num).toDouble() : null,
+      submittedAt: _requiredDate(
+        json['submittedAt'],
+        'Invalid deep revision history response',
+      ),
+      resultPath: _requiredString(
+        json['resultPath'],
+        'Invalid deep revision history response',
+      ),
+    );
+  }
+}
+
+class _CourseDeepRevisionResultJson {
+  const _CourseDeepRevisionResultJson(this.value);
+
+  final Object? value;
+
+  CourseDeepRevisionResult toResult() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision result response');
+    }
+
+    final session = json['session'];
+    final scope = json['scope'];
+    final question = json['question'];
+    final answer = json['answer'];
+    final evaluation = json['evaluation'];
+
+    if (session is! Map<String, Object?> ||
+        scope is! Map<String, Object?> ||
+        question is! Map<String, Object?> ||
+        answer is! Map<String, Object?> ||
+        evaluation is! Map<String, Object?>) {
+      throw const FormatException('Invalid deep revision result response');
+    }
+
+    return CourseDeepRevisionResult(
+      session: _CourseDeepRevisionResultSessionJson(session).toSession(),
+      scope: _CourseDeepRevisionScopeJson(scope).toScope(),
+      question: _OpenQuestionJson(question).toQuestion(),
+      answer: _CourseDeepRevisionAnswerJson(answer).toAnswer(),
+      evaluation: _OpenAnswerEvaluationJson(evaluation).toEvaluation(),
+    );
+  }
+}
+
+class _CourseDeepRevisionResultSessionJson {
+  const _CourseDeepRevisionResultSessionJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseDeepRevisionResultSession toSession() {
+    return CourseDeepRevisionResultSession(
+      id: _requiredString(value['id'], 'Invalid deep revision result response'),
+      status: _requiredString(
+        value['status'],
+        'Invalid deep revision result response',
+      ),
+      courseId: _requiredString(
+        value['courseId'],
+        'Invalid deep revision result response',
+      ),
+      completedAt: _parseOptionalDate(value['completedAt']),
+    );
+  }
+}
+
+class _CourseDeepRevisionAnswerJson {
+  const _CourseDeepRevisionAnswerJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseDeepRevisionAnswer toAnswer() {
+    return CourseDeepRevisionAnswer(
+      text: _requiredString(
+        value['text'],
+        'Invalid deep revision result response',
+      ),
+      submittedAt: _requiredDate(
+        value['submittedAt'],
+        'Invalid deep revision result response',
+      ),
     );
   }
 }
@@ -1668,6 +1890,7 @@ class _CourseDeepRevisionSessionSummaryJson {
         value['courseId'],
         'Invalid deep revision session response',
       ),
+      completedAt: _parseOptionalDate(value['completedAt']),
     );
   }
 }

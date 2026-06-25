@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:Neralune/features/activities/domain/open_question_activity.dart';
 import 'package:Neralune/features/courses/application/course_pdf_picker.dart';
 import 'package:Neralune/features/courses/application/courses_providers.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
@@ -132,6 +133,95 @@ void main() {
     expect(options.scopeOptions.single.label, 'Responsabilité politique');
     expect(repository.getDeepRevisionOptionsCount, 1);
   });
+
+  test('courseDeepRevisionHistoryProvider loads real deep history', () async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..deepRevisionHistoryByCourse['course-1'] = [
+        CourseDeepRevisionHistoryItem(
+          sessionId: 'deep-session-1',
+          title: 'Révision approfondie',
+          course: const CourseDeepRevisionHistoryCourse(
+            id: 'course-1',
+            title: 'Droit constitutionnel',
+          ),
+          knowledgeUnit: const CourseDeepRevisionHistoryKnowledgeUnit(
+            id: 'ku-1',
+            title: 'Responsabilité politique',
+          ),
+          score: 0.72,
+          submittedAt: DateTime.parse('2026-06-25T12:00:00.000Z'),
+          resultPath:
+              '/courses/course-1/deep-revision/sessions/deep-session-1/result',
+        ),
+      ];
+    final container = ProviderContainer(
+      overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final history = await container.read(
+      courseDeepRevisionHistoryProvider('course-1').future,
+    );
+
+    expect(history.items.single.sessionId, 'deep-session-1');
+    expect(repository.getCourseDeepRevisionHistoryCount, 1);
+  });
+
+  test(
+    'courseDeepRevisionResultProvider loads a persisted deep result',
+    () async {
+      final result = CourseDeepRevisionResult(
+        session: CourseDeepRevisionResultSession(
+          id: 'deep-session-1',
+          status: 'COMPLETED',
+          courseId: 'course-1',
+          completedAt: DateTime.parse('2026-06-25T12:00:00.000Z'),
+        ),
+        scope: const CourseDeepRevisionScope(
+          kind: CourseDeepRevisionScopeKind.knowledgeUnit,
+          id: 'ku-1',
+          label: 'Responsabilité politique',
+          sourceLabel: 'CM.pdf',
+        ),
+        question: const OpenQuestion(
+          id: 'open-question-1',
+          prompt: 'Question',
+          instructions: null,
+          maxAnswerLength: 4000,
+        ),
+        answer: CourseDeepRevisionAnswer(
+          text: 'Réponse envoyée',
+          submittedAt: DateTime.parse('2026-06-25T12:00:00.000Z'),
+        ),
+        evaluation: const OpenAnswerEvaluation(
+          id: 'evaluation-1',
+          status: OpenAnswerEvaluationStatus.ready,
+          score: null,
+          maxScore: null,
+          feedback: null,
+          modelAnswer: null,
+          advice: null,
+        ),
+      );
+      final repository = InMemoryCoursesRepository()
+        ..deepRevisionResultBySession['deep-session-1'] = result;
+      final container = ProviderContainer(
+        overrides: [coursesRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      final loaded = await container.read(
+        courseDeepRevisionResultProvider((
+          courseId: 'course-1',
+          sessionId: 'deep-session-1',
+        )).future,
+      );
+
+      expect(loaded.answer.text, 'Réponse envoyée');
+      expect(repository.getCourseDeepRevisionResultCount, 1);
+    },
+  );
 
   test(
     'uploadCourseDocumentController does nothing when picking is cancelled',

@@ -35,6 +35,9 @@ class InMemoryCoursesRepository implements CoursesRepository {
   richClosedHistoryByCourse = {};
   final Map<String, CourseRichRevisionOptions> richRevisionOptionsByCourse = {};
   final Map<String, CourseDeepRevisionOptions> deepRevisionOptionsByCourse = {};
+  final Map<String, List<CourseDeepRevisionHistoryItem>>
+  deepRevisionHistoryByCourse = {};
+  final Map<String, CourseDeepRevisionResult> deepRevisionResultBySession = {};
   final Map<String, List<RevisionSessionHistoryItem>>
   examPreparationHistoryByCourse = {};
   final Map<String, CourseExamPreparationOptions>
@@ -54,6 +57,8 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int getCourseRichClosedHistoryCount = 0;
   int getRichRevisionOptionsCount = 0;
   int getDeepRevisionOptionsCount = 0;
+  int getCourseDeepRevisionHistoryCount = 0;
+  int getCourseDeepRevisionResultCount = 0;
   int getExamPreparationOptionsCount = 0;
   int getCourseExamPreparationHistoryCount = 0;
   int startExamPreparationCount = 0;
@@ -82,6 +87,9 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastCourseRichClosedHistoryCourseId;
   String? lastRichRevisionOptionsCourseId;
   String? lastDeepRevisionOptionsCourseId;
+  String? lastCourseDeepRevisionHistoryCourseId;
+  String? lastDeepRevisionResultCourseId;
+  String? lastDeepRevisionResultSessionId;
   String? lastExamPreparationOptionsCourseId;
   String? lastCourseExamPreparationHistoryCourseId;
   String? lastExamPreparationCourseId;
@@ -105,6 +113,8 @@ class InMemoryCoursesRepository implements CoursesRepository {
   Object? richRevisionError;
   Object? deepRevisionError;
   Object? deepRevisionSubmitError;
+  Object? deepRevisionHistoryError;
+  Object? deepRevisionResultError;
   RevisionSessionResponse? quickRevisionResponse;
   RevisionSessionResponse? examPreparationResponse;
   RichClosedExercise? richRevisionResponse;
@@ -727,6 +737,51 @@ class InMemoryCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<CourseDeepRevisionHistoryResponse> getCourseDeepRevisionHistory({
+    required String courseId,
+    int limit = 5,
+  }) async {
+    getCourseDeepRevisionHistoryCount += 1;
+    lastCourseDeepRevisionHistoryCourseId = courseId;
+
+    final error = deepRevisionHistoryError;
+    if (error != null) {
+      throw error;
+    }
+
+    if (!detailsByCourse.containsKey(courseId)) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    final items = deepRevisionHistoryByCourse[courseId] ?? const [];
+    return CourseDeepRevisionHistoryResponse(
+      items: List.unmodifiable(items.take(limit)),
+    );
+  }
+
+  @override
+  Future<CourseDeepRevisionResult> getCourseDeepRevisionResult({
+    required String courseId,
+    required String sessionId,
+  }) async {
+    getCourseDeepRevisionResultCount += 1;
+    lastDeepRevisionResultCourseId = courseId;
+    lastDeepRevisionResultSessionId = sessionId;
+
+    final error = deepRevisionResultError;
+    if (error != null) {
+      throw error;
+    }
+
+    final result = deepRevisionResultBySession[sessionId];
+    if (result == null || result.session.courseId != courseId) {
+      throw const CourseNotFoundException('Course not found');
+    }
+
+    return result;
+  }
+
+  @override
   Future<CourseExamPreparationOptions> getExamPreparationOptions({
     required String courseId,
   }) async {
@@ -931,14 +986,17 @@ CourseDeepRevisionSession deepRevisionSessionResponse(String courseId) {
 }
 
 CourseDeepRevisionSubmitResponse deepRevisionSubmitResponseFixture() {
-  return const CourseDeepRevisionSubmitResponse(
+  return CourseDeepRevisionSubmitResponse(
     session: CourseDeepRevisionSessionSummary(
       id: 'deep-session-1',
       mode: 'DEEP',
-      status: 'SUBMITTED',
+      status: 'COMPLETED',
       courseId: 'course-1',
+      completedAt: DateTime.parse('2026-06-25T12:00:00.000Z'),
     ),
-    evaluation: OpenAnswerEvaluation(
+    resultPath:
+        '/courses/course-1/deep-revision/sessions/deep-session-1/result',
+    evaluation: const OpenAnswerEvaluation(
       id: 'evaluation-1',
       status: OpenAnswerEvaluationStatus.ready,
       score: 0.8,

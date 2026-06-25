@@ -9,6 +9,8 @@ class AppRoutes {
   static const coursePath = '/courses/:courseId';
   static const courseRichRevisionPath = '/courses/:courseId/rich-revision';
   static const courseDeepRevisionPath = '/courses/:courseId/deep-revision';
+  static const courseDeepRevisionResultPath =
+      '/courses/:courseId/deep-revision/sessions/:sessionId/result';
   static const courseExamPreparationPath =
       '/courses/:courseId/exam-preparation';
   static const courseSheetPath = '/courses/:courseId/sheet';
@@ -38,6 +40,13 @@ class AppRoutes {
 
   static String courseDeepRevision(String courseId) {
     return '/courses/$courseId/deep-revision';
+  }
+
+  static String courseDeepRevisionResult({
+    required String courseId,
+    required String sessionId,
+  }) {
+    return '/courses/$courseId/deep-revision/sessions/$sessionId/result';
   }
 
   static String courseExamPreparation(String courseId) {

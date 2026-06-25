@@ -893,6 +893,101 @@ void main() {
     });
   });
 
+  test(
+    'loads a course deep revision result from the dedicated endpoint',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse(deepRevisionResultJson()),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      final result = await repository.getCourseDeepRevisionResult(
+        courseId: 'course-1',
+        sessionId: 'deep-session-1',
+      );
+
+      expect(result.session.id, 'deep-session-1');
+      expect(result.session.status, 'COMPLETED');
+      expect(result.scope.label, 'Responsabilité politique');
+      expect(result.question.prompt, contains('responsabilité politique'));
+      expect(result.answer.text, contains('contrôler le Gouvernement'));
+      expect(result.evaluation.score, 0.72);
+      expect(result.evaluation.modelAnswer, contains('réponse modèle'));
+      expect(result.evaluation.sources, hasLength(1));
+      expect(adapter.lastOptions?.method, 'GET');
+      expect(
+        adapter.lastOptions?.path,
+        '/courses/course-1/deep-revision/sessions/deep-session-1/result',
+      );
+    },
+  );
+
+  test(
+    'maps a missing course deep revision result to a readable request error',
+    () async {
+      final adapter = CapturingHttpClientAdapter(
+        jsonResponse({
+          'message': 'Deep revision result not found',
+        }, statusCode: 404),
+      );
+      final repository = HttpCoursesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        getIdToken: () async => 'firebase-id-token',
+      );
+
+      await expectLater(
+        repository.getCourseDeepRevisionResult(
+          courseId: 'course-1',
+          sessionId: 'deep-session-1',
+        ),
+        throwsA(
+          isA<CourseRequestException>().having(
+            (error) => error.message,
+            'message',
+            'Résultat indisponible',
+          ),
+        ),
+      );
+    },
+  );
+
+  test('loads course deep revision history', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(deepRevisionHistoryJson()),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final history = await repository.getCourseDeepRevisionHistory(
+      courseId: 'course-1',
+      limit: 7,
+    );
+
+    expect(history.items, hasLength(1));
+    expect(history.items.single.sessionId, 'deep-session-1');
+    expect(history.items.single.title, 'Révision approfondie');
+    expect(
+      history.items.single.knowledgeUnit.title,
+      'Responsabilité politique',
+    );
+    expect(history.items.single.score, 0.72);
+    expect(
+      history.items.single.resultPath,
+      '/courses/course-1/deep-revision/sessions/deep-session-1/result',
+    );
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(
+      adapter.lastOptions?.path,
+      '/courses/course-1/deep-revision/history',
+    );
+    expect(adapter.lastOptions?.queryParameters, {'limit': 7});
+  });
+
   test('loads completed course exam preparation history', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse({
@@ -1340,10 +1435,57 @@ Map<String, Object?> deepRevisionSubmitJson() {
     'session': {
       'id': 'deep-session-1',
       'mode': 'DEEP',
-      'status': 'SUBMITTED',
+      'status': 'COMPLETED',
       'courseId': 'course-1',
+      'completedAt': '2026-06-25T12:00:00.000Z',
+    },
+    'resultPath':
+        '/courses/course-1/deep-revision/sessions/deep-session-1/result',
+    'evaluation': openAnswerEvaluationJson(),
+  };
+}
+
+Map<String, Object?> deepRevisionResultJson() {
+  return {
+    'session': {
+      'id': 'deep-session-1',
+      'mode': 'DEEP',
+      'status': 'COMPLETED',
+      'courseId': 'course-1',
+      'completedAt': '2026-06-25T12:00:00.000Z',
+    },
+    'scope': {
+      'kind': 'knowledge_unit',
+      'id': 'ku-1',
+      'label': 'Responsabilité politique',
+      'sourceLabel': 'CM.pdf',
+    },
+    'question': openQuestionJson(),
+    'answer': {
+      'text':
+          'La responsabilité politique permet au Parlement de contrôler le Gouvernement.',
+      'submittedAt': '2026-06-25T12:00:00.000Z',
     },
     'evaluation': openAnswerEvaluationJson(),
+  };
+}
+
+Map<String, Object?> deepRevisionHistoryJson() {
+  return {
+    'items': [
+      {
+        'sessionId': 'deep-session-1',
+        'type': 'deep_revision',
+        'status': 'completed',
+        'title': 'Révision approfondie',
+        'course': {'id': 'course-1', 'title': 'Droit constitutionnel'},
+        'knowledgeUnit': {'id': 'ku-1', 'title': 'Responsabilité politique'},
+        'score': 0.72,
+        'submittedAt': '2026-06-25T12:00:00.000Z',
+        'resultPath':
+            '/courses/course-1/deep-revision/sessions/deep-session-1/result',
+      },
+    ],
   };
 }
 

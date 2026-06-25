@@ -89,6 +89,31 @@ final courseDeepRevisionOptionsProvider =
           .getDeepRevisionOptions(courseId: courseId);
     });
 
+final courseDeepRevisionHistoryProvider =
+    FutureProvider.family<CourseDeepRevisionHistoryResponse, String>((
+      ref,
+      courseId,
+    ) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getCourseDeepRevisionHistory(courseId: courseId);
+    });
+
+typedef CourseDeepRevisionResultKey = ({String courseId, String sessionId});
+
+final courseDeepRevisionResultProvider =
+    FutureProvider.family<
+      CourseDeepRevisionResult,
+      CourseDeepRevisionResultKey
+    >((ref, key) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getCourseDeepRevisionResult(
+            courseId: key.courseId,
+            sessionId: key.sessionId,
+          );
+    });
+
 final courseExamPreparationOptionsProvider =
     FutureProvider.family<CourseExamPreparationOptions, String>((
       ref,

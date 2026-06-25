@@ -551,12 +551,14 @@ class CourseDeepRevisionSessionSummary {
     required this.mode,
     required this.status,
     required this.courseId,
+    this.completedAt,
   });
 
   final String id;
   final String mode;
   final String status;
   final String courseId;
+  final DateTime? completedAt;
 }
 
 class CourseDeepRevisionScope {
@@ -605,10 +607,12 @@ class CourseDeepRevisionSubmitResponse {
   const CourseDeepRevisionSubmitResponse({
     required this.session,
     required this.evaluation,
+    this.resultPath,
   });
 
   final CourseDeepRevisionSessionSummary session;
   final OpenAnswerEvaluation evaluation;
+  final String? resultPath;
 
   OpenAnswerSubmissionResult toOpenAnswerSubmissionResult() {
     return OpenAnswerSubmissionResult(
@@ -618,6 +622,92 @@ class CourseDeepRevisionSubmitResponse {
       evaluation: evaluation,
     );
   }
+}
+
+class CourseDeepRevisionHistoryResponse {
+  const CourseDeepRevisionHistoryResponse({required this.items});
+
+  final List<CourseDeepRevisionHistoryItem> items;
+}
+
+class CourseDeepRevisionHistoryItem {
+  const CourseDeepRevisionHistoryItem({
+    required this.sessionId,
+    required this.title,
+    required this.course,
+    required this.knowledgeUnit,
+    required this.score,
+    required this.submittedAt,
+    required this.resultPath,
+  });
+
+  final String sessionId;
+  final String title;
+  final CourseDeepRevisionHistoryCourse course;
+  final CourseDeepRevisionHistoryKnowledgeUnit knowledgeUnit;
+  final double? score;
+  final DateTime submittedAt;
+  final String resultPath;
+}
+
+class CourseDeepRevisionHistoryCourse {
+  const CourseDeepRevisionHistoryCourse({
+    required this.id,
+    required this.title,
+  });
+
+  final String id;
+  final String title;
+}
+
+class CourseDeepRevisionHistoryKnowledgeUnit {
+  const CourseDeepRevisionHistoryKnowledgeUnit({
+    required this.id,
+    required this.title,
+  });
+
+  final String id;
+  final String title;
+}
+
+class CourseDeepRevisionResult {
+  const CourseDeepRevisionResult({
+    required this.session,
+    required this.scope,
+    required this.question,
+    required this.answer,
+    required this.evaluation,
+  });
+
+  final CourseDeepRevisionResultSession session;
+  final CourseDeepRevisionScope scope;
+  final OpenQuestion question;
+  final CourseDeepRevisionAnswer answer;
+  final OpenAnswerEvaluation evaluation;
+}
+
+class CourseDeepRevisionResultSession {
+  const CourseDeepRevisionResultSession({
+    required this.id,
+    required this.status,
+    required this.courseId,
+    required this.completedAt,
+  });
+
+  final String id;
+  final String status;
+  final String courseId;
+  final DateTime? completedAt;
+}
+
+class CourseDeepRevisionAnswer {
+  const CourseDeepRevisionAnswer({
+    required this.text,
+    required this.submittedAt,
+  });
+
+  final String text;
+  final DateTime submittedAt;
 }
 
 class CourseRichClosedHistoryResponse {

@@ -107,6 +107,16 @@ abstract interface class CoursesRepository {
     required String answer,
   });
 
+  Future<CourseDeepRevisionHistoryResponse> getCourseDeepRevisionHistory({
+    required String courseId,
+    int limit = 5,
+  });
+
+  Future<CourseDeepRevisionResult> getCourseDeepRevisionResult({
+    required String courseId,
+    required String sessionId,
+  });
+
   Future<CourseExamPreparationOptions> getExamPreparationOptions({
     required String courseId,
   });

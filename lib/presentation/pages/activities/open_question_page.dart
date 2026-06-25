@@ -8,11 +8,20 @@ import 'package:Neralune/presentation/widgets/revision_message.dart';
 import 'package:Neralune/presentation/widgets/revision_panel.dart';
 import 'package:Neralune/presentation/widgets/revision_status_pill.dart';
 
+typedef OpenAnswerEvaluationActionsBuilder =
+    Widget Function(BuildContext context, OpenAnswerSubmissionResult result);
+
 class OpenQuestionPage extends StatefulWidget {
-  const OpenQuestionPage({required this.activity, this.onSubmit, super.key});
+  const OpenQuestionPage({
+    required this.activity,
+    this.onSubmit,
+    this.afterEvaluationBuilder,
+    super.key,
+  });
 
   final OpenQuestionActivity activity;
   final OpenAnswerSubmitter? onSubmit;
+  final OpenAnswerEvaluationActionsBuilder? afterEvaluationBuilder;
 
   @override
   State<OpenQuestionPage> createState() => _OpenQuestionPageState();
@@ -87,7 +96,11 @@ class _OpenQuestionPageState extends State<OpenQuestionPage> {
           if (evaluation != null) ...[
             _SubmittedAnswerPanel(answerText: _controller.answerText),
             const SizedBox(height: AppSpacing.l),
-            _EvaluationPanel(evaluation: evaluation),
+            OpenAnswerEvaluationPanel(evaluation: evaluation),
+            if (result != null && widget.afterEvaluationBuilder != null) ...[
+              const SizedBox(height: AppSpacing.l),
+              widget.afterEvaluationBuilder!(context, result),
+            ],
           ],
         ],
       ),
@@ -307,8 +320,8 @@ class _SubmittedAnswerPanel extends StatelessWidget {
   }
 }
 
-class _EvaluationPanel extends StatelessWidget {
-  const _EvaluationPanel({required this.evaluation});
+class OpenAnswerEvaluationPanel extends StatelessWidget {
+  const OpenAnswerEvaluationPanel({required this.evaluation, super.key});
 
   final OpenAnswerEvaluation evaluation;
 

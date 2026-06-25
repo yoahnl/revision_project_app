@@ -894,6 +894,36 @@ void main() {
     expect(find.text('Résultat QCM complet'), findsOneWidget);
   });
 
+  testWidgets('course detail opens a deep revision result from history', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..deepRevisionHistoryByCourse['course-1'] = [deepRevisionHistoryItem()];
+
+    await tester.pumpWidget(
+      routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.textContaining('Responsabilité politique'),
+      400,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Historique'), findsOneWidget);
+    expect(repository.getCourseDeepRevisionHistoryCount, 1);
+    expect(find.text('Révision approfondie'), findsWidgets);
+    expect(find.textContaining('Responsabilité politique'), findsOneWidget);
+    expect(find.textContaining('72 %'), findsOneWidget);
+
+    await tester.tap(find.text('Voir le résultat').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Résultat révision approfondie'), findsOneWidget);
+  });
+
   testWidgets('course detail opens an exam result from history', (
     tester,
   ) async {
@@ -1153,6 +1183,17 @@ Widget routerTestApp({
             state.pathParameters['sessionId'] == 'rich-session-1' &&
                     state.uri.queryParameters['courseId'] == 'course-1'
                 ? 'Résultat QCM complet'
+                : 'Résultat introuvable',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.courseDeepRevisionResultPath,
+        builder: (context, state) => Scaffold(
+          body: Text(
+            state.pathParameters['sessionId'] == 'deep-session-1' &&
+                    state.pathParameters['courseId'] == 'course-1'
+                ? 'Résultat révision approfondie'
                 : 'Résultat introuvable',
           ),
         ),
@@ -1458,6 +1499,25 @@ CourseDeepRevisionOptions deepRevisionOptionsFixture({
           ? 'Choisis une notion et démarre la question ouverte.'
           : "Aucune notion exploitable n'est disponible pour ce cours.",
     ),
+  );
+}
+
+CourseDeepRevisionHistoryItem deepRevisionHistoryItem() {
+  return CourseDeepRevisionHistoryItem(
+    sessionId: 'deep-session-1',
+    title: 'Révision approfondie',
+    course: const CourseDeepRevisionHistoryCourse(
+      id: 'course-1',
+      title: 'Droit constitutionnel',
+    ),
+    knowledgeUnit: const CourseDeepRevisionHistoryKnowledgeUnit(
+      id: 'ku-1',
+      title: 'Responsabilité politique',
+    ),
+    score: 0.72,
+    submittedAt: DateTime.parse('2026-06-25T12:00:00.000Z'),
+    resultPath:
+        '/courses/course-1/deep-revision/sessions/deep-session-1/result',
   );
 }
 

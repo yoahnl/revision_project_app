@@ -771,6 +771,9 @@ class _CourseRevisionHistorySection extends ConsumerWidget {
     final richClosedHistory = ref.watch(
       courseRichClosedHistoryProvider(detail.course.id),
     );
+    final deepHistory = ref.watch(
+      courseDeepRevisionHistoryProvider(detail.course.id),
+    );
     final examHistory = ref.watch(
       courseExamPreparationHistoryProvider(detail.course.id),
     );
@@ -793,12 +796,16 @@ class _CourseRevisionHistorySection extends ConsumerWidget {
           _CourseHistoryContent(
             quickHistory: quickHistory,
             richClosedHistory: richClosedHistory,
+            deepHistory: deepHistory,
             examHistory: examHistory,
             onRetry: () {
               ref.invalidate(
                 courseRevisionSessionHistoryProvider(detail.course.id),
               );
               ref.invalidate(courseRichClosedHistoryProvider(detail.course.id));
+              ref.invalidate(
+                courseDeepRevisionHistoryProvider(detail.course.id),
+              );
               ref.invalidate(
                 courseExamPreparationHistoryProvider(detail.course.id),
               );
@@ -814,12 +821,14 @@ class _CourseHistoryContent extends StatelessWidget {
   const _CourseHistoryContent({
     required this.quickHistory,
     required this.richClosedHistory,
+    required this.deepHistory,
     required this.examHistory,
     required this.onRetry,
   });
 
   final AsyncValue<RevisionSessionHistoryResponse> quickHistory;
   final AsyncValue<CourseRichClosedHistoryResponse> richClosedHistory;
+  final AsyncValue<CourseDeepRevisionHistoryResponse> deepHistory;
   final AsyncValue<RevisionSessionHistoryResponse> examHistory;
   final VoidCallback onRetry;
 
@@ -827,18 +836,22 @@ class _CourseHistoryContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final quickItems = quickHistory.asData?.value.items ?? const [];
     final richClosedItems = richClosedHistory.asData?.value.items ?? const [];
+    final deepItems = deepHistory.asData?.value.items ?? const [];
     final examItems = examHistory.asData?.value.items ?? const [];
     final hasAnyData =
         quickHistory.hasValue ||
         richClosedHistory.hasValue ||
+        deepHistory.hasValue ||
         examHistory.hasValue;
     final isLoading =
         quickHistory.isLoading ||
         richClosedHistory.isLoading ||
+        deepHistory.isLoading ||
         examHistory.isLoading;
     final hasError =
         quickHistory.hasError ||
         richClosedHistory.hasError ||
+        deepHistory.hasError ||
         examHistory.hasError;
 
     if (isLoading && !hasAnyData) {
@@ -866,7 +879,10 @@ class _CourseHistoryContent extends StatelessWidget {
       );
     }
 
-    if (quickItems.isEmpty && richClosedItems.isEmpty && examItems.isEmpty) {
+    if (quickItems.isEmpty &&
+        richClosedItems.isEmpty &&
+        deepItems.isEmpty &&
+        examItems.isEmpty) {
       return Text(
         'Aucune session terminée pour ce cours.',
         style: RevisionTypography.body,
@@ -878,6 +894,7 @@ class _CourseHistoryContent extends StatelessWidget {
       for (final item in quickItems) _CourseRevisionHistoryTile(item: item),
       for (final item in richClosedItems)
         _CourseRichClosedHistoryTile(item: item),
+      for (final item in deepItems) _CourseDeepRevisionHistoryTile(item: item),
     ];
 
     return Column(
@@ -1032,6 +1049,51 @@ class _CourseRichClosedHistoryTile extends StatelessWidget {
               AppRoutes.richClosedExerciseResult(
                 sessionId: item.sessionId,
                 courseId: item.course.id,
+              ),
+            ),
+            child: const Text('Voir le résultat'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CourseDeepRevisionHistoryTile extends StatelessWidget {
+  const _CourseDeepRevisionHistoryTile({required this.item});
+
+  final CourseDeepRevisionHistoryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: RevisionSpacing.xs),
+      child: Row(
+        children: [
+          const RevisionIconTile(
+            icon: Icons.menu_book_rounded,
+            accent: RevisionColors.violet,
+            size: 44,
+          ),
+          const SizedBox(width: RevisionSpacing.m),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.title, style: RevisionTypography.sectionTitle),
+                const SizedBox(height: RevisionSpacing.xs),
+                Text(
+                  '${_deepScoreLabel(item.score)} · ${item.knowledgeUnit.title} · ${_historyDate(item.submittedAt)}',
+                  style: RevisionTypography.caption,
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push(
+              AppRoutes.courseDeepRevisionResult(
+                courseId: item.course.id,
+                sessionId: item.sessionId,
               ),
             ),
             child: const Text('Voir le résultat'),
@@ -1600,6 +1662,14 @@ String _percent(double value) {
 
 String _scorePercent(double value) {
   return '${(value.clamp(0, 1) * 100).round()} %';
+}
+
+String _deepScoreLabel(double? value) {
+  if (value == null) {
+    return 'Correction détaillée';
+  }
+
+  return _scorePercent(value);
 }
 
 String _historyDate(DateTime value) {
