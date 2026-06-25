@@ -605,9 +605,12 @@ void main() {
 
       expect(find.text('Réviser maintenant'), findsWidgets);
       expect(
-        find.text('9 questions prêtes. Plus de questions sont en préparation.'),
+        find.text(
+          "Une session rapide peut démarrer maintenant. D'autres questions sont en préparation.",
+        ),
         findsWidgets,
       );
+      expect(find.text('9 questions prêtes.'), findsNothing);
       expect(find.text('Commencer une session rapide'), findsNothing);
 
       await scrollToQuickRevision(tester);
@@ -625,7 +628,8 @@ void main() {
       expect(find.text('10 questions'), findsOneWidget);
       expect(find.text('20 questions'), findsOneWidget);
       expect(find.text('30 questions'), findsOneWidget);
-      expect(find.text('Prêt'), findsOneWidget);
+      expect(find.text('Prêt'), findsWidgets);
+      expect(find.text('9 prêtes'), findsNothing);
       expect(find.text('En préparation'), findsOneWidget);
       expect(find.text('À préparer'), findsNWidgets(2));
 

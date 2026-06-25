@@ -538,11 +538,11 @@ _PrimaryCourseAction _primaryActionFor(
     if (readiness.readyQuestionCount >= 5) {
       final suffix =
           readiness.status == CourseQuestionBankReadinessStatus.preparing
-          ? ' Plus de questions sont en préparation.'
+          ? " D'autres questions sont en préparation."
           : '';
       return _PrimaryCourseAction(
         title: 'Réviser maintenant',
-        message: '${readiness.readyQuestionCount} questions prêtes.$suffix',
+        message: 'Une session rapide peut démarrer maintenant.$suffix',
         buttonLabel: 'Réviser maintenant',
         icon: Icons.flash_on_rounded,
         buttonIcon: Icons.play_arrow_rounded,
@@ -1295,10 +1295,10 @@ String _quickRevisionActionLabel(
 
     return switch (readiness.status) {
       CourseQuestionBankReadinessStatus.ready =>
-        '${readiness.readyQuestionCount} questions prêtes.',
+        'Prêt pour une révision rapide.',
       CourseQuestionBankReadinessStatus.preparing =>
         readiness.readyQuestionCount >= 5
-            ? '${readiness.readyQuestionCount} questions prêtes. Plus de questions sont en préparation.'
+            ? "Prêt pour une révision rapide. D'autres questions sont en préparation."
             : 'Les questions sont en préparation.',
       CourseQuestionBankReadinessStatus.notPrepared =>
         'Prépare les questions avant de commencer.',
@@ -1331,7 +1331,7 @@ String? _quickRevisionReadinessLabel(CourseQuestionBankReadiness? readiness) {
   }
 
   if (readiness.readyQuestionCount >= 5) {
-    return '${readiness.readyQuestionCount} prêtes';
+    return 'Prêt';
   }
 
   return switch (readiness.status) {
