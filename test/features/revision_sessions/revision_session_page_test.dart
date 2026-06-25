@@ -61,9 +61,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(api.startCount, 1);
-      expect(find.text('Questions riches'), findsWidgets);
+      expect(find.text('QCM complet'), findsWidgets);
       expect(find.text('Notion : Institutions politiques'), findsOneWidget);
-      expect(find.text('Questions riches recommandées.'), findsOneWidget);
+      expect(find.text('QCM complet recommandé.'), findsOneWidget);
+      expect(find.textContaining('Questions riches'), findsNothing);
       expect(find.text('Commencer'), findsOneWidget);
       expect(find.text('question-1'), findsNothing);
       expect(find.text('correctChoiceId'), findsNothing);
@@ -248,7 +249,8 @@ void main() {
       expect(revisionApi.loadExamCount, 1);
       expect(revisionApi.loadedExamSessionId, 'exam-session-1');
       expect(revisionApi.loadCount, 0);
-      expect(find.text('Préparation examen'), findsWidgets);
+      expect(find.text('Préparation examen - QCM'), findsWidgets);
+      expect(find.text('Préparation examen'), findsNothing);
       expect(find.text('Question 1 sur 1'), findsOneWidget);
       expect(
         find.text('Quel principe organise les pouvoirs ?'),

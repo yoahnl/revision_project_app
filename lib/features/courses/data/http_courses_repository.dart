@@ -520,7 +520,7 @@ class HttpCoursesRepository implements CoursesRepository {
       }
       if (error.response?.statusCode == 409) {
         throw CourseRequestException(
-          _responseMessage(error) ?? 'Préparation examen indisponible',
+          _responseMessage(error) ?? 'Préparation examen - QCM indisponible',
         );
       }
       rethrow;

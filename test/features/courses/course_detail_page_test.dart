@@ -489,6 +489,71 @@ void main() {
     expect(quickCard.enabled, isTrue);
   });
 
+  testWidgets('course detail exposes canonical revision modes honestly', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await scrollToQuickRevision(tester);
+
+    expect(
+      find.widgetWithText(RevisionModeCard, 'Révision rapide'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(RevisionModeCard, 'QCM complet'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(RevisionModeCard, 'Révision approfondie'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(RevisionModeCard, 'Préparation examen - QCM'),
+      findsOneWidget,
+    );
+    expect(find.text('Bientôt'), findsNWidgets(2));
+
+    final qcmCard = tester.widget<RevisionModeCard>(
+      find.widgetWithText(RevisionModeCard, 'QCM complet'),
+    );
+    expect(qcmCard.enabled, isFalse);
+    expect(qcmCard.onTap, isNull);
+
+    final deepCard = tester.widget<RevisionModeCard>(
+      find.widgetWithText(RevisionModeCard, 'Révision approfondie'),
+    );
+    expect(deepCard.enabled, isFalse);
+    expect(deepCard.onTap, isNull);
+
+    final examCard = tester.widget<RevisionModeCard>(
+      find.widgetWithText(RevisionModeCard, 'Préparation examen - QCM'),
+    );
+    expect(examCard.enabled, isTrue);
+    expect(examCard.onTap, isNotNull);
+
+    expect(find.textContaining('Questions riches'), findsNothing);
+    expect(find.textContaining('rich closed'), findsNothing);
+    expect(find.textContaining('MVP+'), findsNothing);
+    expect(find.textContaining('backend'), findsNothing);
+  });
+
   testWidgets(
     'course detail does not offer question preparation when no knowledge unit exists',
     (tester) async {
@@ -765,7 +830,7 @@ void main() {
     await tester.tap(find.text('Voir le résultat'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Résultat questions riches'), findsOneWidget);
+    expect(find.text('Résultat QCM complet'), findsOneWidget);
   });
 
   testWidgets('course detail opens an exam result from history', (
@@ -793,13 +858,13 @@ void main() {
 
     expect(find.text('Historique'), findsOneWidget);
     expect(find.text('9/10'), findsOneWidget);
-    expect(find.textContaining('Entraînement examen'), findsOneWidget);
+    expect(find.textContaining('Préparation examen - QCM'), findsWidgets);
     expect(find.textContaining('90 %'), findsOneWidget);
 
     await tester.tap(find.text('Voir le résultat'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Résultat examen'), findsOneWidget);
+    expect(find.text('Résultat Préparation examen - QCM'), findsOneWidget);
   });
 
   testWidgets(
@@ -828,15 +893,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.scrollUntilVisible(find.text('Préparation examen'), 400);
-      await tester.pumpAndSettle();
-
-      await tester.tap(
-        find.widgetWithText(RevisionModeCard, 'Préparation examen'),
+      await tester.scrollUntilVisible(
+        find.text('Préparation examen - QCM'),
+        400,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Préparation examen dédiée'), findsOneWidget);
+      await tester.tap(
+        find.widgetWithText(RevisionModeCard, 'Préparation examen - QCM'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Préparation examen - QCM dédiée'), findsOneWidget);
     },
   );
 
@@ -940,7 +1008,7 @@ Widget routerTestApp({
           body: Text(
             state.pathParameters['sessionId'] == 'exam-session-1' &&
                     state.uri.queryParameters['mode'] == 'exam'
-                ? 'Résultat examen'
+                ? 'Résultat Préparation examen - QCM'
                 : state.pathParameters['sessionId'] == 'revision-session-1'
                 ? 'Résultat de session'
                 : 'Résultat introuvable',
@@ -953,7 +1021,7 @@ Widget routerTestApp({
           body: Text(
             state.pathParameters['sessionId'] == 'rich-session-1' &&
                     state.uri.queryParameters['courseId'] == 'course-1'
-                ? 'Résultat questions riches'
+                ? 'Résultat QCM complet'
                 : 'Résultat introuvable',
           ),
         ),
@@ -961,7 +1029,7 @@ Widget routerTestApp({
       GoRoute(
         path: AppRoutes.courseExamPreparationPath,
         builder: (context, state) =>
-            const Scaffold(body: Text('Préparation examen dédiée')),
+            const Scaffold(body: Text('Préparation examen - QCM dédiée')),
       ),
     ],
   );
@@ -1073,7 +1141,7 @@ CourseRichClosedHistoryItem richClosedHistoryItem({
     sessionId: sessionId,
     type: 'rich_closed_exercise',
     status: 'completed',
-    title: 'Questions riches - Constitution',
+    title: 'QCM complet - Constitution',
     subjectId: 'subject-1',
     documentId: 'document-1',
     knowledgeUnit: const CourseRichClosedHistoryKnowledgeUnit(
@@ -1105,7 +1173,7 @@ CourseExamPreparationOptions examPreparationOptionsFixture({
     readiness: CourseExamPreparationReadiness(
       canPrepare: state == CourseExamPreparationReadinessState.ready,
       state: state,
-      userMessage: 'Ton cours est prêt pour une préparation examen.',
+      userMessage: 'Ton cours est prêt pour une préparation examen - QCM.',
       blockers: const [],
       readySourceCount: 1,
       readyKnowledgeUnitCount: 2,
@@ -1132,8 +1200,7 @@ CourseExamPreparationOptions examPreparationOptionsFixture({
     ),
     nextStep: const CourseExamPreparationNextStep(
       kind: 'configuration_ready',
-      userMessage:
-          'Configuration prête. Tu peux démarrer un entraînement examen.',
+      userMessage: 'Configuration prête. Tu peux démarrer un entraînement QCM.',
     ),
   );
 }

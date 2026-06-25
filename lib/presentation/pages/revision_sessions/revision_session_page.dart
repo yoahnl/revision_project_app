@@ -282,7 +282,7 @@ class _CompletedCourseExamSessionRedirectState
   @override
   Widget build(BuildContext context) {
     return const RevisionPage(
-      title: 'Préparation examen terminée',
+      title: 'Préparation examen - QCM terminée',
       subtitle: 'Ouverture du résultat.',
       children: [Center(child: CircularProgressIndicator())],
     );
@@ -562,14 +562,11 @@ class _RichClosedLauncher extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Questions riches',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('QCM complet', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.s),
           Text(_contextLabel),
           const SizedBox(height: AppSpacing.s),
-          Text(payload.reason),
+          Text(_richClosedReasonLabel(payload.reason)),
           const SizedBox(height: AppSpacing.s),
           RevisionStatusPill(
             label: '${payload.estimatedMinutes} min',
@@ -699,9 +696,15 @@ String _actionKindLabel(RevisionSessionActionKind kind) {
   return switch (kind) {
     RevisionSessionActionKind.diagnosticQuiz => 'QCM',
     RevisionSessionActionKind.openQuestion => 'Question ouverte',
-    RevisionSessionActionKind.richClosedExercise => 'Questions riches',
+    RevisionSessionActionKind.richClosedExercise => 'QCM complet',
     RevisionSessionActionKind.unknown => 'Action inconnue',
   };
+}
+
+String _richClosedReasonLabel(String reason) {
+  return reason
+      .replaceAll('Questions riches recommandées.', 'QCM complet recommandé.')
+      .replaceAll('Questions riches', 'QCM complet');
 }
 
 IconData _actionKindIcon(RevisionSessionActionKind kind) {

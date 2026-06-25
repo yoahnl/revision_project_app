@@ -33,16 +33,16 @@ class CourseExamPreparationPage extends ConsumerWidget {
             ),
           ],
         ),
-        Text('Préparation examen', style: RevisionTypography.hero),
+        Text('Préparation examen - QCM', style: RevisionTypography.hero),
         Text(
-          'Construis un entraînement plus proche d’un sujet d’examen, à partir de ce cours.',
+          'Construis un entraînement QCM court, proche d’un sujet d’examen, à partir de ce cours.',
           style: RevisionTypography.body,
         ),
       ],
       children: [
         options.when(
           loading: () => const RevisionLoadingState(
-            label: 'Chargement de la préparation examen',
+            label: 'Chargement de la préparation examen - QCM',
           ),
           error: (error, stackTrace) {
             if (error is CourseNotFoundException) {
@@ -50,9 +50,9 @@ class CourseExamPreparationPage extends ConsumerWidget {
             }
 
             return RevisionErrorState(
-              title: 'Préparation indisponible',
+              title: 'Préparation QCM indisponible',
               message:
-                  'Impossible de charger cette préparation pour le moment.',
+                  'Impossible de charger cette préparation QCM pour le moment.',
               actionLabel: 'Réessayer',
               onAction: () => ref.invalidate(
                 courseExamPreparationOptionsProvider(courseId),
@@ -191,7 +191,7 @@ class _ExamPreparationContentState
                         ),
                         const SizedBox(height: RevisionSpacing.xs),
                         Text(
-                          options.nextStep.userMessage,
+                          _examQcmUserMessage(options.nextStep.userMessage),
                           style: RevisionTypography.body,
                         ),
                       ],
@@ -204,7 +204,7 @@ class _ExamPreparationContentState
                 RevisionGradientButton(
                   label: _isStarting
                       ? 'Préparation...'
-                      : 'Démarrer l’entraînement',
+                      : 'Démarrer l’entraînement QCM',
                   icon: Icons.play_arrow_rounded,
                   expanded: true,
                   onPressed: _isStarting ? null : () => _start(selectedScope),
@@ -213,7 +213,7 @@ class _ExamPreparationContentState
               if (_startError != null) ...[
                 const SizedBox(height: RevisionSpacing.m),
                 Text(
-                  'Impossible de démarrer cette préparation pour le moment.',
+                  'Impossible de démarrer cette préparation QCM pour le moment.',
                   style: RevisionTypography.caption.copyWith(
                     color: RevisionColors.red,
                   ),
@@ -325,7 +325,10 @@ class _ReadinessCard extends StatelessWidget {
                   style: RevisionTypography.sectionTitle,
                 ),
                 const SizedBox(height: RevisionSpacing.xs),
-                Text(readiness.userMessage, style: RevisionTypography.body),
+                Text(
+                  _examQcmUserMessage(readiness.userMessage),
+                  style: RevisionTypography.body,
+                ),
                 const SizedBox(height: RevisionSpacing.s),
                 Text(
                   '${readiness.readySourceCount} source(s) prête(s) · '
@@ -459,6 +462,20 @@ String _questionKindsLabel(List<String> kinds) {
   }).whereType<String>();
 
   return labels.isEmpty ? 'Formats disponibles' : labels.join(', ');
+}
+
+String _examQcmUserMessage(String value) {
+  return value
+      .replaceAllMapped(
+        RegExp(r'Préparation examen(?! - QCM)'),
+        (_) => 'Préparation examen - QCM',
+      )
+      .replaceAllMapped(
+        RegExp(r'préparation examen(?! - QCM)'),
+        (_) => 'préparation examen - QCM',
+      )
+      .replaceAll('entraînement examen', 'entraînement QCM')
+      .replaceAll('Entraînement examen', 'Entraînement QCM');
 }
 
 void _popOrGo(BuildContext context, String fallbackRoute) {

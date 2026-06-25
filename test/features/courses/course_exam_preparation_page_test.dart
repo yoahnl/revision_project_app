@@ -23,7 +23,8 @@ void main() {
 
     expect(repository.getExamPreparationOptionsCount, 1);
     expect(repository.lastExamPreparationOptionsCourseId, 'course-1');
-    expect(find.text('Préparation examen'), findsOneWidget);
+    expect(find.text('Préparation examen - QCM'), findsOneWidget);
+    expect(find.textContaining('entraînement QCM court'), findsOneWidget);
     expect(find.text('Prêt'), findsOneWidget);
     expect(find.text('Tout le cours'), findsOneWidget);
     expect(find.text('CM.pdf'), findsOneWidget);
@@ -31,11 +32,9 @@ void main() {
     expect(find.text('Types de questions'), findsOneWidget);
     expect(find.text('choix simple, choix multiple'), findsOneWidget);
     expect(find.text('Configuration prête'), findsOneWidget);
-    expect(
-      find.textContaining('démarrer un entraînement examen'),
-      findsOneWidget,
-    );
-    expect(find.text('Démarrer l’entraînement'), findsOneWidget);
+    expect(find.textContaining('démarrer un entraînement QCM'), findsOneWidget);
+    expect(find.text('Démarrer l’entraînement QCM'), findsOneWidget);
+    expect(find.textContaining('entraînement examen'), findsNothing);
 
     final tenQuestionsChip = find.widgetWithText(ChoiceChip, '10 questions');
     await tester.ensureVisible(tenQuestionsChip);
@@ -45,8 +44,8 @@ void main() {
     final selectedChip = tester.widget<ChoiceChip>(tenQuestionsChip);
     expect(selectedChip.selected, isTrue);
 
-    await tester.ensureVisible(find.text('Démarrer l’entraînement'));
-    await tester.tap(find.text('Démarrer l’entraînement'));
+    await tester.ensureVisible(find.text('Démarrer l’entraînement QCM'));
+    await tester.tap(find.text('Démarrer l’entraînement QCM'));
     await tester.pumpAndSettle();
 
     expect(repository.startExamPreparationCount, 1);
@@ -77,7 +76,7 @@ void main() {
     expect(find.text('Configuration indisponible'), findsOneWidget);
     expect(
       find.text(
-        'Ajoute une source prête avant de configurer une préparation examen.',
+        'Ajoute une source prête avant de configurer une préparation examen - QCM.',
       ),
       findsWidgets,
     );
@@ -156,8 +155,8 @@ CourseExamPreparationOptions examPreparationOptionsFixture({
       canPrepare: canPrepare,
       state: state,
       userMessage: canPrepare
-          ? 'Ton cours est prêt pour une préparation examen.'
-          : 'Ajoute une source prête avant de configurer une préparation examen.',
+          ? 'Ton cours est prêt pour une préparation examen - QCM.'
+          : 'Ajoute une source prête avant de configurer une préparation examen - QCM.',
       blockers: canPrepare ? const [] : const ['NO_READY_SOURCE'],
       readySourceCount: canPrepare ? 1 : 0,
       readyKnowledgeUnitCount: canPrepare ? 2 : 0,
@@ -197,8 +196,8 @@ CourseExamPreparationOptions examPreparationOptionsFixture({
     nextStep: CourseExamPreparationNextStep(
       kind: canPrepare ? 'configuration_ready' : 'blocked',
       userMessage: canPrepare
-          ? 'Configuration prête. Tu peux démarrer un entraînement examen.'
-          : 'Ajoute une source prête avant de configurer une préparation examen.',
+          ? 'Configuration prête. Tu peux démarrer un entraînement QCM.'
+          : 'Ajoute une source prête avant de configurer une préparation examen - QCM.',
     ),
   );
 }

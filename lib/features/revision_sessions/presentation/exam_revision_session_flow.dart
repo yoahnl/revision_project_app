@@ -43,7 +43,10 @@ class _ExamRevisionSessionFlowState
     if (_questions.isEmpty) {
       return RevisionPageScaffold(
         children: [
-          Text('Préparation examen', style: RevisionTypography.sectionTitle),
+          Text(
+            'Préparation examen - QCM',
+            style: RevisionTypography.sectionTitle,
+          ),
           const RevisionGlassCard(
             child: Text('Aucune question disponible pour cette session.'),
           ),
@@ -76,7 +79,7 @@ class _ExamRevisionSessionFlowState
               ),
               const Expanded(
                 child: Text(
-                  'Préparation examen',
+                  'Préparation examen - QCM',
                   textAlign: TextAlign.center,
                   style: RevisionTypography.sectionTitle,
                 ),
@@ -84,10 +87,7 @@ class _ExamRevisionSessionFlowState
               const SizedBox(width: 48),
             ],
           ),
-          _ExamHeader(
-            courseTitle: widget.activity.title,
-            questionCount: _questions.length,
-          ),
+          _ExamHeader(courseTitle: _examQcmTitle(widget.activity.title)),
           _ExamProgress(current: _questionIndex + 1, total: _questions.length),
           RevisionGlassCard(
             child: Column(
@@ -325,10 +325,9 @@ class _ExamRevisionSessionFlowState
 }
 
 class _ExamHeader extends StatelessWidget {
-  const _ExamHeader({required this.courseTitle, required this.questionCount});
+  const _ExamHeader({required this.courseTitle});
 
   final String courseTitle;
-  final int questionCount;
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +347,7 @@ class _ExamHeader extends StatelessWidget {
                 Text(courseTitle, style: RevisionTypography.sectionTitle),
                 const SizedBox(height: RevisionSpacing.xs),
                 Text(
-                  '$questionCount question(s) · score calculé à la validation',
+                  'Entraînement QCM · score calculé à la validation',
                   style: RevisionTypography.caption,
                 ),
               ],
@@ -448,4 +447,10 @@ class _ExamChoiceCard extends StatelessWidget {
 
 String _choiceLetter(int index) {
   return String.fromCharCode('A'.codeUnitAt(0) + index);
+}
+
+String _examQcmTitle(String title) {
+  return title.trim() == 'Préparation examen'
+      ? 'Préparation examen - QCM'
+      : title;
 }

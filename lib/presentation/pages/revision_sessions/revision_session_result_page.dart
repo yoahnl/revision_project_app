@@ -125,7 +125,7 @@ class _ResultContent extends StatelessWidget {
           children: [
             Text(
               result.session.mode == RevisionSessionMode.exam
-                  ? 'Examen terminé'
+                  ? 'Préparation examen - QCM terminée'
                   : 'Session terminée',
               textAlign: TextAlign.center,
               style: RevisionTypography.sectionTitle,

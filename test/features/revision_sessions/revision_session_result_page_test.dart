@@ -60,7 +60,8 @@ void main() {
     expect(api.loadExamResultCount, 1);
     expect(api.loadedExamResultSessionId, 'exam-session-1');
     expect(api.loadResultCount, 0);
-    expect(find.text('Examen terminé'), findsOneWidget);
+    expect(find.text('Préparation examen - QCM terminée'), findsOneWidget);
+    expect(find.text('Examen terminé'), findsNothing);
     expect(find.text('100%'), findsWidgets);
     expect(find.text('1/1 bonnes réponses'), findsOneWidget);
     expect(find.text('Tu maîtrises'), findsOneWidget);
