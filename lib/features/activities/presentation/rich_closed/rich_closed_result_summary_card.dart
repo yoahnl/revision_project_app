@@ -36,7 +36,7 @@ class RichClosedResultSummaryCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.m),
           Text('Résultat', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.s),
-          Text('Score backend', style: Theme.of(context).textTheme.labelMedium),
+          Text('Score final', style: Theme.of(context).textTheme.labelMedium),
           Text(
             summary.scoreLabel,
             style: Theme.of(context).textTheme.headlineSmall,

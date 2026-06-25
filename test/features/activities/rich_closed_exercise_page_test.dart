@@ -11,6 +11,7 @@ import 'package:Neralune/features/activities/presentation/rich_closed/rich_close
 import 'package:Neralune/presentation/pages/activities/rich_closed_exercise_page.dart';
 import 'package:Neralune/presentation/pages/activities/rich_closed_exercise_result_page.dart';
 import 'package:Neralune/presentation/widgets/revision_button.dart';
+import 'package:Neralune/presentation/widgets/revision_choice_tile.dart';
 
 import 'fixtures/rich_closed_exercise_fixtures.dart';
 
@@ -317,6 +318,97 @@ void main() {
     expect(controller.canSubmitQuestion(question), isTrue);
   });
 
+  testWidgets(
+    'page affiche une question à la fois et conserve la réponse au retour',
+    (tester) async {
+      final api = _FakeRichClosedActivityApi(
+        exercise: exercise,
+        result: result,
+      );
+
+      await tester.pumpWidget(
+        _TestHost(
+          child: RichClosedExercisePage(
+            controller: ActivityController(api),
+            subjectId: 'subject-1',
+            knowledgeUnitId: 'unit-1',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Question 1 / 6'), findsOneWidget);
+      expect(
+        find.text('Quel critère caractérise un régime parlementaire ?'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Quels indices orientent vers un régime parlementaire ?'),
+        findsNothing,
+      );
+      expect(_button(tester, 'Précédent').onPressed, isNull);
+      expect(_button(tester, 'Suivant').onPressed, isNull);
+      expect(
+        find.text('Réponds à la question pour continuer.'),
+        findsOneWidget,
+      );
+
+      await _tapVisible(tester, find.text('Responsabilité politique').first);
+
+      expect(_button(tester, 'Suivant').onPressed, isNotNull);
+      await _tapVisible(tester, find.widgetWithText(RevisionButton, 'Suivant'));
+
+      expect(find.text('Question 2 / 6'), findsOneWidget);
+      expect(
+        find.text('Quels indices orientent vers un régime parlementaire ?'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Quel critère caractérise un régime parlementaire ?'),
+        findsNothing,
+      );
+
+      await _tapVisible(
+        tester,
+        find.widgetWithText(RevisionButton, 'Précédent'),
+      );
+
+      expect(find.text('Question 1 / 6'), findsOneWidget);
+      final selectedTile = tester.widget<RevisionChoiceTile>(
+        find.widgetWithText(RevisionChoiceTile, 'Responsabilité politique'),
+      );
+      expect(selectedTile.selected, isTrue);
+    },
+  );
+
+  testWidgets(
+    'page charge une session existante et navigue sans double démarrage',
+    (tester) async {
+      final api = _FakeRichClosedActivityApi(
+        exercise: exercise,
+        result: result,
+      );
+
+      await tester.pumpWidget(
+        _TestHost(
+          child: RichClosedExercisePage(
+            controller: ActivityController(api),
+            sessionId: 'rich-session-1',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(api.getExerciseCallCount, 1);
+      expect(api.startCount, 0);
+      expect(find.text('Question 1 / 6'), findsOneWidget);
+      expect(
+        find.text('Quel critère caractérise un régime parlementaire ?'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('page démarre, collecte six réponses et affiche la correction', (
     tester,
   ) async {
@@ -343,7 +435,7 @@ void main() {
     expect(api.startedKnowledgeUnitId, 'unit-1');
     expect(find.text('QCM complet'), findsOneWidget);
     expect(find.text('1 / 6 répondues'), findsOneWidget);
-    expect(_submitButton(tester).onPressed, isNull);
+    expect(_button(tester, 'Suivant').onPressed, isNull);
     expect(
       find.text('La responsabilité politique est centrale.'),
       findsNothing,
@@ -356,8 +448,9 @@ void main() {
 
     await _tapVisible(
       tester,
-      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+      find.widgetWithText(RevisionButton, 'Valider le QCM'),
     );
+    await tester.tap(find.widgetWithText(RevisionButton, 'Valider le QCM'));
     await tester.pump();
 
     expect(find.text('Correction en cours...'), findsOneWidget);
@@ -381,7 +474,7 @@ void main() {
       find.text('La responsabilité politique est centrale.'),
       findsOneWidget,
     );
-    expect(find.text('Valider mes réponses'), findsNothing);
+    expect(find.text('Valider le QCM'), findsNothing);
   });
 
   testWidgets('page submit et affiche les corrections V1-B', (tester) async {
@@ -416,7 +509,7 @@ void main() {
 
     await _tapVisible(
       tester,
-      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+      find.widgetWithText(RevisionButton, 'Valider le QCM'),
     );
     await tester.pumpAndSettle();
 
@@ -468,7 +561,7 @@ void main() {
 
     await _tapVisible(
       tester,
-      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+      find.widgetWithText(RevisionButton, 'Valider le QCM'),
     );
     await tester.pumpAndSettle();
 
@@ -537,7 +630,7 @@ void main() {
 
     await _tapVisible(
       tester,
-      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+      find.widgetWithText(RevisionButton, 'Valider le QCM'),
     );
     await tester.pumpAndSettle();
 
@@ -594,7 +687,7 @@ void main() {
 
     await _tapVisible(
       tester,
-      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+      find.widgetWithText(RevisionButton, 'Valider le QCM'),
     );
     await tester.pumpAndSettle();
 
@@ -652,7 +745,7 @@ void main() {
 
     await _tapVisible(
       tester,
-      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+      find.widgetWithText(RevisionButton, 'Valider le QCM'),
     );
     await tester.pumpAndSettle();
 
@@ -689,7 +782,7 @@ void main() {
       expect(api.getExerciseCallCount, 1);
       expect(api.getResultCallCount, 1);
       expect(api.submitCallCount, 0);
-      expect(find.text('Score backend'), findsOneWidget);
+      expect(find.text('Score final'), findsOneWidget);
       expect(find.text('0.833'), findsOneWidget);
       expect(
         find.text('Quel critère caractérise un régime parlementaire ?'),
@@ -734,7 +827,7 @@ void main() {
 
     await _tapVisible(
       tester,
-      find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+      find.widgetWithText(RevisionButton, 'Valider le QCM'),
     );
     await tester.pumpAndSettle();
 
@@ -798,14 +891,39 @@ void main() {
 
 RevisionButton _submitButton(WidgetTester tester) {
   return tester.widget<RevisionButton>(
-    find.widgetWithText(RevisionButton, 'Valider mes réponses'),
+    find.widgetWithText(RevisionButton, 'Valider le QCM'),
+  );
+}
+
+RevisionButton _button(WidgetTester tester, String label) {
+  return tester.widget<RevisionButton>(
+    find.widgetWithText(RevisionButton, label),
   );
 }
 
 Future<void> _answerAllQuestions(WidgetTester tester) async {
-  await _tapVisible(tester, find.text('Responsabilité politique').first);
-  await _tapVisible(tester, find.text('Responsabilité du gouvernement').first);
-  await _tapVisible(tester, find.text('Collaboration des pouvoirs').first);
+  for (var step = 0; step < 30; step += 1) {
+    await _answerVisibleQuestion(tester);
+
+    final submitFinder = find.widgetWithText(RevisionButton, 'Valider le QCM');
+    if (submitFinder.evaluate().isNotEmpty) {
+      expect(_submitButton(tester).onPressed, isNotNull);
+      return;
+    }
+
+    final nextFinder = find.widgetWithText(RevisionButton, 'Suivant');
+    expect(nextFinder, findsOneWidget);
+    expect(_button(tester, 'Suivant').onPressed, isNotNull);
+    await _tapVisible(tester, nextFinder);
+  }
+
+  fail('Le QCM complet n’a jamais atteint la dernière question.');
+}
+
+Future<void> _answerVisibleQuestion(WidgetTester tester) async {
+  await _tapTextIfPresent(tester, 'Responsabilité politique');
+  await _tapTextIfPresent(tester, 'Responsabilité du gouvernement');
+  await _tapTextIfPresent(tester, 'Collaboration des pouvoirs');
   await _selectMatchingRight(
     tester,
     leftId: 'left-1',
@@ -821,11 +939,8 @@ Future<void> _answerAllQuestions(WidgetTester tester) async {
     leftId: 'left-3',
     label: 'Vérification d’une norme',
   );
-  await _tapVisible(tester, find.text('Régime parlementaire').first);
-  await _tapVisible(
-    tester,
-    find.text('Confusion avec le parlementarisme').first,
-  );
+  await _tapTextIfPresent(tester, 'Régime parlementaire');
+  await _tapTextIfPresent(tester, 'Confusion avec le parlementarisme');
   await _tapIfPresent(
     tester,
     find.byKey(const ValueKey('true-false-row-1-true')),
@@ -893,6 +1008,10 @@ Future<void> _selectMatchingRight(
   required String label,
 }) async {
   final dropdown = find.byKey(ValueKey('matching-matching-1-$leftId'));
+  if (dropdown.evaluate().isEmpty) {
+    return;
+  }
+
   await tester.ensureVisible(dropdown);
   await tester.tap(dropdown);
   await tester.pumpAndSettle();
@@ -978,6 +1097,15 @@ Future<void> _selectImageChoice(
   }
 
   await _tapVisible(tester, finder);
+}
+
+Future<void> _tapTextIfPresent(WidgetTester tester, String text) async {
+  final finder = find.text(text);
+  if (finder.evaluate().isEmpty) {
+    return;
+  }
+
+  await _tapVisible(tester, finder.first);
 }
 
 Future<void> _tapIfPresent(WidgetTester tester, Finder finder) async {
