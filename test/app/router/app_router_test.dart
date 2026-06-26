@@ -265,8 +265,7 @@ void main() {
 
     expect(find.text('Institutions de la Ve République'), findsOneWidget);
     expect(find.text('Droit constitutionnel'), findsOneWidget);
-    await tester.tap(find.widgetWithText(RevisionHeaderActionPill, 'Sources'));
-    await tester.pumpAndSettle();
+    await openCourseDetailMenuAction(tester, 'Sources');
     expect(find.text('cours.pdf'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
   });
@@ -291,10 +290,7 @@ void main() {
     harness.router.push(AppRoutes.course('course-1'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
-      findsOneWidget,
-    );
+    expect(find.byTooltip('Plus d’actions'), findsOneWidget);
     expect(harness.router.canPop(), isTrue);
 
     await tester.tap(find.byTooltip('Retour'));
@@ -305,10 +301,7 @@ void main() {
       AppRoutes.home,
     );
     expect(harness.router.canPop(), isFalse);
-    expect(
-      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
-      findsNothing,
-    );
+    expect(find.byTooltip('Plus d’actions'), findsNothing);
   });
 
   testWidgets('course sheet back pops to detail without duplicating home', (
@@ -335,10 +328,7 @@ void main() {
     await tester.tap(find.byTooltip('Retour au cours'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
-      findsOneWidget,
-    );
+    expect(find.byTooltip('Plus d’actions'), findsOneWidget);
     expect(harness.router.canPop(), isTrue);
 
     await tester.tap(find.byTooltip('Retour'));
@@ -723,6 +713,16 @@ class _RouterHarness {
     router.dispose();
     authController.dispose();
   }
+}
+
+Future<void> openCourseDetailMenuAction(
+  WidgetTester tester,
+  String label,
+) async {
+  await tester.tap(find.byTooltip('Plus d’actions'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label));
+  await tester.pumpAndSettle();
 }
 
 class _SignedInAuthRepository implements AuthRepository {

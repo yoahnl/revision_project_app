@@ -45,11 +45,11 @@ Difference entre roadmap canonique et tracker :
 
 | Area | Status | Last completed lot | Current / next lot | Main risk | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Documentation / governance | `DONE` | `V4-DOC-02` | `V4-03B` | Tracker non maintenu apres les lots backend | Roadmap, tracker et evidence packs V4 restent a jour. |
-| Shell & navigation | `DONE` | `V4-01B` | `V4-03B` | Raccourci profil encore discret | Trois onglets visibles livres ; profil accessible en action secondaire. |
-| Aujourd'hui | `DONE` | `V4-02C` | `V4-03B` | Actions secondaires de duree encore reportees | UI V4 alignee visuellement, display backend consomme en option, enrichment backend livre. |
-| Cours | `IN_PROGRESS` | `V4-03A` | `V4-03B` | Revision matiere encore partiellement branchee | Bibliotheque V4 frontend livree ; selector/action matiere restent a renforcer. |
-| Learning path | `NOT_STARTED` | Aucun | `V4-04A` | Etats pedagogiques mal calibres | Contrat backend avant timeline finale. |
+| Documentation / governance | `DONE` | `V4-DOC-02` | `V4-04A` | Tracker non maintenu apres les lots backend | Roadmap, tracker et evidence packs V4 restent a jour. |
+| Shell & navigation | `DONE` | `V4-01B` | `V4-04A` | Raccourci profil encore discret | Trois onglets visibles livres ; profil accessible en action secondaire. |
+| Aujourd'hui | `DONE` | `V4-02C` | `V4-04A` | Actions secondaires de duree encore reportees | UI V4 alignee visuellement, display backend consomme en option, enrichment backend livre. |
+| Cours | `IN_PROGRESS` | `V4-03C` | `V4-04A` | Revision matiere encore partiellement branchee | Bibliotheque V4 livree et detail cours simplifie ; selector/action matiere restent a renforcer. |
+| Learning path | `NOT_STARTED` | Aucun | `V4-04A` | Etats pedagogiques par notion absents | Contrat backend necessaire avant timeline finale. |
 | Study Session V4 | `NOT_STARTED` | Aucun | `V4-05A` | `questionCount` encore trop central | Duree/perimetre d'abord, facade ensuite. |
 | Feedback & result | `NOT_STARTED` | Aucun | `V4-06A` | Feedback IA trop lent si synchrone | Normaliser feedback avant polish result. |
 | Progres | `NOT_STARTED` | Aucun | `V4-07A` | Trop de metriques ou donnees fragiles | Trois categories max : solides, a renforcer, a decouvrir. |
@@ -65,8 +65,8 @@ Difference entre roadmap canonique et tracker :
 | Phase 0 | Roadmap, contrats produit et inventaire vérité | `DONE` | Eviter des lots contradictoires. | Roadmap canonique, tracker, conventions evidence. | Aucune | Diff documentation, commandes de lecture, tracker relu. | Roadmap et tracker crees. |
 | Phase 1 | Shell V4 et navigation simplifiée | `DONE` | Rendre l'app comprehensible en deux secondes. | Navigation visible Aujourd'hui, Cours, Progres ; profil secondaire. | Phase 0 | Captures mobile/desktop, router/widget tests. | Shell trois onglets livre ; profil accessible en secondaire, routes legacy preservees. |
 | Phase 2 | Aujourd’hui V4 | `DONE` | Montrer quoi travailler, combien de temps et pourquoi. | Today V4 avec action principale, objectif semaine, continuation discrete. | Phase 1 | Captures, tests Today, contrat Today documente si modifie. | Frontend-first, backend enrichment et alignement visuel livres ; objectif hebdo expose en target-only sans fake progress. |
-| Phase 3 | Cours V4 et sélecteur matière | `IN_PROGRESS` | Transformer Cours en bibliotheque vivante. | Matiere active, reviser toute la matiere, liste compacte, selecteur. | Phase 1 | Captures 0/1/n cours, tests subject picker. | Frontend Cours V4 livre ; `V4-03B` doit renforcer le selecteur et l'action matiere. |
-| Phase 4 | Learning path du cours | `NOT_STARTED` | Montrer le parcours de notions du cours. | Endpoint ou contrat learning path, timeline verticale. | Phase 3 | Contrat API, fixtures, captures, tests. | Utiliser `KnowledgeUnit` et `MasteryState` d'abord. |
+| Phase 3 | Cours V4 et sélecteur matière | `IN_PROGRESS` | Transformer Cours en bibliotheque vivante. | Matiere active, reviser toute la matiere, liste compacte, selecteur. | Phase 1 | Captures 0/1/n cours, tests subject picker. | Frontend Cours V4 livre ; detail cours simplifie ; `V4-03B` reste a renforcer. |
+| Phase 4 | Learning path du cours | `NOT_STARTED` | Montrer le parcours de notions du cours. | Endpoint ou contrat learning path, timeline verticale. | Phase 3 | Contrat API, fixtures, captures, tests. | `V4-03C` a montre une timeline provisoire avec vrais libelles seulement ; utiliser `KnowledgeUnit` et `MasteryState` d'abord. |
 | Phase 5 | Study Session V4 | `NOT_STARTED` | Reviser en 5/15/30 min sans mode technique visible. | Duration picker, facade session, planner multi-types. | Phase 4 | Traces de session, tests backend/frontend, captures. | Sujet long et epreuve blanche hors scope. |
 | Phase 6 | Feedback immédiat et bilan V4 | `NOT_STARTED` | Apprendre au moment de l'erreur. | Answer endpoint, feedback panel, result progression-first. | Phase 5 | Tests par type de question, captures feedback/result. | Ne pas attendre tous les renderers pour demarrer. |
 | Phase 7 | Progrès V4 | `NOT_STARTED` | Rendre la progression actionnable. | Resume matiere, semaine, cours, a revoir maintenant. | Phase 4, Phase 6 | Captures, tests progress, decision event log. | Eviter les metriques trop proches du backend. |
@@ -88,6 +88,7 @@ Difference entre roadmap canonique et tracker :
 | `V4-02C` | Aujourd’hui visual alignment | Frontend | `DONE` | Frontend | Rapprocher Today de la reference mobile sans fake data | `V4-02B` | `TodayPage`, modele Today, repository Today | Widget/repository/app/router tests | `docs/roadmap/v4/evidence/V4-02C_aujourdhui_visual_alignment_EVIDENCE_PACK.md` | 2026-06-26 | Greeting, Luna statique, hero compacte, CTA clair, weekly target-only et continuation unique. |
 | `V4-03A` | Cours V4 frontend | Frontend | `DONE` | Frontend | Bibliotheque cours compacte et premium | `V4-01B` | `CoursesHomePage`, course cards | Widget tests 0/1/n cours | `docs/roadmap/v4/evidence/V4-03A_cours_v4_frontend_EVIDENCE_PACK.md` | 2026-06-26 | Header `Cours`, bouton `+`, selector, resume honnete, hero et liste compacte livres sans fake data. |
 | `V4-03B` | Sélecteur matière et action “Réviser toute la matière” | Frontend | `NOT_STARTED` | Frontend | Subject picker V4 et CTA matiere | `V4-03A` | Subject picker, bottom sheet, CTA | Widget tests picker/CTA | `docs/roadmap/v4/evidence/V4-03B_selecteur_matiere_reviser_EVIDENCE_PACK.md` | À confirmer | Ouvre duration picker quand disponible. |
+| `V4-03C` | Détail cours visual alignment | Frontend | `DONE` | Frontend | Simplifier le detail cours en page parcours | `V4-03A` | `CourseDetailPage`, tests detail/router | Widget/router tests detail cours | `docs/roadmap/v4/evidence/V4-03C_detail_cours_visual_alignment_EVIDENCE_PACK.md` | 2026-06-26 | Header sobre, Luna statique, CTA unique, parcours depuis vrais libelles si disponibles, historique/modes en menu secondaire. |
 | `V4-04A` | Learning path backend contract | Backend | `NOT_STARTED` | API | Contrat notions et etats de parcours | `V4-DOC-02` | Courses module, progress use case | Unit/controller tests | `docs/roadmap/v4/evidence/V4-04A_learning_path_backend_contract_EVIDENCE_PACK.md` | À confirmer | Decider si `MasteryState` suffit. |
 | `V4-04B` | Learning path frontend timeline | Frontend | `NOT_STARTED` | Frontend | Timeline verticale de notions | `V4-04A` | Course detail, timeline widget, repository | Widget/repository tests | `docs/roadmap/v4/evidence/V4-04B_learning_path_frontend_timeline_EVIDENCE_PACK.md` | À confirmer | Sources en menu secondaire. |
 | `V4-05A` | Duration picker 5/15/30 | Frontend | `NOT_STARTED` | Frontend | Choix duree et perimetre | `V4-03B` | Bottom sheet, course/subject entry points | Widget tests | `docs/roadmap/v4/evidence/V4-05A_duration_picker_5_15_30_EVIDENCE_PACK.md` | À confirmer | Aucun `questionCount` visible. |
@@ -114,15 +115,15 @@ Difference entre roadmap canonique et tracker :
 
 ## 6. Next recommended lots
 
-1. `V4-03B` — Sélecteur matière et action “Réviser toute la matière”
-   - Pourquoi maintenant : completer la surface Cours avant les sessions V4.
-   - Ne doit pas faire : brancher Study Session V4.
-   - Risque principal : exposer trop tot des actions qui dependent du duration picker.
-
-2. `V4-04A` — Learning path backend contract
-   - Pourquoi maintenant : preparer le parcours de notions une fois Cours recadre.
+1. `V4-04A` — Learning path backend contract
+   - Pourquoi maintenant : `V4-03C` a recadre le detail cours, mais les etats de notion restent indisponibles cote frontend.
    - Ne doit pas faire : imposer une timeline frontend avant le contrat.
    - Risque principal : surexposer des etats pedagogiques non fiables.
+
+2. `V4-03B` — Sélecteur matière et action “Réviser toute la matière”
+   - Pourquoi maintenant : completer la surface Cours reste utile, mais moins bloquant que le contrat de parcours decouvert en `V4-03C`.
+   - Ne doit pas faire : brancher Study Session V4.
+   - Risque principal : exposer trop tot des actions qui dependent du duration picker.
 
 3. `V4-04B` — Learning path frontend timeline
    - Pourquoi maintenant : rendre le detail cours actionnable apres le contrat.
@@ -186,6 +187,8 @@ Ne pas creer les evidence packs en avance. Ils sont crees uniquement a la fin du
 | 2026-06-26 | `/today` expose un contrat `display` retrocompatible. | Accepted | Le backend doit fournir une copy produit propre sans supprimer les champs legacy consommes par le frontend actuel. | Ajout de `primaryItemId`, `continuationItemIds`, `role`, `display`, `weeklyObjective` target-only et `emptyState`. | Si le frontend a besoin d'un sync contractuel dedie. |
 | 2026-06-26 | Today consomme `display` en option et utilise Luna statique. | Accepted | Rapprocher l'ecran de la reference sans casser l'ancien contrat ni reintroduire une animation infinie. | `TodayPage` lit les champs enrichis si presents, garde les fallbacks legacy et affiche `neralune_cat.svg` sans animation. | Phase 10 pour le mascot system complet. |
 | 2026-06-26 | La hero card Cours ouvre le cours prioritaire plutot qu'une session matiere fictive. | Accepted | La vraie revision subject-level et le duration picker n'existent pas encore ; l'UI doit rester honnete. | `CoursesHomePage` affiche `Reviser cette matiere`, precise le cours choisi et pousse `AppRoutes.course(course.id)`. | `V4-03B` et `V4-05A`. |
+| 2026-06-26 | Le detail cours V4 devient une page de parcours, pas une page de modes. | Accepted | La reference cible un ecran tres simple : un cours, une progression, un parcours, deux actions. | `CourseDetailPage` masque historique et modes du flux principal et les conserve dans le menu `...`. | `V4-04A` et `V4-11A`. |
+| 2026-06-26 | Le parcours detail cours utilise seulement des libelles de notions reels. | Accepted | Le frontend n'a pas encore de maitrise par notion fiable ; copier les checks de la maquette serait du fake data. | Timeline provisoire basee sur `CourseRichRevisionScopeOption`, sans etat pedagogique invente. | `V4-04A`. |
 
 ## 9. Open risks
 
@@ -210,6 +213,8 @@ Ne pas creer les evidence packs en avance. Ils sont crees uniquement a la fin du
 | `R-V4-017` | Le frontend Today ne consomme pas encore les champs `display` enrichis. | Low | Frontend + API | `V4-02C` lit `display`, `weeklyObjective`, `emptyState`, `primaryItemId` et `continuationItemIds` en option avec fallback legacy. | `V4-02C` | Mitigated |
 | `R-V4-018` | Les actions secondaires `Choisir une duree` et selecteur dedie Today ne sont pas encore branchees. | Low | Frontend | Afficher seulement `Changer de cours` vers Cours ; garder la duree pour `V4-05A`. | `V4-05A` | Open |
 | `R-V4-019` | La hero Cours peut etre comprise comme une vraie revision matiere alors qu'elle ouvre un cours prioritaire. | Medium | Frontend + Product | Wording `On commence par <cours>` et decision documentee ; renforcer l'action dans `V4-03B`. | `V4-03B` | Open |
+| `R-V4-020` | Le detail cours n'a pas encore de vrai learning path avec etats par notion. | High | Frontend + API | Afficher seulement les vrais libelles disponibles et lancer `V4-04A` pour le contrat backend. | `V4-04A` | Open |
+| `R-V4-021` | Les modes et historiques sont accessibles en menu secondaire mais restent legacy dans leur presentation. | Medium | Frontend | Garder l'acces pour compatibilite, puis auditer/masquer proprement au hardening. | `V4-11A` | Open |
 
 ## 10. Update protocol
 
@@ -256,10 +261,11 @@ Etat initial au 2026-06-26 :
 - `V4-02B` est realise : `/today` conserve les champs existants et ajoute un contrat display/primary/continuation/empty/weekly target-only.
 - `V4-02C` est realise : la page Aujourd'hui est visuellement rapprochee de la reference et consomme le contrat Today enrichi en option.
 - `V4-03A` est realise : l'onglet Cours affiche une bibliotheque V4 avec header, bouton `+`, selector, resume honnete, hero et liste compacte.
+- `V4-03C` est realise : le detail cours est simplifie autour d'un CTA, d'un parcours honnete et d'actions basses ; historique et modes sont deplaces dans le menu secondaire.
 - La Phase 1 est terminee.
 - La Phase 2 est terminee.
 - La Phase 3 est `IN_PROGRESS`.
-- Le prochain lot recommande est `V4-03B`.
+- Le prochain lot recommande est `V4-04A`.
 - Les phases produit apres Phase 3 restent `NOT_STARTED`.
 - Aucun fichier Prisma n'a ete modifie par les lots V4 livres ; `V4-02B` modifie uniquement le backend Today et `V4-02C` uniquement le frontend Today/documentation.
 
@@ -289,5 +295,6 @@ Points a surveiller :
 - `V4-02C` consomme les champs enrichis en option, mais conserve des fallbacks locaux pour rester compatible avec l'ancien contrat.
 - Les actions secondaires Today restent volontairement partielles : `Changer de cours` est branche, le choix de duree attend `V4-05A`.
 - `V4-03A` livre la bibliotheque Cours V4, mais l'action matiere reste une navigation vers le cours prioritaire tant que le duration picker et la session subject-level n'existent pas.
+- `V4-03C` rapproche le detail cours de la reference, mais le vrai statut par notion manque encore ; la timeline reste donc volontairement prudente.
 - Les lots backend API sont references meme si le repository concerne par ce fichier est le frontend ; cela reste necessaire car la roadmap V4 depend explicitement du backend.
 - Le decoupage `V4-01A`, `V4-01B`, etc. simplifie le pilotage par rapport aux IDs bruts du backlog canonique ; il ne doit pas faire oublier les tickets detailles de la roadmap source.

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
@@ -148,22 +149,24 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
 
     return RevisionPageScaffold(
       headerChildren: [
-        _CourseTopBar(
-          detail: detail,
-          visual: visual,
-          hasReadySource: hasReadySource,
-        ),
-        _CourseHero(detail: detail, visual: visual),
+        _CourseTopBar(detail: detail, visual: visual),
+        _CourseHeader(detail: detail, visual: visual, progress: progress),
       ],
       children: [
         _CoursePrimaryAction(detail: detail, visual: visual),
-        _StatsStrip(course: course, progress: progress, visual: visual),
-        _CourseProgressSection(
-          progress: progress,
-          onRetry: () => ref.invalidate(courseProgressProvider(course.id)),
+        _CourseLearningPath(
+          detail: detail,
+          visual: visual,
+          optionsState: ref.watch(courseRichRevisionOptionsProvider(course.id)),
         ),
-        _CourseRevisionHistorySection(detail: detail),
-        _CourseModes(detail: detail, visual: visual),
+        _CourseBottomActions(
+          detail: detail,
+          visual: visual,
+          hasReadySource: hasReadySource,
+          richOptionsState: ref.watch(
+            courseRichRevisionOptionsProvider(course.id),
+          ),
+        ),
         if (_pollTimedOut)
           RevisionGlassCard(
             child: Text(
@@ -275,56 +278,69 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
 }
 
 class _CourseTopBar extends ConsumerWidget {
-  const _CourseTopBar({
-    required this.detail,
-    required this.visual,
-    required this.hasReadySource,
-  });
+  const _CourseTopBar({required this.detail, required this.visual});
 
   final CourseDetail detail;
   final RevisionSubjectVisualTheme visual;
-  final bool hasReadySource;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
-        IconButton(
+        RevisionHeaderIconButton(
+          icon: Icons.arrow_back_rounded,
           tooltip: 'Retour',
           onPressed: () => _popOrGo(context, AppRoutes.home),
-          icon: const Icon(Icons.arrow_back_rounded),
+          size: 44,
         ),
-        const SizedBox(width: RevisionSpacing.s),
         Expanded(
           child: Align(
             alignment: Alignment.centerRight,
-            child: Wrap(
-              alignment: WrapAlignment.end,
-              spacing: RevisionSpacing.s,
-              runSpacing: RevisionSpacing.s,
-              children: [
-                RevisionHeaderActionPill(
-                  label: 'Fiche',
-                  icon: Icons.article_outlined,
-                  accent: visual.accent,
-                  selected: hasReadySource,
-                  onTap: hasReadySource
-                      ? () => context.push(
-                          AppRoutes.courseSheet(detail.course.id),
-                        )
-                      : null,
+            child: PopupMenuButton<_CourseMenuAction>(
+              tooltip: 'Plus d’actions',
+              icon: const Icon(Icons.more_horiz_rounded),
+              color: RevisionColors.ink2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+                side: const BorderSide(color: RevisionColors.border),
+              ),
+              onSelected: (action) => switch (action) {
+                _CourseMenuAction.sources => _showSourcesSheet(
+                  context,
+                  ref,
+                  detail,
                 ),
-                RevisionHeaderActionPill(
-                  label: 'Sources',
-                  icon: Icons.description_outlined,
-                  accent: visual.accent,
-                  onTap: () => _showSourcesSheet(context, ref, detail),
+                _CourseMenuAction.manage => _showCourseManagement(
+                  context,
+                  ref,
+                  detail,
                 ),
-                RevisionHeaderActionPill(
-                  label: 'Gérer',
-                  icon: Icons.more_horiz_rounded,
-                  accent: visual.accent,
-                  onTap: () => _showCourseManagement(context, ref, detail),
+                _CourseMenuAction.history => _showCourseHistory(
+                  context,
+                  detail,
+                ),
+                _CourseMenuAction.advanced => _showCourseAdvancedActions(
+                  context,
+                  detail,
+                  visual,
+                ),
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _CourseMenuAction.sources,
+                  child: Text('Sources'),
+                ),
+                PopupMenuItem(
+                  value: _CourseMenuAction.manage,
+                  child: Text('Gérer le cours'),
+                ),
+                PopupMenuItem(
+                  value: _CourseMenuAction.history,
+                  child: Text('Historique'),
+                ),
+                PopupMenuItem(
+                  value: _CourseMenuAction.advanced,
+                  child: Text('Actions avancées'),
                 ),
               ],
             ),
@@ -335,55 +351,96 @@ class _CourseTopBar extends ConsumerWidget {
   }
 }
 
-class _CourseHero extends StatelessWidget {
-  const _CourseHero({required this.detail, required this.visual});
+enum _CourseMenuAction { sources, manage, history, advanced }
+
+class _CourseHeader extends StatelessWidget {
+  const _CourseHeader({
+    required this.detail,
+    required this.visual,
+    required this.progress,
+  });
 
   final CourseDetail detail;
   final RevisionSubjectVisualTheme visual;
+  final AsyncValue<CourseProgress> progress;
 
   @override
   Widget build(BuildContext context) {
     final course = detail.course;
+    final progressValue = progress.asData?.value;
+    final hasReliableProgress =
+        progressValue != null &&
+        progressValue.knowledgeUnitCount > 0 &&
+        progressValue.state == CourseProgressState.practiced;
 
-    return RevisionGlassCard(
-      padding: const EdgeInsets.all(RevisionSpacing.l),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          visual.accent.withValues(alpha: 0.30),
-          RevisionColors.glassStrong,
-        ],
-      ),
-      borderColor: visual.accent.withValues(alpha: 0.36),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          RevisionIconTile(icon: visual.icon, accent: visual.accent, size: 64),
-          const SizedBox(width: RevisionSpacing.l),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  detail.subject.name,
-                  style: RevisionTypography.caption.copyWith(
-                    color: visual.accent,
-                    fontWeight: FontWeight.w900,
-                  ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(course.title, style: RevisionTypography.pageTitle),
+              const SizedBox(height: RevisionSpacing.xs),
+              Text(
+                detail.subject.name,
+                style: RevisionTypography.caption.copyWith(
+                  color: RevisionColors.textMuted,
                 ),
-                const SizedBox(height: RevisionSpacing.xs),
-                Text(course.title, style: RevisionTypography.pageTitle),
-                const SizedBox(height: RevisionSpacing.xs),
-                Text(_courseMeta(course), style: RevisionTypography.body),
-                if (course.description != null) ...[
-                  const SizedBox(height: RevisionSpacing.m),
-                  Text(course.description!, style: RevisionTypography.body),
-                ],
-              ],
-            ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: RevisionSpacing.m),
+        _CourseLuna(visual: visual),
+        if (hasReliableProgress) ...[
+          const SizedBox(width: RevisionSpacing.m),
+          RevisionMasteryRing(
+            value: progressValue.estimatedGlobalMastery,
+            label: _percent(progressValue.estimatedGlobalMastery),
+            caption: 'maîtrisé',
+            color: _progressColor(progressValue.state),
+            size: 78,
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _CourseLuna extends StatelessWidget {
+  const _CourseLuna({required this.visual});
+
+  final RevisionSubjectVisualTheme visual;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Luna',
+      image: true,
+      child: SizedBox.square(
+        key: const ValueKey('course-detail-luna'),
+        dimension: 58,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: visual.accent.withValues(alpha: 0.10),
+            boxShadow: [
+              BoxShadow(
+                color: visual.accent.withValues(alpha: 0.22),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(RevisionSpacing.xs),
+            child: SvgPicture.asset(
+              'assets/brand/neralune_cat.svg',
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -415,6 +472,7 @@ class _CoursePrimaryAction extends ConsumerWidget {
       readiness,
       readinessState.isLoading,
       resumable,
+      detail.course,
     );
 
     return RevisionGlassCard(
@@ -428,29 +486,22 @@ class _CoursePrimaryAction extends ConsumerWidget {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              RevisionIconTile(
-                icon: action.icon,
-                accent: action.accent,
-                size: 48,
-              ),
-              const SizedBox(width: RevisionSpacing.m),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Action recommandée',
+                      action.title,
                       style: RevisionTypography.caption.copyWith(
                         color: visual.accent,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: RevisionSpacing.xs),
-                    Text(action.title, style: RevisionTypography.sectionTitle),
                     const SizedBox(height: RevisionSpacing.xs),
                     Text(action.message, style: RevisionTypography.body),
                     const SizedBox(height: RevisionSpacing.m),
@@ -462,9 +513,248 @@ class _CoursePrimaryAction extends ConsumerWidget {
           RevisionGradientButton(
             label: action.buttonLabel,
             icon: action.buttonIcon,
+            expanded: true,
             onPressed: action.run == null
                 ? null
                 : () => action.run!(context, ref, detail),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CourseLearningPath extends StatelessWidget {
+  const _CourseLearningPath({
+    required this.detail,
+    required this.visual,
+    required this.optionsState,
+  });
+
+  final CourseDetail detail;
+  final RevisionSubjectVisualTheme visual;
+  final AsyncValue<CourseRichRevisionOptions> optionsState;
+
+  @override
+  Widget build(BuildContext context) {
+    final options = optionsState.asData?.value;
+    final scopes = options == null ? const [] : _usableScopes(options);
+    final activeScopeId = options == null ? null : _activeScopeId(options);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Parcours', style: RevisionTypography.sectionTitle),
+        const SizedBox(height: RevisionSpacing.m),
+        if (optionsState.isLoading && !optionsState.hasValue)
+          RevisionGlassCard(
+            child: Text(
+              'Préparation du parcours du cours.',
+              style: RevisionTypography.body,
+            ),
+          )
+        else if (optionsState.hasError || scopes.isEmpty)
+          RevisionGlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Parcours du cours',
+                  style: RevisionTypography.sectionTitle.copyWith(fontSize: 17),
+                ),
+                const SizedBox(height: RevisionSpacing.s),
+                Text(
+                  'Les notions détaillées seront affichées dès que le parcours sera disponible.',
+                  style: RevisionTypography.body,
+                ),
+              ],
+            ),
+          )
+        else
+          RevisionGlassCard(
+            padding: const EdgeInsets.symmetric(
+              horizontal: RevisionSpacing.m,
+              vertical: RevisionSpacing.s,
+            ),
+            child: Column(
+              children: [
+                for (final indexed in scopes.indexed)
+                  _LearningPathRow(
+                    option: indexed.$2,
+                    visual: visual,
+                    selected: indexed.$2.id == activeScopeId,
+                    first: indexed.$1 == 0,
+                    last: indexed.$1 == scopes.length - 1,
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _LearningPathRow extends StatelessWidget {
+  const _LearningPathRow({
+    required this.option,
+    required this.visual,
+    required this.selected,
+    required this.first,
+    required this.last,
+  });
+
+  final CourseRichRevisionScopeOption option;
+  final RevisionSubjectVisualTheme visual;
+  final bool selected;
+  final bool first;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? visual.accent : RevisionColors.borderBright;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 34,
+          height: 64,
+          child: Column(
+            children: [
+              Container(
+                width: 2,
+                height: 18,
+                color: first
+                    ? Colors.transparent
+                    : RevisionColors.borderBright.withValues(alpha: 0.55),
+              ),
+              Container(
+                width: selected ? 22 : 18,
+                height: selected ? 22 : 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: selected
+                      ? visual.accent.withValues(alpha: 0.22)
+                      : Colors.transparent,
+                  border: Border.all(color: color, width: selected ? 3 : 2),
+                ),
+                child: selected
+                    ? Center(
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: visual.accent,
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+              Container(
+                width: 2,
+                height: selected ? 24 : 28,
+                color: last
+                    ? Colors.transparent
+                    : RevisionColors.borderBright.withValues(alpha: 0.55),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: RevisionSpacing.s),
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: RevisionSpacing.xs),
+            padding: const EdgeInsets.symmetric(
+              horizontal: RevisionSpacing.m,
+              vertical: RevisionSpacing.s,
+            ),
+            decoration: BoxDecoration(
+              color: selected
+                  ? visual.accent.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              border: selected
+                  ? Border.all(color: visual.accent.withValues(alpha: 0.22))
+                  : null,
+            ),
+            child: Text(
+              option.label,
+              style: RevisionTypography.body.copyWith(
+                color: selected
+                    ? RevisionColors.text
+                    : RevisionColors.textMuted,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CourseBottomActions extends ConsumerWidget {
+  const _CourseBottomActions({
+    required this.detail,
+    required this.visual,
+    required this.hasReadySource,
+    required this.richOptionsState,
+  });
+
+  final CourseDetail detail;
+  final RevisionSubjectVisualTheme visual;
+  final bool hasReadySource;
+  final AsyncValue<CourseRichRevisionOptions> richOptionsState;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final options = richOptionsState.asData?.value;
+    final activeScope = options == null ? null : _activeScope(options);
+    final canReviewNotion =
+        options?.readiness.canStart == true && activeScope != null;
+    final reviewLabel = canReviewNotion
+        ? 'Réviser cette notion'
+        : 'Réviser ce cours';
+
+    return RevisionGlassCard(
+      padding: const EdgeInsets.all(RevisionSpacing.s),
+      backgroundColor: RevisionColors.glassStrong,
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: hasReadySource
+                  ? () => context.push(AppRoutes.courseSheet(detail.course.id))
+                  : null,
+              icon: const Icon(Icons.menu_book_outlined),
+              label: const Text('Comprendre'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: RevisionColors.text,
+                side: const BorderSide(color: RevisionColors.borderBright),
+                padding: const EdgeInsets.symmetric(
+                  vertical: RevisionSpacing.m,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: RevisionSpacing.s),
+          Expanded(
+            child: RevisionGradientButton(
+              label: reviewLabel,
+              icon: Icons.flash_on_rounded,
+              expanded: true,
+              onPressed: canReviewNotion
+                  ? () => context.push(
+                      AppRoutes.courseRichRevision(detail.course.id),
+                    )
+                  : hasReadySource
+                  ? () => _showQuickRevisionSheet(context, ref, detail)
+                  : null,
+            ),
           ),
         ],
       ),
@@ -498,6 +788,7 @@ _PrimaryCourseAction _primaryActionFor(
   CourseQuestionBankReadiness? readiness,
   bool isLoadingReadiness,
   ResumableCourseRevisionSession? resumable,
+  CourseListItem course,
 ) {
   if (resumable != null) {
     final progress = resumable.progress.totalQuestionCount > 0
@@ -541,9 +832,11 @@ _PrimaryCourseAction _primaryActionFor(
           ? " D'autres questions sont en préparation."
           : '';
       return _PrimaryCourseAction(
-        title: 'Réviser maintenant',
+        title: 'Continuer',
         message: 'Une session rapide peut démarrer maintenant.$suffix',
-        buttonLabel: 'Réviser maintenant',
+        buttonLabel: course.estimatedMinutes == null
+            ? 'Continuer'
+            : 'Continuer · ${course.estimatedMinutes} min',
         icon: Icons.flash_on_rounded,
         buttonIcon: Icons.play_arrow_rounded,
         accent: RevisionColors.blue,
@@ -557,9 +850,9 @@ _PrimaryCourseAction _primaryActionFor(
       return _PrimaryCourseAction(
         title: 'Questions indisponibles',
         message: readiness.userMessage,
-        buttonLabel: 'Voir la fiche',
+        buttonLabel: 'Préparation en cours',
         icon: Icons.info_outline_rounded,
-        buttonIcon: Icons.description_outlined,
+        buttonIcon: Icons.hourglass_top_rounded,
         accent: RevisionColors.amber,
         run: null,
       );
@@ -635,127 +928,6 @@ _PrimaryCourseAction _primaryActionFor(
     accent: RevisionColors.blue,
     run: (context, ref, detail) => _showSourcesSheet(context, ref, detail),
   );
-}
-
-class _StatsStrip extends StatelessWidget {
-  const _StatsStrip({
-    required this.course,
-    required this.progress,
-    required this.visual,
-  });
-
-  final CourseListItem course;
-  final AsyncValue<CourseProgress> progress;
-  final RevisionSubjectVisualTheme visual;
-
-  @override
-  Widget build(BuildContext context) {
-    final progressValue = progress.maybeWhen(
-      data: (progress) => _percent(progress.estimatedGlobalMastery),
-      orElse: () => 'En attente',
-    );
-
-    return RevisionStatTriplet(
-      items: [
-        RevisionStatItem(
-          icon: Icons.track_changes_rounded,
-          label: 'Progression',
-          value: progressValue,
-          color: visual.accent,
-        ),
-        RevisionStatItem(
-          icon: Icons.schedule_rounded,
-          label: 'Temps estimé',
-          value: course.estimatedMinutes == null
-              ? 'À préciser'
-              : '${course.estimatedMinutes} min',
-          color: RevisionColors.textMuted,
-        ),
-        RevisionStatItem(
-          icon: Icons.star_border_rounded,
-          label: 'Difficulté',
-          value: _difficultyLabel(course.difficulty),
-          color: RevisionColors.amber,
-        ),
-      ],
-    );
-  }
-}
-
-class _CourseProgressSection extends StatelessWidget {
-  const _CourseProgressSection({required this.progress, required this.onRetry});
-
-  final AsyncValue<CourseProgress> progress;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return progress.when(
-      loading: () =>
-          const RevisionLoadingState(label: 'Chargement de la progression'),
-      error: (error, stackTrace) => RevisionErrorState(
-        title: 'Progression indisponible',
-        message: 'Les métriques ne sont pas disponibles pour ce cours.',
-        actionLabel: 'Réessayer',
-        onAction: onRetry,
-      ),
-      data: (progress) => RevisionGlassCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Progression', style: RevisionTypography.sectionTitle),
-            const SizedBox(height: RevisionSpacing.m),
-            Row(
-              children: [
-                RevisionMasteryRing(
-                  value: progress.estimatedGlobalMastery,
-                  label: _percent(progress.estimatedGlobalMastery),
-                  caption: 'global',
-                  color: _progressColor(progress.state),
-                  size: 92,
-                ),
-                const SizedBox(width: RevisionSpacing.l),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${progress.practicedKnowledgeUnitCount}/${progress.knowledgeUnitCount} notions travaillées',
-                        style: RevisionTypography.sectionTitle.copyWith(
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: RevisionSpacing.s),
-                      RevisionProgressLine(
-                        value: progress.coverage,
-                        color: _progressColor(progress.state),
-                        height: 8,
-                      ),
-                      const SizedBox(height: RevisionSpacing.s),
-                      Text(
-                        _masteryLabel(progress),
-                        style: RevisionTypography.caption,
-                      ),
-                      const SizedBox(height: RevisionSpacing.xs),
-                      Text(
-                        'Estimation globale : ${_percent(progress.estimatedGlobalMastery)}',
-                        style: RevisionTypography.caption,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: RevisionSpacing.m),
-            Text(
-              _progressStateLabel(progress.state),
-              style: RevisionTypography.body,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _CourseRevisionHistorySection extends ConsumerWidget {
@@ -1384,6 +1556,46 @@ _DeepRevisionCardAction _deepRevisionActionFor(
   );
 }
 
+List<CourseRichRevisionScopeOption> _usableScopes(
+  CourseRichRevisionOptions options,
+) {
+  return options.scopeOptions
+      .where(
+        (option) =>
+            option.kind == CourseRichRevisionScopeKind.knowledgeUnit &&
+            option.label.trim().isNotEmpty,
+      )
+      .toList(growable: false);
+}
+
+CourseRichRevisionScopeOption? _activeScope(CourseRichRevisionOptions options) {
+  final scopes = _usableScopes(options);
+  if (scopes.isEmpty) {
+    return null;
+  }
+
+  final configuredScopeId = options.defaultConfig?.scopeId;
+  if (configuredScopeId != null) {
+    for (final option in scopes) {
+      if (option.id == configuredScopeId) {
+        return option;
+      }
+    }
+  }
+
+  for (final option in scopes) {
+    if (option.canSelect) {
+      return option;
+    }
+  }
+
+  return scopes.first;
+}
+
+String? _activeScopeId(CourseRichRevisionOptions options) {
+  return _activeScope(options)?.id;
+}
+
 Future<void> _handleQuickRevisionTap(
   BuildContext context,
   WidgetRef ref,
@@ -1498,6 +1710,39 @@ void _showSourcesSheet(
   );
 }
 
+void _showCourseHistory(BuildContext context, CourseDetail detail) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => RevisionBottomSheetFrame(
+      title: 'Historique',
+      subtitle: 'Les sessions terminées restent accessibles ici.',
+      children: [_CourseRevisionHistorySection(detail: detail)],
+    ),
+  );
+}
+
+void _showCourseAdvancedActions(
+  BuildContext context,
+  CourseDetail detail,
+  RevisionSubjectVisualTheme visual,
+) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => RevisionBottomSheetFrame(
+      title: 'Actions avancées',
+      subtitle:
+          'Les anciens modes restent disponibles sans encombrer le parcours.',
+      children: [_CourseModes(detail: detail, visual: visual)],
+    ),
+  );
+}
+
 Future<void> _showCourseManagement(
   BuildContext context,
   WidgetRef ref,
@@ -1603,29 +1848,6 @@ String _quickRevisionBlockedLabel(List<CourseDocument> sources) {
   return 'Source requise';
 }
 
-String _masteryLabel(CourseProgress progress) {
-  if (progress.mastery == null) {
-    return 'Maîtrise sur notions travaillées : en attente';
-  }
-
-  return 'Maîtrise sur notions travaillées : ${_percent(progress.mastery!)}';
-}
-
-String _progressStateLabel(CourseProgressState state) {
-  return switch (state) {
-    CourseProgressState.noSource => 'Ajoute une source pour commencer.',
-    CourseProgressState.processing => 'Analyse du PDF en cours.',
-    CourseProgressState.failedOnly =>
-      'Les sources ont échoué. Ajoute ou corrige une source.',
-    CourseProgressState.noKnowledgeUnits =>
-      'Source prête, mais aucune notion exploitable.',
-    CourseProgressState.readyNotPracticed =>
-      'Notions prêtes, pas encore travaillées.',
-    CourseProgressState.practiced => 'Progression basée sur tes réponses.',
-    CourseProgressState.unknown => 'Progression disponible.',
-  };
-}
-
 Color _progressColor(CourseProgressState state) {
   return switch (state) {
     CourseProgressState.practiced => RevisionColors.green,
@@ -1635,24 +1857,6 @@ Color _progressColor(CourseProgressState state) {
     CourseProgressState.noKnowledgeUnits => RevisionColors.violet,
     CourseProgressState.noSource => RevisionColors.blue,
     CourseProgressState.unknown => RevisionColors.mint,
-  };
-}
-
-String _courseMeta(CourseListItem course) {
-  final parts = <String>[
-    if (course.chapterLabel != null) course.chapterLabel!,
-    if (course.estimatedMinutes != null) '${course.estimatedMinutes} min',
-  ];
-
-  return parts.isEmpty ? 'Cours sans durée estimée' : parts.join(' · ');
-}
-
-String _difficultyLabel(CourseDifficulty? difficulty) {
-  return switch (difficulty) {
-    CourseDifficulty.beginner => 'Débutant',
-    CourseDifficulty.intermediate => 'Intermédiaire',
-    CourseDifficulty.advanced => 'Avancé',
-    null => 'À préciser',
   };
 }
 

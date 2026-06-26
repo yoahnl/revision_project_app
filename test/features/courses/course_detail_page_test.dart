@@ -35,7 +35,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Droit constitutionnel'), findsOneWidget);
-    expect(find.text('Sources'), findsOneWidget);
+    expect(find.byTooltip('Plus d’actions'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);
     expect(find.text('870'), findsNothing);
@@ -54,6 +54,44 @@ void main() {
     expect(repository.lastUploadedCourseId, 'course-1');
     expect(repository.lastUploadedFileName, 'cours.pdf');
     expect(find.text('Source ajoutée'), findsOneWidget);
+  });
+
+  testWidgets('course detail shows the V4 path-first layout', (tester) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..progressByCourse['course-1'] = courseProgress()
+      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture();
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Droit constitutionnel'), findsOneWidget);
+    expect(find.byTooltip('Retour'), findsOneWidget);
+    expect(find.byTooltip('Plus d’actions'), findsOneWidget);
+    expect(find.byKey(const ValueKey('course-detail-luna')), findsOneWidget);
+    expect(find.text('18%'), findsOneWidget);
+    expect(find.text('Continuer'), findsWidgets);
+    expect(find.text('Parcours'), findsOneWidget);
+    expect(find.text('Responsabilité politique'), findsOneWidget);
+    expect(find.text('Comprendre'), findsOneWidget);
+    expect(find.text('Réviser cette notion'), findsOneWidget);
+    expect(find.text('Modes de révision'), findsNothing);
+    expect(find.text('Historique'), findsNothing);
+    expect(find.text('Temps estimé : À préciser'), findsNothing);
+    expect(find.text('Difficulté : À préciser'), findsNothing);
+    expect(find.text('La Constitution'), findsNothing);
   });
 
   testWidgets('course detail displays failed source errors', (tester) async {
@@ -94,8 +132,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(RevisionHeaderActionPill, 'Gérer'));
-    await tester.pumpAndSettle();
+    await openManagementSheet(tester);
 
     expect(repository.getCourseLifecycleCount, 1);
     expect(find.text('Gérer le cours'), findsOneWidget);
@@ -277,9 +314,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Progression'), findsWidgets);
-    expect(find.text('0/0 notions travaillées'), findsOneWidget);
-    expect(find.text('Ajoute une source pour commencer.'), findsOneWidget);
+    expect(find.text('Parcours'), findsOneWidget);
+    expect(find.text('Parcours du cours'), findsOneWidget);
+    expect(
+      find.text(
+        'Les notions détaillées seront affichées dès que le parcours sera disponible.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('0/0 notions travaillées'), findsNothing);
     expect(find.text('78%'), findsNothing);
   });
 
@@ -303,10 +346,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('3/12 notions travaillées'), findsOneWidget);
-    expect(find.text('Maîtrise sur notions travaillées : 72%'), findsOneWidget);
-    expect(find.text('Estimation globale : 18%'), findsOneWidget);
-    expect(find.text('Progression basée sur tes réponses.'), findsOneWidget);
+    expect(find.text('18%'), findsOneWidget);
+    expect(find.text('maîtrisé'), findsOneWidget);
+    expect(find.text('Parcours'), findsOneWidget);
+    expect(find.text('3/12 notions travaillées'), findsNothing);
   });
 
   testWidgets('processing sources trigger bounded detail refresh polling', (
@@ -399,15 +442,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Action recommandée'), findsOneWidget);
+    expect(find.text('Ajoute une source'), findsOneWidget);
     expect(find.text('Ajouter une source'), findsWidgets);
     expect(find.textContaining('MVP+'), findsNothing);
     expect(find.textContaining('backend'), findsNothing);
+    expect(find.text('Modes de révision'), findsNothing);
+    expect(find.text('Historique'), findsNothing);
 
-    final emptySheetPill = tester.widget<RevisionHeaderActionPill>(
-      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
+    final understandButton = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Comprendre'),
     );
-    expect(emptySheetPill.onTap, isNull);
+    expect(understandButton.onPressed, isNull);
 
     await scrollToQuickRevision(tester);
     final emptyQuickCard = tester.widget<RevisionModeCard>(
@@ -453,14 +498,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Action recommandée'), findsOneWidget);
-    expect(find.text('Voir les sources'), findsWidgets);
     expect(find.text('Source en analyse'), findsOneWidget);
+    expect(find.text('Voir les sources'), findsWidgets);
+    expect(find.text('Modes de révision'), findsNothing);
 
-    final processingSheetPill = tester.widget<RevisionHeaderActionPill>(
-      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
+    final understandButton = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Comprendre'),
     );
-    expect(processingSheetPill.onTap, isNull);
+    expect(understandButton.onPressed, isNull);
 
     await scrollToQuickRevision(tester);
     final processingQuickCard = tester.widget<RevisionModeCard>(
@@ -498,13 +543,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Action recommandée'), findsOneWidget);
-    expect(find.text('Réviser maintenant'), findsWidgets);
+    expect(find.text('Continuer'), findsWidgets);
+    expect(find.text('Réviser cette notion'), findsOneWidget);
 
-    final sheetPill = tester.widget<RevisionHeaderActionPill>(
-      find.widgetWithText(RevisionHeaderActionPill, 'Fiche'),
+    final understandButton = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Comprendre'),
     );
-    expect(sheetPill.onTap, isNotNull);
+    expect(understandButton.onPressed, isNotNull);
 
     await scrollToQuickRevision(tester);
     final quickCard = tester.widget<RevisionModeCard>(
@@ -729,7 +774,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Réviser maintenant'), findsWidgets);
+      expect(find.text('Continuer'), findsWidgets);
       expect(
         find.text(
           "Une session rapide peut démarrer maintenant. D'autres questions sont en préparation.",
@@ -832,10 +877,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('Historique'), 400);
-    await tester.pumpAndSettle();
+    await openHistorySheet(tester);
 
-    expect(find.text('Historique'), findsOneWidget);
+    expect(find.text('Historique'), findsWidgets);
     expect(find.text('Aucune session terminée pour ce cours.'), findsOneWidget);
     expect(repository.getCourseRevisionSessionHistoryCount, 1);
     expect(repository.getCourseRichClosedHistoryCount, 1);
@@ -856,14 +900,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('Voir le résultat'), 400);
-    await tester.pumpAndSettle();
+    await openHistorySheet(tester);
 
-    expect(find.text('Historique'), findsOneWidget);
+    expect(find.text('Historique'), findsWidgets);
     expect(find.text('4/5'), findsOneWidget);
     expect(find.textContaining('80 %'), findsOneWidget);
 
-    await tester.tap(find.text('Voir le résultat'));
+    await tester.tap(find.text('Voir le résultat').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Résultat de session'), findsOneWidget);
@@ -881,14 +924,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('5/6'), 400);
-    await tester.pumpAndSettle();
+    await openHistorySheet(tester);
 
-    expect(find.text('Historique'), findsOneWidget);
+    expect(find.text('Historique'), findsWidgets);
     expect(find.text('5/6'), findsOneWidget);
     expect(find.textContaining('83 %'), findsOneWidget);
 
-    await tester.tap(find.text('Voir le résultat'));
+    await tester.tap(find.text('Voir le résultat').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Résultat QCM complet'), findsOneWidget);
@@ -906,13 +948,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.textContaining('Responsabilité politique'),
-      400,
-    );
-    await tester.pumpAndSettle();
+    await openHistorySheet(tester);
 
-    expect(find.text('Historique'), findsOneWidget);
+    expect(find.text('Historique'), findsWidgets);
     expect(repository.getCourseDeepRevisionHistoryCount, 1);
     expect(find.text('Révision approfondie'), findsWidgets);
     expect(find.textContaining('Responsabilité politique'), findsOneWidget);
@@ -944,15 +982,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('9/10'), 400);
-    await tester.pumpAndSettle();
+    await openHistorySheet(tester);
 
-    expect(find.text('Historique'), findsOneWidget);
+    expect(find.text('Historique'), findsWidgets);
     expect(find.text('9/10'), findsOneWidget);
     expect(find.textContaining('Préparation examen - QCM'), findsWidgets);
     expect(find.textContaining('90 %'), findsOneWidget);
 
-    await tester.tap(find.text('Voir le résultat'));
+    await tester.tap(find.text('Voir le résultat').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Résultat Préparation examen - QCM'), findsOneWidget);
@@ -984,11 +1021,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.scrollUntilVisible(
-        find.text('Préparation examen - QCM'),
-        400,
-      );
-      await tester.pumpAndSettle();
+      await openAdvancedActionsSheet(tester);
+      await dragCurrentBottomSheetUp(tester);
 
       await tester.tap(
         find.widgetWithText(RevisionModeCard, 'Préparation examen - QCM'),
@@ -1021,8 +1055,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('QCM complet'), 400);
-    await tester.pumpAndSettle();
+    await openAdvancedActionsSheet(tester);
 
     await tester.tap(find.widgetWithText(RevisionModeCard, 'QCM complet'));
     await tester.pumpAndSettle();
@@ -1057,8 +1090,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.scrollUntilVisible(find.text('Révision approfondie'), 400);
-      await tester.pumpAndSettle();
+      await openAdvancedActionsSheet(tester);
+      await dragCurrentBottomSheetUp(tester);
 
       await tester.tap(
         find.widgetWithText(RevisionModeCard, 'Révision approfondie'),
@@ -1113,12 +1146,37 @@ void main() {
 }
 
 Future<void> openSourcesSheet(WidgetTester tester) async {
-  await tester.tap(find.widgetWithText(RevisionHeaderActionPill, 'Sources'));
+  await openCourseMenuAction(tester, 'Sources');
+}
+
+Future<void> openManagementSheet(WidgetTester tester) async {
+  await openCourseMenuAction(tester, 'Gérer le cours');
+}
+
+Future<void> openHistorySheet(WidgetTester tester) async {
+  await openCourseMenuAction(tester, 'Historique');
+}
+
+Future<void> openAdvancedActionsSheet(WidgetTester tester) async {
+  await openCourseMenuAction(tester, 'Actions avancées');
+}
+
+Future<void> openCourseMenuAction(WidgetTester tester, String label) async {
+  await tester.tap(find.byTooltip('Plus d’actions'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label));
   await tester.pumpAndSettle();
 }
 
 Future<void> scrollToQuickRevision(WidgetTester tester) async {
-  await tester.scrollUntilVisible(find.text('Révision rapide'), 400);
+  await openAdvancedActionsSheet(tester);
+}
+
+Future<void> dragCurrentBottomSheetUp(WidgetTester tester) async {
+  await tester.drag(
+    find.byType(SingleChildScrollView).last,
+    const Offset(0, -500),
+  );
   await tester.pumpAndSettle();
 }
 
