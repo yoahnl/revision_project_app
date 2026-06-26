@@ -1081,6 +1081,69 @@ void main() {
     expect(prepareAdapter.lastOptions?.data, {'questionCount': 5});
   });
 
+  test('loads course learning path from the learning path endpoint', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(courseLearningPathJson()),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final path = await repository.getCourseLearningPath(courseId: 'course-1');
+
+    expect(path.course.title, 'Droit constitutionnel');
+    expect(path.summary.estimatedGlobalMastery, 0.62);
+    expect(path.activeNodeId, 'unit-2');
+    expect(
+      path.primaryAction.kind,
+      CourseLearningPathPrimaryActionKind.reviewActiveNode,
+    );
+    expect(path.primaryAction.label, 'Continuer');
+    expect(path.primaryAction.targetKnowledgeUnitId, 'unit-2');
+    expect(path.nodes, hasLength(3));
+    expect(path.nodes[0].state, CourseLearningPathNodeState.solid);
+    expect(path.nodes[1].display.statusLabel, 'À renforcer');
+    expect(path.nodes[1].source?.fileName, 'CM.pdf');
+    expect(path.nodes[1].lastPracticedAt, DateTime.utc(2026, 6, 18, 12));
+    expect(path.emptyState, isNull);
+    expect(adapter.lastOptions?.method, 'GET');
+    expect(adapter.lastOptions?.path, '/courses/course-1/learning-path');
+  });
+
+  test('maps unknown learning path enums safely', () async {
+    final adapter = CapturingHttpClientAdapter(
+      jsonResponse(
+        courseLearningPathJson(
+          primaryActionKind: 'FUTURE_ACTION',
+          nodes: [courseLearningPathNodeJson(state: 'FUTURE_STATE')],
+          emptyState: {
+            'title': 'Parcours à venir',
+            'message': 'Le parcours sera bientôt disponible.',
+            'actionLabel': 'Revenir plus tard',
+            'actionKind': 'FUTURE_EMPTY_ACTION',
+          },
+        ),
+      ),
+    );
+    final repository = HttpCoursesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      getIdToken: () async => 'firebase-id-token',
+    );
+
+    final path = await repository.getCourseLearningPath(courseId: 'course-1');
+
+    expect(
+      path.primaryAction.kind,
+      CourseLearningPathPrimaryActionKind.unknown,
+    );
+    expect(path.nodes.single.state, CourseLearningPathNodeState.unknown);
+    expect(
+      path.emptyState?.actionKind,
+      CourseLearningPathEmptyActionKind.unknown,
+    );
+  });
+
   test('loads course progress from the course progress endpoint', () async {
     final adapter = CapturingHttpClientAdapter(
       jsonResponse(courseProgressJson()),
@@ -1693,6 +1756,105 @@ Map<String, Object?> courseProgressJson({Object? mastery = 0.72}) {
     'failedSourceCount': 0,
     'lastPracticedAt': '2026-06-18T12:00:00.000Z',
     'state': 'PRACTICED',
+  };
+}
+
+Map<String, Object?> courseLearningPathJson({
+  String primaryActionKind = 'REVIEW_ACTIVE_NODE',
+  List<Map<String, Object?>>? nodes,
+  Map<String, Object?>? emptyState,
+}) {
+  return {
+    'generatedAt': '2026-06-18T12:30:00.000Z',
+    'course': {
+      'id': 'course-1',
+      'subjectId': 'subject-1',
+      'subjectName': 'Droit',
+      'title': 'Droit constitutionnel',
+    },
+    'summary': {
+      'knowledgeUnitCount': 3,
+      'solidCount': 1,
+      'inProgressCount': 1,
+      'toStrengthenCount': 1,
+      'undiscoveredCount': 0,
+      'estimatedGlobalMastery': 0.62,
+      'mastery': 0.74,
+      'coverage': 0.83,
+      'readySourceCount': 1,
+    },
+    'activeNodeId': 'unit-2',
+    'primaryAction': {
+      'kind': primaryActionKind,
+      'label': 'Continuer',
+      'description': 'Reprendre le parcours à la notion recommandée.',
+      'estimatedMinutes': 8,
+      'targetKnowledgeUnitId': 'unit-2',
+      'targetNodeId': 'unit-2',
+      'enabled': true,
+      'unavailableReason': null,
+    },
+    'nodes':
+        nodes ??
+        [
+          courseLearningPathNodeJson(
+            id: 'unit-1',
+            title: 'La Constitution',
+            state: 'SOLID',
+            statusLabel: 'Solide',
+            masteryScore: 0.9,
+            lastPracticedAt: null,
+          ),
+          courseLearningPathNodeJson(
+            id: 'unit-2',
+            title: 'Le contrôle de constitutionnalité',
+            state: 'TO_STRENGTHEN',
+            statusLabel: 'À renforcer',
+            masteryScore: 0.36,
+          ),
+          courseLearningPathNodeJson(
+            id: 'unit-3',
+            title: 'Le Conseil constitutionnel',
+            state: 'IN_PROGRESS',
+            statusLabel: 'En cours',
+            masteryScore: 0.66,
+          ),
+        ],
+    'emptyState': emptyState,
+  };
+}
+
+Map<String, Object?> courseLearningPathNodeJson({
+  String id = 'unit-2',
+  String title = 'Le contrôle de constitutionnalité',
+  String state = 'TO_STRENGTHEN',
+  String statusLabel = 'À renforcer',
+  Object? masteryScore = 0.36,
+  Object? lastPracticedAt = '2026-06-18T12:00:00.000Z',
+}) {
+  return {
+    'id': id,
+    'knowledgeUnitId': id,
+    'courseId': 'course-1',
+    'subjectId': 'subject-1',
+    'documentId': 'document-1',
+    'title': title,
+    'order': id == 'unit-1'
+        ? 0
+        : id == 'unit-2'
+        ? 1
+        : 2,
+    'state': state,
+    'masteryScore': masteryScore,
+    'lastPracticedAt': lastPracticedAt,
+    'source': {'documentId': 'document-1', 'fileName': 'CM.pdf'},
+    'display': {
+      'title': title,
+      'statusLabel': statusLabel,
+      'metaLabel': 'CM.pdf',
+      'actionLabel': 'Continuer',
+      'unavailableReason': null,
+    },
   };
 }
 

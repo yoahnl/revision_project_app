@@ -752,6 +752,25 @@ class HttpCoursesRepository implements CoursesRepository {
   }
 
   @override
+  Future<CourseLearningPath> getCourseLearningPath({
+    required String courseId,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/courses/${Uri.encodeComponent(courseId)}/learning-path',
+        options: await _authorizedOptions(),
+      );
+
+      return _CourseLearningPathJson(response.data).toLearningPath();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw const CourseNotFoundException('Course not found');
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<SubjectProgress> getSubjectProgress({
     required String subjectId,
   }) async {
@@ -2308,6 +2327,288 @@ class _CourseProgressJson {
   }
 }
 
+class _CourseLearningPathJson {
+  const _CourseLearningPathJson(this.value);
+
+  final Object? value;
+
+  CourseLearningPath toLearningPath() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid course learning path response');
+    }
+
+    final course = json['course'];
+    final summary = json['summary'];
+    final primaryAction = json['primaryAction'];
+    final nodes = json['nodes'];
+    final emptyState = json['emptyState'];
+
+    if (course is! Map<String, Object?> ||
+        summary is! Map<String, Object?> ||
+        primaryAction is! Map<String, Object?> ||
+        nodes is! List ||
+        (emptyState != null && emptyState is! Map<String, Object?>)) {
+      throw const FormatException('Invalid course learning path response');
+    }
+
+    return CourseLearningPath(
+      generatedAt: _requiredDate(
+        json['generatedAt'],
+        'Invalid course learning path response',
+      ),
+      course: _CourseLearningPathCourseJson(course).toCourse(),
+      summary: _CourseLearningPathSummaryJson(summary).toSummary(),
+      activeNodeId: _optionalString(json['activeNodeId']),
+      primaryAction: _CourseLearningPathPrimaryActionJson(
+        primaryAction,
+      ).toAction(),
+      nodes: nodes
+          .map((node) => _CourseLearningPathNodeJson(node).toNode())
+          .toList(growable: false),
+      emptyState: emptyState == null
+          ? null
+          : _CourseLearningPathEmptyStateJson(
+              emptyState as Map<String, Object?>,
+            ).toEmptyState(),
+    );
+  }
+}
+
+class _CourseLearningPathCourseJson {
+  const _CourseLearningPathCourseJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseLearningPathCourse toCourse() {
+    return CourseLearningPathCourse(
+      id: _requiredString(value['id'], 'Invalid course learning path response'),
+      subjectId: _requiredString(
+        value['subjectId'],
+        'Invalid course learning path response',
+      ),
+      subjectName: _requiredString(
+        value['subjectName'],
+        'Invalid course learning path response',
+      ),
+      title: _requiredString(
+        value['title'],
+        'Invalid course learning path response',
+      ),
+    );
+  }
+}
+
+class _CourseLearningPathSummaryJson {
+  const _CourseLearningPathSummaryJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseLearningPathSummary toSummary() {
+    final mastery = value['mastery'];
+
+    return CourseLearningPathSummary(
+      knowledgeUnitCount: _requiredInt(
+        value['knowledgeUnitCount'],
+        'Invalid course learning path response',
+      ),
+      solidCount: _requiredInt(
+        value['solidCount'],
+        'Invalid course learning path response',
+      ),
+      inProgressCount: _requiredInt(
+        value['inProgressCount'],
+        'Invalid course learning path response',
+      ),
+      toStrengthenCount: _requiredInt(
+        value['toStrengthenCount'],
+        'Invalid course learning path response',
+      ),
+      undiscoveredCount: _requiredInt(
+        value['undiscoveredCount'],
+        'Invalid course learning path response',
+      ),
+      estimatedGlobalMastery: _requiredRatio(
+        value['estimatedGlobalMastery'],
+        'Invalid course learning path response',
+      ),
+      mastery: mastery is num ? mastery.toDouble() : null,
+      coverage: _requiredRatio(
+        value['coverage'],
+        'Invalid course learning path response',
+      ),
+      readySourceCount: _requiredInt(
+        value['readySourceCount'],
+        'Invalid course learning path response',
+      ),
+    );
+  }
+}
+
+class _CourseLearningPathPrimaryActionJson {
+  const _CourseLearningPathPrimaryActionJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseLearningPathPrimaryAction toAction() {
+    return CourseLearningPathPrimaryAction(
+      kind: _parseLearningPathPrimaryActionKind(
+        _requiredString(value['kind'], 'Invalid course learning path response'),
+      ),
+      label: _requiredString(
+        value['label'],
+        'Invalid course learning path response',
+      ),
+      description: _requiredString(
+        value['description'],
+        'Invalid course learning path response',
+      ),
+      estimatedMinutes: _optionalInt(value['estimatedMinutes']),
+      targetKnowledgeUnitId: _optionalString(value['targetKnowledgeUnitId']),
+      targetNodeId: _optionalString(value['targetNodeId']),
+      enabled: _requiredBool(
+        value['enabled'],
+        'Invalid course learning path response',
+      ),
+      unavailableReason: _optionalString(value['unavailableReason']),
+    );
+  }
+}
+
+class _CourseLearningPathNodeJson {
+  const _CourseLearningPathNodeJson(this.value);
+
+  final Object? value;
+
+  CourseLearningPathNode toNode() {
+    final json = value;
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid course learning path response');
+    }
+
+    final source = json['source'];
+    final display = json['display'];
+    final masteryScore = json['masteryScore'];
+
+    if ((source != null && source is! Map<String, Object?>) ||
+        display is! Map<String, Object?> ||
+        (masteryScore != null && masteryScore is! num)) {
+      throw const FormatException('Invalid course learning path response');
+    }
+
+    return CourseLearningPathNode(
+      id: _requiredString(json['id'], 'Invalid course learning path response'),
+      knowledgeUnitId: _requiredString(
+        json['knowledgeUnitId'],
+        'Invalid course learning path response',
+      ),
+      courseId: _requiredString(
+        json['courseId'],
+        'Invalid course learning path response',
+      ),
+      subjectId: _requiredString(
+        json['subjectId'],
+        'Invalid course learning path response',
+      ),
+      documentId: _optionalString(json['documentId']),
+      title: _requiredString(
+        json['title'],
+        'Invalid course learning path response',
+      ),
+      order: _requiredInt(
+        json['order'],
+        'Invalid course learning path response',
+      ),
+      state: _parseLearningPathNodeState(
+        _requiredString(json['state'], 'Invalid course learning path response'),
+      ),
+      masteryScore: masteryScore is num ? masteryScore.toDouble() : null,
+      lastPracticedAt: _parseOptionalDate(json['lastPracticedAt']),
+      source: source == null
+          ? null
+          : _CourseLearningPathNodeSourceJson(
+              source as Map<String, Object?>,
+            ).toSource(),
+      display: _CourseLearningPathNodeDisplayJson(display).toDisplay(),
+    );
+  }
+}
+
+class _CourseLearningPathNodeSourceJson {
+  const _CourseLearningPathNodeSourceJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseLearningPathNodeSource toSource() {
+    return CourseLearningPathNodeSource(
+      documentId: _requiredString(
+        value['documentId'],
+        'Invalid course learning path response',
+      ),
+      fileName: _requiredString(
+        value['fileName'],
+        'Invalid course learning path response',
+      ),
+    );
+  }
+}
+
+class _CourseLearningPathNodeDisplayJson {
+  const _CourseLearningPathNodeDisplayJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseLearningPathNodeDisplay toDisplay() {
+    return CourseLearningPathNodeDisplay(
+      title: _requiredString(
+        value['title'],
+        'Invalid course learning path response',
+      ),
+      statusLabel: _requiredString(
+        value['statusLabel'],
+        'Invalid course learning path response',
+      ),
+      metaLabel: _optionalString(value['metaLabel']),
+      actionLabel: _requiredString(
+        value['actionLabel'],
+        'Invalid course learning path response',
+      ),
+      unavailableReason: _optionalString(value['unavailableReason']),
+    );
+  }
+}
+
+class _CourseLearningPathEmptyStateJson {
+  const _CourseLearningPathEmptyStateJson(this.value);
+
+  final Map<String, Object?> value;
+
+  CourseLearningPathEmptyState toEmptyState() {
+    return CourseLearningPathEmptyState(
+      title: _requiredString(
+        value['title'],
+        'Invalid course learning path response',
+      ),
+      message: _requiredString(
+        value['message'],
+        'Invalid course learning path response',
+      ),
+      actionLabel: _requiredString(
+        value['actionLabel'],
+        'Invalid course learning path response',
+      ),
+      actionKind: _parseLearningPathEmptyActionKind(
+        _requiredString(
+          value['actionKind'],
+          'Invalid course learning path response',
+        ),
+      ),
+    );
+  }
+}
+
 class _SubjectProgressJson {
   const _SubjectProgressJson(this.value);
 
@@ -2426,6 +2727,43 @@ CourseProgressState _parseProgressState(String value) {
   };
 }
 
+CourseLearningPathNodeState _parseLearningPathNodeState(String value) {
+  return switch (value) {
+    'SOLID' => CourseLearningPathNodeState.solid,
+    'IN_PROGRESS' => CourseLearningPathNodeState.inProgress,
+    'TO_STRENGTHEN' => CourseLearningPathNodeState.toStrengthen,
+    'UNDISCOVERED' => CourseLearningPathNodeState.undiscovered,
+    _ => CourseLearningPathNodeState.unknown,
+  };
+}
+
+CourseLearningPathPrimaryActionKind _parseLearningPathPrimaryActionKind(
+  String value,
+) {
+  return switch (value) {
+    'ADD_SOURCE' => CourseLearningPathPrimaryActionKind.addSource,
+    'WAIT_FOR_ANALYSIS' => CourseLearningPathPrimaryActionKind.waitForAnalysis,
+    'REVIEW_ACTIVE_NODE' =>
+      CourseLearningPathPrimaryActionKind.reviewActiveNode,
+    'CONTINUE_COURSE' => CourseLearningPathPrimaryActionKind.continueCourse,
+    'PREPARE_QUESTIONS' => CourseLearningPathPrimaryActionKind.prepareQuestions,
+    'UNAVAILABLE' => CourseLearningPathPrimaryActionKind.unavailable,
+    _ => CourseLearningPathPrimaryActionKind.unknown,
+  };
+}
+
+CourseLearningPathEmptyActionKind _parseLearningPathEmptyActionKind(
+  String value,
+) {
+  return switch (value) {
+    'ADD_SOURCE' => CourseLearningPathEmptyActionKind.addSource,
+    'WAIT_FOR_ANALYSIS' => CourseLearningPathEmptyActionKind.waitForAnalysis,
+    'RETRY_SOURCE' => CourseLearningPathEmptyActionKind.retrySource,
+    'NONE' => CourseLearningPathEmptyActionKind.none,
+    _ => CourseLearningPathEmptyActionKind.unknown,
+  };
+}
+
 CourseQuestionBankReadinessStatus _parseQuestionBankReadinessStatus(
   String value,
 ) {
@@ -2514,6 +2852,14 @@ int? _optionalInt(Object? value) {
   }
 
   return _requiredInt(value, 'Invalid optional int response');
+}
+
+double _requiredRatio(Object? value, String message) {
+  if (value is num) {
+    return value.toDouble();
+  }
+
+  throw FormatException(message);
 }
 
 bool _requiredBool(Object? value, String message) {

@@ -70,8 +70,7 @@ void main() {
           ),
         ],
       )
-      ..progressByCourse['course-1'] = courseProgress()
-      ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture();
+      ..learningPathByCourse['course-1'] = courseLearningPathFixture();
 
     await tester.pumpWidget(
       testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
@@ -112,10 +111,12 @@ void main() {
       findsNothing,
     );
     expect(find.byKey(const ValueKey('course-detail-luna')), findsOneWidget);
-    expect(find.text('18%'), findsOneWidget);
+    expect(repository.getCourseLearningPathCount, 1);
+    expect(find.text('62%'), findsOneWidget);
     expect(find.text('Continuer'), findsWidgets);
     expect(find.text('Parcours'), findsOneWidget);
-    expect(find.text('Responsabilité politique'), findsOneWidget);
+    expect(find.text('La séparation des pouvoirs'), findsOneWidget);
+    expect(find.textContaining('À renforcer'), findsOneWidget);
     expect(find.text('Comprendre'), findsOneWidget);
     expect(find.text('Réviser cette notion'), findsOneWidget);
     expect(find.text('Modes de révision'), findsNothing);
@@ -123,6 +124,38 @@ void main() {
     expect(find.text('Temps estimé : À préciser'), findsNothing);
     expect(find.text('Difficulté : À préciser'), findsNothing);
     expect(find.text('La Constitution'), findsNothing);
+  });
+
+  testWidgets('course detail displays backend learning path empty state', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..learningPathByCourse['course-1'] = courseLearningPathFixture(
+        nodes: const [],
+        activeNodeId: null,
+        emptyState: const CourseLearningPathEmptyState(
+          title: 'Ajoute une source',
+          message:
+              'Ajoute un PDF pour que Neralune prépare le parcours de ce cours.',
+          actionLabel: 'Ajouter une source',
+          actionKind: CourseLearningPathEmptyActionKind.addSource,
+        ),
+      );
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ajoute une source'), findsWidgets);
+    expect(
+      find.text(
+        'Ajoute un PDF pour que Neralune prépare le parcours de ce cours.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('La séparation des pouvoirs'), findsNothing);
   });
 
   testWidgets('course detail displays failed source errors', (tester) async {
@@ -330,6 +363,23 @@ void main() {
   ) async {
     final repository = InMemoryCoursesRepository()
       ..detailsByCourse['course-1'] = courseDetail()
+      ..learningPathByCourse['course-1'] = courseLearningPathFixture(
+        nodes: const [],
+        activeNodeId: null,
+        primaryAction: const CourseLearningPathPrimaryAction(
+          kind: CourseLearningPathPrimaryActionKind.addSource,
+          label: 'Ajouter une source',
+          description: 'Ajoute un PDF pour préparer le parcours de ce cours.',
+          enabled: true,
+        ),
+        emptyState: const CourseLearningPathEmptyState(
+          title: 'Parcours du cours',
+          message:
+              'Les notions détaillées seront affichées dès que le parcours sera disponible.',
+          actionLabel: 'Ajouter une source',
+          actionKind: CourseLearningPathEmptyActionKind.addSource,
+        ),
+      )
       ..progressByCourse['course-1'] = courseProgress(
         state: CourseProgressState.noSource,
         knowledgeUnitCount: 0,
@@ -377,7 +427,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('18%'), findsOneWidget);
+    expect(find.text('62%'), findsOneWidget);
     expect(find.text('maîtrisé'), findsOneWidget);
     expect(find.text('Parcours'), findsOneWidget);
     expect(find.text('3/12 notions travaillées'), findsNothing);
@@ -406,7 +456,7 @@ void main() {
     await tester.pump();
 
     expect(repository.getCourseCount, 1);
-    expect(repository.getCourseProgressCount, 1);
+    expect(repository.getCourseLearningPathCount, 1);
     await openSourcesSheet(tester);
     expect(find.text('Traitement en cours'), findsOneWidget);
 
@@ -414,7 +464,7 @@ void main() {
     await tester.pump();
 
     expect(repository.getCourseCount, greaterThanOrEqualTo(2));
-    expect(repository.getCourseProgressCount, greaterThanOrEqualTo(2));
+    expect(repository.getCourseLearningPathCount, greaterThanOrEqualTo(2));
   });
 
   testWidgets('ready failed and empty sources do not trigger polling', (
@@ -452,13 +502,13 @@ void main() {
       await tester.pump();
 
       final detailReads = repository.getCourseCount;
-      final progressReads = repository.getCourseProgressCount;
+      final learningPathReads = repository.getCourseLearningPathCount;
 
       await tester.pump(const Duration(seconds: 2));
       await tester.pump();
 
       expect(repository.getCourseCount, detailReads);
-      expect(repository.getCourseProgressCount, progressReads);
+      expect(repository.getCourseLearningPathCount, learningPathReads);
     }
   });
 
@@ -466,7 +516,24 @@ void main() {
     tester,
   ) async {
     final repository = InMemoryCoursesRepository()
-      ..detailsByCourse['course-1'] = courseDetail();
+      ..detailsByCourse['course-1'] = courseDetail()
+      ..learningPathByCourse['course-1'] = courseLearningPathFixture(
+        nodes: const [],
+        activeNodeId: null,
+        primaryAction: const CourseLearningPathPrimaryAction(
+          kind: CourseLearningPathPrimaryActionKind.addSource,
+          label: 'Ajouter une source',
+          description: 'Ajoute un PDF pour préparer le parcours de ce cours.',
+          enabled: true,
+        ),
+        emptyState: const CourseLearningPathEmptyState(
+          title: 'Ajoute une source',
+          message:
+              'Ajoute un PDF pour que Neralune prépare le parcours de ce cours.',
+          actionLabel: 'Ajouter une source',
+          actionKind: CourseLearningPathEmptyActionKind.addSource,
+        ),
+      );
 
     await tester.pumpWidget(
       testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
@@ -522,15 +589,32 @@ void main() {
         ],
       )
       ..richRevisionOptionsByCourse['course-1'] = richRevisionOptionsFixture()
-      ..deepRevisionOptionsByCourse['course-1'] = deepRevisionOptionsFixture();
+      ..deepRevisionOptionsByCourse['course-1'] = deepRevisionOptionsFixture()
+      ..learningPathByCourse['course-1'] = courseLearningPathFixture(
+        nodes: const [],
+        activeNodeId: null,
+        primaryAction: const CourseLearningPathPrimaryAction(
+          kind: CourseLearningPathPrimaryActionKind.waitForAnalysis,
+          label: 'Analyse en cours',
+          description:
+              'Le parcours sera disponible quand la source sera prête.',
+          enabled: false,
+          unavailableReason: 'Analyse en cours',
+        ),
+        emptyState: const CourseLearningPathEmptyState(
+          title: 'Analyse en cours',
+          message: 'Neralune prépare les notions de ce cours.',
+          actionLabel: 'Revenir plus tard',
+          actionKind: CourseLearningPathEmptyActionKind.waitForAnalysis,
+        ),
+      );
 
     await tester.pumpWidget(
       testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Source en analyse'), findsOneWidget);
-    expect(find.text('Voir les sources'), findsWidgets);
+    expect(find.text('Analyse en cours'), findsWidgets);
     expect(find.text('Modes de révision'), findsNothing);
 
     final understandButton = tester.widget<OutlinedButton>(
@@ -718,6 +802,25 @@ void main() {
           canPrepare: false,
           userMessage:
               "Aucune notion exploitable n'a encore été trouvée pour ce cours.",
+        )
+        ..learningPathByCourse['course-1'] = courseLearningPathFixture(
+          nodes: const [],
+          activeNodeId: null,
+          primaryAction: const CourseLearningPathPrimaryAction(
+            kind: CourseLearningPathPrimaryActionKind.unavailable,
+            label: 'Parcours indisponible',
+            description:
+                "Aucune notion exploitable n'a encore été trouvée pour ce cours.",
+            enabled: false,
+            unavailableReason: 'Aucune notion exploitable',
+          ),
+          emptyState: const CourseLearningPathEmptyState(
+            title: 'Aucune notion trouvée',
+            message:
+                "Aucune notion exploitable n'a encore été trouvée pour ce cours.",
+            actionLabel: 'Voir les sources',
+            actionKind: CourseLearningPathEmptyActionKind.none,
+          ),
         );
 
       await tester.pumpWidget(
@@ -807,9 +910,7 @@ void main() {
 
       expect(find.text('Continuer'), findsWidgets);
       expect(
-        find.text(
-          "Une session rapide peut démarrer maintenant. D'autres questions sont en préparation.",
-        ),
+        find.text('Reprendre le parcours à la notion recommandée.'),
         findsWidgets,
       );
       expect(find.text('9 questions prêtes.'), findsNothing);
@@ -1165,10 +1266,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Reprendre la session'), findsOneWidget);
-    expect(find.text('2/5 réponses sauvegardées.'), findsOneWidget);
+    expect(find.text('Continuer'), findsWidgets);
+    expect(
+      find.text('Reprendre le parcours à la notion recommandée.'),
+      findsOneWidget,
+    );
 
-    await tester.tap(find.widgetWithText(RevisionGradientButton, 'Reprendre'));
+    await tester.tap(find.widgetWithText(RevisionGradientButton, 'Continuer'));
     await tester.pumpAndSettle();
 
     expect(repository.startQuickRevisionCount, 0);
@@ -1327,6 +1431,10 @@ void _ensureDefaultProgress(InMemoryCoursesRepository repository) {
       readySourceCount: 0,
     ),
   );
+  repository.learningPathByCourse.putIfAbsent(
+    'course-1',
+    () => courseLearningPathFixture(),
+  );
 }
 
 CourseDetail courseDetail({List<CourseDocument> sources = const []}) {
@@ -1368,6 +1476,127 @@ CourseProgress courseProgress({
     failedSourceCount: 0,
     lastPracticedAt: DateTime.utc(2026, 6, 18, 12),
     state: state,
+  );
+}
+
+CourseLearningPath courseLearningPathFixture({
+  List<CourseLearningPathNode>? nodes,
+  String? activeNodeId = 'unit-2',
+  CourseLearningPathPrimaryAction? primaryAction,
+  CourseLearningPathEmptyState? emptyState,
+}) {
+  final resolvedNodes =
+      nodes ??
+      const [
+        CourseLearningPathNode(
+          id: 'unit-1',
+          knowledgeUnitId: 'unit-1',
+          courseId: 'course-1',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          title: 'Population et conceptions de la Nation',
+          order: 0,
+          state: CourseLearningPathNodeState.solid,
+          masteryScore: 0.86,
+          source: CourseLearningPathNodeSource(
+            documentId: 'document-1',
+            fileName: 'CM.pdf',
+          ),
+          display: CourseLearningPathNodeDisplay(
+            title: 'Population et conceptions de la Nation',
+            statusLabel: 'Solide',
+            metaLabel: 'CM.pdf',
+            actionLabel: 'Revoir',
+          ),
+        ),
+        CourseLearningPathNode(
+          id: 'unit-2',
+          knowledgeUnitId: 'unit-2',
+          courseId: 'course-1',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          title: 'La séparation des pouvoirs',
+          order: 1,
+          state: CourseLearningPathNodeState.toStrengthen,
+          masteryScore: 0.34,
+          source: CourseLearningPathNodeSource(
+            documentId: 'document-1',
+            fileName: 'CM.pdf',
+          ),
+          display: CourseLearningPathNodeDisplay(
+            title: 'La séparation des pouvoirs',
+            statusLabel: 'À renforcer',
+            metaLabel: 'CM.pdf',
+            actionLabel: 'Renforcer',
+          ),
+        ),
+        CourseLearningPathNode(
+          id: 'unit-3',
+          knowledgeUnitId: 'unit-3',
+          courseId: 'course-1',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          title: "La souveraineté de l’État",
+          order: 2,
+          state: CourseLearningPathNodeState.undiscovered,
+          source: CourseLearningPathNodeSource(
+            documentId: 'document-1',
+            fileName: 'CM.pdf',
+          ),
+          display: CourseLearningPathNodeDisplay(
+            title: "La souveraineté de l’État",
+            statusLabel: 'À découvrir',
+            metaLabel: 'CM.pdf',
+            actionLabel: 'Découvrir',
+          ),
+        ),
+      ];
+
+  return CourseLearningPath(
+    generatedAt: DateTime.utc(2026, 6, 26, 12),
+    course: const CourseLearningPathCourse(
+      id: 'course-1',
+      subjectId: 'subject-1',
+      subjectName: 'Droit',
+      title: 'Droit constitutionnel',
+    ),
+    summary: CourseLearningPathSummary(
+      knowledgeUnitCount: resolvedNodes.length,
+      solidCount: resolvedNodes
+          .where((node) => node.state == CourseLearningPathNodeState.solid)
+          .length,
+      inProgressCount: resolvedNodes
+          .where((node) => node.state == CourseLearningPathNodeState.inProgress)
+          .length,
+      toStrengthenCount: resolvedNodes
+          .where(
+            (node) => node.state == CourseLearningPathNodeState.toStrengthen,
+          )
+          .length,
+      undiscoveredCount: resolvedNodes
+          .where(
+            (node) => node.state == CourseLearningPathNodeState.undiscovered,
+          )
+          .length,
+      estimatedGlobalMastery: resolvedNodes.isEmpty ? 0 : 0.62,
+      mastery: resolvedNodes.isEmpty ? null : 0.74,
+      coverage: resolvedNodes.isEmpty ? 0 : 0.83,
+      readySourceCount: 1,
+    ),
+    activeNodeId: activeNodeId,
+    primaryAction:
+        primaryAction ??
+        const CourseLearningPathPrimaryAction(
+          kind: CourseLearningPathPrimaryActionKind.reviewActiveNode,
+          label: 'Continuer',
+          description: 'Reprendre le parcours à la notion recommandée.',
+          estimatedMinutes: 8,
+          targetKnowledgeUnitId: 'unit-2',
+          targetNodeId: 'unit-2',
+          enabled: true,
+        ),
+    nodes: resolvedNodes,
+    emptyState: emptyState,
   );
 }
 

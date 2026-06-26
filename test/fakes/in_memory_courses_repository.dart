@@ -15,6 +15,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   final Map<String, List<CourseListItem>> coursesBySubject = {};
   final Map<String, CourseDetail> detailsByCourse = {};
   final Map<String, CourseProgress> progressByCourse = {};
+  final Map<String, CourseLearningPath> learningPathByCourse = {};
   final Map<String, SubjectProgress> progressBySubject = {};
   final Map<String, RevisionSheet?> revisionSheetsByCourse = {};
   final Map<String, RevisionSheet> generatedRevisionSheetsByCourse = {};
@@ -48,6 +49,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   int listCoursesCount = 0;
   int getCourseCount = 0;
   int getCourseProgressCount = 0;
+  int getCourseLearningPathCount = 0;
   int getSubjectProgressCount = 0;
   int getRevisionSheetCount = 0;
   int generateRevisionSheetCount = 0;
@@ -85,6 +87,7 @@ class InMemoryCoursesRepository implements CoursesRepository {
   String? lastResumableRevisionSessionCourseId;
   String? lastCourseRevisionSessionHistoryCourseId;
   String? lastCourseRichClosedHistoryCourseId;
+  String? lastCourseLearningPathId;
   String? lastRichRevisionOptionsCourseId;
   String? lastDeepRevisionOptionsCourseId;
   String? lastCourseDeepRevisionHistoryCourseId;
@@ -867,6 +870,19 @@ class InMemoryCoursesRepository implements CoursesRepository {
     }
 
     return Future.value(progress);
+  }
+
+  @override
+  Future<CourseLearningPath> getCourseLearningPath({required String courseId}) {
+    getCourseLearningPathCount += 1;
+    lastCourseLearningPathId = courseId;
+    final learningPath = learningPathByCourse[courseId];
+
+    if (learningPath == null) {
+      throw const CourseNotFoundException('Course learning path not found');
+    }
+
+    return Future.value(learningPath);
   }
 
   @override

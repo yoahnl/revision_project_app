@@ -45,6 +45,13 @@ final courseProgressProvider = FutureProvider.family<CourseProgress, String>((
       .getCourseProgress(courseId: courseId);
 });
 
+final courseLearningPathProvider =
+    FutureProvider.family<CourseLearningPath, String>((ref, courseId) {
+      return ref
+          .read(coursesRepositoryProvider)
+          .getCourseLearningPath(courseId: courseId);
+    });
+
 final resumableCourseRevisionSessionProvider =
     FutureProvider.family<ResumableCourseRevisionSession?, String>((
       ref,
@@ -365,6 +372,7 @@ class UploadCourseDocumentController
     final uploaded = result.requireValue;
     ref.invalidate(courseDetailProvider(detail.course.id));
     ref.invalidate(courseProgressProvider(detail.course.id));
+    ref.invalidate(courseLearningPathProvider(detail.course.id));
     ref.invalidate(courseRichRevisionOptionsProvider(detail.course.id));
     ref.invalidate(courseDeepRevisionOptionsProvider(detail.course.id));
     ref.invalidate(coursesProvider(detail.course.subjectId));
@@ -382,6 +390,7 @@ void _invalidateCourseSurfaces(
   ref.invalidate(courseDetailProvider(courseId));
   ref.invalidate(courseLifecycleProvider(courseId));
   ref.invalidate(courseProgressProvider(courseId));
+  ref.invalidate(courseLearningPathProvider(courseId));
   ref.invalidate(courseRevisionSessionHistoryProvider(courseId));
   ref.invalidate(courseRichRevisionOptionsProvider(courseId));
   ref.invalidate(courseDeepRevisionOptionsProvider(courseId));
@@ -415,6 +424,7 @@ class DeleteCourseDocumentController extends Notifier<AsyncValue<void>> {
 
     ref.invalidate(courseDetailProvider(detail.course.id));
     ref.invalidate(courseProgressProvider(detail.course.id));
+    ref.invalidate(courseLearningPathProvider(detail.course.id));
     ref.invalidate(courseDeepRevisionOptionsProvider(detail.course.id));
     ref.invalidate(coursesProvider(detail.course.subjectId));
     ref.invalidate(subjectProgressProvider(detail.course.subjectId));
@@ -446,6 +456,7 @@ class ArchiveCourseDocumentController extends Notifier<AsyncValue<void>> {
 
     ref.invalidate(courseDetailProvider(detail.course.id));
     ref.invalidate(courseProgressProvider(detail.course.id));
+    ref.invalidate(courseLearningPathProvider(detail.course.id));
     ref.invalidate(courseDeepRevisionOptionsProvider(detail.course.id));
     ref.invalidate(coursesProvider(detail.course.subjectId));
     ref.invalidate(subjectProgressProvider(detail.course.subjectId));
@@ -505,6 +516,7 @@ class PrepareQuestionBankController
         questionCount: questionCount,
       )),
     );
+    ref.invalidate(courseLearningPathProvider(courseId));
 
     if (result.hasError) {
       Error.throwWithStackTrace(result.error!, result.stackTrace!);
@@ -540,6 +552,7 @@ class StartCourseQuickRevisionController
 
     state = result.whenData<RevisionSessionResponse?>((response) => response);
     ref.invalidate(resumableCourseRevisionSessionProvider(resolvedCourseId));
+    ref.invalidate(courseLearningPathProvider(resolvedCourseId));
     ref.invalidate(
       courseQuestionBankReadinessProvider((
         courseId: resolvedCourseId,

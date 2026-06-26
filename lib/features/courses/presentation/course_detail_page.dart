@@ -117,7 +117,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
     final visual = revisionSubjectVisualThemeFor(
       '${detail.subject.name} ${course.title}',
     );
-    final progress = ref.watch(courseProgressProvider(course.id));
+    final learningPath = ref.watch(courseLearningPathProvider(course.id));
     final primaryReadinessState = ref.watch(
       courseQuestionBankReadinessProvider((
         courseId: course.id,
@@ -164,7 +164,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
         _CourseHeader(
           detail: detail,
           visual: visual,
-          progress: progress,
+          learningPathState: learningPath,
           showContent: _showDetailContent,
           revealDelay: const Duration(milliseconds: 40),
         ),
@@ -173,7 +173,11 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
         _CourseDetailReveal(
           visible: _showDetailContent,
           delay: const Duration(milliseconds: 70),
-          child: _CoursePrimaryAction(detail: detail, visual: visual),
+          child: _CoursePrimaryAction(
+            detail: detail,
+            visual: visual,
+            learningPathState: learningPath,
+          ),
         ),
         _CourseDetailReveal(
           visible: _showDetailContent,
@@ -181,9 +185,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
           child: _CourseLearningPath(
             detail: detail,
             visual: visual,
-            optionsState: ref.watch(
-              courseRichRevisionOptionsProvider(course.id),
-            ),
+            learningPathState: learningPath,
           ),
         ),
         _CourseDetailReveal(
@@ -191,11 +193,8 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
           delay: const Duration(milliseconds: 190),
           child: _CourseBottomActions(
             detail: detail,
-            visual: visual,
             hasReadySource: hasReadySource,
-            richOptionsState: ref.watch(
-              courseRichRevisionOptionsProvider(course.id),
-            ),
+            learningPathState: learningPath,
           ),
         ),
         if (_pollTimedOut)
@@ -271,6 +270,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
 
       ref.invalidate(courseDetailProvider(widget.detail.course.id));
       ref.invalidate(courseProgressProvider(widget.detail.course.id));
+      ref.invalidate(courseLearningPathProvider(widget.detail.course.id));
       ref.invalidate(subjectProgressProvider(widget.detail.course.subjectId));
     });
   }
@@ -427,25 +427,24 @@ class _CourseHeader extends StatelessWidget {
   const _CourseHeader({
     required this.detail,
     required this.visual,
-    required this.progress,
+    required this.learningPathState,
     required this.showContent,
     required this.revealDelay,
   });
 
   final CourseDetail detail;
   final RevisionSubjectVisualTheme visual;
-  final AsyncValue<CourseProgress> progress;
+  final AsyncValue<CourseLearningPath> learningPathState;
   final bool showContent;
   final Duration revealDelay;
 
   @override
   Widget build(BuildContext context) {
-    final course = detail.course;
-    final progressValue = progress.asData?.value;
+    final path = learningPathState.asData?.value;
+    final title = path?.course.title ?? detail.course.title;
+    final subjectName = path?.course.subjectName ?? detail.subject.name;
     final hasReliableProgress =
-        progressValue != null &&
-        progressValue.knowledgeUnitCount > 0 &&
-        progressValue.state == CourseProgressState.practiced;
+        path != null && path.summary.knowledgeUnitCount > 0;
 
     return Hero(
       tag: CourseHeroTags.subjectOverview(detail.subject.id),
@@ -466,14 +465,14 @@ class _CourseHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      course.title,
+                      title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: RevisionTypography.pageTitle,
                     ),
                     const SizedBox(height: RevisionSpacing.xs),
                     Text(
-                      detail.subject.name,
+                      subjectName,
                       style: RevisionTypography.caption.copyWith(
                         color: RevisionColors.textMuted,
                       ),
@@ -483,13 +482,13 @@ class _CourseHeader extends StatelessWidget {
               ),
               const SizedBox(width: RevisionSpacing.m),
               _CourseLuna(visual: visual),
-              if (hasReliableProgress) ...[
+              if (path != null && hasReliableProgress) ...[
                 const SizedBox(width: RevisionSpacing.m),
                 RevisionMasteryRing(
-                  value: progressValue.estimatedGlobalMastery,
-                  label: _percent(progressValue.estimatedGlobalMastery),
+                  value: path.summary.estimatedGlobalMastery,
+                  label: _percent(path.summary.estimatedGlobalMastery),
                   caption: 'maîtrisé',
-                  color: _progressColor(progressValue.state),
+                  color: _learningPathStateColor(path.activeNode?.state),
                   size: 78,
                 ),
               ],
@@ -599,41 +598,40 @@ class _CourseLuna extends StatelessWidget {
 }
 
 class _CoursePrimaryAction extends ConsumerWidget {
-  const _CoursePrimaryAction({required this.detail, required this.visual});
+  const _CoursePrimaryAction({
+    required this.detail,
+    required this.visual,
+    required this.learningPathState,
+  });
 
   final CourseDetail detail;
   final RevisionSubjectVisualTheme visual;
+  final AsyncValue<CourseLearningPath> learningPathState;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final readinessState = ref.watch(
-      courseQuestionBankReadinessProvider((
-        courseId: detail.course.id,
-        questionCount: 10,
-      )),
-    );
-    final readiness = readinessState.maybeWhen(
-      data: (value) => value,
-      orElse: () => null,
-    );
-    final resumable = ref
-        .watch(resumableCourseRevisionSessionProvider(detail.course.id))
-        .maybeWhen(data: (value) => value, orElse: () => null);
-    final action = _primaryActionFor(
-      detail.sources,
-      readiness,
-      readinessState.isLoading,
-      resumable,
-      detail.course,
-    );
+    final path = learningPathState.asData?.value;
+    final action = path?.primaryAction;
+    final presentation =
+        learningPathState.hasError && !learningPathState.hasValue
+        ? const _LearningPathPrimaryActionPresentation(
+            title: 'Parcours indisponible',
+            message: 'Impossible de charger l’action recommandée.',
+            buttonLabel: 'Réessayer',
+            buttonIcon: Icons.refresh_rounded,
+            accent: RevisionColors.red,
+            canRun: false,
+            retry: true,
+          )
+        : _learningPathPrimaryActionPresentation(action);
 
     return RevisionGlassCard(
-      borderColor: action.accent.withValues(alpha: 0.34),
+      borderColor: presentation.accent.withValues(alpha: 0.34),
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          action.accent.withValues(alpha: 0.20),
+          presentation.accent.withValues(alpha: 0.20),
           RevisionColors.glassStrong,
         ],
       ),
@@ -648,14 +646,14 @@ class _CoursePrimaryAction extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      action.title,
+                      presentation.title,
                       style: RevisionTypography.caption.copyWith(
                         color: visual.accent,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(height: RevisionSpacing.xs),
-                    Text(action.message, style: RevisionTypography.body),
+                    Text(presentation.message, style: RevisionTypography.body),
                     const SizedBox(height: RevisionSpacing.m),
                   ],
                 ),
@@ -663,12 +661,21 @@ class _CoursePrimaryAction extends ConsumerWidget {
             ],
           ),
           RevisionGradientButton(
-            label: action.buttonLabel,
-            icon: action.buttonIcon,
+            label: presentation.buttonLabel,
+            icon: presentation.buttonIcon,
             expanded: true,
-            onPressed: action.run == null
-                ? null
-                : () => action.run!(context, ref, detail),
+            onPressed: presentation.canRun
+                ? () => _runLearningPathPrimaryAction(
+                    context,
+                    ref,
+                    detail,
+                    action,
+                  )
+                : presentation.retry
+                ? () => ref.invalidate(
+                    courseLearningPathProvider(detail.course.id),
+                  )
+                : null,
           ),
         ],
       ),
@@ -676,22 +683,156 @@ class _CoursePrimaryAction extends ConsumerWidget {
   }
 }
 
-class _CourseLearningPath extends StatelessWidget {
+class _LearningPathPrimaryActionPresentation {
+  const _LearningPathPrimaryActionPresentation({
+    required this.title,
+    required this.message,
+    required this.buttonLabel,
+    required this.buttonIcon,
+    required this.accent,
+    required this.canRun,
+    this.retry = false,
+  });
+
+  final String title;
+  final String message;
+  final String buttonLabel;
+  final IconData buttonIcon;
+  final Color accent;
+  final bool canRun;
+  final bool retry;
+}
+
+_LearningPathPrimaryActionPresentation _learningPathPrimaryActionPresentation(
+  CourseLearningPathPrimaryAction? action,
+) {
+  if (action == null) {
+    return const _LearningPathPrimaryActionPresentation(
+      title: 'Chargement du parcours',
+      message: 'Neralune récupère les notions de ce cours.',
+      buttonLabel: 'Chargement...',
+      buttonIcon: Icons.hourglass_top_rounded,
+      accent: RevisionColors.blue,
+      canRun: false,
+    );
+  }
+
+  final isEnabled = action.enabled;
+  final icon = switch (action.kind) {
+    CourseLearningPathPrimaryActionKind.addSource => Icons.add_rounded,
+    CourseLearningPathPrimaryActionKind.waitForAnalysis =>
+      Icons.hourglass_top_rounded,
+    CourseLearningPathPrimaryActionKind.prepareQuestions =>
+      Icons.auto_awesome_rounded,
+    CourseLearningPathPrimaryActionKind.reviewActiveNode ||
+    CourseLearningPathPrimaryActionKind.continueCourse =>
+      Icons.play_arrow_rounded,
+    CourseLearningPathPrimaryActionKind.unavailable =>
+      Icons.description_outlined,
+    CourseLearningPathPrimaryActionKind.unknown => Icons.play_arrow_rounded,
+  };
+  final accent = switch (action.kind) {
+    CourseLearningPathPrimaryActionKind.addSource => RevisionColors.blue,
+    CourseLearningPathPrimaryActionKind.waitForAnalysis => RevisionColors.amber,
+    CourseLearningPathPrimaryActionKind.prepareQuestions => RevisionColors.blue,
+    CourseLearningPathPrimaryActionKind.reviewActiveNode ||
+    CourseLearningPathPrimaryActionKind.continueCourse => RevisionColors.green,
+    CourseLearningPathPrimaryActionKind.unavailable =>
+      isEnabled ? RevisionColors.amber : RevisionColors.red,
+    CourseLearningPathPrimaryActionKind.unknown => RevisionColors.blue,
+  };
+
+  return _LearningPathPrimaryActionPresentation(
+    title: action.label,
+    message: action.unavailableReason ?? action.description,
+    buttonLabel: action.label,
+    buttonIcon: icon,
+    accent: accent,
+    canRun: isEnabled,
+  );
+}
+
+Future<void> _runLearningPathPrimaryAction(
+  BuildContext context,
+  WidgetRef ref,
+  CourseDetail detail,
+  CourseLearningPathPrimaryAction? action,
+) async {
+  if (action == null || !action.enabled) {
+    return;
+  }
+
+  switch (action.kind) {
+    case CourseLearningPathPrimaryActionKind.addSource:
+      _showSourcesSheet(context, ref, detail);
+    case CourseLearningPathPrimaryActionKind.waitForAnalysis:
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(action.unavailableReason ?? action.description)),
+      );
+    case CourseLearningPathPrimaryActionKind.reviewActiveNode:
+    case CourseLearningPathPrimaryActionKind.continueCourse:
+      final resumable = await ref.read(
+        resumableCourseRevisionSessionProvider(detail.course.id).future,
+      );
+      if (resumable != null) {
+        if (!context.mounted) {
+          return;
+        }
+
+        context.go(
+          AppRoutes.revisionSessionV2(
+            sessionId: resumable.session.id,
+            courseId: detail.course.id,
+            mode: 'quick',
+          ),
+        );
+        return;
+      }
+
+      await _showQuickRevisionSheet(context, ref, detail);
+    case CourseLearningPathPrimaryActionKind.prepareQuestions:
+      try {
+        final prepared = await ref
+            .read(prepareQuestionBankControllerProvider.notifier)
+            .prepare(courseId: detail.course.id);
+
+        if (!context.mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(prepared.userMessage)));
+      } catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(quickRevisionErrorLabel(error))));
+      }
+    case CourseLearningPathPrimaryActionKind.unavailable:
+      _showSourcesSheet(context, ref, detail);
+    case CourseLearningPathPrimaryActionKind.unknown:
+      await _showQuickRevisionSheet(context, ref, detail);
+  }
+}
+
+class _CourseLearningPath extends ConsumerWidget {
   const _CourseLearningPath({
     required this.detail,
     required this.visual,
-    required this.optionsState,
+    required this.learningPathState,
   });
 
   final CourseDetail detail;
   final RevisionSubjectVisualTheme visual;
-  final AsyncValue<CourseRichRevisionOptions> optionsState;
+  final AsyncValue<CourseLearningPath> learningPathState;
 
   @override
-  Widget build(BuildContext context) {
-    final options = optionsState.asData?.value;
-    final scopes = options == null ? const [] : _usableScopes(options);
-    final activeScopeId = options == null ? null : _activeScopeId(options);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final path = learningPathState.asData?.value;
     Widget pathHeroCard({required Widget child, EdgeInsetsGeometry? padding}) {
       return Hero(
         tag: CourseHeroTags.learningPath(detail.course.id),
@@ -708,28 +849,43 @@ class _CourseLearningPath extends StatelessWidget {
       children: [
         Text('Parcours', style: RevisionTypography.sectionTitle),
         const SizedBox(height: RevisionSpacing.m),
-        if (optionsState.isLoading && !optionsState.hasValue)
+        if (learningPathState.isLoading && !learningPathState.hasValue)
           pathHeroCard(
             child: Text(
-              'Préparation du parcours du cours.',
+              'Chargement du parcours',
               style: RevisionTypography.body,
             ),
           )
-        else if (optionsState.hasError || scopes.isEmpty)
+        else if (learningPathState.hasError && path == null)
           pathHeroCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Parcours du cours',
+                  'Impossible de charger le parcours',
                   style: RevisionTypography.sectionTitle.copyWith(fontSize: 17),
                 ),
                 const SizedBox(height: RevisionSpacing.s),
                 Text(
-                  'Les notions détaillées seront affichées dès que le parcours sera disponible.',
+                  'Réessaie dans un instant ou consulte les sources du cours.',
                   style: RevisionTypography.body,
                 ),
+                const SizedBox(height: RevisionSpacing.s),
+                TextButton.icon(
+                  onPressed: () => ref.invalidate(
+                    courseLearningPathProvider(detail.course.id),
+                  ),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Réessayer'),
+                ),
               ],
+            ),
+          )
+        else if (path == null || path.nodes.isEmpty)
+          pathHeroCard(
+            child: _LearningPathEmptyState(
+              detail: detail,
+              emptyState: path?.emptyState,
             ),
           )
         else
@@ -740,13 +896,13 @@ class _CourseLearningPath extends StatelessWidget {
             ),
             child: Column(
               children: [
-                for (final indexed in scopes.indexed)
+                for (final indexed in path.nodes.indexed)
                   _LearningPathRow(
-                    option: indexed.$2,
+                    node: indexed.$2,
                     visual: visual,
-                    selected: indexed.$2.id == activeScopeId,
+                    selected: indexed.$2.id == path.activeNodeId,
                     first: indexed.$1 == 0,
-                    last: indexed.$1 == scopes.length - 1,
+                    last: indexed.$1 == path.nodes.length - 1,
                   ),
               ],
             ),
@@ -758,14 +914,14 @@ class _CourseLearningPath extends StatelessWidget {
 
 class _LearningPathRow extends StatelessWidget {
   const _LearningPathRow({
-    required this.option,
+    required this.node,
     required this.visual,
     required this.selected,
     required this.first,
     required this.last,
   });
 
-  final CourseRichRevisionScopeOption option;
+  final CourseLearningPathNode node;
   final RevisionSubjectVisualTheme visual;
   final bool selected;
   final bool first;
@@ -773,7 +929,8 @@ class _LearningPathRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? visual.accent : RevisionColors.borderBright;
+    final stateColor = _learningPathStateColor(node.state);
+    final color = selected ? visual.accent : stateColor;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -797,10 +954,18 @@ class _LearningPathRow extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: selected
                       ? visual.accent.withValues(alpha: 0.22)
+                      : node.state == CourseLearningPathNodeState.solid
+                      ? stateColor
                       : Colors.transparent,
                   border: Border.all(color: color, width: selected ? 3 : 2),
                 ),
-                child: selected
+                child: node.state == CourseLearningPathNodeState.solid
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 13,
+                        color: RevisionColors.ink,
+                      )
+                    : selected
                     ? Center(
                         child: Container(
                           width: 8,
@@ -840,14 +1005,30 @@ class _LearningPathRow extends StatelessWidget {
                   ? Border.all(color: visual.accent.withValues(alpha: 0.22))
                   : null,
             ),
-            child: Text(
-              option.label,
-              style: RevisionTypography.body.copyWith(
-                color: selected
-                    ? RevisionColors.text
-                    : RevisionColors.textMuted,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  node.display.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: RevisionTypography.body.copyWith(
+                    color: RevisionColors.text,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _nodeMeta(node),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: RevisionTypography.caption.copyWith(
+                    color: selected
+                        ? RevisionColors.text
+                        : RevisionColors.textMuted,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -856,28 +1037,70 @@ class _LearningPathRow extends StatelessWidget {
   }
 }
 
-class _CourseBottomActions extends ConsumerWidget {
-  const _CourseBottomActions({
-    required this.detail,
-    required this.visual,
-    required this.hasReadySource,
-    required this.richOptionsState,
-  });
+class _LearningPathEmptyState extends ConsumerWidget {
+  const _LearningPathEmptyState({required this.detail, this.emptyState});
 
   final CourseDetail detail;
-  final RevisionSubjectVisualTheme visual;
-  final bool hasReadySource;
-  final AsyncValue<CourseRichRevisionOptions> richOptionsState;
+  final CourseLearningPathEmptyState? emptyState;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final options = richOptionsState.asData?.value;
-    final activeScope = options == null ? null : _activeScope(options);
+    final state = emptyState;
+    final title = state?.title ?? 'Parcours du cours';
+    final message =
+        state?.message ??
+        'Les notions détaillées seront affichées dès que le parcours sera disponible.';
+    final canAct =
+        state?.actionKind == CourseLearningPathEmptyActionKind.addSource ||
+        state?.actionKind == CourseLearningPathEmptyActionKind.retrySource;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: RevisionTypography.sectionTitle.copyWith(fontSize: 17),
+        ),
+        const SizedBox(height: RevisionSpacing.s),
+        Text(message, style: RevisionTypography.body),
+        if (state != null) ...[
+          const SizedBox(height: RevisionSpacing.s),
+          TextButton.icon(
+            onPressed: canAct
+                ? () => _showSourcesSheet(context, ref, detail)
+                : null,
+            icon: const Icon(Icons.description_outlined),
+            label: Text(state.actionLabel),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CourseBottomActions extends ConsumerWidget {
+  const _CourseBottomActions({
+    required this.detail,
+    required this.hasReadySource,
+    required this.learningPathState,
+  });
+
+  final CourseDetail detail;
+  final bool hasReadySource;
+  final AsyncValue<CourseLearningPath> learningPathState;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final path = learningPathState.asData?.value;
+    final action = path?.primaryAction;
     final canReviewNotion =
-        options?.readiness.canStart == true && activeScope != null;
+        action?.enabled == true && action?.targetKnowledgeUnitId != null;
     final reviewLabel = canReviewNotion
         ? 'Réviser cette notion'
         : 'Réviser ce cours';
+    final canReviewCourse =
+        hasReadySource &&
+        action?.kind != CourseLearningPathPrimaryActionKind.waitForAnalysis;
 
     return RevisionGlassCard(
       padding: const EdgeInsets.all(RevisionSpacing.s),
@@ -913,7 +1136,7 @@ class _CourseBottomActions extends ConsumerWidget {
                   ? () => context.push(
                       AppRoutes.courseRichRevision(detail.course.id),
                     )
-                  : hasReadySource
+                  : canReviewCourse
                   ? () => _showQuickRevisionSheet(context, ref, detail)
                   : null,
             ),
@@ -922,174 +1145,6 @@ class _CourseBottomActions extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _PrimaryCourseAction {
-  const _PrimaryCourseAction({
-    required this.title,
-    required this.message,
-    required this.buttonLabel,
-    required this.icon,
-    required this.buttonIcon,
-    required this.accent,
-    required this.run,
-  });
-
-  final String title;
-  final String message;
-  final String buttonLabel;
-  final IconData icon;
-  final IconData buttonIcon;
-  final Color accent;
-  final void Function(BuildContext context, WidgetRef ref, CourseDetail detail)?
-  run;
-}
-
-_PrimaryCourseAction _primaryActionFor(
-  List<CourseDocument> sources,
-  CourseQuestionBankReadiness? readiness,
-  bool isLoadingReadiness,
-  ResumableCourseRevisionSession? resumable,
-  CourseListItem course,
-) {
-  if (resumable != null) {
-    final progress = resumable.progress.totalQuestionCount > 0
-        ? '${resumable.progress.answeredQuestionCount}/${resumable.progress.totalQuestionCount} réponses sauvegardées.'
-        : 'Tu as une session en cours.';
-    return _PrimaryCourseAction(
-      title: 'Reprendre la session',
-      message: progress,
-      buttonLabel: 'Reprendre',
-      icon: Icons.play_circle_outline_rounded,
-      buttonIcon: Icons.play_arrow_rounded,
-      accent: RevisionColors.green,
-      run: (context, ref, detail) {
-        context.go(
-          AppRoutes.revisionSessionV2(
-            sessionId: resumable.session.id,
-            courseId: detail.course.id,
-            mode: 'quick',
-          ),
-        );
-      },
-    );
-  }
-
-  if (sources.any((source) => source.status == CourseDocumentStatus.ready)) {
-    if (isLoadingReadiness || readiness == null) {
-      return const _PrimaryCourseAction(
-        title: 'Questions du cours',
-        message: 'Vérification des questions disponibles.',
-        buttonLabel: 'Vérification...',
-        icon: Icons.flash_on_rounded,
-        buttonIcon: Icons.hourglass_top_rounded,
-        accent: RevisionColors.blue,
-        run: null,
-      );
-    }
-
-    if (readiness.readyQuestionCount >= 5) {
-      final suffix =
-          readiness.status == CourseQuestionBankReadinessStatus.preparing
-          ? " D'autres questions sont en préparation."
-          : '';
-      return _PrimaryCourseAction(
-        title: 'Continuer',
-        message: 'Une session rapide peut démarrer maintenant.$suffix',
-        buttonLabel: course.estimatedMinutes == null
-            ? 'Continuer'
-            : 'Continuer · ${course.estimatedMinutes} min',
-        icon: Icons.flash_on_rounded,
-        buttonIcon: Icons.play_arrow_rounded,
-        accent: RevisionColors.blue,
-        run: (context, ref, detail) =>
-            _showQuickRevisionSheet(context, ref, detail),
-      );
-    }
-
-    if (readiness.status ==
-        CourseQuestionBankReadinessStatus.noKnowledgeUnits) {
-      return _PrimaryCourseAction(
-        title: 'Questions indisponibles',
-        message: readiness.userMessage,
-        buttonLabel: 'Préparation en cours',
-        icon: Icons.info_outline_rounded,
-        buttonIcon: Icons.hourglass_top_rounded,
-        accent: RevisionColors.amber,
-        run: null,
-      );
-    }
-
-    if (readiness.status == CourseQuestionBankReadinessStatus.preparing) {
-      return const _PrimaryCourseAction(
-        title: 'Préparation en cours',
-        message: 'Les questions rapides sont en préparation.',
-        buttonLabel: 'Préparation en cours',
-        icon: Icons.auto_awesome_rounded,
-        buttonIcon: Icons.hourglass_top_rounded,
-        accent: RevisionColors.amber,
-        run: null,
-      );
-    }
-
-    return _PrimaryCourseAction(
-      title: 'Préparer les questions',
-      message: readiness.userMessage,
-      buttonLabel: 'Préparer les questions',
-      icon: Icons.auto_awesome_rounded,
-      buttonIcon: Icons.auto_awesome_rounded,
-      accent: RevisionColors.blue,
-      run: (context, ref, detail) async {
-        final prepared = await ref
-            .read(prepareQuestionBankControllerProvider.notifier)
-            .prepare(courseId: detail.course.id);
-
-        if (!context.mounted) {
-          return;
-        }
-
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(prepared.userMessage)));
-      },
-    );
-  }
-
-  if (sources.any(_isPendingSource)) {
-    return _PrimaryCourseAction(
-      title: 'Source en analyse',
-      message: 'La révision sera disponible quand le PDF sera prêt.',
-      buttonLabel: 'Voir les sources',
-      icon: Icons.hourglass_top_rounded,
-      buttonIcon: Icons.description_outlined,
-      accent: RevisionColors.amber,
-      run: (context, ref, detail) => _showSourcesSheet(context, ref, detail),
-    );
-  }
-
-  if (sources.isNotEmpty &&
-      sources.every((source) => source.status == CourseDocumentStatus.failed)) {
-    return _PrimaryCourseAction(
-      title: 'Source à corriger',
-      message:
-          'Ouvre les sources pour remplacer ou supprimer le PDF en erreur.',
-      buttonLabel: 'Voir les sources',
-      icon: Icons.error_outline_rounded,
-      buttonIcon: Icons.description_outlined,
-      accent: RevisionColors.red,
-      run: (context, ref, detail) => _showSourcesSheet(context, ref, detail),
-    );
-  }
-
-  return _PrimaryCourseAction(
-    title: 'Ajoute une source',
-    message: 'Ajoute un PDF pour préparer la fiche et les révisions.',
-    buttonLabel: 'Ajouter une source',
-    icon: Icons.upload_file_rounded,
-    buttonIcon: Icons.add_rounded,
-    accent: RevisionColors.blue,
-    run: (context, ref, detail) => _showSourcesSheet(context, ref, detail),
-  );
 }
 
 class _CourseRevisionHistorySection extends ConsumerWidget {
@@ -1718,46 +1773,6 @@ _DeepRevisionCardAction _deepRevisionActionFor(
   );
 }
 
-List<CourseRichRevisionScopeOption> _usableScopes(
-  CourseRichRevisionOptions options,
-) {
-  return options.scopeOptions
-      .where(
-        (option) =>
-            option.kind == CourseRichRevisionScopeKind.knowledgeUnit &&
-            option.label.trim().isNotEmpty,
-      )
-      .toList(growable: false);
-}
-
-CourseRichRevisionScopeOption? _activeScope(CourseRichRevisionOptions options) {
-  final scopes = _usableScopes(options);
-  if (scopes.isEmpty) {
-    return null;
-  }
-
-  final configuredScopeId = options.defaultConfig?.scopeId;
-  if (configuredScopeId != null) {
-    for (final option in scopes) {
-      if (option.id == configuredScopeId) {
-        return option;
-      }
-    }
-  }
-
-  for (final option in scopes) {
-    if (option.canSelect) {
-      return option;
-    }
-  }
-
-  return scopes.first;
-}
-
-String? _activeScopeId(CourseRichRevisionOptions options) {
-  return _activeScope(options)?.id;
-}
-
 Future<void> _handleQuickRevisionTap(
   BuildContext context,
   WidgetRef ref,
@@ -1926,6 +1941,7 @@ Future<void> _showCourseManagement(
 
   ref.invalidate(courseDetailProvider(detail.course.id));
   ref.invalidate(courseProgressProvider(detail.course.id));
+  ref.invalidate(courseLearningPathProvider(detail.course.id));
   ref.invalidate(courseRevisionSessionHistoryProvider(detail.course.id));
   ref.invalidate(courseRichClosedHistoryProvider(detail.course.id));
   ref.invalidate(subjectProgressProvider(detail.course.subjectId));
@@ -2010,16 +2026,23 @@ String _quickRevisionBlockedLabel(List<CourseDocument> sources) {
   return 'Source requise';
 }
 
-Color _progressColor(CourseProgressState state) {
+Color _learningPathStateColor(CourseLearningPathNodeState? state) {
   return switch (state) {
-    CourseProgressState.practiced => RevisionColors.green,
-    CourseProgressState.readyNotPracticed => RevisionColors.blue,
-    CourseProgressState.processing => RevisionColors.amber,
-    CourseProgressState.failedOnly => RevisionColors.red,
-    CourseProgressState.noKnowledgeUnits => RevisionColors.violet,
-    CourseProgressState.noSource => RevisionColors.blue,
-    CourseProgressState.unknown => RevisionColors.mint,
+    CourseLearningPathNodeState.solid => RevisionColors.green,
+    CourseLearningPathNodeState.inProgress => RevisionColors.blue,
+    CourseLearningPathNodeState.toStrengthen => RevisionColors.amber,
+    CourseLearningPathNodeState.undiscovered => RevisionColors.borderBright,
+    CourseLearningPathNodeState.unknown || null => RevisionColors.borderBright,
   };
+}
+
+String _nodeMeta(CourseLearningPathNode node) {
+  final meta = node.display.metaLabel;
+  if (meta == null || meta.trim().isEmpty) {
+    return node.display.statusLabel;
+  }
+
+  return '${node.display.statusLabel} · ${meta.trim()}';
 }
 
 String _percent(double value) {

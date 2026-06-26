@@ -161,6 +161,171 @@ class SubjectCourseProgressItem {
   final CourseProgressState state;
 }
 
+class CourseLearningPath {
+  const CourseLearningPath({
+    required this.generatedAt,
+    required this.course,
+    required this.summary,
+    required this.primaryAction,
+    required this.nodes,
+    this.activeNodeId,
+    this.emptyState,
+  });
+
+  final DateTime generatedAt;
+  final CourseLearningPathCourse course;
+  final CourseLearningPathSummary summary;
+  final String? activeNodeId;
+  final CourseLearningPathPrimaryAction primaryAction;
+  final List<CourseLearningPathNode> nodes;
+  final CourseLearningPathEmptyState? emptyState;
+
+  CourseLearningPathNode? get activeNode {
+    final activeId = activeNodeId;
+    if (activeId == null) {
+      return null;
+    }
+
+    for (final node in nodes) {
+      if (node.id == activeId) {
+        return node;
+      }
+    }
+
+    return null;
+  }
+}
+
+class CourseLearningPathCourse {
+  const CourseLearningPathCourse({
+    required this.id,
+    required this.subjectId,
+    required this.subjectName,
+    required this.title,
+  });
+
+  final String id;
+  final String subjectId;
+  final String subjectName;
+  final String title;
+}
+
+class CourseLearningPathSummary {
+  const CourseLearningPathSummary({
+    required this.knowledgeUnitCount,
+    required this.solidCount,
+    required this.inProgressCount,
+    required this.toStrengthenCount,
+    required this.undiscoveredCount,
+    required this.estimatedGlobalMastery,
+    required this.coverage,
+    required this.readySourceCount,
+    this.mastery,
+  });
+
+  final int knowledgeUnitCount;
+  final int solidCount;
+  final int inProgressCount;
+  final int toStrengthenCount;
+  final int undiscoveredCount;
+  final double estimatedGlobalMastery;
+  final double? mastery;
+  final double coverage;
+  final int readySourceCount;
+}
+
+class CourseLearningPathPrimaryAction {
+  const CourseLearningPathPrimaryAction({
+    required this.kind,
+    required this.label,
+    required this.description,
+    required this.enabled,
+    this.estimatedMinutes,
+    this.targetKnowledgeUnitId,
+    this.targetNodeId,
+    this.unavailableReason,
+  });
+
+  final CourseLearningPathPrimaryActionKind kind;
+  final String label;
+  final String description;
+  final int? estimatedMinutes;
+  final String? targetKnowledgeUnitId;
+  final String? targetNodeId;
+  final bool enabled;
+  final String? unavailableReason;
+}
+
+class CourseLearningPathNode {
+  const CourseLearningPathNode({
+    required this.id,
+    required this.knowledgeUnitId,
+    required this.courseId,
+    required this.subjectId,
+    required this.title,
+    required this.order,
+    required this.state,
+    required this.display,
+    this.documentId,
+    this.masteryScore,
+    this.lastPracticedAt,
+    this.source,
+  });
+
+  final String id;
+  final String knowledgeUnitId;
+  final String courseId;
+  final String subjectId;
+  final String? documentId;
+  final String title;
+  final int order;
+  final CourseLearningPathNodeState state;
+  final double? masteryScore;
+  final DateTime? lastPracticedAt;
+  final CourseLearningPathNodeSource? source;
+  final CourseLearningPathNodeDisplay display;
+}
+
+class CourseLearningPathNodeSource {
+  const CourseLearningPathNodeSource({
+    required this.documentId,
+    required this.fileName,
+  });
+
+  final String documentId;
+  final String fileName;
+}
+
+class CourseLearningPathNodeDisplay {
+  const CourseLearningPathNodeDisplay({
+    required this.title,
+    required this.statusLabel,
+    required this.actionLabel,
+    this.metaLabel,
+    this.unavailableReason,
+  });
+
+  final String title;
+  final String statusLabel;
+  final String? metaLabel;
+  final String actionLabel;
+  final String? unavailableReason;
+}
+
+class CourseLearningPathEmptyState {
+  const CourseLearningPathEmptyState({
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.actionKind,
+  });
+
+  final String title;
+  final String message;
+  final String actionLabel;
+  final CourseLearningPathEmptyActionKind actionKind;
+}
+
 enum CourseDifficulty { beginner, intermediate, advanced }
 
 enum CourseDocumentStatus { uploaded, processing, ready, failed, unknown }
@@ -198,6 +363,32 @@ enum CourseProgressState {
   noKnowledgeUnits,
   readyNotPracticed,
   practiced,
+  unknown,
+}
+
+enum CourseLearningPathNodeState {
+  solid,
+  inProgress,
+  toStrengthen,
+  undiscovered,
+  unknown,
+}
+
+enum CourseLearningPathPrimaryActionKind {
+  addSource,
+  waitForAnalysis,
+  reviewActiveNode,
+  continueCourse,
+  prepareQuestions,
+  unavailable,
+  unknown,
+}
+
+enum CourseLearningPathEmptyActionKind {
+  addSource,
+  waitForAnalysis,
+  retrySource,
+  none,
   unknown,
 }
 
