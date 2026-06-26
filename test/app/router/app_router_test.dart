@@ -195,7 +195,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Cours'), findsWidgets);
-    expect(find.text('Commence par créer une matière.'), findsOneWidget);
+    expect(find.text('Crée ta première matière'), findsOneWidget);
     expect(find.text('Math'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
     expect(find.text('78%'), findsNothing);

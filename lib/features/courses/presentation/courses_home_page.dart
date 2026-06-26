@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
@@ -15,7 +16,6 @@ import '../application/active_subject_provider.dart';
 import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
-import 'course_quick_revision_launcher.dart';
 
 class CoursesHomePage extends ConsumerWidget {
   const CoursesHomePage({super.key});
@@ -25,50 +25,65 @@ class CoursesHomePage extends ConsumerWidget {
     final subjects = ref.watch(subjectsNotifierProvider);
     final notifier = ref.read(subjectsNotifierProvider.notifier);
 
-    return _HomePageFrame(
-      child: subjects.when(
-        loading: () =>
-            const RevisionLoadingState(label: 'Chargement des matières'),
-        error: (error, stackTrace) => RevisionErrorState(
-          title: 'Impossible de charger les matières',
-          message:
-              'Vérifie la connexion puis réessaie. Aucun cours de remplacement ne sera affiché.',
-          actionLabel: 'Réessayer',
-          onAction: notifier.reload,
-        ),
-        data: (subjects) => _CoursesHomeContent(subjects: subjects),
+    return subjects.when(
+      loading: () => RevisionPageScaffold(
+        maxWidth: 620,
+        headerChildren: [
+          _CoursesHeader(onCreate: () => _showCreateSubjectSheet(context)),
+        ],
+        children: const [
+          RevisionLoadingState(label: 'Chargement des matières'),
+        ],
       ),
+      error: (error, stackTrace) => RevisionPageScaffold(
+        maxWidth: 620,
+        headerChildren: [
+          _CoursesHeader(onCreate: () => _showCreateSubjectSheet(context)),
+        ],
+        children: [
+          RevisionErrorState(
+            title: 'Impossible de charger les matières',
+            message:
+                'Vérifie la connexion puis réessaie. Aucun cours de remplacement ne sera affiché.',
+            actionLabel: 'Réessayer',
+            onAction: notifier.reload,
+          ),
+        ],
+      ),
+      data: (subjects) => _CoursesHomeContent(subjects: subjects),
     );
   }
 }
 
-class _HomePageFrame extends StatelessWidget {
-  const _HomePageFrame({required this.child});
+class _CoursesHeader extends StatelessWidget {
+  const _CoursesHeader({required this.onCreate});
 
-  final Widget child;
+  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1280),
-            child: SizedBox(
-              height: constraints.maxHeight,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  RevisionSpacing.pageX,
-                  RevisionSpacing.pageTop,
-                  RevisionSpacing.pageX,
-                  RevisionSpacing.l,
-                ),
-                child: child,
-              ),
+    return Row(
+      children: [
+        const Expanded(child: Text('Cours', style: RevisionTypography.hero)),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: RevisionColors.glassStrong,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: RevisionColors.borderBright),
+          ),
+          child: IconButton(
+            tooltip: 'Créer',
+            constraints: const BoxConstraints.tightFor(width: 54, height: 54),
+            padding: EdgeInsets.zero,
+            onPressed: onCreate,
+            icon: const Icon(
+              Icons.add_rounded,
+              color: RevisionColors.text,
+              size: 34,
             ),
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -81,13 +96,20 @@ class _CoursesHomeContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (subjects.isEmpty) {
-      return RevisionEmptyState(
-        title: 'Commence par créer une matière.',
-        message:
-            'Ajoute ensuite un cours et une source pour générer tes premières révisions.',
-        icon: Icons.school_outlined,
-        actionLabel: 'Créer une matière',
-        onAction: () => _showCreateSubjectSheet(context),
+      return RevisionPageScaffold(
+        maxWidth: 620,
+        headerChildren: [
+          _CoursesHeader(onCreate: () => _showCreateSubjectSheet(context)),
+        ],
+        children: [
+          RevisionEmptyState(
+            title: 'Crée ta première matière',
+            message: 'Ajoute une matière pour commencer à organiser tes cours.',
+            icon: Icons.school_outlined,
+            actionLabel: 'Créer une matière',
+            onAction: () => _showCreateSubjectSheet(context),
+          ),
+        ],
       );
     }
 
@@ -98,33 +120,37 @@ class _CoursesHomeContent extends ConsumerWidget {
     final visual = revisionSubjectVisualThemeFor(activeSubject.name);
     final courses = ref.watch(coursesProvider(activeSubject.id));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return RevisionPageScaffold(
+      maxWidth: 620,
+      headerChildren: [
+        _CoursesHeader(
+          onCreate: () => _showCreateCourseSheet(context, activeSubject),
+        ),
+      ],
       children: [
-        _HomeTopBar(subject: activeSubject, visual: visual, subjects: subjects),
-        const SizedBox(height: RevisionSpacing.xl),
-        Text(activeSubject.name, style: RevisionTypography.hero),
-        const SizedBox(height: RevisionSpacing.xs),
-        Text('Continue ton progrès', style: RevisionTypography.body),
-        const SizedBox(height: RevisionSpacing.xl),
-        Expanded(
-          // The home header stays anchored like the mockups; only the course
-          // cards below the hero/section title scroll when the list grows.
-          child: courses.when(
-            loading: () =>
-                const RevisionLoadingState(label: 'Chargement des cours'),
-            error: (error, stackTrace) => RevisionErrorState(
-              title: 'Impossible de charger les cours',
-              message:
-                  'Vérifie la connexion puis réessaie. Aucun cours de remplacement ne sera affiché.',
-              actionLabel: 'Réessayer',
-              onAction: () => ref.invalidate(coursesProvider(activeSubject.id)),
-            ),
-            data: (courses) => _CourseList(
-              subject: activeSubject,
-              visual: visual,
-              courses: courses,
-            ),
+        _SubjectSelectorBlock(
+          subject: activeSubject,
+          visual: visual,
+          subjects: subjects,
+          courses: courses.maybeWhen(
+            data: (value) => value,
+            orElse: () => null,
+          ),
+        ),
+        courses.when(
+          loading: () =>
+              const RevisionLoadingState(label: 'Chargement des cours'),
+          error: (error, stackTrace) => RevisionErrorState(
+            title: 'Impossible de charger les cours',
+            message:
+                'Vérifie la connexion puis réessaie. Aucun cours de remplacement ne sera affiché.',
+            actionLabel: 'Réessayer',
+            onAction: () => ref.invalidate(coursesProvider(activeSubject.id)),
+          ),
+          data: (courses) => _CourseList(
+            subject: activeSubject,
+            visual: visual,
+            courses: courses,
           ),
         ),
       ],
@@ -132,29 +158,42 @@ class _CoursesHomeContent extends ConsumerWidget {
   }
 }
 
-class _HomeTopBar extends ConsumerWidget {
-  const _HomeTopBar({
+class _SubjectSelectorBlock extends StatelessWidget {
+  const _SubjectSelectorBlock({
     required this.subject,
     required this.visual,
     required this.subjects,
+    required this.courses,
   });
 
   final Subject subject;
   final RevisionSubjectVisualTheme visual;
   final List<Subject> subjects;
+  final List<CourseListItem>? courses;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Row(
+  Widget build(BuildContext context) {
+    final loadedCourses = courses;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RevisionSubjectSwitcher(
-          label: subject.name,
-          accent: visual.accent,
-          icon: visual.icon,
-          onTap: () => _showSubjectPicker(context, subjects, subject.id),
+        SizedBox(
+          width: double.infinity,
+          child: RevisionSubjectSwitcher(
+            label: subject.name,
+            accent: visual.accent,
+            icon: visual.icon,
+            onTap: () => _showSubjectPicker(context, subjects, subject.id),
+          ),
         ),
-        const Spacer(),
-        const RevisionTopCounters(),
+        const SizedBox(height: RevisionSpacing.l),
+        Text(
+          loadedCourses == null
+              ? 'Cours en préparation'
+              : _subjectSummary(loadedCourses),
+          style: RevisionTypography.body.copyWith(fontSize: 18),
+        ),
       ],
     );
   }
@@ -174,172 +213,189 @@ class _CourseList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (courses.isEmpty) {
-      return ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          Text(
-            'Tes cours de ${subject.name}',
-            style: RevisionTypography.sectionTitle,
-          ),
-          const SizedBox(height: RevisionSpacing.m),
-          RevisionEmptyState(
-            title: 'Aucun cours pour le moment',
-            message:
-                'Crée ton premier cours pour ajouter une source et commencer à réviser.',
-            icon: Icons.layers_outlined,
-            actionLabel: 'Créer un cours',
-            onAction: () => _showCreateCourseSheet(context, subject),
-          ),
-          const SizedBox(height: RevisionSpacing.l),
-          _CourseCreationHint(subject: subject, visual: visual),
-        ],
+      return RevisionEmptyState(
+        title: 'Aucun cours pour le moment',
+        message:
+            'Crée ton premier cours dans ${subject.name}, puis ajoute une source PDF.',
+        icon: Icons.layers_outlined,
+        actionLabel: 'Créer un cours',
+        onAction: () => _showCreateCourseSheet(context, subject),
       );
     }
 
-    final spotlightCourse = _spotlightCourse(courses);
-    final spotlightReady = spotlightCourse.readySourceCount > 0;
+    final priorityCourse = _priorityCourse(courses);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fixedHeader = <Widget>[
-          RevisionResumeCourseCard(
-            title: spotlightCourse.title,
-            subtitle: spotlightReady
-                ? 'Cours prêt à réviser'
-                : 'Préparer ce cours',
-            progressLabel: _courseProgressLabel(spotlightCourse),
-            progress: _courseProgressValue(spotlightCourse),
-            accent: visual.accent,
-            icon: visual.icon,
-            actionLabel: spotlightReady ? 'Réviser' : 'Ouvrir',
-            onContinue: () {
-              if (!spotlightReady) {
-                context.push(AppRoutes.course(spotlightCourse.id));
-                return;
-              }
-
-              startCourseQuickRevisionFlow(
-                context: context,
-                ref: ref,
-                courseId: spotlightCourse.id,
-                questionCount: 5,
-              );
-            },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SubjectHeroCard(
+          visual: visual,
+          priorityCourse: priorityCourse,
+        ),
+        const SizedBox(height: RevisionSpacing.l),
+        for (final course in courses) ...[
+          _CourseRow(
+            course: course,
+            visual: visual,
+            onTap: () => context.push(AppRoutes.course(course.id)),
           ),
-          const SizedBox(height: RevisionSpacing.xl),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Tes cours de ${subject.name}',
-                  style: RevisionTypography.sectionTitle,
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () => _showCreateCourseSheet(context, subject),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Créer'),
-              ),
-            ],
-          ),
-          const SizedBox(height: RevisionSpacing.m),
-        ];
-
-        if (constraints.maxHeight < 340) {
-          // On very short surfaces, preserving accessibility matters more than
-          // strict pinning: the whole course area scrolls to avoid clipping.
-          return ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              ...fixedHeader,
-              ..._courseCards(context),
-              const SizedBox(height: RevisionSpacing.l),
-            ],
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ...fixedHeader,
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.only(bottom: RevisionSpacing.l),
-                itemCount: courses.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: RevisionSpacing.m),
-                itemBuilder: (context, index) =>
-                    _courseCard(context, courses[index]),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  List<Widget> _courseCards(BuildContext context) {
-    return [
-      for (final course in courses) ...[
-        _courseCard(context, course),
-        const SizedBox(height: RevisionSpacing.m),
+          if (course != courses.last) const SizedBox(height: RevisionSpacing.m),
+        ],
       ],
-    ];
-  }
-
-  Widget _courseCard(BuildContext context, CourseListItem course) {
-    return RevisionCourseCard(
-      title: course.title,
-      progressLabel: _courseProgressLabel(course),
-      durationLabel: _courseMeta(course),
-      progress: _courseProgressValue(course),
-      accent: visual.accent,
-      icon: visual.icon,
-      onTap: () => context.push(AppRoutes.course(course.id)),
     );
   }
 }
 
-class _CourseCreationHint extends StatelessWidget {
-  const _CourseCreationHint({required this.subject, required this.visual});
+class _SubjectHeroCard extends StatelessWidget {
+  const _SubjectHeroCard({
+    required this.visual,
+    required this.priorityCourse,
+  });
 
-  final Subject subject;
   final RevisionSubjectVisualTheme visual;
+  final CourseListItem priorityCourse;
 
   @override
   Widget build(BuildContext context) {
     return RevisionGlassCard(
+      padding: const EdgeInsets.all(RevisionSpacing.xl),
+      borderColor: visual.accent.withValues(alpha: 0.48),
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          visual.accent.withValues(alpha: 0.28),
+          visual.accent.withValues(alpha: 0.38),
+          RevisionColors.blueDeep.withValues(alpha: 0.20),
           RevisionColors.glassStrong,
         ],
       ),
-      borderColor: visual.accent.withValues(alpha: 0.34),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -12,
+            bottom: -28,
+            child: Opacity(
+              opacity: 0.15,
+              child: SvgPicture.asset(
+                'assets/brand/neralune_cat.svg',
+                width: 150,
+                height: 150,
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Réviser cette matière',
+                style: RevisionTypography.pageTitle.copyWith(fontSize: 24),
+              ),
+              const SizedBox(height: RevisionSpacing.s),
+              Text(
+                'On commence par ${priorityCourse.title}.',
+                style: RevisionTypography.body.copyWith(fontSize: 16),
+              ),
+              const SizedBox(height: RevisionSpacing.xl),
+              FilledButton.icon(
+                onPressed: () =>
+                    context.push(AppRoutes.course(priorityCourse.id)),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Commencer'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: RevisionColors.text,
+                  foregroundColor: RevisionColors.blueDeep,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: RevisionSpacing.xl,
+                    vertical: RevisionSpacing.m,
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CourseRow extends StatelessWidget {
+  const _CourseRow({
+    required this.course,
+    required this.visual,
+    required this.onTap,
+  });
+
+  final CourseListItem course;
+  final RevisionSubjectVisualTheme visual;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionGlassCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(RevisionSpacing.l),
+      backgroundColor: RevisionColors.glassSoft,
       child: Row(
         children: [
-          RevisionIconTile(icon: visual.icon, accent: visual.accent),
-          const SizedBox(width: RevisionSpacing.m),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Prêt à structurer ${subject.name} ?',
-                  style: RevisionTypography.sectionTitle,
+                  course.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: RevisionTypography.sectionTitle.copyWith(fontSize: 19),
                 ),
                 const SizedBox(height: RevisionSpacing.xs),
                 Text(
-                  'Un cours devient utile dès qu’une source PDF est prête.',
-                  style: RevisionTypography.body,
+                  _courseStatusLabel(course),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: RevisionTypography.body.copyWith(fontSize: 15),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: RevisionSpacing.m),
+          if (course.progress != null)
+            RevisionMasteryRing(
+              value: course.progress!.estimatedGlobalMastery,
+              label: _percent(course.progress!.estimatedGlobalMastery),
+              color: visual.accent,
+              size: 62,
+            )
+          else
+            _NeutralProgressCircle(color: RevisionColors.borderBright),
+          const SizedBox(width: RevisionSpacing.s),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: RevisionColors.textMuted,
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _NeutralProgressCircle extends StatelessWidget {
+  const _NeutralProgressCircle({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: color, width: 5),
+      ),
+      child: const SizedBox.square(dimension: 46),
     );
   }
 }
@@ -586,16 +642,6 @@ Subject _activeSubject(List<Subject> subjects, String? activeSubjectId) {
   return subjects.first;
 }
 
-CourseListItem _spotlightCourse(List<CourseListItem> courses) {
-  for (final course in courses) {
-    if (course.readySourceCount > 0) {
-      return course;
-    }
-  }
-
-  return courses.first;
-}
-
 void _showSubjectPicker(
   BuildContext context,
   List<Subject> subjects,
@@ -712,40 +758,110 @@ class _SubjectChoiceCard extends StatelessWidget {
   }
 }
 
-double _courseProgressValue(CourseListItem course) {
-  final progress = course.progress;
-  if (progress != null) {
-    return progress.estimatedGlobalMastery;
+CourseListItem _priorityCourse(List<CourseListItem> courses) {
+  final readyCourses = courses
+      .where((course) => course.readySourceCount > 0)
+      .toList(growable: false);
+
+  final candidates = readyCourses.isEmpty ? courses : readyCourses;
+  final withProgress = candidates
+      .where((course) => course.progress != null)
+      .toList(growable: false);
+
+  if (withProgress.isNotEmpty) {
+    withProgress.sort((a, b) {
+      final masteryComparison = a.progress!.estimatedGlobalMastery.compareTo(
+        b.progress!.estimatedGlobalMastery,
+      );
+      if (masteryComparison != 0) {
+        return masteryComparison;
+      }
+
+      return a.displayOrder.compareTo(b.displayOrder);
+    });
+
+    return withProgress.first;
   }
 
+  return candidates.first;
+}
+
+String _subjectSummary(List<CourseListItem> courses) {
+  final courseCount = courses.length;
+  final courseLabel = courseCount <= 1 ? 'cours' : 'cours';
+  final knowledgeUnitCount = courses
+      .map((course) => course.progress?.knowledgeUnitCount)
+      .whereType<int>()
+      .fold<int>(0, (sum, value) => sum + value);
+
+  if (courseCount == 0) {
+    return 'Aucun cours';
+  }
+
+  if (knowledgeUnitCount <= 0) {
+    return '$courseCount $courseLabel';
+  }
+
+  final notionLabel = knowledgeUnitCount <= 1 ? 'notion' : 'notions';
+  return '$courseCount $courseLabel · $knowledgeUnitCount $notionLabel';
+}
+
+String _courseStatusLabel(CourseListItem course) {
+  final progress = course.progress;
+
+  if (progress == null) {
+    return _sourceStatusLabel(course);
+  }
+
+  switch (progress.state) {
+    case CourseProgressState.noSource:
+      return 'Source à ajouter';
+    case CourseProgressState.processing:
+      return 'Analyse en cours';
+    case CourseProgressState.failedOnly:
+      return 'Analyse indisponible';
+    case CourseProgressState.noKnowledgeUnits:
+      return 'Analyse en cours';
+    case CourseProgressState.readyNotPracticed:
+    case CourseProgressState.practiced:
+    case CourseProgressState.unknown:
+      final total = progress.knowledgeUnitCount;
+      final practiced = progress.practicedKnowledgeUnitCount.clamp(0, total);
+
+      if (total <= 0) {
+        return _sourceStatusLabel(course);
+      }
+
+      if (practiced == 0) {
+        return 'Pas encore commencé';
+      }
+
+      final remaining = total - practiced;
+      final solidLabel = practiced <= 1 ? 'solide' : 'solides';
+      final reinforceLabel = remaining <= 1 ? 'à renforcer' : 'à renforcer';
+      return '$practiced $solidLabel · $remaining $reinforceLabel';
+  }
+}
+
+String _sourceStatusLabel(CourseListItem course) {
   if (course.sourceCount <= 0) {
-    return 0;
+    return 'Source à ajouter';
   }
 
-  return course.readySourceCount / course.sourceCount;
-}
-
-String _courseProgressLabel(CourseListItem course) {
-  final progress = course.progress;
-  if (progress != null) {
-    return 'Global ${_percent(progress.estimatedGlobalMastery)}';
+  if (course.processingSourceCount > 0 && course.readySourceCount == 0) {
+    return 'Analyse en cours';
   }
 
-  return _sourceMeta(course);
-}
+  if (course.readySourceCount <= 0) {
+    return 'Pas encore prêt';
+  }
 
-String _courseMeta(CourseListItem course) {
-  final parts = <String>[
-    if (course.chapterLabel != null) course.chapterLabel!,
-    if (course.estimatedMinutes != null) '${course.estimatedMinutes} min',
-  ];
-
-  return parts.isEmpty ? 'Durée à préciser' : parts.join(' · ');
-}
-
-String _sourceMeta(CourseListItem course) {
   final sourceLabel = course.sourceCount <= 1 ? 'source' : 'sources';
   final readyLabel = course.readySourceCount <= 1 ? 'prête' : 'prêtes';
+
+  if (course.sourceCount == course.readySourceCount) {
+    return '${course.readySourceCount} $sourceLabel $readyLabel';
+  }
 
   return '${course.sourceCount} $sourceLabel · ${course.readySourceCount} $readyLabel';
 }
