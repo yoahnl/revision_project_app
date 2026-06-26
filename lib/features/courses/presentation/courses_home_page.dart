@@ -65,23 +65,10 @@ class _CoursesHeader extends StatelessWidget {
     return Row(
       children: [
         const Expanded(child: Text('Cours', style: RevisionTypography.hero)),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: RevisionColors.glassStrong,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: RevisionColors.borderBright),
-          ),
-          child: IconButton(
-            tooltip: 'Créer',
-            constraints: const BoxConstraints.tightFor(width: 54, height: 54),
-            padding: EdgeInsets.zero,
-            onPressed: onCreate,
-            icon: const Icon(
-              Icons.add_rounded,
-              color: RevisionColors.text,
-              size: 34,
-            ),
-          ),
+        RevisionHeaderIconButton(
+          tooltip: 'Créer',
+          icon: Icons.add_rounded,
+          onPressed: onCreate,
         ),
       ],
     );
@@ -178,8 +165,8 @@ class _SubjectSelectorBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: double.infinity,
+        Align(
+          alignment: Alignment.centerLeft,
           child: RevisionSubjectSwitcher(
             label: subject.name,
             accent: visual.accent,
@@ -228,10 +215,7 @@ class _CourseList extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SubjectHeroCard(
-          visual: visual,
-          priorityCourse: priorityCourse,
-        ),
+        _SubjectHeroCard(visual: visual, priorityCourse: priorityCourse),
         const SizedBox(height: RevisionSpacing.l),
         for (final course in courses) ...[
           _CourseRow(
@@ -247,10 +231,7 @@ class _CourseList extends ConsumerWidget {
 }
 
 class _SubjectHeroCard extends StatelessWidget {
-  const _SubjectHeroCard({
-    required this.visual,
-    required this.priorityCourse,
-  });
+  const _SubjectHeroCard({required this.visual, required this.priorityCourse});
 
   final RevisionSubjectVisualTheme visual;
   final CourseListItem priorityCourse;
@@ -258,7 +239,7 @@ class _SubjectHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RevisionGlassCard(
-      padding: const EdgeInsets.all(RevisionSpacing.xl),
+      padding: const EdgeInsets.all(RevisionSpacing.l),
       borderColor: visual.accent.withValues(alpha: 0.48),
       gradient: LinearGradient(
         begin: Alignment.topLeft,
@@ -269,55 +250,48 @@ class _SubjectHeroCard extends StatelessWidget {
           RevisionColors.glassStrong,
         ],
       ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -12,
-            bottom: -28,
-            child: Opacity(
-              opacity: 0.15,
-              child: SvgPicture.asset(
-                'assets/brand/neralune_cat.svg',
-                width: 150,
-                height: 150,
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Réviser cette matière',
-                style: RevisionTypography.pageTitle.copyWith(fontSize: 24),
-              ),
-              const SizedBox(height: RevisionSpacing.s),
-              Text(
-                'On commence par ${priorityCourse.title}.',
-                style: RevisionTypography.body.copyWith(fontSize: 16),
-              ),
-              const SizedBox(height: RevisionSpacing.xl),
-              FilledButton.icon(
-                onPressed: () =>
-                    context.push(AppRoutes.course(priorityCourse.id)),
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('Commencer'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: RevisionColors.text,
-                  foregroundColor: RevisionColors.blueDeep,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: RevisionSpacing.xl,
-                    vertical: RevisionSpacing.m,
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0,
-                  ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 130),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -8,
+              bottom: -22,
+              child: Opacity(
+                opacity: 0.18,
+                child: SvgPicture.asset(
+                  'assets/brand/neralune_cat.svg',
+                  width: 126,
+                  height: 126,
                 ),
               ),
-            ],
-          ),
-        ],
+            ),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 280),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Réviser toute la matière',
+                    style: RevisionTypography.pageTitle.copyWith(fontSize: 21),
+                  ),
+                  const SizedBox(height: RevisionSpacing.s),
+                  Text(
+                    'On commence par ${priorityCourse.title}.',
+                    style: RevisionTypography.body.copyWith(fontSize: 14),
+                  ),
+                  const SizedBox(height: RevisionSpacing.m),
+                  RevisionLightButton(
+                    label: 'Commencer',
+                    icon: Icons.play_arrow_rounded,
+                    onPressed: () =>
+                        context.push(AppRoutes.course(priorityCourse.id)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -338,46 +312,50 @@ class _CourseRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return RevisionGlassCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(RevisionSpacing.l),
+      padding: const EdgeInsets.symmetric(
+        horizontal: RevisionSpacing.xl,
+        vertical: RevisionSpacing.l,
+      ),
       backgroundColor: RevisionColors.glassSoft,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  course.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: RevisionTypography.sectionTitle.copyWith(fontSize: 19),
-                ),
-                const SizedBox(height: RevisionSpacing.xs),
-                Text(
-                  _courseStatusLabel(course),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: RevisionTypography.body.copyWith(fontSize: 15),
-                ),
-              ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 60),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    course.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: RevisionTypography.sectionTitle.copyWith(
+                      fontSize: 22,
+                    ),
+                  ),
+                  const SizedBox(height: RevisionSpacing.s),
+                  Text(
+                    _courseStatusLabel(course),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: RevisionTypography.body.copyWith(fontSize: 18),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: RevisionSpacing.m),
-          if (course.progress != null)
-            RevisionMasteryRing(
-              value: course.progress!.estimatedGlobalMastery,
-              label: _percent(course.progress!.estimatedGlobalMastery),
-              color: visual.accent,
-              size: 62,
-            )
-          else
-            _NeutralProgressCircle(color: RevisionColors.borderBright),
-          const SizedBox(width: RevisionSpacing.s),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: RevisionColors.textMuted,
-          ),
-        ],
+            const SizedBox(width: RevisionSpacing.m),
+            if (course.progress != null)
+              RevisionMasteryRing(
+                value: course.progress!.estimatedGlobalMastery,
+                label: _percent(course.progress!.estimatedGlobalMastery),
+                color: visual.accent,
+                size: 60,
+              )
+            else
+              _NeutralProgressCircle(color: RevisionColors.borderBright),
+          ],
+        ),
       ),
     );
   }
@@ -395,7 +373,7 @@ class _NeutralProgressCircle extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: color, width: 5),
       ),
-      child: const SizedBox.square(dimension: 46),
+      child: const SizedBox.square(dimension: 44),
     );
   }
 }

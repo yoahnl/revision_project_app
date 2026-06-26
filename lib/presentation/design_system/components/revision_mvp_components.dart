@@ -117,7 +117,7 @@ class RevisionGlassCard extends StatelessWidget {
     required this.child,
     this.onTap,
     this.padding = const EdgeInsets.all(RevisionSpacing.l),
-    this.radius = RevisionRadius.radiusL,
+    this.radius = RevisionRadius.radiusXl,
     this.borderColor,
     this.backgroundColor,
     this.gradient,
@@ -165,6 +165,118 @@ class RevisionGlassCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(borderRadius: radius, onTap: onTap, child: content),
+    );
+  }
+}
+
+class RevisionLightButton extends StatelessWidget {
+  const RevisionLightButton({
+    required this.label,
+    this.icon,
+    this.onPressed,
+    this.expanded = false,
+    super.key,
+  });
+
+  final String label;
+  final IconData? icon;
+  final VoidCallback? onPressed;
+  final bool expanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final content = Row(
+      mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 20, color: RevisionColors.blueDeep),
+          const SizedBox(width: RevisionSpacing.s),
+        ],
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: RevisionColors.blueDeep,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.56,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: RevisionRadius.pill,
+            onTap: onPressed,
+            child: Ink(
+              decoration: BoxDecoration(
+                color: RevisionColors.text,
+                borderRadius: RevisionRadius.pill,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x66FFFFFF),
+                    blurRadius: 18,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: RevisionSpacing.xl,
+                  vertical: RevisionSpacing.s,
+                ),
+                child: content,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class RevisionHeaderIconButton extends StatelessWidget {
+  const RevisionHeaderIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.size = 52,
+    super.key,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: RevisionColors.glassStrong,
+        borderRadius: RevisionRadius.pill,
+        border: Border.all(color: RevisionColors.borderBright),
+        boxShadow: RevisionShadows.nav,
+      ),
+      child: IconButton(
+        tooltip: tooltip,
+        constraints: BoxConstraints.tightFor(width: size, height: size),
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        icon: Icon(icon, color: RevisionColors.text, size: size * 0.62),
+      ),
     );
   }
 }
@@ -492,15 +604,29 @@ class RevisionSubjectSwitcher extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 40, maxWidth: 190),
+          constraints: const BoxConstraints(
+            minWidth: 220,
+            maxWidth: 320,
+            minHeight: 52,
+          ),
           padding: const EdgeInsets.symmetric(
             horizontal: RevisionSpacing.m,
             vertical: RevisionSpacing.s,
           ),
           decoration: BoxDecoration(
-            color: RevisionColors.glassSoft,
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                accent.withValues(alpha: 0.42),
+                RevisionColors.glassStrong,
+              ],
+            ),
             borderRadius: RevisionRadius.pill,
-            border: Border.all(color: accent, width: 1.4),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.76),
+              width: 1.4,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -508,10 +634,10 @@ class RevisionSubjectSwitcher extends StatelessWidget {
               RevisionIconTile(
                 icon: icon,
                 accent: accent,
-                size: 24,
-                iconSize: 15,
+                size: 34,
+                iconSize: 20,
               ),
-              const SizedBox(width: RevisionSpacing.s),
+              const SizedBox(width: RevisionSpacing.m),
               Flexible(
                 child: Text(
                   label,
@@ -520,16 +646,16 @@ class RevisionSubjectSwitcher extends StatelessWidget {
                   style: const TextStyle(
                     color: RevisionColors.text,
                     fontWeight: FontWeight.w800,
-                    fontSize: 14,
+                    fontSize: 20,
                     letterSpacing: 0,
                   ),
                 ),
               ),
-              const SizedBox(width: RevisionSpacing.xs),
+              const Spacer(),
               const Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: RevisionColors.textMuted,
-                size: 20,
+                color: RevisionColors.text,
+                size: 26,
               ),
             ],
           ),

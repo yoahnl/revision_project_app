@@ -82,10 +82,28 @@ void main() {
     expect(find.text('28 notions'), findsNothing);
     expect(find.text('Continue ton progrès'), findsNothing);
 
-    expect(find.text('Réviser cette matière'), findsOneWidget);
+    final subjectSwitcherSize = tester.getSize(
+      find.byType(RevisionSubjectSwitcher),
+    );
+    expect(subjectSwitcherSize.width, greaterThanOrEqualTo(220));
+    expect(subjectSwitcherSize.height, greaterThanOrEqualTo(50));
+    expect(subjectSwitcherSize.height, lessThanOrEqualTo(58));
+
+    expect(find.text('Réviser toute la matière'), findsOneWidget);
     expect(find.text('On commence par Droit administratif.'), findsOneWidget);
     expect(find.text('Commencer'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Commencer'), findsNothing);
     expect(find.text('12 min · priorités du moment'), findsNothing);
+
+    final heroCard = find.ancestor(
+      of: find.text('Réviser toute la matière'),
+      matching: find.byType(RevisionGlassCard),
+    );
+    expect(tester.getSize(heroCard).height, lessThanOrEqualTo(205));
+    expect(
+      tester.getSize(find.byType(RevisionLightButton)).height,
+      lessThanOrEqualTo(48),
+    );
 
     expect(find.text('Droit constitutionnel'), findsOneWidget);
     expect(find.text('4 solides · 2 à renforcer'), findsOneWidget);
@@ -95,6 +113,12 @@ void main() {
     expect(find.text('38%'), findsOneWidget);
     expect(find.text('Institutions européennes'), findsOneWidget);
     expect(find.text('1 source prête'), findsOneWidget);
+
+    final firstCourseRow = find.ancestor(
+      of: find.text('Droit constitutionnel'),
+      matching: find.byType(RevisionGlassCard),
+    );
+    expect(tester.getSize(firstCourseRow).height, lessThanOrEqualTo(108));
 
     expect(find.text('Global 62%'), findsNothing);
     expect(find.text('Durée à préciser'), findsNothing);
@@ -111,7 +135,7 @@ void main() {
     await tester.tap(find.text('Droit').last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Commencer'));
+    await tester.tap(find.text('Commencer'));
     await tester.pumpAndSettle();
     expect(find.text('Détail course-administrative'), findsOneWidget);
   });

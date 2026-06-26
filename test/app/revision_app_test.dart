@@ -152,6 +152,34 @@ void main() {
     expect(find.byType(RevisionNavigationRail), findsNothing);
   });
 
+  testWidgets('profile action is only visible on the Today tab', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_createTestApp().widget);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('profile-menu-button')), findsOneWidget);
+    expect(find.byTooltip('Profil'), findsOneWidget);
+
+    await tester.tap(find.text('Cours'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('profile-menu-button')), findsNothing);
+    expect(find.byTooltip('Profil'), findsNothing);
+
+    await tester.tap(find.text('Progrès'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('profile-menu-button')), findsNothing);
+    expect(find.byTooltip('Profil'), findsNothing);
+
+    await tester.tap(find.text('Aujourd’hui').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('profile-menu-button')), findsOneWidget);
+    expect(find.byTooltip('Profil'), findsOneWidget);
+  });
+
   testWidgets('bottom navigation opens honest real-ready pages', (
     tester,
   ) async {
@@ -283,7 +311,7 @@ void main() {
 
     expect(find.text('Institutions de la Ve République'), findsWidgets);
     expect(find.text('1 cours'), findsOneWidget);
-    expect(find.text('Réviser cette matière'), findsOneWidget);
+    expect(find.text('Réviser toute la matière'), findsOneWidget);
     expect(find.text('1 source prête'), findsWidgets);
     expect(find.text('Chapitre 2 · 35 min'), findsNothing);
     expect(find.text('Loi normale'), findsNothing);
@@ -325,7 +353,7 @@ void main() {
     await _openCoursesTab(tester);
 
     expect(find.text('Droits'), findsWidgets);
-    expect(find.text('Réviser cette matière'), findsOneWidget);
+    expect(find.text('Réviser toute la matière'), findsOneWidget);
     expect(find.text('On commence par Cours 1.'), findsOneWidget);
     expect(find.text('Continue ton progrès'), findsNothing);
     expect(find.text('Cours prêt à réviser'), findsNothing);
@@ -341,7 +369,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Droits'), findsWidgets);
-    expect(find.text('Réviser cette matière'), findsOneWidget);
+    expect(find.text('Réviser toute la matière'), findsOneWidget);
     expect(find.text('Continue ton progrès'), findsNothing);
     expect(find.text('Cours prêt à réviser'), findsNothing);
     expect(find.text('Reprendre le cours'), findsNothing);

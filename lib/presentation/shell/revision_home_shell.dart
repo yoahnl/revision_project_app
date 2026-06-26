@@ -30,6 +30,7 @@ class RevisionHomeShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authController = ref.read(authControllerProvider);
+    final showProfileAction = navigationShell.currentIndex == 0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -38,6 +39,7 @@ class RevisionHomeShell extends ConsumerWidget {
             selectedIndex: navigationShell.currentIndex,
             onDestinationSelected: _goToDestination,
             authController: authController,
+            showProfileAction: showProfileAction,
             child: navigationShell,
           );
         }
@@ -51,11 +53,14 @@ class RevisionHomeShell extends ConsumerWidget {
                 fit: StackFit.expand,
                 children: [
                   navigationShell,
-                  Positioned(
-                    right: AppSpacing.l,
-                    top: AppSpacing.l,
-                    child: _ProfileSheetButton(authController: authController),
-                  ),
+                  if (showProfileAction)
+                    Positioned(
+                      right: AppSpacing.l,
+                      top: AppSpacing.l,
+                      child: _ProfileSheetButton(
+                        authController: authController,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -76,12 +81,14 @@ class _WideHomeScaffold extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.authController,
+    required this.showProfileAction,
     required this.child,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final AuthController authController;
+  final bool showProfileAction;
   final Widget child;
 
   @override
@@ -116,13 +123,14 @@ class _WideHomeScaffold extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Positioned(
-                      top: AppSpacing.l,
-                      right: AppSpacing.l,
-                      child: _ProfileSheetButton(
-                        authController: authController,
+                    if (showProfileAction)
+                      Positioned(
+                        top: AppSpacing.l,
+                        right: AppSpacing.l,
+                        child: _ProfileSheetButton(
+                          authController: authController,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
