@@ -9,91 +9,127 @@ import '../../../../presentation/design_system/tokens/revision_typography.dart';
 import '../../application/courses_providers.dart';
 import '../../domain/course_models.dart';
 
-enum QuickRevisionQuestionCountAction { start, prepare, wait }
+enum CourseRevisionDurationAction { start, prepare, wait }
 
-class QuickRevisionQuestionCountSelection {
-  const QuickRevisionQuestionCountSelection({
+class CourseRevisionDurationSelection {
+  const CourseRevisionDurationSelection({
+    required this.durationMinutes,
     required this.questionCount,
     required this.action,
   });
 
+  final int durationMinutes;
   final int questionCount;
-  final QuickRevisionQuestionCountAction action;
+  final CourseRevisionDurationAction action;
 }
 
-class QuickRevisionQuestionCountSheet extends ConsumerStatefulWidget {
-  const QuickRevisionQuestionCountSheet({required this.courseId, super.key});
+class CourseRevisionDurationSheet extends ConsumerStatefulWidget {
+  const CourseRevisionDurationSheet({required this.courseId, super.key});
 
   final String courseId;
 
   @override
-  ConsumerState<QuickRevisionQuestionCountSheet> createState() =>
-      _QuickRevisionQuestionCountSheetState();
+  ConsumerState<CourseRevisionDurationSheet> createState() =>
+      _CourseRevisionDurationSheetState();
 }
 
-class _QuickRevisionQuestionCountSheetState
-    extends ConsumerState<QuickRevisionQuestionCountSheet> {
-  static const _choices = [5, 10, 20, 30];
+class _CourseRevisionDurationSheetState
+    extends ConsumerState<CourseRevisionDurationSheet> {
+  static const _durations = [
+    _RevisionDurationOption(minutes: 5, label: 'Métro', questionCount: 5),
+    _RevisionDurationOption(minutes: 15, label: 'Standard', questionCount: 10),
+    _RevisionDurationOption(
+      minutes: 30,
+      label: 'Approfondi',
+      questionCount: 30,
+    ),
+  ];
 
-  int? _selectedQuestionCount;
+  int _selectedDurationMinutes = 5;
 
   @override
   Widget build(BuildContext context) {
     final readinessByChoice = {
-      for (final choice in _choices)
-        choice: ref.watch(
+      for (final option in _durations)
+        option.minutes: ref.watch(
           courseQuestionBankReadinessProvider((
             courseId: widget.courseId,
-            questionCount: choice,
+            questionCount: option.questionCount,
           )),
         ),
     };
-    final selectedQuestionCount =
-        _selectedQuestionCount ?? _defaultQuestionCount(readinessByChoice);
-    final selectedState = _choiceState(
-      selectedQuestionCount,
-      readinessByChoice[selectedQuestionCount],
+    final selectedOption = _durations.firstWhere(
+      (option) => option.minutes == _selectedDurationMinutes,
+    );
+    final selectedState = _durationState(
+      selectedOption,
+      readinessByChoice[selectedOption.minutes],
     );
 
     return RevisionBottomSheetFrame(
-      title: 'Révision rapide',
-      subtitle: 'Choisis une quantité disponible ou prépare la suite.',
+      title: 'Combien de temps as-tu ?',
+      subtitle: 'Choisis une session courte, on s’occupe du reste.',
       children: [
-        Wrap(
-          spacing: RevisionSpacing.s,
-          runSpacing: RevisionSpacing.s,
-          children: [
-            for (final choice in _choices)
-              _QuestionCountChip(
-                count: choice,
-                state: _choiceState(choice, readinessByChoice[choice]),
-                selected: choice == selectedQuestionCount,
-                onTap: () => setState(() {
-                  _selectedQuestionCount = choice;
-                }),
-              ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final useColumn = constraints.maxWidth < 430;
+            final tiles = [
+              for (final option in _durations)
+                _DurationTile(
+                  option: option,
+                  state: _durationState(
+                    option,
+                    readinessByChoice[option.minutes],
+                  ),
+                  selected: option.minutes == _selectedDurationMinutes,
+                  compact: useColumn,
+                  onTap: () => setState(() {
+                    _selectedDurationMinutes = option.minutes;
+                  }),
+                ),
+            ];
+
+            if (useColumn) {
+              return Column(
+                children: [
+                  for (final tile in tiles) ...[
+                    tile,
+                    if (tile != tiles.last)
+                      const SizedBox(height: RevisionSpacing.s),
+                  ],
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                for (final tile in tiles) ...[
+                  Expanded(child: tile),
+                  if (tile != tiles.last)
+                    const SizedBox(width: RevisionSpacing.s),
+                ],
+              ],
+            );
+          },
         ),
         const SizedBox(height: RevisionSpacing.l),
         RevisionGradientButton(
-          label: _buttonLabel(selectedQuestionCount, selectedState),
-          icon: selectedState.action == QuickRevisionQuestionCountAction.start
-              ? Icons.play_arrow_rounded
-              : Icons.auto_awesome_rounded,
+          label: 'Commencer',
+          icon: Icons.play_arrow_rounded,
           expanded: true,
-          onPressed:
-              selectedState.action == QuickRevisionQuestionCountAction.wait
+          onPressed: selectedState.action == CourseRevisionDurationAction.wait
               ? null
               : () => Navigator.of(context).pop(
-                  QuickRevisionQuestionCountSelection(
-                    questionCount: selectedQuestionCount,
+                  CourseRevisionDurationSelection(
+                    durationMinutes: selectedOption.minutes,
+                    questionCount: selectedOption.questionCount,
                     action: selectedState.action,
                   ),
                 ),
         ),
         const SizedBox(height: RevisionSpacing.s),
         Text(
-          'Tu peux démarrer avec les questions prêtes pendant que le reste se prépare.',
+          'La durée règle seulement le rythme de la session. Les détails restent internes.',
           style: RevisionTypography.caption,
         ),
       ],
@@ -101,64 +137,112 @@ class _QuickRevisionQuestionCountSheetState
   }
 }
 
-class _QuestionCountChip extends StatelessWidget {
-  const _QuestionCountChip({
-    required this.count,
+class _RevisionDurationOption {
+  const _RevisionDurationOption({
+    required this.minutes,
+    required this.label,
+    required this.questionCount,
+  });
+
+  final int minutes;
+  final String label;
+  final int questionCount;
+}
+
+class _DurationTile extends StatelessWidget {
+  const _DurationTile({
+    required this.option,
     required this.state,
     required this.selected,
+    required this.compact,
     required this.onTap,
   });
 
-  final int count;
-  final _QuestionCountChoiceState state;
+  final _RevisionDurationOption option;
+  final _DurationChoiceState state;
   final bool selected;
+  final bool compact;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
+      key: ValueKey('course-revision-duration-${option.minutes}'),
       borderRadius: RevisionRadius.radiusM,
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        width: 132,
-        padding: const EdgeInsets.symmetric(
+        width: compact ? double.infinity : null,
+        padding: EdgeInsets.symmetric(
           horizontal: RevisionSpacing.m,
-          vertical: RevisionSpacing.s,
+          vertical: compact ? RevisionSpacing.m : RevisionSpacing.s,
         ),
         decoration: BoxDecoration(
           gradient: selected
               ? const LinearGradient(
-                  colors: [RevisionColors.blue, RevisionColors.blueDeep],
+                  colors: [RevisionColors.violet, RevisionColors.blueDeep],
                 )
               : null,
           color: selected ? null : RevisionColors.glassSoft,
           borderRadius: RevisionRadius.radiusM,
           border: Border.all(
-            color: selected ? RevisionColors.blue : RevisionColors.border,
+            color: selected ? RevisionColors.violet : RevisionColors.border,
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              '$count questions',
-              style: RevisionTypography.body.copyWith(
-                color: selected
-                    ? RevisionColors.text
-                    : RevisionColors.textMuted,
-                fontWeight: FontWeight.w800,
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: compact
+                    ? CrossAxisAlignment.start
+                    : CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    '${option.minutes} min',
+                    style: RevisionTypography.body.copyWith(
+                      color: RevisionColors.text,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    textAlign: compact ? TextAlign.start : TextAlign.center,
+                  ),
+                  const SizedBox(height: RevisionSpacing.xs),
+                  Text(
+                    option.label,
+                    style: RevisionTypography.caption.copyWith(
+                      color: selected
+                          ? RevisionColors.text
+                          : RevisionColors.textMuted,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    textAlign: compact ? TextAlign.start : TextAlign.center,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: RevisionSpacing.xs),
-            Text(
-              state.label,
-              style: RevisionTypography.caption.copyWith(
-                color: selected ? RevisionColors.text : state.color,
-                fontWeight: FontWeight.w800,
+            if (selected)
+              Container(
+                key: ValueKey(
+                  'course-revision-duration-${option.minutes}-selected',
+                ),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: RevisionColors.text.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: RevisionColors.text,
+                  size: 16,
+                ),
               ),
-            ),
+            if (!selected && state.action == CourseRevisionDurationAction.wait)
+              const Icon(
+                Icons.hourglass_top_rounded,
+                color: RevisionColors.textMuted,
+                size: 18,
+              ),
           ],
         ),
       ),
@@ -166,38 +250,14 @@ class _QuestionCountChip extends StatelessWidget {
   }
 }
 
-class _QuestionCountChoiceState {
-  const _QuestionCountChoiceState({
-    required this.label,
-    required this.action,
-    required this.color,
-  });
+class _DurationChoiceState {
+  const _DurationChoiceState({required this.action});
 
-  final String label;
-  final QuickRevisionQuestionCountAction action;
-  final Color color;
+  final CourseRevisionDurationAction action;
 }
 
-int _defaultQuestionCount(
-  Map<int, AsyncValue<CourseQuestionBankReadiness>> readinessByChoice,
-) {
-  final readyChoices = _QuickRevisionQuestionCountSheetState._choices.where((
-    choice,
-  ) {
-    final readiness = readinessByChoice[choice]?.maybeWhen(
-      data: (value) => value,
-      orElse: () => null,
-    );
-    return readiness != null && readiness.readyQuestionCount >= choice;
-  });
-
-  return readyChoices.isEmpty
-      ? 5
-      : readyChoices.reduce((a, b) => a > b ? a : b);
-}
-
-_QuestionCountChoiceState _choiceState(
-  int choice,
+_DurationChoiceState _durationState(
+  _RevisionDurationOption option,
   AsyncValue<CourseQuestionBankReadiness>? readinessState,
 ) {
   final readiness = readinessState?.maybeWhen(
@@ -205,50 +265,31 @@ _QuestionCountChoiceState _choiceState(
     orElse: () => null,
   );
 
-  if (readiness != null && readiness.readyQuestionCount >= choice) {
-    return const _QuestionCountChoiceState(
-      label: 'Prêt',
-      action: QuickRevisionQuestionCountAction.start,
-      color: RevisionColors.green,
+  if (readiness != null &&
+      (readiness.canStartQuickRevision ||
+          readiness.readyQuestionCount >= option.questionCount)) {
+    return const _DurationChoiceState(
+      action: CourseRevisionDurationAction.start,
     );
   }
 
   if (readinessState?.isLoading ?? false) {
-    return const _QuestionCountChoiceState(
-      label: 'Vérification',
-      action: QuickRevisionQuestionCountAction.wait,
-      color: RevisionColors.textMuted,
+    return const _DurationChoiceState(
+      action: CourseRevisionDurationAction.wait,
     );
   }
 
   if (readiness?.status == CourseQuestionBankReadinessStatus.preparing) {
-    return const _QuestionCountChoiceState(
-      label: 'En préparation',
-      action: QuickRevisionQuestionCountAction.wait,
-      color: RevisionColors.amber,
+    return const _DurationChoiceState(
+      action: CourseRevisionDurationAction.wait,
     );
   }
 
-  if (readiness?.status == CourseQuestionBankReadinessStatus.failed) {
-    return const _QuestionCountChoiceState(
-      label: 'À relancer',
-      action: QuickRevisionQuestionCountAction.prepare,
-      color: RevisionColors.red,
+  if (readiness?.canPrepare ?? true) {
+    return const _DurationChoiceState(
+      action: CourseRevisionDurationAction.prepare,
     );
   }
 
-  return const _QuestionCountChoiceState(
-    label: 'À préparer',
-    action: QuickRevisionQuestionCountAction.prepare,
-    color: RevisionColors.textMuted,
-  );
-}
-
-String _buttonLabel(int questionCount, _QuestionCountChoiceState state) {
-  return switch (state.action) {
-    QuickRevisionQuestionCountAction.start => 'Démarrer',
-    QuickRevisionQuestionCountAction.prepare =>
-      'Préparer $questionCount questions',
-    QuickRevisionQuestionCountAction.wait => 'Préparation en cours',
-  };
+  return const _DurationChoiceState(action: CourseRevisionDurationAction.wait);
 }

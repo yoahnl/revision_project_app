@@ -21,7 +21,7 @@ Future<void> startCourseQuickRevisionFlow({
   var loadingDialogShown = false;
   try {
     loadingDialogShown = true;
-    unawaited(showQuickRevisionLoadingDialog(context, questionCount));
+    unawaited(showQuickRevisionLoadingDialog(context));
     final response = await ref
         .read(startCourseQuickRevisionControllerProvider.notifier)
         .start(courseId: courseId, questionCount: questionCount);
@@ -55,10 +55,7 @@ Future<void> startCourseQuickRevisionFlow({
   }
 }
 
-Future<void> showQuickRevisionLoadingDialog(
-  BuildContext context,
-  int questionCount,
-) {
+Future<void> showQuickRevisionLoadingDialog(BuildContext context) {
   return showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -81,13 +78,13 @@ Future<void> showQuickRevisionLoadingDialog(
               ),
               const SizedBox(height: RevisionSpacing.l),
               Text(
-                'Préparation des questions',
+                'Préparation de la session',
                 textAlign: TextAlign.center,
                 style: RevisionTypography.sectionTitle,
               ),
               const SizedBox(height: RevisionSpacing.s),
               Text(
-                '$questionCount questions sont préparées pour ta session.',
+                'Ta session courte se prépare.',
                 textAlign: TextAlign.center,
                 style: RevisionTypography.body,
               ),
@@ -108,5 +105,5 @@ String quickRevisionErrorLabel(Object error) {
     return 'Cours introuvable.';
   }
 
-  return 'Impossible de démarrer la révision rapide.';
+  return 'Impossible de lancer la session pour le moment.';
 }

@@ -118,12 +118,46 @@ void main() {
     expect(find.text('La séparation des pouvoirs'), findsOneWidget);
     expect(find.textContaining('À renforcer'), findsOneWidget);
     expect(find.text('Comprendre'), findsOneWidget);
-    expect(find.text('Réviser cette notion'), findsOneWidget);
+    expect(find.text('Réviser ce cours'), findsOneWidget);
     expect(find.text('Modes de révision'), findsNothing);
     expect(find.text('Historique'), findsNothing);
     expect(find.text('Temps estimé : À préciser'), findsNothing);
     expect(find.text('Difficulté : À préciser'), findsNothing);
     expect(find.text('La Constitution'), findsNothing);
+  });
+
+  testWidgets('course detail primary CTA opens the duration sheet', (
+    tester,
+  ) async {
+    final repository = InMemoryCoursesRepository()
+      ..detailsByCourse['course-1'] = courseDetail(
+        sources: const [
+          CourseDocument(
+            id: 'document-1',
+            courseId: 'course-1',
+            documentId: 'document-1',
+            fileName: 'ready.pdf',
+            status: CourseDocumentStatus.ready,
+          ),
+        ],
+      )
+      ..learningPathByCourse['course-1'] = courseLearningPathFixture();
+
+    await tester.pumpWidget(
+      testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.widgetWithText(RevisionGradientButton, 'Continuer').first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Combien de temps as-tu ?'), findsOneWidget);
+    expect(find.text('5 min'), findsOneWidget);
+    expect(find.text('15 min'), findsOneWidget);
+    expect(find.text('30 min'), findsOneWidget);
+    expect(find.text('Commencer'), findsOneWidget);
   });
 
   testWidgets('course detail displays backend learning path empty state', (
@@ -659,7 +693,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Continuer'), findsWidgets);
-    expect(find.text('Réviser cette notion'), findsOneWidget);
+    expect(find.text('Réviser ce cours'), findsOneWidget);
 
     final understandButton = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, 'Comprendre'),
@@ -878,19 +912,6 @@ void main() {
         )
         ..questionBankReadinessByTarget[(
           courseId: 'course-1',
-          questionCount: 20,
-        )] = const CourseQuestionBankReadiness(
-          courseId: 'course-1',
-          status: CourseQuestionBankReadinessStatus.notPrepared,
-          readyQuestionCount: 9,
-          targetQuestionCount: 20,
-          canStartQuickRevision: false,
-          canPrepare: true,
-          userMessage:
-              'Les questions doivent être préparées avant de commencer.',
-        )
-        ..questionBankReadinessByTarget[(
-          courseId: 'course-1',
           questionCount: 30,
         )] = const CourseQuestionBankReadiness(
           courseId: 'course-1',
@@ -916,27 +937,43 @@ void main() {
       expect(find.text('9 questions prêtes.'), findsNothing);
       expect(find.text('Commencer une session rapide'), findsNothing);
 
-      await scrollToQuickRevision(tester);
-      final quickCard = tester.widget<RevisionModeCard>(
-        find.widgetWithText(RevisionModeCard, 'Révision rapide'),
+      await tester.ensureVisible(find.text('Réviser ce cours'));
+      await tester.tap(find.text('Réviser ce cours'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Combien de temps as-tu ?'), findsOneWidget);
+      expect(find.text('5 min'), findsOneWidget);
+      expect(find.text('15 min'), findsOneWidget);
+      expect(find.text('30 min'), findsOneWidget);
+      expect(find.text('Métro'), findsOneWidget);
+      expect(find.text('Standard'), findsOneWidget);
+      expect(find.text('Approfondi'), findsOneWidget);
+      expect(find.text('Commencer'), findsOneWidget);
+      expect(find.text('questionCount'), findsNothing);
+      expect(find.textContaining('questions'), findsNothing);
+      expect(find.text('QCM complet'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('course-revision-duration-5-selected')),
+        findsOneWidget,
       );
-      expect(quickCard.enabled, isTrue);
 
       await tester.tap(
-        find.widgetWithText(RevisionModeCard, 'Révision rapide'),
+        find.byKey(const ValueKey('course-revision-duration-15')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('course-revision-duration-15-selected')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('course-revision-duration-5')),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('5 questions'), findsOneWidget);
-      expect(find.text('10 questions'), findsOneWidget);
-      expect(find.text('20 questions'), findsOneWidget);
-      expect(find.text('30 questions'), findsOneWidget);
-      expect(find.text('Prêt'), findsWidgets);
-      expect(find.text('9 prêtes'), findsNothing);
-      expect(find.text('En préparation'), findsOneWidget);
-      expect(find.text('À préparer'), findsNWidgets(2));
-
-      await tester.tap(find.text('Démarrer'));
+      await tester.tap(
+        find.widgetWithText(RevisionGradientButton, 'Commencer'),
+      );
       await tester.pump();
 
       expect(repository.startQuickRevisionCount, 1);
@@ -965,36 +1002,25 @@ void main() {
       routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
     );
     await tester.pumpAndSettle();
-    await scrollToQuickRevision(tester);
-
-    final quickButton = find.widgetWithText(
-      RevisionModeCard,
-      'Révision rapide',
-    );
-    await tester.tap(quickButton);
+    await tester.ensureVisible(find.text('Réviser ce cours'));
+    await tester.tap(find.text('Réviser ce cours'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Choisis une quantité disponible ou prépare la suite.'),
-      findsOneWidget,
-    );
-    await tester.tap(find.text('20 questions'));
+    expect(find.text('Combien de temps as-tu ?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('course-revision-duration-30')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Démarrer'));
+    await tester.tap(find.widgetWithText(RevisionGradientButton, 'Commencer'));
     await tester.pump();
 
-    expect(find.text('Préparation des questions'), findsOneWidget);
-    expect(
-      find.text('20 questions sont préparées pour ta session.'),
-      findsOneWidget,
-    );
-    expect(find.text('Préparation...'), findsOneWidget);
+    expect(find.text('Préparation de la session'), findsOneWidget);
+    expect(find.text('Ta session courte se prépare.'), findsOneWidget);
+    expect(find.textContaining('questions'), findsNothing);
 
     await tester.pumpAndSettle();
 
     expect(repository.startQuickRevisionCount, 1);
     expect(repository.lastQuickRevisionCourseId, 'course-1');
-    expect(repository.lastQuickRevisionQuestionCount, 20);
+    expect(repository.lastQuickRevisionQuestionCount, 30);
     expect(find.text('Session réelle'), findsOneWidget);
   });
 

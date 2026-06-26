@@ -1093,11 +1093,6 @@ class _CourseBottomActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final path = learningPathState.asData?.value;
     final action = path?.primaryAction;
-    final canReviewNotion =
-        action?.enabled == true && action?.targetKnowledgeUnitId != null;
-    final reviewLabel = canReviewNotion
-        ? 'Réviser cette notion'
-        : 'Réviser ce cours';
     final canReviewCourse =
         hasReadySource &&
         action?.kind != CourseLearningPathPrimaryActionKind.waitForAnalysis;
@@ -1129,14 +1124,10 @@ class _CourseBottomActions extends ConsumerWidget {
           const SizedBox(width: RevisionSpacing.s),
           Expanded(
             child: RevisionGradientButton(
-              label: reviewLabel,
+              label: 'Réviser ce cours',
               icon: Icons.flash_on_rounded,
               expanded: true,
-              onPressed: canReviewNotion
-                  ? () => context.push(
-                      AppRoutes.courseRichRevision(detail.course.id),
-                    )
-                  : canReviewCourse
+              onPressed: canReviewCourse
                   ? () => _showQuickRevisionSheet(context, ref, detail)
                   : null,
             ),
@@ -1787,7 +1778,7 @@ Future<void> _handleQuickRevisionTap(
 
   if (readiness?.canPrepare ?? true) {
     try {
-      final prepared = await ref
+      await ref
           .read(prepareQuestionBankControllerProvider.notifier)
           .prepare(courseId: detail.course.id);
 
@@ -1795,9 +1786,11 @@ Future<void> _handleQuickRevisionTap(
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(prepared.userMessage)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La session se prépare. Réessaie dans un instant.'),
+        ),
+      );
     } catch (error) {
       if (!context.mounted) {
         return;
@@ -1810,9 +1803,15 @@ Future<void> _handleQuickRevisionTap(
     return;
   }
 
-  final message =
-      readiness?.userMessage ??
-      'Les questions sont en préparation. Réessaie dans un instant.';
+  final message = switch (readiness?.status) {
+    CourseQuestionBankReadinessStatus.noKnowledgeUnits =>
+      "Aucune notion exploitable n'a encore été trouvée.",
+    CourseQuestionBankReadinessStatus.noReadySource =>
+      'Ajoute une source prête pour commencer.',
+    CourseQuestionBankReadinessStatus.failed =>
+      "La session n'a pas pu être préparée.",
+    _ => 'La session se prépare. Réessaie dans un instant.',
+  };
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
@@ -1821,31 +1820,30 @@ Future<void> _showQuickRevisionSheet(
   WidgetRef ref,
   CourseDetail detail,
 ) async {
-  final selection =
-      await showModalBottomSheet<QuickRevisionQuestionCountSelection>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) =>
-            QuickRevisionQuestionCountSheet(courseId: detail.course.id),
-      );
+  final selection = await showModalBottomSheet<CourseRevisionDurationSelection>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) =>
+        CourseRevisionDurationSheet(courseId: detail.course.id),
+  );
 
   if (!context.mounted || selection == null) {
     return;
   }
 
   switch (selection.action) {
-    case QuickRevisionQuestionCountAction.start:
+    case CourseRevisionDurationAction.start:
       await startCourseQuickRevisionFlow(
         context: context,
         ref: ref,
         courseId: detail.course.id,
         questionCount: selection.questionCount,
       );
-    case QuickRevisionQuestionCountAction.prepare:
+    case CourseRevisionDurationAction.prepare:
       try {
-        final prepared = await ref
+        await ref
             .read(prepareQuestionBankControllerProvider.notifier)
             .prepare(
               courseId: detail.course.id,
@@ -1856,19 +1854,25 @@ Future<void> _showQuickRevisionSheet(
           return;
         }
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(prepared.userMessage)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${selection.durationMinutes} min se prépare. Réessaie dans un instant.',
+            ),
+          ),
+        );
       } catch (error) {
         if (!context.mounted) {
           return;
         }
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(quickRevisionErrorLabel(error))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impossible de lancer la session pour le moment.'),
+          ),
+        );
       }
-    case QuickRevisionQuestionCountAction.wait:
+    case CourseRevisionDurationAction.wait:
       break;
   }
 }
@@ -1954,30 +1958,29 @@ String _quickRevisionActionLabel(
 ) {
   if (sources.any((source) => source.status == CourseDocumentStatus.ready)) {
     if (isLoadingReadiness) {
-      return 'Vérification des questions du cours.';
+      return 'Vérification de la session courte.';
     }
 
     if (readiness == null) {
-      return 'Questions rapides depuis une source prête.';
+      return 'Session courte depuis une source prête.';
     }
 
     return switch (readiness.status) {
-      CourseQuestionBankReadinessStatus.ready =>
-        'Prêt pour une révision rapide.',
+      CourseQuestionBankReadinessStatus.ready => 'Session courte prête.',
       CourseQuestionBankReadinessStatus.preparing =>
         readiness.readyQuestionCount >= 5
-            ? "Prêt pour une révision rapide. D'autres questions sont en préparation."
-            : 'Les questions sont en préparation.',
+            ? "Session courte prête. D'autres formats se préparent."
+            : 'La session se prépare.',
       CourseQuestionBankReadinessStatus.notPrepared =>
-        'Prépare les questions avant de commencer.',
+        'Prépare la session avant de commencer.',
       CourseQuestionBankReadinessStatus.failed =>
-        "Les questions n'ont pas pu être préparées.",
+        "La session n'a pas pu être préparée.",
       CourseQuestionBankReadinessStatus.noKnowledgeUnits =>
         "Aucune notion exploitable n'a encore été trouvée.",
       CourseQuestionBankReadinessStatus.noReadySource =>
         'Ajoute une source prête pour commencer.',
       CourseQuestionBankReadinessStatus.unknown =>
-        'Questions rapides depuis une source prête.',
+        'Session courte depuis une source prête.',
     };
   }
 
