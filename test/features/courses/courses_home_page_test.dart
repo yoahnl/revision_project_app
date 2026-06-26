@@ -6,6 +6,7 @@ import 'package:Neralune/app/di/providers.dart';
 import 'package:Neralune/app/router/app_routes.dart';
 import 'package:Neralune/features/courses/application/courses_providers.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
+import 'package:Neralune/features/courses/presentation/course_hero_tags.dart';
 import 'package:Neralune/features/courses/presentation/courses_home_page.dart';
 import 'package:Neralune/features/subjects/domain/subject.dart';
 import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
@@ -108,6 +109,22 @@ void main() {
     expect(find.text('Droit constitutionnel'), findsOneWidget);
     expect(find.text('4 solides · 2 à renforcer'), findsOneWidget);
     expect(find.text('62%'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Hero &&
+            widget.tag == CourseHeroTags.title('course-constitutional'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Hero &&
+            widget.tag == CourseHeroTags.progress('course-constitutional'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Droit administratif'), findsWidgets);
     expect(find.text('2 solides · 2 à renforcer'), findsOneWidget);
     expect(find.text('38%'), findsOneWidget);

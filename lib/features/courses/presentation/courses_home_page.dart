@@ -16,6 +16,7 @@ import '../application/active_subject_provider.dart';
 import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
+import 'course_hero_tags.dart';
 
 class CoursesHomePage extends ConsumerWidget {
   const CoursesHomePage({super.key});
@@ -323,15 +324,22 @@ class _CourseRow extends StatelessWidget {
           children: [
             Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    course.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: RevisionTypography.sectionTitle.copyWith(
-                      fontSize: 22,
+                  Hero(
+                    tag: CourseHeroTags.title(course.id),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Text(
+                        course.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: RevisionTypography.sectionTitle.copyWith(
+                          fontSize: 22,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: RevisionSpacing.s),
@@ -345,15 +353,24 @@ class _CourseRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: RevisionSpacing.m),
-            if (course.progress != null)
-              RevisionMasteryRing(
-                value: course.progress!.estimatedGlobalMastery,
-                label: _percent(course.progress!.estimatedGlobalMastery),
-                color: visual.accent,
-                size: 60,
-              )
-            else
-              _NeutralProgressCircle(color: RevisionColors.borderBright),
+            Hero(
+              tag: CourseHeroTags.progress(course.id),
+              child: Material(
+                type: MaterialType.transparency,
+                child: course.progress != null
+                    ? RevisionMasteryRing(
+                        value: course.progress!.estimatedGlobalMastery,
+                        label: _percent(
+                          course.progress!.estimatedGlobalMastery,
+                        ),
+                        color: visual.accent,
+                        size: 60,
+                      )
+                    : _NeutralProgressCircle(
+                        color: RevisionColors.borderBright,
+                      ),
+              ),
+            ),
           ],
         ),
       ),

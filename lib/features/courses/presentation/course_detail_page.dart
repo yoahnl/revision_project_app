@@ -16,6 +16,7 @@ import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import '../../revision_sessions/domain/revision_session.dart';
+import 'course_hero_tags.dart';
 import 'course_not_found_page.dart';
 import 'course_quick_revision_launcher.dart';
 import 'widgets/course_management_sheet.dart';
@@ -378,9 +379,21 @@ class _CourseHeader extends StatelessWidget {
       children: [
         Expanded(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(course.title, style: RevisionTypography.pageTitle),
+              Hero(
+                tag: CourseHeroTags.title(course.id),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Text(
+                    course.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: RevisionTypography.pageTitle,
+                  ),
+                ),
+              ),
               const SizedBox(height: RevisionSpacing.xs),
               Text(
                 detail.subject.name,
@@ -395,12 +408,18 @@ class _CourseHeader extends StatelessWidget {
         _CourseLuna(visual: visual),
         if (hasReliableProgress) ...[
           const SizedBox(width: RevisionSpacing.m),
-          RevisionMasteryRing(
-            value: progressValue.estimatedGlobalMastery,
-            label: _percent(progressValue.estimatedGlobalMastery),
-            caption: 'maîtrisé',
-            color: _progressColor(progressValue.state),
-            size: 78,
+          Hero(
+            tag: CourseHeroTags.progress(course.id),
+            child: Material(
+              type: MaterialType.transparency,
+              child: RevisionMasteryRing(
+                value: progressValue.estimatedGlobalMastery,
+                label: _percent(progressValue.estimatedGlobalMastery),
+                caption: 'maîtrisé',
+                color: _progressColor(progressValue.state),
+                size: 78,
+              ),
+            ),
           ),
         ],
       ],
