@@ -180,7 +180,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Révision rapide'), findsOneWidget);
+      expect(find.text('Session courte'), findsOneWidget);
       expect(find.text('Question 1 sur 2'), findsOneWidget);
       expect(
         find.text('Quel principe organise les pouvoirs ?'),

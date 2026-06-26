@@ -46,12 +46,12 @@ Difference entre roadmap canonique et tracker :
 
 | Area | Status | Last completed lot | Current / next lot | Main risk | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Documentation / governance | `DONE` | `V4-DOC-02` | `DEMO-03` | Tracker non maintenu apres les lots demo | Roadmap, tracker, lock MVP demo et evidence packs restent a jour. |
-| Shell & navigation | `DONE` | `V4-01B` | `DEMO-03` | Raccourci profil encore discret | Trois onglets visibles livres ; profil accessible en action secondaire. |
-| Aujourd'hui | `DONE` | `V4-02C` | `DEMO-03` | Actions secondaires de duree encore reportees | UI V4 alignee visuellement, display backend consomme en option, enrichment backend livre. |
-| Cours | `IN_PROGRESS` | `V4-03C` | `DEMO-03` | Revision matiere encore partiellement branchee | Bibliotheque V4 livree et detail cours simplifie ; selector/action matiere restent a renforcer apres la demo. |
-| Learning path | `DONE` | `V4-04B` | `DEMO-03` | Action notion-specific encore limitee par les routes legacy | Contrat backend consomme par Flutter ; timeline detail cours branchee sur les nodes reels. |
-| Study Session V4 | `IN_PROGRESS` | `DEMO-02` | `DEMO-03` | Session immersive encore branchee au moteur quick legacy | Choix duree 5/15/30 livre en demo ; facade `/study-sessions` non creee. |
+| Documentation / governance | `DONE` | `V4-DOC-02` | `DEMO-04` | Tracker non maintenu apres les lots demo | Roadmap, tracker, lock MVP demo et evidence packs restent a jour. |
+| Shell & navigation | `DONE` | `V4-01B` | `DEMO-04` | Raccourci profil encore discret | Trois onglets visibles livres ; profil accessible en action secondaire. |
+| Aujourd'hui | `DONE` | `V4-02C` | `DEMO-04` | Actions secondaires de duree encore reportees | UI V4 alignee visuellement, display backend consomme en option, enrichment backend livre. |
+| Cours | `IN_PROGRESS` | `V4-03C` | `DEMO-04` | Revision matiere encore partiellement branchee | Bibliotheque V4 livree et detail cours simplifie ; selector/action matiere restent a renforcer apres la demo. |
+| Learning path | `DONE` | `V4-04B` | `DEMO-04` | Action notion-specific encore limitee par les routes legacy | Contrat backend consomme par Flutter ; timeline detail cours branchee sur les nodes reels. |
+| Study Session V4 | `IN_PROGRESS` | `DEMO-03` | `DEMO-04` | Session encore limitee au moteur quick legacy | Choix duree 5/15/30 et session courte immersive livres en demo ; facade `/study-sessions` non creee. |
 | Feedback & result | `NOT_STARTED` | Aucun | `V4-06A` | Feedback IA trop lent si synchrone | Normaliser feedback avant polish result. |
 | Progres | `NOT_STARTED` | Aucun | `V4-07A` | Trop de metriques ou donnees fragiles | Trois categories max : solides, a renforcer, a decouvrir. |
 | Sujet long | `NOT_STARTED` | Aucun | `V4-08A` | Cout et qualite de correction | A garder separe des sessions normales. |
@@ -68,7 +68,7 @@ Difference entre roadmap canonique et tracker :
 | Phase 2 | Aujourd’hui V4 | `DONE` | Montrer quoi travailler, combien de temps et pourquoi. | Today V4 avec action principale, objectif semaine, continuation discrete. | Phase 1 | Captures, tests Today, contrat Today documente si modifie. | Frontend-first, backend enrichment et alignement visuel livres ; objectif hebdo expose en target-only sans fake progress. |
 | Phase 3 | Cours V4 et sélecteur matière | `IN_PROGRESS` | Transformer Cours en bibliotheque vivante. | Matiere active, reviser toute la matiere, liste compacte, selecteur. | Phase 1 | Captures 0/1/n cours, tests subject picker. | Frontend Cours V4 livre ; detail cours simplifie ; `V4-03B` reste a renforcer. |
 | Phase 4 | Learning path du cours | `DONE` | Montrer le parcours de notions du cours. | Endpoint ou contrat learning path, timeline verticale. | Phase 3 | Contrat API, fixtures, captures, tests. | Backend et frontend branches sur `/courses/:courseId/learning-path`; la timeline utilise les nodes, states, active node, primary action et empty state backend. |
-| Phase 5 | Study Session V4 | `IN_PROGRESS` | Reviser en 5/15/30 min sans mode technique visible. | Duration picker, facade session, planner multi-types. | Phase 4 | Traces de session, tests backend/frontend, captures. | `DEMO-02` livre le choix duree course-level mappe au moteur quick existant ; facade et planner restent hors scope demo. |
+| Phase 5 | Study Session V4 | `IN_PROGRESS` | Reviser en 5/15/30 min sans mode technique visible. | Duration picker, facade session, planner multi-types. | Phase 4 | Traces de session, tests backend/frontend, captures. | `DEMO-02` livre le choix duree course-level mappe au moteur quick existant ; `DEMO-03` livre une session courte immersive quick-only. Facade et planner restent hors scope demo. |
 | Phase 6 | Feedback immédiat et bilan V4 | `NOT_STARTED` | Apprendre au moment de l'erreur. | Answer endpoint, feedback panel, result progression-first. | Phase 5 | Tests par type de question, captures feedback/result. | Ne pas attendre tous les renderers pour demarrer. |
 | Phase 7 | Progrès V4 | `NOT_STARTED` | Rendre la progression actionnable. | Resume matiere, semaine, cours, a revoir maintenant. | Phase 4, Phase 6 | Captures, tests progress, decision event log. | Eviter les metriques trop proches du backend. |
 | Phase 8 | Sujet long cours | `NOT_STARTED` | S'entrainer a une vraie reponse d'examen depuis un cours. | Contrat long-form, draft, workspace, correction structuree. | Phase 5, Phase 6 | Sample correction, captures mobile/desktop, tests. | Experience separee des sessions normales. |
@@ -93,7 +93,7 @@ Difference entre roadmap canonique et tracker :
 | `V4-04A` | Learning path backend contract | Backend | `DONE` | API | Contrat notions et etats de parcours | `V4-DOC-02` | Courses module, progress use case | Unit/controller tests | `docs/roadmap/v4/evidence/V4-04A_learning_path_backend_contract_EVIDENCE_PACK.md` | 2026-06-26 | Endpoint `/courses/:courseId/learning-path` livre avec nodes reels, states `MasteryState`, active node, primary action et empty states. |
 | `V4-04B` | Learning path frontend timeline | Frontend | `DONE` | Frontend | Timeline verticale de notions | `V4-04A` | Course detail, timeline widget, repository | Widget/repository tests | `docs/roadmap/v4/evidence/V4-04B_learning_path_frontend_timeline_EVIDENCE_PACK.md` | 2026-06-26 | Flutter consomme `/courses/:courseId/learning-path`; nodes, states backend, active node, primary action et empty state affiches sans timeline provisoire. |
 | `DEMO-02` | Choix durée simple 5 / 15 / 30 | Frontend demo | `DONE` | Frontend | Bottom sheet duree depuis detail cours, mappee au moteur quick existant | `DEMO-01` / `V4-04B` | `CourseDetailPage`, sheet duree, launcher quick | Detail/router/app tests, analyze tente | `docs/roadmap/v4/evidence/DEMO-02_choix_duree_simple_EVIDENCE_PACK.md` | 2026-06-26 | Correspondance demo de `V4-05A` ; `5/15/30 min` mappe en interne vers `questionCount` 5/10/30 sans exposer ce champ en UI. |
-| `DEMO-03` | Session immersive quick-only | Frontend demo | `READY` | Frontend | Session courte immersive sans dashboard | `DEMO-02` | Revision session V2/shell immersive | Session widget/router tests | `docs/roadmap/v4/evidence/DEMO-03_session_immersive_quick_only_EVIDENCE_PACK.md` | À confirmer | Prochain lot recommande ; ne doit pas creer de backend sauf blocage reel. |
+| `DEMO-03` | Session immersive quick-only | Frontend demo | `DONE` | Frontend | Session courte immersive sans dashboard | `DEMO-02` | `QuickRevisionQuizFlow`, revision session tests | Quick widget/detail/router/app tests, analyze tente | `docs/roadmap/v4/evidence/DEMO-03_session_immersive_quick_only_EVIDENCE_PACK.md` | 2026-06-26 | Une question a la fois, brouillons/signalement/sortie/finalisation conserves ; aucun nouveau backend ni `/study-sessions`. |
 | `V4-05A` | Duration picker 5/15/30 | Frontend | `NOT_STARTED` | Frontend | Choix duree et perimetre | `V4-03B` | Bottom sheet, course/subject entry points | Widget tests | `docs/roadmap/v4/evidence/V4-05A_duration_picker_5_15_30_EVIDENCE_PACK.md` | À confirmer | Aucun `questionCount` visible. |
 | `V4-05B` | Study Session V4 backend façade | Backend | `NOT_STARTED` | API | Facade `/study-sessions`, planner duration/scope | `V4-05A`, `V4-04A` | Revision sessions, adapters, planner | Unit/controller tests | `docs/roadmap/v4/evidence/V4-05B_study_session_backend_facade_EVIDENCE_PACK.md` | À confirmer | Reutiliser moteurs existants sans big bang. |
 | `V4-05C` | Study Session V4 frontend shell | Frontend | `NOT_STARTED` | Frontend | Route immersive et renderer step | `V4-05B` | Session page, router, step renderer | Router/widget tests | `docs/roadmap/v4/evidence/V4-05C_study_session_frontend_shell_EVIDENCE_PACK.md` | À confirmer | Bottom nav masquee pendant la session. |
@@ -134,12 +134,13 @@ Verrou `LOCK-01` : jusqu'a la demo, les prochains lots autorises sont limites au
 
 3. `DEMO-03` — Session immersive quick-only
    - Correspondance : version reduite de `V4-05C — Study Session V4 frontend shell`.
-   - Statut : prochain lot recommande.
-   - Pourquoi maintenant : rendre la session montrable sans attendre un planner complet.
+   - Statut : livre le 2026-06-26.
+   - Resultat : flux quick immersif, une question a la fois, sans bottom nav ni dashboard technique.
    - Ne doit pas faire : QCM complet, question ouverte, mode examen, nouveau backend sauf blocage reel.
 
 4. `DEMO-04` — Feedback + bilan propre
    - Correspondance : version reduite de `V4-06B / V4-06C`.
+   - Statut : prochain lot recommande.
    - Pourquoi ensuite : terminer la boucle apprendre-comprendre-continuer.
    - Ne doit pas faire : feedback IA complexe si les corrections existantes suffisent.
 
@@ -207,6 +208,7 @@ Ne pas creer les evidence packs en avance. Ils sont crees uniquement a la fin du
 | 2026-06-26 | Le CTA principal du detail cours utilise `primaryAction` backend. | Accepted | La page doit refleter l'action recommandee par le contrat learning path, sans recreer un planner local. | `CourseDetailPage` affiche `primaryAction.label/description` et branche les actions existantes fiables. | `V4-03B`, `V4-05A`. |
 | 2026-06-26 | `LOCK-01` verrouille le MVP demo autour de cinq lots maximum. | Accepted | La V4 risque de s'etendre vers trop de surfaces avant une demo convaincante. | Creation de `MVP_DEMO_LOCK.md`; les prochains prompts doivent suivre `DEMO-01` a `DEMO-05` et refuser le scope creep. | Apres demo MVP. |
 | 2026-06-26 | `DEMO-02` mappe les durees 5/15/30 min vers le moteur quick existant. | Accepted | La facade Study Session V4 n'existe pas encore, mais le choix utilisateur doit deja parler en duree. | `5 min` -> `questionCount 5`, `15 min` -> `questionCount 10`, `30 min` -> `questionCount 30`; le champ technique reste invisible en UI. | `DEMO-03`, puis vraie facade Study Session. |
+| 2026-06-26 | `DEMO-03` transforme le flux quick en session courte immersive sans nouveau moteur. | Accepted | La demo a besoin d'une experience montrable maintenant, sans attendre `/study-sessions` ni un planner multi-types. | `QuickRevisionQuizFlow` affiche une question a la fois, masque la bottom nav, conserve brouillons/signalement/finalisation et garde les moteurs techniques internes. | `DEMO-04`, puis vraie facade Study Session. |
 
 ## 9. Open risks
 
@@ -236,6 +238,7 @@ Ne pas creer les evidence packs en avance. Ils sont crees uniquement a la fin du
 | `R-V4-022` | Le frontend ne consomme pas encore `/courses/:courseId/learning-path`. | Medium | Frontend + API | Repository, model, provider et `CourseDetailPage` branches en `V4-04B`. | `V4-04B` | Mitigated |
 | `R-V4-023` | Scope creep V4 avant demo. | High | Product + Frontend + API | `LOCK-01` limite les prochains lots a `DEMO-01`...`DEMO-05` et reporte sujet long, epreuve blanche, progres avance et mascot system complet. | `MVP_DEMO_LOCK.md` | Mitigated |
 | `R-V4-024` | La duree demo ne represente pas encore une vraie planification temporelle. | Medium | Frontend + API | `DEMO-02` masque `questionCount` en UI et documente le mapping ; `DEMO-03` doit garder la session quick-only honnete. | `DEMO-03`, future facade Study Session | Open |
+| `R-V4-025` | La session immersive demo n'a pas encore de feedback immediat entre les questions. | Medium | Frontend + Product | Garder l'ecran question simple en `DEMO-03`, puis livrer feedback/result propre en `DEMO-04`. | `DEMO-04` | Open |
 
 ## 10. Update protocol
 

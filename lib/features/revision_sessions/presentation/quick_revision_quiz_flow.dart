@@ -82,130 +82,77 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
         }
       },
       child: RevisionPageScaffold(
+        maxWidth: 560,
+        padding: const EdgeInsets.fromLTRB(
+          RevisionSpacing.pageX,
+          RevisionSpacing.pageTop,
+          RevisionSpacing.pageX,
+          RevisionSpacing.xxl,
+        ),
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => _confirmExit(context),
-                icon: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: RevisionColors.text,
-                ),
-              ),
-              const Expanded(
-                child: Text(
-                  'Révision rapide',
-                  textAlign: TextAlign.center,
-                  style: RevisionTypography.sectionTitle,
-                ),
-              ),
-              const SizedBox(width: 48),
-            ],
-          ),
           course.when(
-            data: (detail) => _QuickHeader(
-              courseTitle: detail?.course.title ?? widget.activity.title,
-              subjectName: detail?.subject.name,
-              sourceName: _sourceName(detail, widget.response.currentAction),
+            data: (detail) => _QuickSessionTopBar(
+              title: 'Session courte',
+              subtitle: detail?.course.title ?? 'Session guidée',
+              current: _questionIndex + 1,
+              total: _questions.length,
+              onExit: () => _confirmExit(context),
             ),
-            loading: () => _QuickHeader(
-              courseTitle: widget.activity.title,
-              subjectName: null,
-              sourceName: null,
+            loading: () => _QuickSessionTopBar(
+              title: 'Session courte',
+              subtitle: 'Session guidée',
+              current: _questionIndex + 1,
+              total: _questions.length,
+              onExit: () => _confirmExit(context),
             ),
-            error: (_, _) => _QuickHeader(
-              courseTitle: widget.activity.title,
-              subjectName: null,
-              sourceName: null,
-            ),
-          ),
-          _QuestionProgress(
-            current: _questionIndex + 1,
-            total: _questions.length,
-          ),
-          RevisionGlassCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(question.prompt, style: RevisionTypography.sectionTitle),
-                const SizedBox(height: RevisionSpacing.s),
-                _QuestionFlagAction(
-                  flagged: _flaggedQuestionIds.contains(question.id),
-                  isLoading: _isFlaggingQuestion,
-                  onPressed: () => _flagQuestion(question),
-                ),
-                if (_flagError != null) ...[
-                  const SizedBox(height: RevisionSpacing.xs),
-                  Text(
-                    'Signalement impossible pour le moment.',
-                    style: RevisionTypography.caption.copyWith(
-                      color: RevisionColors.red,
-                    ),
-                  ),
-                ],
-                if (question.visuals.isNotEmpty) ...[
-                  const SizedBox(height: RevisionSpacing.m),
-                  _QuestionVisualsPreview(visuals: question.visuals),
-                ],
-                const SizedBox(height: RevisionSpacing.l),
-                for (final entry in question.choices.indexed) ...[
-                  _AnswerChoiceCard(
-                    label: _choiceLetter(entry.$1),
-                    text: entry.$2.label,
-                    selected: selected.contains(entry.$2.id),
-                    onTap: () => _toggleChoice(question, entry.$2.id),
-                  ),
-                  if (entry.$1 != question.choices.length - 1)
-                    const SizedBox(height: RevisionSpacing.s),
-                ],
-                if (question.selectionMode ==
-                    DiagnosticQuizSelectionMode.multiple)
-                  Padding(
-                    padding: const EdgeInsets.only(top: RevisionSpacing.m),
-                    child: Text(
-                      '${question.minSelections} à ${question.maxSelections} réponses',
-                      style: RevisionTypography.caption,
-                    ),
-                  ),
-                if (_draftSaveError != null) ...[
-                  const SizedBox(height: RevisionSpacing.m),
-                  Text(
-                    'Impossible de sauvegarder la réponse pour le moment.',
-                    style: RevisionTypography.caption.copyWith(
-                      color: RevisionColors.red,
-                    ),
-                  ),
-                ],
-              ],
+            error: (_, _) => _QuickSessionTopBar(
+              title: 'Session courte',
+              subtitle: 'Session guidée',
+              current: _questionIndex + 1,
+              total: _questions.length,
+              onExit: () => _confirmExit(context),
             ),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: RevisionGradientButton(
-                  label: 'Précédent',
-                  icon: Icons.chevron_left_rounded,
-                  onPressed: _questionIndex == 0 || _isSubmitting
-                      ? null
-                      : () => setState(() => _questionIndex -= 1),
-                  gradient: const LinearGradient(
-                    colors: [RevisionColors.glassStrong, RevisionColors.ink3],
-                  ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              final curved = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              );
+              return FadeTransition(
+                opacity: curved,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.035, 0),
+                    end: Offset.zero,
+                  ).animate(curved),
+                  child: child,
                 ),
-              ),
-              const SizedBox(width: RevisionSpacing.m),
-              Expanded(
-                child: RevisionGradientButton(
-                  label: _questionIndex == _questions.length - 1
-                      ? (_isSubmitting ? 'Validation...' : 'Terminer')
-                      : 'Suivant',
-                  icon: _questionIndex == _questions.length - 1
-                      ? Icons.check_rounded
-                      : Icons.chevron_right_rounded,
-                  onPressed: canContinue && !_isSubmitting ? _continue : null,
-                ),
-              ),
-            ],
+              );
+            },
+            child: _QuickQuestionStep(
+              key: ValueKey(question.id),
+              question: question,
+              selectedChoiceIds: selected,
+              flagged: _flaggedQuestionIds.contains(question.id),
+              isFlaggingQuestion: _isFlaggingQuestion,
+              flagError: _flagError,
+              draftSaveError: _draftSaveError,
+              onFlag: () => _flagQuestion(question),
+              onSelectChoice: (choiceId) => _toggleChoice(question, choiceId),
+            ),
+          ),
+          _QuickSessionControls(
+            isLastQuestion: _questionIndex == _questions.length - 1,
+            isSubmitting: _isSubmitting,
+            canContinue: canContinue,
+            onPrevious: _questionIndex == 0 || _isSubmitting
+                ? null
+                : () => setState(() => _questionIndex -= 1),
+            onContinue: canContinue && !_isSubmitting ? _continue : null,
           ),
           if (_submitError != null)
             RevisionGlassCard(
@@ -479,68 +426,274 @@ class _QuickRevisionQuizFlowState extends ConsumerState<QuickRevisionQuizFlow> {
 
     context.go(AppRoutes.revisions);
   }
+}
 
-  String? _sourceName(CourseDetail? detail, RevisionSessionAction? action) {
-    final documentId = action?.documentId;
-    if (detail == null || documentId == null) {
-      return null;
-    }
+class _QuickSessionTopBar extends StatelessWidget {
+  const _QuickSessionTopBar({
+    required this.title,
+    required this.subtitle,
+    required this.current,
+    required this.total,
+    required this.onExit,
+  });
 
-    for (final source in detail.sources) {
-      if (source.documentId == documentId || source.id == documentId) {
-        return source.fileName;
-      }
-    }
+  final String title;
+  final String subtitle;
+  final int current;
+  final int total;
+  final VoidCallback onExit;
 
-    return null;
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            _SessionIconButton(
+              icon: Icons.arrow_back_rounded,
+              tooltip: 'Quitter la session',
+              onPressed: onExit,
+            ),
+            const SizedBox(width: RevisionSpacing.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: RevisionTypography.sectionTitle),
+                  const SizedBox(height: RevisionSpacing.xxs),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: RevisionTypography.caption.copyWith(
+                      color: RevisionColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: RevisionSpacing.m),
+            _QuestionCounter(current: current, total: total),
+          ],
+        ),
+        const SizedBox(height: RevisionSpacing.m),
+        _QuestionProgress(current: current, total: total),
+      ],
+    );
   }
 }
 
-class _QuickHeader extends StatelessWidget {
-  const _QuickHeader({
-    required this.courseTitle,
-    required this.subjectName,
-    required this.sourceName,
+class _SessionIconButton extends StatelessWidget {
+  const _SessionIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
   });
 
-  final String courseTitle;
-  final String? subjectName;
-  final String? sourceName;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onPressed,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: RevisionColors.glassSoft,
+              border: Border.all(color: RevisionColors.border),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: RevisionColors.text, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuestionCounter extends StatelessWidget {
+  const _QuestionCounter({required this.current, required this.total});
+
+  final int current;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: RevisionColors.glassStrong,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: RevisionColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: RevisionSpacing.m,
+          vertical: RevisionSpacing.s,
+        ),
+        child: Text(
+          '$current / $total',
+          style: RevisionTypography.caption.copyWith(
+            color: RevisionColors.text,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickQuestionStep extends StatelessWidget {
+  const _QuickQuestionStep({
+    required this.question,
+    required this.selectedChoiceIds,
+    required this.flagged,
+    required this.isFlaggingQuestion,
+    required this.flagError,
+    required this.draftSaveError,
+    required this.onFlag,
+    required this.onSelectChoice,
+    super.key,
+  });
+
+  final DiagnosticQuizQuestion question;
+  final Set<String> selectedChoiceIds;
+  final bool flagged;
+  final bool isFlaggingQuestion;
+  final Object? flagError;
+  final Object? draftSaveError;
+  final VoidCallback onFlag;
+  final ValueChanged<String> onSelectChoice;
 
   @override
   Widget build(BuildContext context) {
     return RevisionGlassCard(
-      gradient: const LinearGradient(
-        colors: [RevisionColors.blue, RevisionColors.blueDeep],
-      ),
-      child: Row(
+      backgroundColor: RevisionColors.glassSoft.withValues(alpha: 0.62),
+      padding: const EdgeInsets.all(RevisionSpacing.l),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const RevisionIconTile(
-            icon: Icons.flash_on_rounded,
-            accent: RevisionColors.cyan,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  question.prompt,
+                  key: const ValueKey('quick-session-question'),
+                  style: RevisionTypography.pageTitle.copyWith(fontSize: 24),
+                ),
+              ),
+              const SizedBox(width: RevisionSpacing.m),
+              _QuestionFlagAction(
+                flagged: flagged,
+                isLoading: isFlaggingQuestion,
+                onPressed: onFlag,
+              ),
+            ],
           ),
-          const SizedBox(width: RevisionSpacing.m),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (subjectName != null)
-                  Text(
-                    subjectName!,
-                    style: RevisionTypography.caption.copyWith(
-                      color: RevisionColors.cyan,
-                    ),
-                  ),
-                Text(courseTitle, style: RevisionTypography.pageTitle),
-                if (sourceName != null) ...[
-                  const SizedBox(height: RevisionSpacing.xs),
-                  Text('Source : $sourceName', style: RevisionTypography.body),
-                ],
-              ],
+          if (flagError != null) ...[
+            const SizedBox(height: RevisionSpacing.xs),
+            Text(
+              'Signalement impossible pour le moment.',
+              style: RevisionTypography.caption.copyWith(
+                color: RevisionColors.red,
+              ),
             ),
-          ),
+          ],
+          if (question.visuals.isNotEmpty) ...[
+            const SizedBox(height: RevisionSpacing.m),
+            _QuestionVisualsPreview(visuals: question.visuals),
+          ],
+          const SizedBox(height: RevisionSpacing.l),
+          for (final entry in question.choices.indexed) ...[
+            _AnswerChoiceCard(
+              choiceId: entry.$2.id,
+              label: _choiceLetter(entry.$1),
+              text: entry.$2.label,
+              selected: selectedChoiceIds.contains(entry.$2.id),
+              onTap: () => onSelectChoice(entry.$2.id),
+            ),
+            if (entry.$1 != question.choices.length - 1)
+              const SizedBox(height: RevisionSpacing.s),
+          ],
+          if (question.selectionMode == DiagnosticQuizSelectionMode.multiple)
+            Padding(
+              padding: const EdgeInsets.only(top: RevisionSpacing.m),
+              child: Text(
+                '${question.minSelections} à ${question.maxSelections} réponses',
+                style: RevisionTypography.caption,
+              ),
+            ),
+          if (draftSaveError != null) ...[
+            const SizedBox(height: RevisionSpacing.m),
+            Text(
+              'Impossible de sauvegarder la réponse pour le moment.',
+              style: RevisionTypography.caption.copyWith(
+                color: RevisionColors.red,
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _QuickSessionControls extends StatelessWidget {
+  const _QuickSessionControls({
+    required this.isLastQuestion,
+    required this.isSubmitting,
+    required this.canContinue,
+    required this.onPrevious,
+    required this.onContinue,
+  });
+
+  final bool isLastQuestion;
+  final bool isSubmitting;
+  final bool canContinue;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onContinue;
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryLabel = isLastQuestion
+        ? (isSubmitting ? 'Validation...' : 'Terminer')
+        : 'Suivant';
+
+    return Row(
+      children: [
+        Expanded(
+          child: RevisionGradientButton(
+            label: 'Précédent',
+            icon: Icons.chevron_left_rounded,
+            onPressed: onPrevious,
+            gradient: const LinearGradient(
+              colors: [RevisionColors.glassStrong, RevisionColors.ink3],
+            ),
+          ),
+        ),
+        const SizedBox(width: RevisionSpacing.m),
+        Expanded(
+          flex: 2,
+          child: RevisionGradientButton(
+            key: const ValueKey('quick-session-primary-action'),
+            label: primaryLabel,
+            icon: isLastQuestion
+                ? Icons.check_rounded
+                : Icons.chevron_right_rounded,
+            expanded: true,
+            onPressed: canContinue && !isSubmitting ? onContinue : null,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -753,12 +906,14 @@ String _compactChartRow(Map<String, Object?> row) {
 
 class _AnswerChoiceCard extends StatelessWidget {
   const _AnswerChoiceCard({
+    required this.choiceId,
     required this.label,
     required this.text,
     required this.selected,
     required this.onTap,
   });
 
+  final String choiceId;
   final String label;
   final String text;
   final bool selected;
@@ -767,6 +922,7 @@ class _AnswerChoiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RevisionGlassCard(
+      key: ValueKey('quick-session-answer-$choiceId'),
       selected: selected,
       onTap: onTap,
       padding: const EdgeInsets.all(RevisionSpacing.m),
