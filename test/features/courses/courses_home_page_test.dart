@@ -10,6 +10,7 @@ import 'package:Neralune/features/courses/presentation/course_hero_tags.dart';
 import 'package:Neralune/features/courses/presentation/courses_home_page.dart';
 import 'package:Neralune/features/subjects/domain/subject.dart';
 import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_typography.dart';
 import 'package:Neralune/presentation/theme/app_theme.dart';
 import 'package:Neralune/presentation/widgets/revision_background.dart';
 
@@ -76,7 +77,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Cours'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('Cours')).style,
+      RevisionTypography.pageTitle,
+    );
     expect(find.byTooltip('Créer'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Hero && widget.tag == CourseHeroTags.navigationControl(),
+      ),
+      findsOneWidget,
+    );
     expect(find.byType(RevisionSubjectSwitcher), findsOneWidget);
     expect(find.text('Droit'), findsWidgets);
     expect(find.text('3 cours · 10 notions'), findsOneWidget);
@@ -113,7 +125,7 @@ void main() {
       find.byWidgetPredicate(
         (widget) =>
             widget is Hero &&
-            widget.tag == CourseHeroTags.title('course-constitutional'),
+            widget.tag == CourseHeroTags.subjectOverview('subject-law'),
       ),
       findsOneWidget,
     );
@@ -121,9 +133,17 @@ void main() {
       find.byWidgetPredicate(
         (widget) =>
             widget is Hero &&
-            widget.tag == CourseHeroTags.progress('course-constitutional'),
+            widget.tag == CourseHeroTags.learningPath('course-constitutional'),
       ),
       findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Hero &&
+            widget.tag == CourseHeroTags.card('course-constitutional'),
+      ),
+      findsNothing,
     );
     expect(find.text('Droit administratif'), findsWidgets);
     expect(find.text('2 solides · 2 à renforcer'), findsOneWidget);

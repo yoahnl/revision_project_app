@@ -80,20 +80,36 @@ void main() {
 
     expect(find.text('Droit constitutionnel'), findsOneWidget);
     expect(find.byTooltip('Retour'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Hero && widget.tag == CourseHeroTags.navigationControl(),
+      ),
+      findsOneWidget,
+    );
     expect(find.byTooltip('Plus d’actions'), findsOneWidget);
     expect(
       find.byWidgetPredicate(
         (widget) =>
-            widget is Hero && widget.tag == CourseHeroTags.title('course-1'),
+            widget is Hero &&
+            widget.tag == CourseHeroTags.subjectOverview('subject-1'),
       ),
       findsOneWidget,
     );
     expect(
       find.byWidgetPredicate(
         (widget) =>
-            widget is Hero && widget.tag == CourseHeroTags.progress('course-1'),
+            widget is Hero &&
+            widget.tag == CourseHeroTags.learningPath('course-1'),
       ),
       findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Hero && widget.tag == CourseHeroTags.card('course-1'),
+      ),
+      findsNothing,
     );
     expect(find.byKey(const ValueKey('course-detail-luna')), findsOneWidget);
     expect(find.text('18%'), findsOneWidget);

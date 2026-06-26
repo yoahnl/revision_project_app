@@ -8,6 +8,7 @@ import 'package:Neralune/features/courses/application/courses_providers.dart';
 import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/presentation/subject_progress_page.dart';
 import 'package:Neralune/features/subjects/domain/subject.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_typography.dart';
 
 import '../../fakes/in_memory_courses_repository.dart';
 import '../../fakes/in_memory_subjects_repository.dart';
@@ -25,6 +26,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Progrès'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('Progrès')).style,
+      RevisionTypography.pageTitle,
+    );
     expect(
       find.text('Crée une matière pour suivre ta progression.'),
       findsOneWidget,

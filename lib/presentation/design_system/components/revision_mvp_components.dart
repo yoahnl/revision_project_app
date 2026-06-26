@@ -18,9 +18,13 @@ class RevisionPageScaffold extends StatelessWidget {
       RevisionSpacing.pageX,
       110,
     ),
-    this.maxWidth = 1280,
+    this.maxWidth = 620,
     super.key,
   });
+
+  static const double compactMaxWidth = 620;
+  static const double wideMaxWidth = 1560;
+  static const double wideBreakpoint = 1180;
 
   final List<Widget> children;
   final List<Widget> headerChildren;
@@ -31,6 +35,11 @@ class RevisionPageScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final effectiveMaxWidth =
+            maxWidth == compactMaxWidth &&
+                constraints.maxWidth >= wideBreakpoint
+            ? wideMaxWidth
+            : maxWidth;
         final resolvedPadding = padding.resolve(Directionality.of(context));
         final hasFixedHeader = headerChildren.isNotEmpty;
         final supportsFixedHeader =
@@ -42,7 +51,7 @@ class RevisionPageScaffold extends StatelessWidget {
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxWidth),
+              constraints: BoxConstraints(maxWidth: effectiveMaxWidth),
               // Keep the premium screens visually fixed when their content
               // fits, but still allow overflow content to move on shorter
               // panes. This avoids the "web page" feeling on normal screens
@@ -57,7 +66,7 @@ class RevisionPageScaffold extends StatelessWidget {
         return Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
+            constraints: BoxConstraints(maxWidth: effectiveMaxWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -106,6 +115,53 @@ class _SpacedColumn extends StatelessWidget {
         for (final child in children) ...[
           child,
           if (child != children.last) const SizedBox(height: RevisionSpacing.l),
+        ],
+      ],
+    );
+  }
+}
+
+class RevisionPageHeader extends StatelessWidget {
+  const RevisionPageHeader({
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = this.subtitle;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title, style: RevisionTypography.pageTitle),
+              if (subtitle != null && subtitle.isNotEmpty) ...[
+                const SizedBox(height: RevisionSpacing.xs),
+                Text(
+                  subtitle,
+                  style: RevisionTypography.body.copyWith(
+                    color: RevisionColors.textMuted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (trailing != null) ...[
+          const SizedBox(width: RevisionSpacing.m),
+          trailing!,
         ],
       ],
     );

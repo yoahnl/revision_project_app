@@ -72,6 +72,8 @@ class _CourseDetailContent extends ConsumerStatefulWidget {
 class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
   static const _pollInterval = Duration(seconds: 2);
   static const _pollTimeout = Duration(minutes: 2);
+  static const _entryRevealDelay = Duration(milliseconds: 220);
+  static const _exitRevealDelay = Duration(milliseconds: 220);
 
   Timer? _pollTimer;
   DateTime? _pollStartedAt;
@@ -80,16 +82,23 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
   DateTime? _questionPollStartedAt;
   int? _questionPollTarget;
   bool _questionPollTimedOut = false;
+  Timer? _entryRevealTimer;
+  bool _isExiting = false;
+  bool _showDetailContent = false;
 
   @override
   void initState() {
     super.initState();
+    _startEntryReveal();
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncPolling());
   }
 
   @override
   void didUpdateWidget(covariant _CourseDetailContent oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.detail.course.id != widget.detail.course.id) {
+      _startEntryReveal();
+    }
     _syncPolling();
   }
 
@@ -97,6 +106,7 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
   void dispose() {
     _stopPolling(resetTimeout: false);
     _stopQuestionPolling(resetTimeout: false);
+    _entryRevealTimer?.cancel();
     super.dispose();
   }
 
@@ -150,22 +160,42 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
 
     return RevisionPageScaffold(
       headerChildren: [
-        _CourseTopBar(detail: detail, visual: visual),
-        _CourseHeader(detail: detail, visual: visual, progress: progress),
+        _CourseTopBar(detail: detail, visual: visual, onBack: _exitToHome),
+        _CourseHeader(
+          detail: detail,
+          visual: visual,
+          progress: progress,
+          showContent: _showDetailContent,
+          revealDelay: const Duration(milliseconds: 40),
+        ),
       ],
       children: [
-        _CoursePrimaryAction(detail: detail, visual: visual),
-        _CourseLearningPath(
-          detail: detail,
-          visual: visual,
-          optionsState: ref.watch(courseRichRevisionOptionsProvider(course.id)),
+        _CourseDetailReveal(
+          visible: _showDetailContent,
+          delay: const Duration(milliseconds: 70),
+          child: _CoursePrimaryAction(detail: detail, visual: visual),
         ),
-        _CourseBottomActions(
-          detail: detail,
-          visual: visual,
-          hasReadySource: hasReadySource,
-          richOptionsState: ref.watch(
-            courseRichRevisionOptionsProvider(course.id),
+        _CourseDetailReveal(
+          visible: _showDetailContent,
+          delay: const Duration(milliseconds: 130),
+          child: _CourseLearningPath(
+            detail: detail,
+            visual: visual,
+            optionsState: ref.watch(
+              courseRichRevisionOptionsProvider(course.id),
+            ),
+          ),
+        ),
+        _CourseDetailReveal(
+          visible: _showDetailContent,
+          delay: const Duration(milliseconds: 190),
+          child: _CourseBottomActions(
+            detail: detail,
+            visual: visual,
+            hasReadySource: hasReadySource,
+            richOptionsState: ref.watch(
+              courseRichRevisionOptionsProvider(course.id),
+            ),
           ),
         ),
         if (_pollTimedOut)
@@ -184,6 +214,35 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
           ),
       ],
     );
+  }
+
+  void _startEntryReveal() {
+    _entryRevealTimer?.cancel();
+    _isExiting = false;
+    _showDetailContent = false;
+    _entryRevealTimer = Timer(_entryRevealDelay, () {
+      if (mounted) {
+        setState(() => _showDetailContent = true);
+      }
+    });
+  }
+
+  Future<void> _exitToHome() async {
+    if (_isExiting) {
+      return;
+    }
+
+    _entryRevealTimer?.cancel();
+    setState(() {
+      _isExiting = true;
+      _showDetailContent = false;
+    });
+
+    await Future<void>.delayed(_exitRevealDelay);
+
+    if (mounted) {
+      _popOrGo(context, AppRoutes.home);
+    }
   }
 
   void _syncPolling() {
@@ -279,20 +338,30 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
 }
 
 class _CourseTopBar extends ConsumerWidget {
-  const _CourseTopBar({required this.detail, required this.visual});
+  const _CourseTopBar({
+    required this.detail,
+    required this.visual,
+    required this.onBack,
+  });
 
   final CourseDetail detail;
   final RevisionSubjectVisualTheme visual;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
-        RevisionHeaderIconButton(
-          icon: Icons.arrow_back_rounded,
-          tooltip: 'Retour',
-          onPressed: () => _popOrGo(context, AppRoutes.home),
-          size: 44,
+        Hero(
+          tag: CourseHeroTags.navigationControl(),
+          flightShuttleBuilder: buildCourseNavigationControlHeroFlightShuttle,
+          transitionOnUserGestures: true,
+          child: RevisionHeaderIconButton(
+            icon: Icons.arrow_back_rounded,
+            tooltip: 'Retour',
+            onPressed: onBack,
+            size: 44,
+          ),
         ),
         Expanded(
           child: Align(
@@ -359,11 +428,15 @@ class _CourseHeader extends StatelessWidget {
     required this.detail,
     required this.visual,
     required this.progress,
+    required this.showContent,
+    required this.revealDelay,
   });
 
   final CourseDetail detail;
   final RevisionSubjectVisualTheme visual;
   final AsyncValue<CourseProgress> progress;
+  final bool showContent;
+  final Duration revealDelay;
 
   @override
   Widget build(BuildContext context) {
@@ -374,57 +447,117 @@ class _CourseHeader extends StatelessWidget {
         progressValue.knowledgeUnitCount > 0 &&
         progressValue.state == CourseProgressState.practiced;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return Hero(
+      tag: CourseHeroTags.subjectOverview(detail.subject.id),
+      flightShuttleBuilder: buildCourseCardHeroFlightShuttle,
+      transitionOnUserGestures: true,
+      child: RevisionGlassCard(
+        padding: const EdgeInsets.all(RevisionSpacing.l),
+        backgroundColor: RevisionColors.glassSoft,
+        child: _CourseDetailReveal(
+          visible: showContent,
+          delay: revealDelay,
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Hero(
-                tag: CourseHeroTags.title(course.id),
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: Text(
-                    course.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: RevisionTypography.pageTitle,
-                  ),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: RevisionTypography.pageTitle,
+                    ),
+                    const SizedBox(height: RevisionSpacing.xs),
+                    Text(
+                      detail.subject.name,
+                      style: RevisionTypography.caption.copyWith(
+                        color: RevisionColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: RevisionSpacing.xs),
-              Text(
-                detail.subject.name,
-                style: RevisionTypography.caption.copyWith(
-                  color: RevisionColors.textMuted,
+              const SizedBox(width: RevisionSpacing.m),
+              _CourseLuna(visual: visual),
+              if (hasReliableProgress) ...[
+                const SizedBox(width: RevisionSpacing.m),
+                RevisionMasteryRing(
+                  value: progressValue.estimatedGlobalMastery,
+                  label: _percent(progressValue.estimatedGlobalMastery),
+                  caption: 'maîtrisé',
+                  color: _progressColor(progressValue.state),
+                  size: 78,
                 ),
-              ),
+              ],
             ],
           ),
         ),
-        const SizedBox(width: RevisionSpacing.m),
-        _CourseLuna(visual: visual),
-        if (hasReliableProgress) ...[
-          const SizedBox(width: RevisionSpacing.m),
-          Hero(
-            tag: CourseHeroTags.progress(course.id),
-            child: Material(
-              type: MaterialType.transparency,
-              child: RevisionMasteryRing(
-                value: progressValue.estimatedGlobalMastery,
-                label: _percent(progressValue.estimatedGlobalMastery),
-                caption: 'maîtrisé',
-                color: _progressColor(progressValue.state),
-                size: 78,
-              ),
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
+}
+
+class _CourseDetailReveal extends StatelessWidget {
+  const _CourseDetailReveal({
+    required this.visible,
+    required this.child,
+    this.delay = Duration.zero,
+  });
+
+  static const _duration = Duration(milliseconds: 360);
+
+  final bool visible;
+  final Widget child;
+  final Duration delay;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return Opacity(opacity: visible ? 1 : 0, child: child);
+    }
+
+    final totalDuration = visible
+        ? _duration + delay
+        : const Duration(milliseconds: 220);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: visible ? 1 : 0),
+      duration: totalDuration,
+      curve: Curves.linear,
+      child: child,
+      builder: (context, value, child) {
+        final progress = visible
+            ? _delayedProgress(value, delay, totalDuration, _duration)
+            : value;
+        final eased = Curves.easeOutCubic.transform(progress);
+
+        return Transform.translate(
+          offset: Offset(0, (1 - eased) * 12),
+          child: Opacity(opacity: eased, child: child),
+        );
+      },
+    );
+  }
+}
+
+double _delayedProgress(
+  double value,
+  Duration delay,
+  Duration totalDuration,
+  Duration duration,
+) {
+  if (delay == Duration.zero) {
+    return value;
+  }
+
+  final elapsed = value * totalDuration.inMilliseconds;
+  return ((elapsed - delay.inMilliseconds) / duration.inMilliseconds)
+      .clamp(0.0, 1.0)
+      .toDouble();
 }
 
 class _CourseLuna extends StatelessWidget {
@@ -559,6 +692,16 @@ class _CourseLearningPath extends StatelessWidget {
     final options = optionsState.asData?.value;
     final scopes = options == null ? const [] : _usableScopes(options);
     final activeScopeId = options == null ? null : _activeScopeId(options);
+    Widget pathHeroCard({required Widget child, EdgeInsetsGeometry? padding}) {
+      return Hero(
+        tag: CourseHeroTags.learningPath(detail.course.id),
+        flightShuttleBuilder: buildCourseCardHeroFlightShuttle,
+        transitionOnUserGestures: true,
+        child: padding == null
+            ? RevisionGlassCard(child: child)
+            : RevisionGlassCard(padding: padding, child: child),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,14 +709,14 @@ class _CourseLearningPath extends StatelessWidget {
         Text('Parcours', style: RevisionTypography.sectionTitle),
         const SizedBox(height: RevisionSpacing.m),
         if (optionsState.isLoading && !optionsState.hasValue)
-          RevisionGlassCard(
+          pathHeroCard(
             child: Text(
               'Préparation du parcours du cours.',
               style: RevisionTypography.body,
             ),
           )
         else if (optionsState.hasError || scopes.isEmpty)
-          RevisionGlassCard(
+          pathHeroCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -590,7 +733,7 @@ class _CourseLearningPath extends StatelessWidget {
             ),
           )
         else
-          RevisionGlassCard(
+          pathHeroCard(
             padding: const EdgeInsets.symmetric(
               horizontal: RevisionSpacing.m,
               vertical: RevisionSpacing.s,

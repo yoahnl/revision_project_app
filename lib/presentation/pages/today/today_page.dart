@@ -21,7 +21,6 @@ class TodayPage extends ConsumerWidget {
     final notifier = ref.read(todayNotifierProvider.notifier);
 
     return RevisionPageScaffold(
-      maxWidth: 560,
       headerChildren: const [_TodayHeader()],
       children: [
         plan.when(
@@ -55,28 +54,10 @@ class _TodayHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final greeting = _timeGreeting(DateTime.now());
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(greeting, style: RevisionTypography.pageTitle),
-              const SizedBox(height: RevisionSpacing.xs),
-              Text(
-                'Ta session du jour',
-                style: RevisionTypography.sectionTitle.copyWith(
-                  color: RevisionColors.textMuted,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: RevisionSpacing.m),
-        const _StaticLuna(),
-      ],
+    return RevisionPageHeader(
+      title: greeting,
+      subtitle: 'Ta session du jour',
+      trailing: const _StaticLuna(),
     );
   }
 }

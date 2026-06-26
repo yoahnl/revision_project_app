@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:Neralune/app/di/providers.dart';
 import 'package:Neralune/features/auth/application/auth_controller.dart';
+import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_colors.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_shadows.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_spacing.dart';
@@ -16,7 +17,7 @@ class RevisionHomeShell extends ConsumerWidget {
   const RevisionHomeShell({super.key, required this.navigationShell});
 
   static const double _wideLayoutBreakpoint = 840;
-  static const double _maxContentWidth = 900;
+  static const double _maxContentWidth = RevisionPageScaffold.wideMaxWidth;
 
   final StatefulNavigationShell navigationShell;
 
@@ -99,36 +100,44 @@ class _WideHomeScaffold extends StatelessWidget {
         child: RevisionBackground(
           child: Row(
             children: [
+              RevisionNavigationRail(
+                selectedIndex: selectedIndex,
+                onDestinationSelected: onDestinationSelected,
+                destinations: _navigationDestinations,
+              ),
               Expanded(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Row(
-                      children: [
-                        RevisionNavigationRail(
-                          selectedIndex: selectedIndex,
-                          onDestinationSelected: onDestinationSelected,
-                          destinations: _navigationDestinations,
+                    Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: RevisionHomeShell._maxContentWidth,
                         ),
-                        Expanded(
+                        child: child,
+                      ),
+                    ),
+                    if (showProfileAction)
+                      Positioned(
+                        top: AppSpacing.l,
+                        left: 0,
+                        right: 0,
+                        child: Center(
                           child: Align(
                             alignment: Alignment.topCenter,
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(
                                 maxWidth: RevisionHomeShell._maxContentWidth,
                               ),
-                              child: child,
+                              child: Align(
+                                alignment: Alignment.topRight,
+                                child: _ProfileSheetButton(
+                                  authController: authController,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    if (showProfileAction)
-                      Positioned(
-                        top: AppSpacing.l,
-                        right: AppSpacing.l,
-                        child: _ProfileSheetButton(
-                          authController: authController,
                         ),
                       ),
                   ],

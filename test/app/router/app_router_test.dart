@@ -294,6 +294,10 @@ void main() {
     expect(harness.router.canPop(), isTrue);
 
     await tester.tap(find.byTooltip('Retour'));
+    await tester.pump(const Duration(milliseconds: 80));
+
+    expect(find.byTooltip('Plus d’actions'), findsOneWidget);
+
     await tester.pumpAndSettle();
 
     expect(

@@ -28,7 +28,6 @@ class CoursesHomePage extends ConsumerWidget {
 
     return subjects.when(
       loading: () => RevisionPageScaffold(
-        maxWidth: 620,
         headerChildren: [
           _CoursesHeader(onCreate: () => _showCreateSubjectSheet(context)),
         ],
@@ -37,7 +36,6 @@ class CoursesHomePage extends ConsumerWidget {
         ],
       ),
       error: (error, stackTrace) => RevisionPageScaffold(
-        maxWidth: 620,
         headerChildren: [
           _CoursesHeader(onCreate: () => _showCreateSubjectSheet(context)),
         ],
@@ -63,15 +61,18 @@ class _CoursesHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(child: Text('Cours', style: RevisionTypography.hero)),
-        RevisionHeaderIconButton(
+    return RevisionPageHeader(
+      title: 'Cours',
+      trailing: Hero(
+        tag: CourseHeroTags.navigationControl(),
+        flightShuttleBuilder: buildCourseNavigationControlHeroFlightShuttle,
+        transitionOnUserGestures: true,
+        child: RevisionHeaderIconButton(
           tooltip: 'Créer',
           icon: Icons.add_rounded,
           onPressed: onCreate,
         ),
-      ],
+      ),
     );
   }
 }
@@ -85,7 +86,6 @@ class _CoursesHomeContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (subjects.isEmpty) {
       return RevisionPageScaffold(
-        maxWidth: 620,
         headerChildren: [
           _CoursesHeader(onCreate: () => _showCreateSubjectSheet(context)),
         ],
@@ -109,7 +109,6 @@ class _CoursesHomeContent extends ConsumerWidget {
     final courses = ref.watch(coursesProvider(activeSubject.id));
 
     return RevisionPageScaffold(
-      maxWidth: 620,
       headerChildren: [
         _CoursesHeader(
           onCreate: () => _showCreateCourseSheet(context, activeSubject),
@@ -180,7 +179,7 @@ class _SubjectSelectorBlock extends StatelessWidget {
           loadedCourses == null
               ? 'Cours en préparation'
               : _subjectSummary(loadedCourses),
-          style: RevisionTypography.body.copyWith(fontSize: 18),
+          style: RevisionTypography.body,
         ),
       ],
     );
@@ -216,7 +215,11 @@ class _CourseList extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SubjectHeroCard(visual: visual, priorityCourse: priorityCourse),
+        _SubjectHeroCard(
+          subject: subject,
+          visual: visual,
+          priorityCourse: priorityCourse,
+        ),
         const SizedBox(height: RevisionSpacing.l),
         for (final course in courses) ...[
           _CourseRow(
@@ -232,66 +235,76 @@ class _CourseList extends ConsumerWidget {
 }
 
 class _SubjectHeroCard extends StatelessWidget {
-  const _SubjectHeroCard({required this.visual, required this.priorityCourse});
+  const _SubjectHeroCard({
+    required this.subject,
+    required this.visual,
+    required this.priorityCourse,
+  });
 
+  final Subject subject;
   final RevisionSubjectVisualTheme visual;
   final CourseListItem priorityCourse;
 
   @override
   Widget build(BuildContext context) {
-    return RevisionGlassCard(
-      padding: const EdgeInsets.all(RevisionSpacing.l),
-      borderColor: visual.accent.withValues(alpha: 0.48),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          visual.accent.withValues(alpha: 0.38),
-          RevisionColors.blueDeep.withValues(alpha: 0.20),
-          RevisionColors.glassStrong,
-        ],
-      ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 130),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -8,
-              bottom: -22,
-              child: Opacity(
-                opacity: 0.18,
-                child: SvgPicture.asset(
-                  'assets/brand/neralune_cat.svg',
-                  width: 126,
-                  height: 126,
+    return Hero(
+      tag: CourseHeroTags.subjectOverview(subject.id),
+      flightShuttleBuilder: buildCourseCardHeroFlightShuttle,
+      transitionOnUserGestures: true,
+      child: RevisionGlassCard(
+        padding: const EdgeInsets.all(RevisionSpacing.l),
+        borderColor: visual.accent.withValues(alpha: 0.48),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            visual.accent.withValues(alpha: 0.38),
+            RevisionColors.blueDeep.withValues(alpha: 0.20),
+            RevisionColors.glassStrong,
+          ],
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 130),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -8,
+                bottom: -22,
+                child: Opacity(
+                  opacity: 0.18,
+                  child: SvgPicture.asset(
+                    'assets/brand/neralune_cat.svg',
+                    width: 126,
+                    height: 126,
+                  ),
                 ),
               ),
-            ),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 280),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Réviser toute la matière',
-                    style: RevisionTypography.pageTitle.copyWith(fontSize: 21),
-                  ),
-                  const SizedBox(height: RevisionSpacing.s),
-                  Text(
-                    'On commence par ${priorityCourse.title}.',
-                    style: RevisionTypography.body.copyWith(fontSize: 14),
-                  ),
-                  const SizedBox(height: RevisionSpacing.m),
-                  RevisionLightButton(
-                    label: 'Commencer',
-                    icon: Icons.play_arrow_rounded,
-                    onPressed: () =>
-                        context.push(AppRoutes.course(priorityCourse.id)),
-                  ),
-                ],
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 280),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Réviser toute la matière',
+                      style: RevisionTypography.sectionTitle,
+                    ),
+                    const SizedBox(height: RevisionSpacing.s),
+                    Text(
+                      'On commence par ${priorityCourse.title}.',
+                      style: RevisionTypography.body.copyWith(fontSize: 14),
+                    ),
+                    const SizedBox(height: RevisionSpacing.m),
+                    RevisionLightButton(
+                      label: 'Commencer',
+                      icon: Icons.play_arrow_rounded,
+                      onPressed: () =>
+                          context.push(AppRoutes.course(priorityCourse.id)),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -311,67 +324,54 @@ class _CourseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RevisionGlassCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(
-        horizontal: RevisionSpacing.xl,
-        vertical: RevisionSpacing.l,
-      ),
-      backgroundColor: RevisionColors.glassSoft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 60),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Hero(
-                    tag: CourseHeroTags.title(course.id),
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: Text(
-                        course.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: RevisionTypography.sectionTitle.copyWith(
-                          fontSize: 22,
-                        ),
-                      ),
+    return Hero(
+      tag: CourseHeroTags.learningPath(course.id),
+      flightShuttleBuilder: buildCourseCardHeroFlightShuttle,
+      transitionOnUserGestures: true,
+      child: RevisionGlassCard(
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(
+          horizontal: RevisionSpacing.xl,
+          vertical: RevisionSpacing.l,
+        ),
+        backgroundColor: RevisionColors.glassSoft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 60),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: RevisionTypography.sectionTitle,
                     ),
-                  ),
-                  const SizedBox(height: RevisionSpacing.s),
-                  Text(
-                    _courseStatusLabel(course),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: RevisionTypography.body.copyWith(fontSize: 18),
-                  ),
-                ],
+                    const SizedBox(height: RevisionSpacing.s),
+                    Text(
+                      _courseStatusLabel(course),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: RevisionTypography.body,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: RevisionSpacing.m),
-            Hero(
-              tag: CourseHeroTags.progress(course.id),
-              child: Material(
-                type: MaterialType.transparency,
-                child: course.progress != null
-                    ? RevisionMasteryRing(
-                        value: course.progress!.estimatedGlobalMastery,
-                        label: _percent(
-                          course.progress!.estimatedGlobalMastery,
-                        ),
-                        color: visual.accent,
-                        size: 60,
-                      )
-                    : _NeutralProgressCircle(
-                        color: RevisionColors.borderBright,
-                      ),
-              ),
-            ),
-          ],
+              const SizedBox(width: RevisionSpacing.m),
+              course.progress != null
+                  ? RevisionMasteryRing(
+                      value: course.progress!.estimatedGlobalMastery,
+                      label: _percent(course.progress!.estimatedGlobalMastery),
+                      color: visual.accent,
+                      size: 60,
+                    )
+                  : _NeutralProgressCircle(color: RevisionColors.borderBright),
+            ],
+          ),
         ),
       ),
     );
