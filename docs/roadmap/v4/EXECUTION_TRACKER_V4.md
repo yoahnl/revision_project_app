@@ -14,6 +14,7 @@ Role du tracker :
 - Garder la trace des evidence packs attendus apres chaque lot.
 - Centraliser les decisions prises pendant l'execution.
 - Maintenir les risques ouverts et les prochains prompts a lancer.
+- Respecter le verrou MVP demo defini dans `docs/roadmap/v4/MVP_DEMO_LOCK.md`.
 
 Regle de mise a jour :
 
@@ -115,20 +116,33 @@ Difference entre roadmap canonique et tracker :
 
 ## 6. Next recommended lots
 
-1. `V4-03B` — Sélecteur matière et action “Réviser toute la matière”
-   - Pourquoi maintenant : le learning path detail cours est branche ; il reste a renforcer l'entree matiere depuis la bibliotheque Cours.
-   - Ne doit pas faire : brancher Study Session V4.
-   - Risque principal : exposer trop tot des actions qui dependent du duration picker.
+Verrou `LOCK-01` : jusqu'a la demo, les prochains lots autorises sont limites au couloir `DEMO-01` a `DEMO-05` de `docs/roadmap/v4/MVP_DEMO_LOCK.md`.
 
-2. `V4-05A` — Duration picker 5/15/30
-   - Pourquoi maintenant : preparer l'entree session apres avoir recadre Cours et le parcours.
+1. `DEMO-01` — Brancher le learning path dans le détail cours
+   - Correspondance : `V4-04B — Learning path frontend timeline`.
+   - Statut : deja livre au moment du lock ; ce lot devient le premier jalon demo verrouille.
+   - Ne doit pas faire : ajouter session V4, duration picker, backend ou refonte Cours.
+
+2. `DEMO-02` — Choix durée simple 5 / 15 / 30
+   - Correspondance : `V4-05A — Duration picker 5/15/30`.
+   - Pourquoi maintenant : c'est le prochain lot executable apres le learning path.
    - Ne doit pas faire : creer la facade `/study-sessions`.
    - Risque principal : exposer trop tot des choix qui dependent encore du backend session.
 
-3. `V4-05B` — Study Session V4 backend façade
-   - Pourquoi ensuite : le duration picker aura besoin d'une facade session qui masque les moteurs legacy.
-   - Ne doit pas faire : supprimer quick/rich/deep/exam avant compatibilite.
-   - Risque principal : tenter un big bang au lieu d'adapter les moteurs existants.
+3. `DEMO-03` — Session immersive quick-only
+   - Correspondance : version reduite de `V4-05C — Study Session V4 frontend shell`.
+   - Pourquoi ensuite : rendre la session montrable sans attendre un planner complet.
+   - Ne doit pas faire : QCM complet, question ouverte, mode examen, nouveau backend sauf blocage reel.
+
+4. `DEMO-04` — Feedback + bilan propre
+   - Correspondance : version reduite de `V4-06B / V4-06C`.
+   - Pourquoi ensuite : terminer la boucle apprendre-comprendre-continuer.
+   - Ne doit pas faire : feedback IA complexe si les corrections existantes suffisent.
+
+5. `DEMO-05` — Polish démo + Luna légère
+   - Correspondance : `V4-10A-lite / V4-11A-lite`.
+   - Pourquoi ensuite : stabiliser le couloir demo sans rouvrir de grands chantiers.
+   - Ne doit pas faire : mascot system complet, nouvel asset, animation infinie.
 
 ## 7. Evidence pack convention
 
@@ -187,6 +201,7 @@ Ne pas creer les evidence packs en avance. Ils sont crees uniquement a la fin du
 | 2026-06-26 | Le learning path devient un endpoint dedie `/courses/:courseId/learning-path`. | Accepted | `/progress` reste agrege et ne doit pas etre casse ; la timeline a besoin d'un contrat par notion. | Ajout d'un contrat backend avec nodes reels, states issus de `MasteryState`, active node, primary action et empty states. | `V4-04B`. |
 | 2026-06-26 | Le frontend ne recalcule pas les etats du learning path. | Accepted | Le backend `V4-04A` fournit deja `node.state`; recalculer cote Flutter risquerait des incoherences produit. | Flutter parse les enums avec fallback `unknown` et mappe seulement les couleurs/icones. | `V4-04B`. |
 | 2026-06-26 | Le CTA principal du detail cours utilise `primaryAction` backend. | Accepted | La page doit refleter l'action recommandee par le contrat learning path, sans recreer un planner local. | `CourseDetailPage` affiche `primaryAction.label/description` et branche les actions existantes fiables. | `V4-03B`, `V4-05A`. |
+| 2026-06-26 | `LOCK-01` verrouille le MVP demo autour de cinq lots maximum. | Accepted | La V4 risque de s'etendre vers trop de surfaces avant une demo convaincante. | Creation de `MVP_DEMO_LOCK.md`; les prochains prompts doivent suivre `DEMO-01` a `DEMO-05` et refuser le scope creep. | Apres demo MVP. |
 
 ## 9. Open risks
 
@@ -214,6 +229,7 @@ Ne pas creer les evidence packs en avance. Ils sont crees uniquement a la fin du
 | `R-V4-020` | Le detail cours n'a pas encore de vrai learning path avec etats par notion. | High | Frontend + API | Contrat backend livre en `V4-04A` et timeline frontend branchee en `V4-04B`. | `V4-04B` | Mitigated |
 | `R-V4-021` | Les modes et historiques sont accessibles en menu secondaire mais restent legacy dans leur presentation. | Medium | Frontend | Garder l'acces pour compatibilite, puis auditer/masquer proprement au hardening. | `V4-11A` | Open |
 | `R-V4-022` | Le frontend ne consomme pas encore `/courses/:courseId/learning-path`. | Medium | Frontend + API | Repository, model, provider et `CourseDetailPage` branches en `V4-04B`. | `V4-04B` | Mitigated |
+| `R-V4-023` | Scope creep V4 avant demo. | High | Product + Frontend + API | `LOCK-01` limite les prochains lots a `DEMO-01`...`DEMO-05` et reporte sujet long, epreuve blanche, progres avance et mascot system complet. | `MVP_DEMO_LOCK.md` | Mitigated |
 
 ## 10. Update protocol
 
@@ -263,10 +279,11 @@ Etat initial au 2026-06-26 :
 - `V4-03C` est realise : le detail cours est simplifie autour d'un CTA, d'un parcours honnete et d'actions basses ; historique et modes sont deplaces dans le menu secondaire.
 - `V4-04A` est realise : l'API expose `/courses/:courseId/learning-path` avec nodes reels, states par notion, active node, primary action et empty states.
 - `V4-04B` est realise : Flutter consomme `/courses/:courseId/learning-path`, remplace la timeline provisoire et utilise les nodes/states/active node/primary action/empty state backend.
+- `LOCK-01` est realise : `MVP_DEMO_LOCK.md` verrouille le couloir de demo et limite les prochains lots autorises a `DEMO-01`...`DEMO-05`.
 - La Phase 1 est terminee.
 - La Phase 2 est terminee.
 - La Phase 3 est `IN_PROGRESS`.
-- Le prochain lot recommande est `V4-03B`.
+- Le prochain lot recommande sous verrou demo est `DEMO-02`, car `DEMO-01` correspond a `V4-04B` deja livre.
 - La Phase 4 est terminee ; les phases produit apres Phase 4 restent `NOT_STARTED`.
 - Aucun fichier Prisma n'a ete modifie par les lots V4 livres ; `V4-02B` modifie uniquement le backend Today, `V4-02C` uniquement le frontend Today/documentation et `V4-04A` uniquement le backend Courses/documentation.
 
@@ -298,5 +315,6 @@ Points a surveiller :
 - `V4-03A` livre la bibliotheque Cours V4, mais l'action matiere reste une navigation vers le cours prioritaire tant que le duration picker et la session subject-level n'existent pas.
 - `V4-03C` rapproche le detail cours de la reference, mais le vrai statut par notion manque encore ; la timeline reste donc volontairement prudente.
 - `V4-04B` consomme le contrat learning path, mais l'action notion-specific reste limitee par les routes legacy tant que Study Session V4 n'existe pas.
+- `LOCK-01` introduit une double nomenclature temporaire `DEMO-*` / `V4-*` ; les prompts doivent toujours citer la correspondance pour eviter la confusion.
 - Les lots backend API sont references meme si le repository concerne par ce fichier est le frontend ; cela reste necessaire car la roadmap V4 depend explicitement du backend.
 - Le decoupage `V4-01A`, `V4-01B`, etc. simplifie le pilotage par rapport aux IDs bruts du backlog canonique ; il ne doit pas faire oublier les tickets detailles de la roadmap source.
