@@ -1,8 +1,19 @@
 class TodayPlan {
-  const TodayPlan({required this.generatedAt, required this.items});
+  const TodayPlan({
+    required this.generatedAt,
+    required this.items,
+    this.primaryItemId,
+    this.continuationItemIds = const [],
+    this.weeklyObjective,
+    this.emptyState,
+  });
 
   final DateTime generatedAt;
   final List<TodayPlanItem> items;
+  final String? primaryItemId;
+  final List<String> continuationItemIds;
+  final TodayWeeklyObjective? weeklyObjective;
+  final TodayEmptyState? emptyState;
 
   int get totalEstimatedMinutes {
     return items.fold(0, (total, item) => total + item.estimatedMinutes);
@@ -27,6 +38,64 @@ enum TodayPlanReasonCode {
 }
 
 enum TodayPlanPreferredAction { diagnosticQuiz, openQuestion }
+
+enum TodayPlanItemRole { primary, continuation }
+
+enum TodayWeeklyObjectiveStatus { targetOnly, progressAvailable }
+
+enum TodayEmptyActionKind { openCourses }
+
+class TodayWeeklyObjective {
+  const TodayWeeklyObjective({
+    required this.targetMinutes,
+    required this.completedMinutes,
+    required this.progressRatio,
+    required this.label,
+    required this.status,
+  });
+
+  final int targetMinutes;
+  final int? completedMinutes;
+  final double? progressRatio;
+  final String label;
+  final TodayWeeklyObjectiveStatus status;
+}
+
+class TodayEmptyState {
+  const TodayEmptyState({
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.actionKind,
+  });
+
+  final String title;
+  final String message;
+  final String actionLabel;
+  final TodayEmptyActionKind actionKind;
+}
+
+class TodayPlanItemDisplay {
+  const TodayPlanItemDisplay({
+    required this.title,
+    required this.subjectLabel,
+    required this.badgeLabel,
+    required this.durationLabel,
+    required this.metaLabel,
+    required this.recommendation,
+    required this.actionLabel,
+    required this.unavailableReason,
+  });
+
+  final String title;
+  final String subjectLabel;
+  final String badgeLabel;
+  final String? durationLabel;
+  final String metaLabel;
+  final String recommendation;
+  final String actionLabel;
+  final String? unavailableReason;
+}
 
 class TodayPlanStartPayload {
   const TodayPlanStartPayload({
@@ -57,6 +126,8 @@ class TodayPlanItem {
     required this.reasonCode,
     required this.reason,
     required this.startPayload,
+    this.role,
+    this.display,
   });
 
   final String id;
@@ -72,4 +143,6 @@ class TodayPlanItem {
   final TodayPlanReasonCode reasonCode;
   final String reason;
   final TodayPlanStartPayload startPayload;
+  final TodayPlanItemRole? role;
+  final TodayPlanItemDisplay? display;
 }

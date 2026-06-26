@@ -30,7 +30,9 @@ void main() {
     addTearDown(router.dispose);
     await tester.pump();
 
-    expect(find.text('Aujourd’hui'), findsOneWidget);
+    expect(find.text('Aujourd’hui'), findsNothing);
+    expect(_findGreeting(), findsOneWidget);
+    expect(find.byKey(const ValueKey('today-luna-static')), findsOneWidget);
     expect(find.text('Rien de prêt pour aujourd’hui'), findsOneWidget);
     expect(
       find.text(
@@ -39,7 +41,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Voir mes cours'), findsOneWidget);
-    expect(find.text('Ta session du jour'), findsNothing);
+    expect(find.text('Ta session du jour'), findsOneWidget);
     expect(find.text('Réviser maintenant'), findsNothing);
 
     await tester.tap(find.text('Voir mes cours'));
@@ -77,7 +79,9 @@ void main() {
     await tester.pumpWidget(_buildApp(repository: repository));
     await tester.pump();
 
-    expect(find.text('Aujourd’hui'), findsOneWidget);
+    expect(find.text('Aujourd’hui'), findsNothing);
+    expect(_findGreeting(), findsOneWidget);
+    expect(find.byKey(const ValueKey('today-luna-static')), findsOneWidget);
     expect(find.text('Ta session du jour'), findsOneWidget);
     expect(find.text('ANATOMIE'), findsOneWidget);
     expect(find.text('Cycle cardiaque'), findsOneWidget);
@@ -89,8 +93,12 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Réviser maintenant'), findsOneWidget);
+    expect(find.text('Changer de cours'), findsOneWidget);
+    expect(find.text('Objectif de la semaine'), findsOneWidget);
+    expect(find.text('Objectif : 4 h cette semaine'), findsOneWidget);
+    expect(find.text('3 / 4'), findsNothing);
     expect(find.text('Continuer'), findsOneWidget);
-    expect(find.text('Valves'), findsWidgets);
+    expect(find.text('Valves'), findsOneWidget);
   });
 
   testWidgets('masque le jargon technique Today', (tester) async {
@@ -224,6 +232,17 @@ void main() {
   });
 }
 
+Finder _findGreeting() {
+  return find.byWidgetPredicate(
+    (widget) =>
+        widget is Text &&
+        widget.data != null &&
+        (widget.data!.startsWith('Bonjour') ||
+            widget.data!.startsWith('Bonsoir')),
+    description: 'Bonjour/Bonsoir greeting',
+  );
+}
+
 Widget _buildApp({required InMemoryTodayRepository repository}) {
   final router = _router(repository);
   return _buildScopedApp(repository: repository, router: router);
@@ -296,6 +315,25 @@ const _forbiddenTodayLabels = [
 TodayPlan todayPlan() {
   return TodayPlan(
     generatedAt: DateTime.parse('2026-06-15T10:00:00.000Z'),
+    primaryItemId: 'subject-1:unit-1:diagnostic_quiz',
+    continuationItemIds: const [
+      'subject-1:unit-2:open_question',
+      'subject-1:unit-2:rich_closed_exercise',
+    ],
+    weeklyObjective: const TodayWeeklyObjective(
+      targetMinutes: 240,
+      completedMinutes: null,
+      progressRatio: null,
+      label: 'Objectif : 4 h cette semaine',
+      status: TodayWeeklyObjectiveStatus.targetOnly,
+    ),
+    emptyState: const TodayEmptyState(
+      title: 'Rien de prêt pour aujourd’hui',
+      message:
+          'Ajoute un cours ou une source pour que Neralune prépare ta prochaine session.',
+      actionLabel: 'Voir mes cours',
+      actionKind: TodayEmptyActionKind.openCourses,
+    ),
     items: [
       const TodayPlanItem(
         id: 'subject-1:unit-1:diagnostic_quiz',
@@ -313,6 +351,18 @@ TodayPlan todayPlan() {
           subjectId: 'subject-1',
           knowledgeUnitId: 'unit-1',
           preferredAction: TodayPlanPreferredAction.diagnosticQuiz,
+        ),
+        role: TodayPlanItemRole.primary,
+        display: TodayPlanItemDisplay(
+          title: 'Cycle cardiaque',
+          subjectLabel: 'Anatomie',
+          badgeLabel: 'ANATOMIE',
+          durationLabel: '12 min',
+          metaLabel: '12 min · session guidée',
+          recommendation:
+              'Cette notion semble fragile : la revoir maintenant aidera à consolider tes bases.',
+          actionLabel: 'Réviser maintenant',
+          unavailableReason: null,
         ),
       ),
       openQuestionItem(),
@@ -336,6 +386,18 @@ TodayPlanItem revisionSessionItem() {
     reasonCode: TodayPlanReasonCode.startRevisionSession,
     reason: 'Lance une session guidée.',
     startPayload: TodayPlanStartPayload(subjectId: 'subject-2'),
+    role: TodayPlanItemRole.continuation,
+    display: TodayPlanItemDisplay(
+      title: 'Droit',
+      subjectLabel: 'Droit',
+      badgeLabel: 'DROIT',
+      durationLabel: '25 min',
+      metaLabel: '25 min · session guidée',
+      recommendation:
+          'Neralune a assez de contexte pour te guider sans te disperser.',
+      actionLabel: 'Continuer',
+      unavailableReason: null,
+    ),
   );
 }
 
@@ -357,6 +419,17 @@ TodayPlanItem richClosedItem() {
       subjectId: 'subject-1',
       documentId: 'document-1',
       knowledgeUnitId: 'unit-2',
+    ),
+    role: TodayPlanItemRole.continuation,
+    display: TodayPlanItemDisplay(
+      title: 'Valves',
+      subjectLabel: 'Anatomie',
+      badgeLabel: 'ANATOMIE',
+      durationLabel: '8 min',
+      metaLabel: '8 min · session guidée',
+      recommendation: 'Cette notion mérite une session cadrée avec feedback.',
+      actionLabel: 'Continuer',
+      unavailableReason: null,
     ),
   );
 }
@@ -382,5 +455,16 @@ TodayPlanItem openQuestionItem({
     reasonCode: TodayPlanReasonCode.mixActivityType,
     reason: 'Change de format.',
     startPayload: startPayload,
+    role: TodayPlanItemRole.continuation,
+    display: const TodayPlanItemDisplay(
+      title: 'Valves',
+      subjectLabel: 'Anatomie',
+      badgeLabel: 'ANATOMIE',
+      durationLabel: '18 min',
+      metaLabel: '18 min · session guidée',
+      recommendation: 'Changer d’angle peut t’aider à mieux ancrer la notion.',
+      actionLabel: 'Continuer',
+      unavailableReason: null,
+    ),
   );
 }

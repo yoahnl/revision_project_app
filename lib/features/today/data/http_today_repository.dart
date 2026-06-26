@@ -49,8 +49,14 @@ class _TodayPlanJson {
 
     final generatedAt = json['generatedAt'];
     final items = json['items'];
+    final primaryItemId = json['primaryItemId'];
+    final continuationItemIds = json['continuationItemIds'];
+    final weeklyObjective = json['weeklyObjective'];
+    final emptyState = json['emptyState'];
 
-    if (generatedAt is! String || items is! List) {
+    if (generatedAt is! String ||
+        items is! List ||
+        (primaryItemId != null && primaryItemId is! String)) {
       throw const FormatException('Invalid today response');
     }
 
@@ -64,6 +70,10 @@ class _TodayPlanJson {
       items: items
           .map((item) => _TodayPlanItemJson(item).toItem())
           .toList(growable: false),
+      primaryItemId: _trimOptionalString(primaryItemId as String?),
+      continuationItemIds: _parseStringList(continuationItemIds),
+      weeklyObjective: _TodayWeeklyObjectiveJson(weeklyObjective).toObjective(),
+      emptyState: _TodayEmptyStateJson(emptyState).toEmptyState(),
     );
   }
 }
@@ -93,6 +103,8 @@ class _TodayPlanItemJson {
     final reasonCode = json['reasonCode'];
     final reason = json['reason'];
     final startPayload = json['startPayload'];
+    final role = json['role'];
+    final display = json['display'];
 
     if (id is! String ||
         subjectId is! String ||
@@ -105,7 +117,8 @@ class _TodayPlanItemJson {
         estimatedMinutes is! int ||
         priority is! int ||
         reasonCode is! String ||
-        reason is! String) {
+        reason is! String ||
+        (role != null && role is! String)) {
       throw const FormatException('Invalid today item response');
     }
 
@@ -140,6 +153,8 @@ class _TodayPlanItemJson {
       reasonCode: _parseReasonCode(reasonCode),
       reason: reason,
       startPayload: parsedStartPayload,
+      role: role == null ? null : _parseRole(role as String),
+      display: _TodayPlanItemDisplayJson(display).toDisplay(),
     );
   }
 
@@ -163,6 +178,152 @@ class _TodayPlanItemJson {
       'START_REVISION_SESSION' => TodayPlanReasonCode.startRevisionSession,
       'CONTINUE_PROGRESS' => TodayPlanReasonCode.continueProgress,
       _ => throw const FormatException('Invalid today reason code'),
+    };
+  }
+
+  TodayPlanItemRole _parseRole(String value) {
+    return switch (value) {
+      'PRIMARY' => TodayPlanItemRole.primary,
+      'CONTINUATION' => TodayPlanItemRole.continuation,
+      _ => throw const FormatException('Invalid today item role'),
+    };
+  }
+}
+
+class _TodayPlanItemDisplayJson {
+  const _TodayPlanItemDisplayJson(this.value);
+
+  final Object? value;
+
+  TodayPlanItemDisplay? toDisplay() {
+    final json = value;
+    if (json == null) {
+      return null;
+    }
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid today item display');
+    }
+
+    final title = json['title'];
+    final subjectLabel = json['subjectLabel'];
+    final badgeLabel = json['badgeLabel'];
+    final durationLabel = json['durationLabel'];
+    final metaLabel = json['metaLabel'];
+    final recommendation = json['recommendation'];
+    final actionLabel = json['actionLabel'];
+    final unavailableReason = json['unavailableReason'];
+
+    if (title is! String ||
+        subjectLabel is! String ||
+        badgeLabel is! String ||
+        (durationLabel != null && durationLabel is! String) ||
+        metaLabel is! String ||
+        recommendation is! String ||
+        actionLabel is! String ||
+        (unavailableReason != null && unavailableReason is! String)) {
+      throw const FormatException('Invalid today item display');
+    }
+
+    return TodayPlanItemDisplay(
+      title: title,
+      subjectLabel: subjectLabel,
+      badgeLabel: badgeLabel,
+      durationLabel: _trimOptionalString(durationLabel as String?),
+      metaLabel: metaLabel,
+      recommendation: recommendation,
+      actionLabel: actionLabel,
+      unavailableReason: _trimOptionalString(unavailableReason as String?),
+    );
+  }
+}
+
+class _TodayWeeklyObjectiveJson {
+  const _TodayWeeklyObjectiveJson(this.value);
+
+  final Object? value;
+
+  TodayWeeklyObjective? toObjective() {
+    final json = value;
+    if (json == null) {
+      return null;
+    }
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid today weekly objective');
+    }
+
+    final targetMinutes = json['targetMinutes'];
+    final completedMinutes = json['completedMinutes'];
+    final progressRatio = json['progressRatio'];
+    final label = json['label'];
+    final status = json['status'];
+
+    if (targetMinutes is! int ||
+        (completedMinutes != null && completedMinutes is! int) ||
+        (progressRatio != null && progressRatio is! num) ||
+        label is! String ||
+        status is! String) {
+      throw const FormatException('Invalid today weekly objective');
+    }
+
+    return TodayWeeklyObjective(
+      targetMinutes: targetMinutes,
+      completedMinutes: completedMinutes as int?,
+      progressRatio: (progressRatio as num?)?.toDouble(),
+      label: label,
+      status: _parseStatus(status),
+    );
+  }
+
+  TodayWeeklyObjectiveStatus _parseStatus(String value) {
+    return switch (value) {
+      'TARGET_ONLY' => TodayWeeklyObjectiveStatus.targetOnly,
+      'PROGRESS_AVAILABLE' => TodayWeeklyObjectiveStatus.progressAvailable,
+      _ => throw const FormatException('Invalid today weekly objective status'),
+    };
+  }
+}
+
+class _TodayEmptyStateJson {
+  const _TodayEmptyStateJson(this.value);
+
+  final Object? value;
+
+  TodayEmptyState? toEmptyState() {
+    final json = value;
+    if (json == null) {
+      return null;
+    }
+
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('Invalid today empty state');
+    }
+
+    final title = json['title'];
+    final message = json['message'];
+    final actionLabel = json['actionLabel'];
+    final actionKind = json['actionKind'];
+
+    if (title is! String ||
+        message is! String ||
+        actionLabel is! String ||
+        actionKind is! String) {
+      throw const FormatException('Invalid today empty state');
+    }
+
+    return TodayEmptyState(
+      title: title,
+      message: message,
+      actionLabel: actionLabel,
+      actionKind: _parseActionKind(actionKind),
+    );
+  }
+
+  TodayEmptyActionKind _parseActionKind(String value) {
+    return switch (value) {
+      'OPEN_COURSES' => TodayEmptyActionKind.openCourses,
+      _ => throw const FormatException('Invalid today empty action kind'),
     };
   }
 }
@@ -218,4 +379,24 @@ class _TodayPlanStartPayloadJson {
 String? _trimOptionalString(String? value) {
   final trimmedValue = value?.trim();
   return trimmedValue == null || trimmedValue.isEmpty ? null : trimmedValue;
+}
+
+List<String> _parseStringList(Object? value) {
+  if (value == null) {
+    return const [];
+  }
+
+  if (value is! List) {
+    throw const FormatException('Invalid today string list');
+  }
+
+  return value
+      .map((item) {
+        if (item is! String) {
+          throw const FormatException('Invalid today string list');
+        }
+
+        return item;
+      })
+      .toList(growable: false);
 }
