@@ -136,18 +136,19 @@ void main() {
 
     expect(find.byType(BottomSheet), findsOneWidget);
     expect(find.text('Profil'), findsOneWidget);
-    expect(find.byType(RevisionBottomNavigation), findsOneWidget);
-    expect(find.byType(RevisionNavigationRail), findsNothing);
-
-    await tester.tap(find.widgetWithText(ListTile, 'Profil'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Profil'), findsOneWidget);
     expect(
       find.text('Gère ton compte et tes préférences d’affichage.'),
       findsOneWidget,
     );
-    expect(find.byType(RevisionBottomNavigation), findsNothing);
+    expect(find.text('Karim'), findsOneWidget);
+    expect(find.text('student@example.com'), findsOneWidget);
+    expect(find.text('Thème'), findsOneWidget);
+    expect(find.text('Se déconnecter'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('profile-sheet-profile-action')),
+      findsNothing,
+    );
+    expect(find.byType(RevisionBottomNavigation), findsOneWidget);
     expect(find.byType(RevisionNavigationRail), findsNothing);
   });
 

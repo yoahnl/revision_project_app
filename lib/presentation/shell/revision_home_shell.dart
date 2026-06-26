@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:Neralune/app/router/app_routes.dart';
+import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/features/auth/application/auth_controller.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_colors.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_shadows.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_spacing.dart';
+import 'package:Neralune/presentation/design_system/tokens/revision_typography.dart';
+import 'package:Neralune/presentation/pages/profile/profile_page.dart';
 import 'package:Neralune/presentation/theme/app_spacing.dart';
 import 'package:Neralune/presentation/widgets/revision_background.dart';
 import 'package:Neralune/presentation/widgets/revision_navigation.dart';
 
-class RevisionHomeShell extends StatelessWidget {
+class RevisionHomeShell extends ConsumerWidget {
   const RevisionHomeShell({super.key, required this.navigationShell});
 
   static const double _wideLayoutBreakpoint = 840;
@@ -22,19 +27,17 @@ class RevisionHomeShell extends StatelessWidget {
     );
   }
 
-  void _openProfile(BuildContext context) {
-    context.push(AppRoutes.profile);
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authController = ref.read(authControllerProvider);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= _wideLayoutBreakpoint) {
           return _WideHomeScaffold(
             selectedIndex: navigationShell.currentIndex,
             onDestinationSelected: _goToDestination,
-            onProfileSelected: () => _openProfile(context),
+            authController: authController,
             child: navigationShell,
           );
         }
@@ -51,9 +54,7 @@ class RevisionHomeShell extends StatelessWidget {
                   Positioned(
                     right: AppSpacing.l,
                     top: AppSpacing.l,
-                    child: _ProfileMenuButton(
-                      onProfileSelected: () => _openProfile(context),
-                    ),
+                    child: _ProfileSheetButton(authController: authController),
                   ),
                 ],
               ),
@@ -74,13 +75,13 @@ class _WideHomeScaffold extends StatelessWidget {
   const _WideHomeScaffold({
     required this.selectedIndex,
     required this.onDestinationSelected,
-    required this.onProfileSelected,
+    required this.authController,
     required this.child,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
-  final VoidCallback onProfileSelected;
+  final AuthController authController;
   final Widget child;
 
   @override
@@ -118,8 +119,8 @@ class _WideHomeScaffold extends StatelessWidget {
                     Positioned(
                       top: AppSpacing.l,
                       right: AppSpacing.l,
-                      child: _ProfileMenuButton(
-                        onProfileSelected: onProfileSelected,
+                      child: _ProfileSheetButton(
+                        authController: authController,
                       ),
                     ),
                   ],
@@ -151,25 +152,19 @@ const List<RevisionNavigationDestination> _navigationDestinations = [
   ),
 ];
 
-class _ProfileMenuButton extends StatelessWidget {
-  const _ProfileMenuButton({required this.onProfileSelected});
+class _ProfileSheetButton extends StatelessWidget {
+  const _ProfileSheetButton({required this.authController});
 
-  final VoidCallback onProfileSelected;
+  final AuthController authController;
 
   void _openSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.46),
-      builder: (sheetContext) {
-        return _ProfileBottomSheet(
-          onProfileSelected: () {
-            Navigator.of(sheetContext).pop();
-            onProfileSelected();
-          },
-        );
-      },
+      builder: (_) => _ProfileBottomSheet(authController: authController),
     );
   }
 
@@ -199,9 +194,9 @@ class _ProfileMenuButton extends StatelessWidget {
 }
 
 class _ProfileBottomSheet extends StatelessWidget {
-  const _ProfileBottomSheet({required this.onProfileSelected});
+  const _ProfileBottomSheet({required this.authController});
 
-  final VoidCallback onProfileSelected;
+  final AuthController authController;
 
   @override
   Widget build(BuildContext context) {
@@ -214,65 +209,38 @@ class _ProfileBottomSheet extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            AppSpacing.m,
-            AppSpacing.xl,
-            AppSpacing.xl,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: RevisionColors.borderBright,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const SizedBox(width: 42, height: 4),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Text(
-                'Compte',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: RevisionColors.text,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.m),
-              Material(
-                color: Colors.transparent,
-                child: ListTile(
-                  key: const ValueKey('profile-sheet-profile-action'),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    side: const BorderSide(color: RevisionColors.border),
-                  ),
-                  tileColor: RevisionColors.glassStrong,
-                  leading: const Icon(
-                    Icons.person_outline_rounded,
-                    color: RevisionColors.textMuted,
-                  ),
-                  title: Text(
-                    'Profil',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: RevisionColors.text,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0,
+        child: FractionallySizedBox(
+          heightFactor: 0.82,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.m,
+              AppSpacing.xl,
+              AppSpacing.xl,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: RevisionColors.borderBright,
+                      borderRadius: BorderRadius.circular(999),
                     ),
+                    child: const SizedBox(width: 42, height: 4),
                   ),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: RevisionColors.textMuted,
-                  ),
-                  onTap: onProfileSelected,
                 ),
-              ),
-            ],
+                const SizedBox(height: RevisionSpacing.xl),
+                const Text('Profil', style: RevisionTypography.pageTitle),
+                const SizedBox(height: RevisionSpacing.xs),
+                const Text(
+                  'Gère ton compte et tes préférences d’affichage.',
+                  style: RevisionTypography.body,
+                ),
+                const SizedBox(height: RevisionSpacing.l),
+                ProfileContent(authController: authController),
+              ],
+            ),
           ),
         ),
       ),

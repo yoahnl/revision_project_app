@@ -13,6 +13,26 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return RevisionPageScaffold(
+      headerChildren: const [
+        Text('Profil', style: RevisionTypography.pageTitle),
+        Text(
+          'Gère ton compte et tes préférences d’affichage.',
+          style: RevisionTypography.body,
+        ),
+      ],
+      children: [ProfileContent(authController: authController)],
+    );
+  }
+}
+
+class ProfileContent extends StatelessWidget {
+  const ProfileContent({required this.authController, super.key});
+
+  final AuthController authController;
+
+  @override
+  Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: authController,
       builder: (context, _) {
@@ -23,14 +43,8 @@ class ProfilePage extends StatelessWidget {
             : displayName;
         final secondaryLabel = user?.email ?? user?.uid ?? 'Compte connecté';
 
-        return RevisionPageScaffold(
-          headerChildren: const [
-            Text('Profil', style: RevisionTypography.pageTitle),
-            Text(
-              'Gère ton compte et tes préférences d’affichage.',
-              style: RevisionTypography.body,
-            ),
-          ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             RevisionGlassCard(
               padding: const EdgeInsets.all(RevisionSpacing.l),
@@ -67,6 +81,7 @@ class ProfilePage extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: RevisionSpacing.l),
             RevisionGlassCard(
               padding: const EdgeInsets.all(RevisionSpacing.l),
               child: Column(
@@ -83,6 +98,7 @@ class ProfilePage extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: RevisionSpacing.l),
             RevisionActionListTile(
               onTap: authController.isBusy ? null : authController.signOut,
               enabled: !authController.isBusy,
