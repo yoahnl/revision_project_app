@@ -50,9 +50,9 @@ class RevisionHomeShell extends StatelessWidget {
                   navigationShell,
                   Positioned(
                     right: AppSpacing.l,
-                    bottom: 88,
-                    child: _ProfileShortcut(
-                      onPressed: () => _openProfile(context),
+                    top: AppSpacing.l,
+                    child: _ProfileMenuButton(
+                      onProfileSelected: () => _openProfile(context),
                     ),
                   ),
                 ],
@@ -91,29 +91,38 @@ class _WideHomeScaffold extends StatelessWidget {
         child: RevisionBackground(
           child: Row(
             children: [
-              Column(
-                children: [
-                  RevisionNavigationRail(
-                    selectedIndex: selectedIndex,
-                    onDestinationSelected: onDestinationSelected,
-                    destinations: _navigationDestinations,
-                  ),
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.l),
-                    child: _ProfileShortcut(onPressed: onProfileSelected),
-                  ),
-                ],
-              ),
               Expanded(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: RevisionHomeShell._maxContentWidth,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Row(
+                      children: [
+                        RevisionNavigationRail(
+                          selectedIndex: selectedIndex,
+                          onDestinationSelected: onDestinationSelected,
+                          destinations: _navigationDestinations,
+                        ),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: RevisionHomeShell._maxContentWidth,
+                              ),
+                              child: child,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: child,
-                  ),
+                    Positioned(
+                      top: AppSpacing.l,
+                      right: AppSpacing.l,
+                      child: _ProfileMenuButton(
+                        onProfileSelected: onProfileSelected,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -142,14 +151,32 @@ const List<RevisionNavigationDestination> _navigationDestinations = [
   ),
 ];
 
-class _ProfileShortcut extends StatelessWidget {
-  const _ProfileShortcut({required this.onPressed});
+class _ProfileMenuButton extends StatelessWidget {
+  const _ProfileMenuButton({required this.onProfileSelected});
 
-  final VoidCallback onPressed;
+  final VoidCallback onProfileSelected;
+
+  void _openSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.46),
+      builder: (sheetContext) {
+        return _ProfileBottomSheet(
+          onProfileSelected: () {
+            Navigator.of(sheetContext).pop();
+            onProfileSelected();
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
+      key: const ValueKey('profile-menu-button'),
       decoration: BoxDecoration(
         color: RevisionColors.glassStrong,
         borderRadius: BorderRadius.circular(999),
@@ -160,11 +187,93 @@ class _ProfileShortcut extends StatelessWidget {
         tooltip: 'Profil',
         constraints: const BoxConstraints.tightFor(width: 44, height: 44),
         padding: EdgeInsets.zero,
-        onPressed: onPressed,
+        onPressed: () => _openSheet(context),
         icon: const Icon(
           Icons.person_outline_rounded,
           color: RevisionColors.text,
           size: 22,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileBottomSheet extends StatelessWidget {
+  const _ProfileBottomSheet({required this.onProfileSelected});
+
+  final VoidCallback onProfileSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      key: const ValueKey('profile-bottom-sheet'),
+      decoration: const BoxDecoration(
+        color: RevisionColors.ink2,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(top: BorderSide(color: RevisionColors.borderBright)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            AppSpacing.m,
+            AppSpacing.xl,
+            AppSpacing.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: RevisionColors.borderBright,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const SizedBox(width: 42, height: 4),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Text(
+                'Compte',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: RevisionColors.text,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.m),
+              Material(
+                color: Colors.transparent,
+                child: ListTile(
+                  key: const ValueKey('profile-sheet-profile-action'),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    side: const BorderSide(color: RevisionColors.border),
+                  ),
+                  tileColor: RevisionColors.glassStrong,
+                  leading: const Icon(
+                    Icons.person_outline_rounded,
+                    color: RevisionColors.textMuted,
+                  ),
+                  title: Text(
+                    'Profil',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: RevisionColors.text,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: RevisionColors.textMuted,
+                  ),
+                  onTap: onProfileSelected,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

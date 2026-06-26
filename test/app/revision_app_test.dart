@@ -124,7 +124,22 @@ void main() {
     expect(find.text('Profil'), findsNothing);
     expect(find.byTooltip('Profil'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Profil'));
+    final profileButton = find.byKey(const ValueKey('profile-menu-button'));
+    expect(profileButton, findsOneWidget);
+    final buttonRect = tester.getRect(profileButton);
+    final viewSize = tester.view.physicalSize / tester.view.devicePixelRatio;
+    expect(buttonRect.right, greaterThan(viewSize.width - 80));
+    expect(buttonRect.top, lessThan(80));
+
+    await tester.tap(profileButton);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('Profil'), findsOneWidget);
+    expect(find.byType(RevisionBottomNavigation), findsOneWidget);
+    expect(find.byType(RevisionNavigationRail), findsNothing);
+
+    await tester.tap(find.widgetWithText(ListTile, 'Profil'));
     await tester.pumpAndSettle();
 
     expect(find.text('Profil'), findsOneWidget);
