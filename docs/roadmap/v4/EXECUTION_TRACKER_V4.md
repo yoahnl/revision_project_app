@@ -4,6 +4,8 @@
 
 Ce fichier suit l'execution de la roadmap canonique V4 de Neralune.
 
+Note de transition V5 : Le couloir V4 DEMO est terminé. La suite canonique devient la roadmap V5 maquette-first.
+
 Roadmap source :
 
 - `docs/roadmap/v4/NERALUNE_PRODUCT_TECH_ROADMAP_V4.md`
