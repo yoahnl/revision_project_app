@@ -11,6 +11,7 @@ import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/courses/presentation/course_hero_tags.dart';
 import 'package:Neralune/features/courses/presentation/course_detail_page.dart';
+import 'package:Neralune/features/documents/domain/revision_document.dart';
 import 'package:Neralune/features/documents/domain/source_lifecycle.dart';
 import 'package:Neralune/features/revision_sessions/domain/revision_session.dart';
 import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
@@ -871,6 +872,52 @@ void main() {
   );
 
   testWidgets(
+    'course detail prioritizes reading the sheet when questions are preparing',
+    (tester) async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'ready.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..questionBankReadinessByTarget[(
+          courseId: 'course-1',
+          questionCount: 10,
+        )] = const CourseQuestionBankReadiness(
+          courseId: 'course-1',
+          status: CourseQuestionBankReadinessStatus.preparing,
+          readyQuestionCount: 0,
+          targetQuestionCount: 10,
+          canStartQuickRevision: false,
+          canPrepare: false,
+          userMessage:
+              'Les questions sont en préparation. Réessaie dans un instant.',
+        );
+
+      await tester.pumpWidget(
+        testApp(repository: repository, picker: FakeCoursePdfPicker(null)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.widgetWithText(RevisionGradientButton, 'Réviser ce cours'),
+        findsNothing,
+      );
+      expect(
+        find.widgetWithText(RevisionGradientButton, 'Lire la fiche'),
+        findsOneWidget,
+      );
+      expect(find.text('Questions en préparation'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'quick revision shows partial readiness without contradictory CTA',
     (tester) async {
       final repository = InMemoryCoursesRepository()
@@ -1023,6 +1070,76 @@ void main() {
     expect(repository.lastQuickRevisionQuestionCount, 30);
     expect(find.text('Session réelle'), findsOneWidget);
   });
+
+  testWidgets(
+    'quick revision preparing error shows stable fallbacks without technical jargon',
+    (tester) async {
+      final repository = InMemoryCoursesRepository()
+        ..detailsByCourse['course-1'] = courseDetail(
+          sources: const [
+            CourseDocument(
+              id: 'document-1',
+              courseId: 'course-1',
+              documentId: 'document-1',
+              fileName: 'ready.pdf',
+              status: CourseDocumentStatus.ready,
+            ),
+          ],
+        )
+        ..revisionSheetsByCourse['course-1'] = revisionSheet()
+        ..quickRevisionError = const CourseQuickRevisionUnavailableException(
+          'COURSE_QUICK_REVISION_QUESTIONS_PREPARING',
+          readiness: CourseQuestionBankReadiness(
+            courseId: 'course-1',
+            status: CourseQuestionBankReadinessStatus.preparing,
+            readyQuestionCount: 0,
+            targetQuestionCount: 5,
+            canStartQuickRevision: false,
+            canPrepare: false,
+            userMessage:
+                'Les questions sont en préparation. Réessaie dans un instant.',
+          ),
+        );
+
+      await tester.pumpWidget(
+        routerTestApp(
+          repository: repository,
+          picker: FakeCoursePdfPicker(null),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Réviser ce cours'));
+      await tester.tap(find.text('Réviser ce cours'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.widgetWithText(RevisionGradientButton, 'Commencer'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Questions en préparation'), findsOneWidget);
+      expect(
+        find.text(
+          'Neralune prépare encore les questions de ce cours. Tu peux lire la fiche en attendant.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Lire la fiche'), findsOneWidget);
+      expect(find.text('Voir le parcours'), findsOneWidget);
+      expect(find.textContaining('COURSE_QUICK_REVISION'), findsNothing);
+      expect(find.textContaining('409'), findsNothing);
+      expect(find.textContaining('backend'), findsNothing);
+      expect(find.textContaining('payload'), findsNothing);
+      expect(find.textContaining('questionCount'), findsNothing);
+
+      await tester.tap(
+        find.widgetWithText(RevisionGradientButton, 'Lire la fiche'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fiche prête'), findsOneWidget);
+    },
+  );
 
   testWidgets('course detail shows an empty completed history state', (
     tester,
@@ -1396,6 +1513,10 @@ Widget routerTestApp({
         ),
       ),
       GoRoute(
+        path: AppRoutes.courseSheetPath,
+        builder: (context, state) => const Scaffold(body: Text('Fiche prête')),
+      ),
+      GoRoute(
         path: AppRoutes.richClosedExerciseResultPath,
         builder: (context, state) => Scaffold(
           body: Text(
@@ -1460,6 +1581,31 @@ void _ensureDefaultProgress(InMemoryCoursesRepository repository) {
   repository.learningPathByCourse.putIfAbsent(
     'course-1',
     () => courseLearningPathFixture(),
+  );
+}
+
+RevisionSheet revisionSheet() {
+  return const RevisionSheet(
+    id: 'sheet-1',
+    documentId: 'document-1',
+    subjectId: 'subject-1',
+    status: 'READY',
+    title: 'Fiche de cours',
+    introduction: 'Introduction',
+    sections: [
+      RevisionSheetSection(
+        id: 'section-1',
+        displayOrder: 0,
+        title: 'Institutions',
+        content: 'Le Parlement contrôle le Gouvernement.',
+        sources: [],
+      ),
+    ],
+    keyPoints: ['Point clé'],
+    commonMistakes: ['Erreur fréquente'],
+    mustKnow: ['À savoir'],
+    practiceSuggestions: ['S’entraîner'],
+    errorCode: null,
   );
 }
 

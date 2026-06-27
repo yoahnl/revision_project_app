@@ -774,11 +774,12 @@ Future<void> _runLearningPathPrimaryAction(
       final resumable = await ref.read(
         resumableCourseRevisionSessionProvider(detail.course.id).future,
       );
-      if (resumable != null) {
-        if (!context.mounted) {
-          return;
-        }
 
+      if (!context.mounted) {
+        return;
+      }
+
+      if (resumable != null) {
         context.go(
           AppRoutes.revisionSessionV2(
             sessionId: resumable.session.id,
@@ -1096,41 +1097,87 @@ class _CourseBottomActions extends ConsumerWidget {
     final canReviewCourse =
         hasReadySource &&
         action?.kind != CourseLearningPathPrimaryActionKind.waitForAnalysis;
+    final quickReadinessState = ref.watch(
+      courseQuestionBankReadinessProvider((
+        courseId: detail.course.id,
+        questionCount: 10,
+      )),
+    );
+    final quickReadiness = quickReadinessState.maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
+    final questionsPreparing =
+        hasReadySource &&
+        quickReadiness?.status == CourseQuestionBankReadinessStatus.preparing &&
+        (quickReadiness?.readyQuestionCount ?? 0) < 5;
 
     return RevisionGlassCard(
       padding: const EdgeInsets.all(RevisionSpacing.s),
       backgroundColor: RevisionColors.glassStrong,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: hasReadySource
-                  ? () => context.push(AppRoutes.courseSheet(detail.course.id))
-                  : null,
-              icon: const Icon(Icons.menu_book_outlined),
-              label: const Text('Comprendre'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: RevisionColors.text,
-                side: const BorderSide(color: RevisionColors.borderBright),
-                padding: const EdgeInsets.symmetric(
-                  vertical: RevisionSpacing.m,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          if (questionsPreparing) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                RevisionSpacing.s,
+                RevisionSpacing.xs,
+                RevisionSpacing.s,
+                RevisionSpacing.s,
+              ),
+              child: Text(
+                'Questions en préparation',
+                style: RevisionTypography.caption.copyWith(
+                  color: RevisionColors.blue,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: RevisionSpacing.s),
-          Expanded(
-            child: RevisionGradientButton(
-              label: 'Réviser ce cours',
-              icon: Icons.flash_on_rounded,
-              expanded: true,
-              onPressed: canReviewCourse
-                  ? () => _showQuickRevisionSheet(context, ref, detail)
-                  : null,
-            ),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: hasReadySource
+                      ? () => context.push(
+                          AppRoutes.courseSheet(detail.course.id),
+                        )
+                      : null,
+                  icon: const Icon(Icons.menu_book_outlined),
+                  label: const Text('Comprendre'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: RevisionColors.text,
+                    side: const BorderSide(color: RevisionColors.borderBright),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: RevisionSpacing.m,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: RevisionSpacing.s),
+              Expanded(
+                child: RevisionGradientButton(
+                  label: questionsPreparing
+                      ? 'Lire la fiche'
+                      : 'Réviser ce cours',
+                  icon: questionsPreparing
+                      ? Icons.menu_book_rounded
+                      : Icons.flash_on_rounded,
+                  expanded: true,
+                  onPressed: questionsPreparing
+                      ? () => context.push(
+                          AppRoutes.courseSheet(detail.course.id),
+                        )
+                      : canReviewCourse
+                      ? () => _showQuickRevisionSheet(context, ref, detail)
+                      : null,
+                ),
+              ),
+            ],
           ),
         ],
       ),

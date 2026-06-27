@@ -2,7 +2,7 @@
 
 ## 1. Statut global
 
-Statut : `READY_TO_START`
+Statut : `IN_PROGRESS`
 
 Source canonique :
 
@@ -39,7 +39,7 @@ Statuts utilises :
 
 | Phase | Titre | Statut | Objectif utilisateur | Ecrans concernes | Lots | Critere de sortie |
 |---|---|---|---|---|---|---|
-| Phase 0 | Fiabilite visible | `READY` | Je ne tombe jamais sur un bouton qui ment, un spinner infini ou une page morte. | Aujourd'hui, Reviser, Activites, QCM, Sources, Detail cours | V5-01, V5-02, V5-03 | CTA honnetes, timeouts visibles, filenames humanises, captures before/after. |
+| Phase 0 | Fiabilite visible | `IN_PROGRESS` | Je ne tombe jamais sur un bouton qui ment, un spinner infini ou une page morte. | Aujourd'hui, Reviser, Activites, QCM, Sources, Detail cours | V5-01, V5-02, V5-03 | CTA honnetes, timeouts visibles, filenames humanises, captures before/after. |
 | Phase 1 | Cockpit et parcours | `NOT_STARTED` | Je sais quoi faire aujourd'hui et je vois mon parcours de cours. | Aujourd'hui, Cours, Detail cours, Fiche | V5-04, V5-05, V5-06 | Today coach, checkpoints, fiche premium, captures alignees. |
 | Phase 2 | Boucle de revision | `NOT_STARTED` | Je choisis une duree, je reponds, je comprends, je continue. | Choix duree, Session, Feedback, Bilan | V5-07, V5-08, V5-09, V5-10 | Flow question court, tactile, avec feedback et bilan visibles. |
 | Phase 3 | Motivation et premiere impression | `NOT_STARTED` | Je comprends Neralune au premier ecran et je vois mes progres. | Progres, Onboarding, Profil | V5-11, V5-12 | Progres motivant low-data, onboarding emotionnel dark. |
@@ -48,7 +48,7 @@ Statuts utilises :
 
 | ID | Titre | Statut | Type | Objectif utilisateur | Ecrans concernes | Dependance | Fichiers probables | Tests obligatoires | Captures obligatoires | Evidence pack attendu | Risque principal | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| V5-01 | CTA honnetes + etats de preparation | `READY` | Je sais si je peux reviser maintenant ou quoi faire en attendant. | Aujourd'hui, Detail cours, Reviser, Fiche | Audit V5 cree | Course detail, Today, quick launcher, revision repository/controllers | Widget preparing/ready/error, route fiche fallback, absence CTA mensonger | CTA before, questions preparing, session ready, fallback fiche | `docs/roadmap/v5/evidence/V5-01_cta_honnetes_etats_preparation_EVIDENCE_PACK.md` | Etat reel non expose par le contrat | Premier lot obligatoire. |
+| V5-01 | CTA honnetes + etats de preparation | `DONE` | Je sais si je peux reviser maintenant ou quoi faire en attendant. | Detail cours, Reviser, Fiche | Audit V5 cree | Course detail, quick launcher | Widget preparing/ready/error, route fiche fallback, absence CTA mensonger | CTA before, questions preparing, session ready, fallback fiche | `docs/roadmap/v5/evidence/V5-01_cta_honnetes_etats_preparation_EVIDENCE_PACK.md` | Etat reel non expose par le contrat | Livre le 2026-06-27 : CTA detail cours honnete et fallback stable du quick launcher. |
 | V5-02 | Anti-spinner + surfaces legacy | `NOT_STARTED` | Je ne reste jamais bloque sur une page qui charge ou ne sert a rien. | Activites, QCM, Reviser, Sources globales | V5-01 recommande | Routes legacy, pages Activites/Reviser/Sources, timeout UI | Tests timeout, retry, redirection, router legacy | Activites spinner before/after, Sources parking, Reviser legacy | `docs/roadmap/v5/evidence/V5-02_anti_spinner_surfaces_legacy_EVIDENCE_PACK.md` | Cacher une route sans alternative utile | P0 avant polish. |
 | V5-03 | Humanisation sources / PDF / notions | `NOT_STARTED` | Je vois des noms de cours et supports humains, pas des fichiers techniques. | Detail cours, Fiche, Sources fiche, Documents, Subject detail | V5-01 | Source label helpers, document models, course sheet/detail | Tests label fallback, absence filename brut, source originale secondaire | Filenames before/after, source originale secondaire | `docs/roadmap/v5/evidence/V5-03_humanisation_sources_pdf_notions_EVIDENCE_PACK.md` | Libelle humain trompeur ou incomplet | Base necessaire pour le premium. |
 | V5-04 | Aujourd'hui coach | `NOT_STARTED` | J'ouvre l'app et je comprends ma prochaine mission. | Aujourd'hui | V5-01, V5-03 | Today page, Today models/repository | Widget empty/ready/preparing, CTA fallback, wording | Today empty, fiche ready, questions preparing, session ready | `docs/roadmap/v5/evidence/V5-04_aujourdhui_coach_EVIDENCE_PACK.md` | Recommandation inventee | Cockpit V5. |
@@ -63,23 +63,28 @@ Statuts utilises :
 
 ## 4. Lots immediats recommandes
 
-1. V5-01 — CTA honnetes + etats de preparation
-2. V5-02 — Anti-spinner + surfaces legacy
-3. V5-03 — Humanisation sources / PDF / notions
-4. V5-04 — Aujourd'hui coach
-5. V5-05 — Detail cours parcours gamifie
-6. V5-06 — Fiche premium actionnable
-7. V5-07 — Choix duree aligne maquette
-8. V5-08 — Session question alignee maquette
-9. V5-09 — Feedback reponse
-10. V5-10 — Bilan resultat
-11. V5-11 — Progres maquette
-12. V5-12 — Onboarding emotionnel
+1. V5-02 — Anti-spinner + surfaces legacy
+2. V5-03 — Humanisation sources / PDF / notions
+3. V5-04 — Aujourd'hui coach
+4. V5-05 — Detail cours parcours gamifie
+5. V5-06 — Fiche premium actionnable
+6. V5-07 — Choix duree aligne maquette
+7. V5-08 — Session question alignee maquette
+8. V5-09 — Feedback reponse
+9. V5-10 — Bilan resultat
+10. V5-11 — Progres maquette
+11. V5-12 — Onboarding emotionnel
 
-Premier lot a lancer :
+Lot termine :
 
 ```text
 V5-01 — CTA honnetes + etats de preparation
+```
+
+Prochain lot a lancer :
+
+```text
+V5-02 — Anti-spinner + surfaces legacy
 ```
 
 ## 5. Regles de validation
@@ -102,6 +107,7 @@ V5-01 — CTA honnetes + etats de preparation
 | 2026-06-27 | Le dark mode mobile est la reference de verification V5. | Accepted | La demande utilisateur se concentre sur mobile dark mode. | Captures minimales en 390 x 844 dark. |
 | 2026-06-27 | Aucun lot n'est termine sans preuve visuelle. | Accepted | L'ecart principal est perceptif autant que fonctionnel. | Evidence packs obligatoires avec captures. |
 | 2026-06-27 | Les CTA honnetes passent avant les refontes belles. | Accepted | Le CTA quick a echoue silencieusement dans l'audit. | V5-01 avant Today/detail/session polish. |
+| 2026-06-27 | Un etat questions en preparation doit donner une action utile, pas un snackbar technique. | Accepted | `COURSE_QUICK_REVISION_QUESTIONS_PREPARING` bloquait le demarrage sans alternative stable. | Le lanceur quick ouvre une sheet avec `Lire la fiche` et `Voir le parcours`; le detail cours remplace le CTA revision par `Lire la fiche` quand moins de 5 questions sont pretes. |
 | 2026-06-27 | La fiche est un axe produit central, pas un fallback pauvre. | Accepted | L'utilisateur demande de belles fiches de revision et l'audit la classe comme meilleur morceau actuel. | V5-06 reste prioritaire dans Phase 1. |
 | 2026-06-27 | Les grosses features V4 restent reportees. | Accepted | Elles risquent de masquer les P0 visuels et fonctionnels. | Pas de Study Session complete, sujet long, epreuve blanche ou GenUI avant P0/P1. |
 
@@ -125,3 +131,4 @@ V5-01 — CTA honnetes + etats de preparation
 |---|---|---|---|
 | 2026-06-27 | Creation du tracker V5 maquette-first apres audit mobile dark. | `EXECUTION_TRACKER_V5.md` | Codex |
 | 2026-06-27 | Premier lot recommande fixe a `V5-01 — CTA honnetes + etats de preparation`. | `EXECUTION_TRACKER_V5.md` | Codex |
+| 2026-06-27 | Lot `V5-01 — CTA honnetes + etats de preparation` livre avec tests, captures mobile dark 390 x 844 et evidence pack. | `EXECUTION_TRACKER_V5.md`, `V5-01_cta_honnetes_etats_preparation_EVIDENCE_PACK.md` | Codex |
