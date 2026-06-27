@@ -12,6 +12,18 @@ abstract interface class AuthRepository {
 
   Future<void> signInWithApple();
 
+  Future<void> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  });
+
+  Future<void> createAccountWithEmailAndPassword({
+    required String email,
+    required String password,
+  });
+
+  Future<void> sendPasswordResetEmail({required String email});
+
   Future<void> signOut();
 
   Future<String> requireIdToken();
@@ -69,6 +81,36 @@ class AuthController extends ChangeNotifier {
     return _runAuthAction(_repository.signInWithApple);
   }
 
+  Future<void> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) {
+    return _runAuthAction(
+      () => _repository.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      ),
+    );
+  }
+
+  Future<void> createAccountWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) {
+    return _runAuthAction(
+      () => _repository.createAccountWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      ),
+    );
+  }
+
+  Future<void> sendPasswordResetEmail({required String email}) {
+    return _runAuthAction(
+      () => _repository.sendPasswordResetEmail(email: email.trim()),
+    );
+  }
+
   Future<void> signOut() {
     return _runAuthAction(_repository.signOut);
   }
@@ -122,6 +164,28 @@ class AuthController extends ChangeNotifier {
 
 String _describeAuthError(Object error) {
   final message = error.toString();
+  final authCode = _firebaseAuthCode(message);
+
+  switch (authCode) {
+    case 'invalid-email':
+      return 'Adresse email invalide.';
+    case 'invalid-credential':
+    case 'user-not-found':
+    case 'wrong-password':
+      return 'Email ou mot de passe incorrect.';
+    case 'email-already-in-use':
+      return 'Un compte existe déjà avec cette adresse email.';
+    case 'weak-password':
+      return 'Choisis un mot de passe d’au moins 6 caractères.';
+    case 'user-disabled':
+      return 'Ce compte est désactivé.';
+    case 'network-request-failed':
+      return 'Connexion réseau indisponible. Réessaie dans un instant.';
+    case 'too-many-requests':
+      return 'Trop de tentatives. Réessaie dans quelques minutes.';
+    case 'operation-not-allowed':
+      return 'La connexion email/mot de passe n’est pas activée dans Firebase.';
+  }
 
   if (message.contains('signInWithProvider is not supported') ||
       message.contains('AuthorizationError Code=1000')) {
@@ -134,4 +198,12 @@ String _describeAuthError(Object error) {
   }
 
   return 'Connexion impossible pour le moment.';
+}
+
+String? _firebaseAuthCode(String message) {
+  final match = RegExp(
+    r'firebase_auth/([a-z0-9-]+)',
+  ).firstMatch(message.toLowerCase());
+
+  return match?.group(1);
 }

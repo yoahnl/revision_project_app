@@ -45,6 +45,27 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    calls.add('emailSignIn');
+  }
+
+  @override
+  Future<void> createAccountWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    calls.add('createAccount');
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    calls.add('passwordReset');
+  }
+
+  @override
   Future<void> signOut() async {
     calls.add('signOut');
   }

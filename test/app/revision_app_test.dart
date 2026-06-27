@@ -47,6 +47,21 @@ class SignedInAuthRepository implements AuthRepository {
   Future<void> signInWithGoogle() async {}
 
   @override
+  Future<void> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {}
+
+  @override
+  Future<void> createAccountWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {}
+
+  @override
+  Future<void> sendPasswordResetEmail({required String email}) async {}
+
+  @override
   Future<void> signOut() async {}
 }
 
@@ -66,6 +81,21 @@ class SignedOutAuthRepository implements AuthRepository {
 
   @override
   Future<void> signInWithGoogle() async {}
+
+  @override
+  Future<void> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {}
+
+  @override
+  Future<void> createAccountWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {}
+
+  @override
+  Future<void> sendPasswordResetEmail({required String email}) async {}
 
   @override
   Future<void> signOut() async {}
