@@ -8,6 +8,7 @@ import '../../../../presentation/design_system/tokens/revision_typography.dart';
 import '../../../documents/domain/source_lifecycle.dart';
 import '../../application/courses_providers.dart';
 import '../../domain/course_models.dart';
+import '../utils/course_source_display_label.dart';
 
 class CourseSourcesBottomSheet extends ConsumerWidget {
   const CourseSourcesBottomSheet({required this.detail, super.key});
@@ -38,16 +39,23 @@ class CourseSourcesBottomSheet extends ConsumerWidget {
             icon: Icons.source_outlined,
           )
         else
-          for (final source in sources)
+          for (final (index, source) in sources.indexed)
             RevisionSourceFileCard(
-              fileName: source.fileName,
-              statusLabel: _sourceStatusLabel(source),
+              fileName: sourceDisplayLabelForCourseDocument(
+                source,
+                index: index,
+              ).primary,
+              statusLabel: _sourceStatusLine(
+                source,
+                sourceDisplayLabelForCourseDocument(source, index: index),
+              ),
               statusColor: _statusColor(source.status),
               trailing: IconButton(
-                tooltip: 'Gérer la source ${source.fileName}',
+                tooltip:
+                    'Gérer la source ${sourceDisplayLabelForCourseDocument(source, index: index).primary}',
                 onPressed: isUpdatingSource
                     ? null
-                    : () => _manageSource(context, ref, source),
+                    : () => _manageSource(context, ref, source, index),
                 icon: const Icon(
                   Icons.delete_outline_rounded,
                   color: RevisionColors.textMuted,
@@ -126,6 +134,7 @@ class CourseSourcesBottomSheet extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     CourseDocument source,
+    int sourceIndex,
   ) async {
     SourceLifecycleDecision decision;
     try {
@@ -152,10 +161,10 @@ class CourseSourcesBottomSheet extends ConsumerWidget {
 
     switch (decision.recommendedAction) {
       case SourceLifecycleAction.delete:
-        await _deleteSource(context, ref, source);
+        await _deleteSource(context, ref, source, sourceIndex);
         break;
       case SourceLifecycleAction.archive:
-        await _archiveSource(context, ref, source);
+        await _archiveSource(context, ref, source, sourceIndex);
         break;
       case SourceLifecycleAction.block:
       case SourceLifecycleAction.unknown:
@@ -168,8 +177,12 @@ class CourseSourcesBottomSheet extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     CourseDocument source,
+    int sourceIndex,
   ) async {
-    final confirmed = await _confirmDeleteSource(context, source.fileName);
+    final confirmed = await _confirmDeleteSource(
+      context,
+      sourceDisplayLabelForCourseDocument(source, index: sourceIndex),
+    );
     if (!confirmed || !context.mounted) {
       return;
     }
@@ -202,8 +215,12 @@ class CourseSourcesBottomSheet extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     CourseDocument source,
+    int sourceIndex,
   ) async {
-    final confirmed = await _confirmArchiveSource(context, source.fileName);
+    final confirmed = await _confirmArchiveSource(
+      context,
+      sourceDisplayLabelForCourseDocument(source, index: sourceIndex),
+    );
     if (!confirmed || !context.mounted) {
       return;
     }
@@ -233,13 +250,19 @@ class CourseSourcesBottomSheet extends ConsumerWidget {
   }
 }
 
-Future<bool> _confirmDeleteSource(BuildContext context, String fileName) async {
+Future<bool> _confirmDeleteSource(
+  BuildContext context,
+  SourceDisplayLabel sourceLabel,
+) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Supprimer cette source ?'),
       content: Text(
-        'Le PDF "$fileName" sera retiré de ce cours. Tu pourras le rajouter plus tard si besoin.',
+        _sourceLifecycleMessage(
+          sourceLabel,
+          'sera retirée de ce cours. Tu pourras la rajouter plus tard si besoin.',
+        ),
       ),
       actions: [
         TextButton(
@@ -259,14 +282,17 @@ Future<bool> _confirmDeleteSource(BuildContext context, String fileName) async {
 
 Future<bool> _confirmArchiveSource(
   BuildContext context,
-  String fileName,
+  SourceDisplayLabel sourceLabel,
 ) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Archiver cette source ?'),
       content: Text(
-        'Le PDF "$fileName" ne sera plus utilisé pour préparer de nouvelles révisions, mais l’historique déjà créé sera conservé.',
+        _sourceLifecycleMessage(
+          sourceLabel,
+          'ne sera plus utilisée pour préparer de nouvelles révisions, mais l’historique déjà créé sera conservé.',
+        ),
       ),
       actions: [
         TextButton(
@@ -282,6 +308,32 @@ Future<bool> _confirmArchiveSource(
   );
 
   return confirmed ?? false;
+}
+
+String _sourceStatusLine(
+  CourseDocument source,
+  SourceDisplayLabel sourceLabel,
+) {
+  final originalLine = sourceLabel.originalFileLine;
+  final status = _sourceStatusLabel(source);
+  if (originalLine == null) {
+    return status;
+  }
+
+  return '$originalLine · $status';
+}
+
+String _sourceLifecycleMessage(
+  SourceDisplayLabel sourceLabel,
+  String actionMessage,
+) {
+  final originalLine = sourceLabel.originalFileLine;
+  final mainMessage = 'La source "${sourceLabel.primary}" $actionMessage';
+  if (originalLine == null) {
+    return mainMessage;
+  }
+
+  return '$mainMessage\n\n$originalLine';
 }
 
 Future<void> _showLifecycleBlockedDialog(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:Neralune/app/router/app_routes.dart';
 import 'package:Neralune/features/courses/application/active_subject_provider.dart';
+import 'package:Neralune/features/courses/presentation/utils/course_source_display_label.dart';
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/application/subject_documents_notifier.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
@@ -58,6 +59,7 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
   }
 
   Future<void> _deleteDocument(RevisionDocument document) async {
+    final displayLabel = sourceDisplayLabelForRevisionDocument(document);
     SourceLifecycleDecision decision;
     try {
       decision = await widget.documentsController.getDocumentLifecycle(
@@ -93,7 +95,10 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
       builder: (context) => AlertDialog(
         title: const Text('Supprimer la source ?'),
         content: Text(
-          'Le PDF "${document.fileName}" sera retiré de cette matière. Tu pourras le rajouter plus tard si besoin.',
+          _documentLifecycleMessage(
+            displayLabel,
+            'sera retirée de cette matière. Tu pourras la rajouter plus tard si besoin.',
+          ),
         ),
         actions: [
           TextButton(
@@ -127,12 +132,16 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
   }
 
   Future<void> _archiveDocument(RevisionDocument document) async {
+    final displayLabel = sourceDisplayLabelForRevisionDocument(document);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Archiver la source ?'),
         content: Text(
-          'Le PDF "${document.fileName}" ne sera plus utilisé pour préparer de nouvelles révisions, mais l’historique déjà créé sera conservé.',
+          _documentLifecycleMessage(
+            displayLabel,
+            'ne sera plus utilisée pour préparer de nouvelles révisions, mais l’historique déjà créé sera conservé.',
+          ),
         ),
         actions: [
           TextButton(
@@ -325,6 +334,7 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
                       if (index > 0) const SizedBox(height: RevisionSpacing.m),
                       SubjectDocumentListItem(
                         document: document,
+                        sourceIndex: index,
                         onTap: () => context.go(
                           '/subjects/${widget.subjectId}/documents/${document.id}',
                         ),
@@ -359,6 +369,19 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
 
     _reloadSubject();
   }
+}
+
+String _documentLifecycleMessage(
+  SourceDisplayLabel displayLabel,
+  String actionMessage,
+) {
+  final originalLine = displayLabel.originalFileLine;
+  final mainMessage = 'La source "${displayLabel.primary}" $actionMessage';
+  if (originalLine == null) {
+    return mainMessage;
+  }
+
+  return '$mainMessage\n\n$originalLine';
 }
 
 String _subjectRhythmLabel(Subject subject) {

@@ -14,6 +14,7 @@ import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import 'course_not_found_page.dart';
+import 'utils/course_source_display_label.dart';
 
 class CourseDeepRevisionResultPage extends ConsumerWidget {
   const CourseDeepRevisionResultPage({
@@ -119,7 +120,7 @@ class _CourseDeepRevisionResultContent extends StatelessWidget {
                     ),
                     const SizedBox(height: RevisionSpacing.xs),
                     Text(
-                      result.scope.sourceLabel,
+                      humanSourceLabelText(result.scope.sourceLabel, index: 0),
                       style: RevisionTypography.caption,
                     ),
                   ],

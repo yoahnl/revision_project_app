@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:Neralune/features/courses/application/courses_providers.dart';
+import 'package:Neralune/features/courses/domain/course_models.dart';
 import 'package:Neralune/features/courses/domain/courses_repository.dart';
 import 'package:Neralune/features/courses/presentation/course_revision_sheet_page.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
@@ -13,13 +14,20 @@ void main() {
     tester,
   ) async {
     final repository = InMemoryCoursesRepository()
-      ..revisionSheetsByCourse['course-1'] = revisionSheet();
+      ..revisionSheetsByCourse['course-1'] = revisionSheet()
+      ..detailsByCourse['course-1'] = courseDetailWithTechnicalSource();
 
     await tester.pumpWidget(testApp(repository));
     await tester.pumpAndSettle();
 
     expect(find.text('Fiche de cours'), findsWidgets);
     expect(find.text('Introduction destinée aux étudiants'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('1782570835662-support01.pdf'), findsNothing);
+    expect(
+      find.textContaining('Fichier original : 1782570835662-support01.pdf'),
+      findsOneWidget,
+    );
     expect(find.text('Institutions'), findsOneWidget);
     expect(find.text('Le Parlement contrôle le Gouvernement.'), findsOneWidget);
     expect(find.text('Complète'), findsNothing);
@@ -89,7 +97,8 @@ void main() {
     'course revision sheet sources page shows long sources separately',
     (tester) async {
       final repository = InMemoryCoursesRepository()
-        ..revisionSheetsByCourse['course-1'] = revisionSheet();
+        ..revisionSheetsByCourse['course-1'] = revisionSheet()
+        ..detailsByCourse['course-1'] = courseDetailWithTechnicalSource();
 
       await tester.pumpWidget(
         ProviderScope(
@@ -104,6 +113,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Sources de la fiche'), findsOneWidget);
+      expect(find.text('Support 1'), findsOneWidget);
+      expect(find.text('1782570835662-support01.pdf'), findsNothing);
+      expect(
+        find.textContaining('Fichier original : 1782570835662-support01.pdf'),
+        findsOneWidget,
+      );
       expect(find.text('Institutions'), findsOneWidget);
       expect(
         find.textContaining('Cours mais à la disposition'),
@@ -121,6 +136,28 @@ Widget testApp(InMemoryCoursesRepository repository) {
     child: const MaterialApp(
       home: Scaffold(body: CourseRevisionSheetPage(courseId: 'course-1')),
     ),
+  );
+}
+
+CourseDetail courseDetailWithTechnicalSource() {
+  const course = CourseListItem(
+    id: 'course-1',
+    subjectId: 'subject-1',
+    title: 'Droit constitutionnel',
+  );
+
+  return const CourseDetail(
+    course: course,
+    subject: CourseSubjectSummary(id: 'subject-1', name: 'Droit'),
+    sources: [
+      CourseDocument(
+        id: 'source-1',
+        courseId: 'course-1',
+        documentId: 'document-1',
+        fileName: '1782570835662-support01.pdf',
+        status: CourseDocumentStatus.ready,
+      ),
+    ],
   );
 }
 

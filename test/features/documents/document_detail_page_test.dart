@@ -156,7 +156,7 @@ void main() {
           id: 'document-1',
           subjectId: 'subject-1',
           kind: 'COURSE_PDF',
-          fileName: 'cours.pdf',
+          fileName: '1782570835662-support01.pdf',
           status: 'PROCESSING',
           mimeType: 'application/pdf',
         ),
@@ -164,7 +164,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('cours.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('1782570835662-support01.pdf'), findsNothing);
+    expect(
+      find.textContaining('Fichier original : 1782570835662-support01.pdf'),
+      findsOneWidget,
+    );
     expect(find.text('Analyse en cours'), findsWidgets);
     expect(
       find.text('Les notions apparaitront apres le traitement.'),
@@ -233,6 +238,11 @@ void main() {
     expect(find.text('Confiance 84%'), findsOneWidget);
     expect(find.text('Question ouverte'), findsOneWidget);
     expect(find.text('Extrait source issu du chunk.'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Supports IA'),
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Supports IA'), findsOneWidget);
     expect(find.text('Generer le resume'), findsOneWidget);
     expect(find.text('Generer la fiche'), findsOneWidget);

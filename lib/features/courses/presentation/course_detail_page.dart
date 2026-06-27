@@ -18,6 +18,7 @@ import '../../revision_sessions/domain/revision_session.dart';
 import 'course_hero_tags.dart';
 import 'course_not_found_page.dart';
 import 'course_quick_revision_launcher.dart';
+import 'utils/course_source_display_label.dart';
 import 'widgets/course_management_sheet.dart';
 import 'widgets/course_sources_bottom_sheet.dart';
 import 'widgets/quick_revision_question_count_sheet.dart';
@@ -886,6 +887,7 @@ class _CourseLearningPath extends ConsumerWidget {
                 children: [
                   for (final indexed in path.nodes.indexed)
                     _LearningPathRow(
+                      index: indexed.$1,
                       node: indexed.$2,
                       visual: visual,
                       selected: _isSelectedPathNode(path, indexed.$2),
@@ -920,6 +922,7 @@ class _CoursePathStateCard extends StatelessWidget {
 class _LearningPathRow extends StatelessWidget {
   const _LearningPathRow({
     required this.node,
+    required this.index,
     required this.visual,
     required this.selected,
     required this.first,
@@ -927,6 +930,7 @@ class _LearningPathRow extends StatelessWidget {
   });
 
   final CourseLearningPathNode node;
+  final int index;
   final RevisionSubjectVisualTheme visual;
   final bool selected;
   final bool first;
@@ -1016,7 +1020,7 @@ class _LearningPathRow extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(top: 11, right: 12),
               child: Text(
-                node.display.title,
+                humanLearningPathNodeTitle(node, index: index),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: RevisionTypography.body.copyWith(

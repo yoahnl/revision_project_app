@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:Neralune/features/courses/presentation/utils/course_source_display_label.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
 import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
 import 'package:Neralune/presentation/design_system/tokens/revision_colors.dart';
@@ -8,20 +9,26 @@ class SubjectDocumentListItem extends StatelessWidget {
     required this.document,
     required this.onTap,
     required this.onDelete,
+    this.sourceIndex,
     super.key,
   });
 
   final RevisionDocument document;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final int? sourceIndex;
 
   @override
   Widget build(BuildContext context) {
     final (:label, :color) = _documentStatus(document);
+    final displayLabel = sourceDisplayLabelForRevisionDocument(
+      document,
+      index: sourceIndex,
+    );
 
     return RevisionSourceFileCard(
-      fileName: document.fileName,
-      statusLabel: '${_documentKindLabel(document.kind)} · $label',
+      fileName: displayLabel.primary,
+      statusLabel: _documentStatusLine(document, label, displayLabel),
       statusColor: color,
       onTap: onTap,
       trailing: Row(
@@ -56,6 +63,20 @@ class SubjectDocumentListItem extends StatelessWidget {
     ),
     _ => (label: document.status, color: RevisionColors.textMuted),
   };
+}
+
+String _documentStatusLine(
+  RevisionDocument document,
+  String statusLabel,
+  SourceDisplayLabel displayLabel,
+) {
+  final originalLine = displayLabel.originalFileLine;
+  final status = '${_documentKindLabel(document.kind)} · $statusLabel';
+  if (originalLine == null) {
+    return status;
+  }
+
+  return '$originalLine · $status';
 }
 
 String _failedDocumentLabel(String? errorCode) {

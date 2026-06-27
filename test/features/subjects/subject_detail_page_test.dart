@@ -84,7 +84,7 @@ class StaticDocumentsApi implements DocumentsApi {
       id: 'document-1',
       subjectId: 'subject-1',
       kind: 'COURSE_PDF',
-      fileName: 'cours.pdf',
+      fileName: '1782570835662-support01.pdf',
       status: 'FAILED',
       mimeType: 'application/pdf',
       errorCode: 'KNOWLEDGE_EXTRACTION_FAILED',
@@ -211,7 +211,12 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('cours.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('1782570835662-support01.pdf'), findsNothing);
+    expect(
+      find.textContaining('Fichier original : 1782570835662-support01.pdf'),
+      findsOneWidget,
+    );
     expect(find.textContaining('Erreur IA'), findsOneWidget);
   });
 
@@ -247,7 +252,7 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    await tester.tap(find.text('cours.pdf'));
+    await tester.tap(find.text('Support 1'));
     await tester.pumpAndSettle();
 
     expect(find.text('Document document-1'), findsOneWidget);
@@ -409,15 +414,25 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    expect(find.text('cours.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('1782570835662-support01.pdf'), findsNothing);
+    expect(
+      find.textContaining('Fichier original : 1782570835662-support01.pdf'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byTooltip('Supprimer la source'));
     await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Fichier original : 1782570835662-support01.pdf'),
+      findsWidgets,
+    );
     await tester.tap(find.text('Supprimer'));
     await tester.pumpAndSettle();
 
     expect(documentsApi.documents, isEmpty);
-    expect(find.text('cours.pdf'), findsNothing);
+    expect(find.text('Support 1'), findsNothing);
+    expect(find.text('1782570835662-support01.pdf'), findsNothing);
   });
 
   testWidgets('archives a used document instead of deleting it', (
@@ -462,6 +477,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(documentsApi.documents, isEmpty);
-    expect(find.text('cours.pdf'), findsNothing);
+    expect(find.text('Support 1'), findsNothing);
+    expect(find.text('1782570835662-support01.pdf'), findsNothing);
   });
 }

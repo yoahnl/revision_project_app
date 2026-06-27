@@ -452,15 +452,16 @@ void main() {
     await tester.pumpWidget(_createTestApp().widget);
     await tester.pumpAndSettle();
 
-    final context = tester.element(find.byType(RevisionBottomNavigation));
-    GoRouter.of(context).go('/courses/unknown');
+    final shellContext = tester.element(find.byType(RevisionBottomNavigation));
+    GoRouter.of(shellContext).go('/courses/unknown');
     await tester.pumpAndSettle();
 
     expect(find.text('Cours introuvable'), findsOneWidget);
     expect(find.text('Impossible d’ouvrir ce cours'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
 
-    GoRouter.of(context).go('/revision-sessions/fake/result');
+    final notFoundContext = tester.element(find.text('Cours introuvable'));
+    GoRouter.of(notFoundContext).go('/revision-sessions/fake/result');
     await tester.pumpAndSettle();
 
     expect(find.text('Impossible de charger le résultat.'), findsOneWidget);

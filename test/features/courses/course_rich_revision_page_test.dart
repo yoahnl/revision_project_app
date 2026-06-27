@@ -31,7 +31,8 @@ void main() {
     expect(find.textContaining('questions variées'), findsOneWidget);
     expect(find.text('Prêt'), findsOneWidget);
     expect(find.text('Responsabilité politique'), findsOneWidget);
-    expect(find.text('CM.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('CM.pdf'), findsNothing);
     expect(find.text('6 questions'), findsOneWidget);
     expect(find.text('10 questions'), findsOneWidget);
     expect(find.text('13 questions'), findsOneWidget);

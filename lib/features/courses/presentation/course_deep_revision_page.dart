@@ -15,6 +15,7 @@ import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import 'course_not_found_page.dart';
+import 'utils/course_source_display_label.dart';
 
 class CourseDeepRevisionPage extends ConsumerWidget {
   const CourseDeepRevisionPage({required this.courseId, super.key});
@@ -328,7 +329,7 @@ class _OpenQuestionRevision extends StatelessWidget {
                     ),
                     const SizedBox(height: RevisionSpacing.xs),
                     Text(
-                      session.scope.sourceLabel,
+                      humanSourceLabelText(session.scope.sourceLabel, index: 0),
                       style: RevisionTypography.caption,
                     ),
                   ],
@@ -466,7 +467,12 @@ class _ScopeSelector extends StatelessWidget {
                       : RevisionColors.textMuted,
                 ),
                 title: Text(indexed.$2.label),
-                subtitle: Text(indexed.$2.sourceLabel),
+                subtitle: Text(
+                  humanSourceLabelText(
+                    indexed.$2.sourceLabel,
+                    index: indexed.$1,
+                  ),
+                ),
               ),
               if (indexed.$1 != options.length - 1)
                 const Divider(height: 1, color: RevisionColors.border),

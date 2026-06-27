@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:Neralune/core/routing/route_paths.dart';
+import 'package:Neralune/features/courses/presentation/utils/course_source_display_label.dart';
 import 'package:Neralune/features/documents/application/documents_controller.dart';
 import 'package:Neralune/features/documents/domain/revision_document.dart';
 import 'package:Neralune/presentation/theme/app_colors.dart';
@@ -75,11 +76,20 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           );
         }
 
+        final displayLabel = sourceDisplayLabelForRevisionDocument(
+          detail.document,
+          index: 0,
+        );
+
         return RevisionPage(
-          title: detail.document.fileName,
+          title: displayLabel.primary,
           subtitle: _documentKindLabel(detail.document.kind),
           children: [
-            _DocumentHeader(document: detail.document, onRefresh: _reload),
+            _DocumentHeader(
+              document: detail.document,
+              displayLabel: displayLabel,
+              onRefresh: _reload,
+            ),
             const SizedBox(height: AppSpacing.xl),
             _DocumentKnowledgeSection(detail: detail, onRefresh: _reload),
             if (detail.state == DocumentDetailLoadState.ready) ...[
@@ -97,9 +107,14 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 }
 
 class _DocumentHeader extends StatelessWidget {
-  const _DocumentHeader({required this.document, required this.onRefresh});
+  const _DocumentHeader({
+    required this.document,
+    required this.displayLabel,
+    required this.onRefresh,
+  });
 
   final RevisionDocument document;
+  final SourceDisplayLabel displayLabel;
   final VoidCallback onRefresh;
 
   @override
@@ -121,6 +136,13 @@ class _DocumentHeader extends StatelessWidget {
                   document.mimeType,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
+                if (displayLabel.originalFileLine != null) ...[
+                  const SizedBox(height: AppSpacing.s),
+                  Text(
+                    displayLabel.originalFileLine!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
                 if (document.status == 'FAILED' &&
                     document.errorCode != null) ...[
                   const SizedBox(height: AppSpacing.s),
@@ -173,10 +195,7 @@ class _DocumentKnowledgeSection extends StatelessWidget {
 }
 
 class _ReadyKnowledgeUnits extends StatelessWidget {
-  const _ReadyKnowledgeUnits({
-    required this.subjectId,
-    required this.units,
-  });
+  const _ReadyKnowledgeUnits({required this.subjectId, required this.units});
 
   final String subjectId;
   final List<DocumentKnowledgeUnit> units;
@@ -203,10 +222,7 @@ class _ReadyKnowledgeUnits extends StatelessWidget {
 }
 
 class _KnowledgeUnitPanel extends StatelessWidget {
-  const _KnowledgeUnitPanel({
-    required this.subjectId,
-    required this.unit,
-  });
+  const _KnowledgeUnitPanel({required this.subjectId, required this.unit});
 
   final String subjectId;
   final DocumentKnowledgeUnit unit;

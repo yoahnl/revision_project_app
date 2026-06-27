@@ -26,7 +26,8 @@ void main() {
     expect(repository.lastDeepRevisionResultSessionId, 'deep-session-1');
     expect(find.text('Résultat de révision approfondie'), findsOneWidget);
     expect(find.text('Responsabilité politique'), findsOneWidget);
-    expect(find.text('CM.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('CM.pdf'), findsNothing);
     expect(find.textContaining('Score 0.7 / 1'), findsOneWidget);
     expect(
       find.text('Explique la responsabilité politique du Gouvernement.'),

@@ -197,7 +197,9 @@ void main() {
     expect(find.text('La séparation des pouvoirs'), findsNothing);
   });
 
-  testWidgets('course detail displays failed source errors', (tester) async {
+  testWidgets('course detail humanizes source filenames in the sources sheet', (
+    tester,
+  ) async {
     final repository = InMemoryCoursesRepository()
       ..detailsByCourse['course-1'] = courseDetail(
         sources: const [
@@ -205,7 +207,7 @@ void main() {
             id: 'document-1',
             courseId: 'course-1',
             documentId: 'document-1',
-            fileName: 'broken.pdf',
+            fileName: '1782570835662-support01.pdf',
             status: CourseDocumentStatus.failed,
             errorCode: 'KNOWLEDGE_EXTRACTION_FAILED',
           ),
@@ -218,7 +220,12 @@ void main() {
     await tester.pumpAndSettle();
 
     await openSourcesSheet(tester);
-    expect(find.text('broken.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('1782570835662-support01.pdf'), findsNothing);
+    expect(
+      find.textContaining('Fichier original : 1782570835662-support01.pdf'),
+      findsOneWidget,
+    );
     expect(find.textContaining('Analyse du PDF impossible'), findsOneWidget);
     expect(find.textContaining('KNOWLEDGE_EXTRACTION_FAILED'), findsNothing);
     expect(find.textContaining('Code erreur'), findsNothing);
@@ -300,12 +307,15 @@ void main() {
     await tester.pumpAndSettle();
 
     await openSourcesSheet(tester);
-    expect(find.text('cours.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('cours.pdf'), findsNothing);
+    expect(find.textContaining('Fichier original : cours.pdf'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Gérer la source cours.pdf'));
+    await tester.tap(find.byTooltip('Gérer la source Support 1'));
     await tester.pumpAndSettle();
 
     expect(find.text('Supprimer cette source ?'), findsOneWidget);
+    expect(find.textContaining('Fichier original : cours.pdf'), findsWidgets);
 
     await tester.tap(find.widgetWithText(TextButton, 'Supprimer'));
     await tester.pumpAndSettle();
@@ -347,11 +357,12 @@ void main() {
     await tester.pumpAndSettle();
 
     await openSourcesSheet(tester);
-    await tester.tap(find.byTooltip('Gérer la source cours.pdf'));
+    await tester.tap(find.byTooltip('Gérer la source Support 1'));
     await tester.pumpAndSettle();
 
     expect(find.text('Archiver cette source ?'), findsOneWidget);
     expect(find.textContaining('historique déjà créé'), findsOneWidget);
+    expect(find.textContaining('Fichier original : cours.pdf'), findsWidgets);
 
     await tester.tap(find.widgetWithText(TextButton, 'Archiver'));
     await tester.pumpAndSettle();
@@ -386,7 +397,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await openSourcesSheet(tester);
-    await tester.tap(find.byTooltip('Gérer la source cours.pdf'));
+    await tester.tap(find.byTooltip('Gérer la source Support 1'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(TextButton, 'Supprimer'));
@@ -394,7 +405,8 @@ void main() {
 
     expect(repository.deleteDocumentCount, 0);
     expect(find.text('Impossible de supprimer cette source.'), findsWidgets);
-    expect(find.text('cours.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('cours.pdf'), findsNothing);
   });
 
   testWidgets('course detail displays no-source progress state', (
@@ -497,7 +509,7 @@ void main() {
     expect(repository.getCourseCount, 1);
     expect(repository.getCourseLearningPathCount, 1);
     await openSourcesSheet(tester);
-    expect(find.text('Traitement en cours'), findsOneWidget);
+    expect(find.textContaining('Traitement en cours'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();

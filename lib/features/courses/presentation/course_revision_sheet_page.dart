@@ -10,7 +10,9 @@ import '../../../presentation/design_system/tokens/revision_spacing.dart';
 import '../../../presentation/design_system/tokens/revision_typography.dart';
 import '../../documents/domain/revision_document.dart';
 import '../application/courses_providers.dart';
+import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
+import 'utils/course_source_display_label.dart';
 
 class CourseRevisionSheetPage extends ConsumerWidget {
   const CourseRevisionSheetPage({required this.courseId, super.key});
@@ -20,6 +22,7 @@ class CourseRevisionSheetPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sheet = ref.watch(courseRevisionSheetProvider(courseId));
+    final detail = ref.watch(courseDetailProvider(courseId));
 
     return RevisionPageScaffold(
       headerChildren: [
@@ -55,7 +58,11 @@ class CourseRevisionSheetPage extends ConsumerWidget {
               return _GenerateSheetCard(courseId: courseId);
             }
 
-            return _RevisionSheetContent(courseId: courseId, sheet: sheet);
+            return _RevisionSheetContent(
+              courseId: courseId,
+              sheet: sheet,
+              courseDetail: detail.asData?.value,
+            );
           },
         ),
       ],
@@ -148,6 +155,7 @@ class CourseRevisionSheetSourcesPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sheet = ref.watch(courseRevisionSheetProvider(courseId));
+    final detail = ref.watch(courseDetailProvider(courseId));
 
     return RevisionPageScaffold(
       children: [
@@ -198,6 +206,28 @@ class CourseRevisionSheetSourcesPage extends ConsumerWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_sheetSourceLabel(sheet, detail.asData?.value)
+                    case final sourceLabel?) ...[
+                  RevisionGlassCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          sourceLabel.primary,
+                          style: RevisionTypography.sectionTitle,
+                        ),
+                        if (sourceLabel.originalFileLine != null) ...[
+                          const SizedBox(height: RevisionSpacing.xs),
+                          Text(
+                            sourceLabel.originalFileLine!,
+                            style: RevisionTypography.caption,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: RevisionSpacing.m),
+                ],
                 for (final section in sections)
                   RevisionSheetSectionCard(
                     title: _readableStudyText(section.title),
@@ -238,13 +268,20 @@ class CourseRevisionSheetSourcesPage extends ConsumerWidget {
 }
 
 class _RevisionSheetContent extends StatelessWidget {
-  const _RevisionSheetContent({required this.courseId, required this.sheet});
+  const _RevisionSheetContent({
+    required this.courseId,
+    required this.sheet,
+    required this.courseDetail,
+  });
 
   final String courseId;
   final RevisionSheet sheet;
+  final CourseDetail? courseDetail;
 
   @override
   Widget build(BuildContext context) {
+    final sourceLabel = _sheetSourceLabel(sheet, courseDetail);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: RevisionSpacing.s,
@@ -279,6 +316,17 @@ class _RevisionSheetContent extends StatelessWidget {
                 _readableStudyText(sheet.title),
                 style: RevisionTypography.pageTitle,
               ),
+              if (sourceLabel != null) ...[
+                const SizedBox(height: RevisionSpacing.s),
+                Text(sourceLabel.primary, style: RevisionTypography.body),
+                if (sourceLabel.originalFileLine != null) ...[
+                  const SizedBox(height: RevisionSpacing.xs),
+                  Text(
+                    sourceLabel.originalFileLine!,
+                    style: RevisionTypography.caption,
+                  ),
+                ],
+              ],
             ],
           ),
         ),
@@ -395,6 +443,27 @@ class _SectionCard extends StatelessWidget {
       ],
     );
   }
+}
+
+SourceDisplayLabel? _sheetSourceLabel(
+  RevisionSheet sheet,
+  CourseDetail? detail,
+) {
+  if (detail == null) {
+    return null;
+  }
+
+  for (final (index, source) in detail.sources.indexed) {
+    if (source.documentId == sheet.documentId) {
+      return sourceDisplayLabelForCourseDocument(source, index: index);
+    }
+  }
+
+  if (detail.sources.isEmpty) {
+    return null;
+  }
+
+  return sourceDisplayLabelForCourseDocument(detail.sources.first, index: 0);
 }
 
 String _readableStudyText(String value) {

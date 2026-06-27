@@ -12,6 +12,7 @@ import '../application/courses_providers.dart';
 import '../domain/course_models.dart';
 import '../domain/courses_repository.dart';
 import 'course_not_found_page.dart';
+import 'utils/course_source_display_label.dart';
 
 class CourseRichRevisionPage extends ConsumerWidget {
   const CourseRichRevisionPage({required this.courseId, super.key});
@@ -386,7 +387,12 @@ class _ScopeSelector extends StatelessWidget {
                       : RevisionColors.textMuted,
                 ),
                 title: Text(indexed.$2.label),
-                subtitle: Text(indexed.$2.sourceLabel),
+                subtitle: Text(
+                  humanSourceLabelText(
+                    indexed.$2.sourceLabel,
+                    index: indexed.$1,
+                  ),
+                ),
               ),
               if (indexed.$1 != options.length - 1)
                 const Divider(height: 1, color: RevisionColors.border),

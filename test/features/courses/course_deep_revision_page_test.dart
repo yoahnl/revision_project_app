@@ -33,7 +33,8 @@ void main() {
     );
     expect(find.text('Prêt'), findsOneWidget);
     expect(find.text('Responsabilité politique'), findsOneWidget);
-    expect(find.text('CM.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('CM.pdf'), findsNothing);
     expect(find.text('Démarrer la question ouverte'), findsOneWidget);
     expect(find.textContaining('backend'), findsNothing);
     expect(find.textContaining('payload'), findsNothing);

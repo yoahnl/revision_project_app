@@ -266,7 +266,7 @@ void main() {
           id: 'document-1',
           courseId: 'course-1',
           documentId: 'document-1',
-          fileName: 'cours.pdf',
+          fileName: '1782570835662-support01.pdf',
           status: CourseDocumentStatus.ready,
         ),
       ],
@@ -281,7 +281,12 @@ void main() {
     expect(find.text('Droit constitutionnel'), findsNothing);
     expect(find.text('Parcours'), findsOneWidget);
     await openCourseDetailMenuAction(tester, 'Sources');
-    expect(find.text('cours.pdf'), findsOneWidget);
+    expect(find.text('Support 1'), findsOneWidget);
+    expect(find.text('1782570835662-support01.pdf'), findsNothing);
+    expect(
+      find.textContaining('Fichier original : 1782570835662-support01.pdf'),
+      findsOneWidget,
+    );
     expect(find.text('Loi normale'), findsNothing);
   });
 
