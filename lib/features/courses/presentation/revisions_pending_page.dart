@@ -23,9 +23,9 @@ class RevisionsPendingPage extends ConsumerWidget {
 
     return RevisionPageScaffold(
       headerChildren: [
-        Text('Réviser', style: RevisionTypography.hero),
+        Text('Réviser depuis un cours', style: RevisionTypography.hero),
         Text(
-          'Choisis une session courte et utile.',
+          'Choisis un cours prêt pour lancer une session courte. Les questions sont préparées à partir de tes sources.',
           style: RevisionTypography.body,
         ),
       ],
@@ -245,15 +245,9 @@ class _RevisionHubPrimaryAction extends ConsumerWidget {
           const SizedBox(width: RevisionSpacing.s),
           TextButton(
             onPressed: () {
-              final course = fallbackCourse;
-              if (course == null) {
-                context.go(AppRoutes.home);
-                return;
-              }
-
-              context.push(AppRoutes.course(course.id));
+              context.go(AppRoutes.home);
             },
-            child: Text(fallbackCourse == null ? 'Accueil' : 'Ouvrir'),
+            child: const Text('Ouvrir les cours'),
           ),
         ],
       ),

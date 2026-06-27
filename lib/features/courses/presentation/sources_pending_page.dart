@@ -17,15 +17,15 @@ class SourcesPendingPage extends StatelessWidget {
         Text('Sources', style: RevisionTypography.pageTitle),
         const SizedBox(height: RevisionSpacing.xs),
         Text(
-          'Les PDF se gèrent depuis le détail de chaque cours.',
+          'Les sources se gèrent depuis les cours.',
           style: RevisionTypography.body,
         ),
       ],
       children: [
         RevisionEmptyState(
-          title: 'Sources depuis les cours',
+          title: 'Les sources se gèrent depuis les cours',
           message:
-              'Ouvre un cours puis utilise Ajouter une source. Cette page globale deviendra un catalogue centralisé plus tard.',
+              'Ouvre un cours pour importer, consulter ou supprimer ses PDF. Le catalogue global arrivera plus tard.',
           icon: Icons.description_outlined,
           actionLabel: 'Ouvrir les cours',
           onAction: () => context.go(AppRoutes.home),

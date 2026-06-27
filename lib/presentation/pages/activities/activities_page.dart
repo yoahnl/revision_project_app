@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:Neralune/app/router/app_routes.dart';
 import 'package:Neralune/core/routing/route_paths.dart';
 import 'package:Neralune/features/activities/application/activity_controller.dart';
 import 'package:Neralune/features/activities/domain/diagnostic_quiz_activity.dart';
@@ -32,6 +35,8 @@ class ActivitiesPage extends StatefulWidget {
 }
 
 class _ActivitiesPageState extends State<ActivitiesPage> {
+  static const _activityLoadTimeout = Duration(seconds: 9);
+
   Future<_LoadedActivity>? _activity;
   _ActivityKind _selectedKind = _ActivityKind.diagnosticQuiz;
   final _catalog = buildRevisionActivityCatalog();
@@ -54,57 +59,73 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final hasSubjectContext = _trimmedSubjectId != null;
+
     return RevisionPage(
       title: 'Activites',
       subtitle: 'Diagnostics rapides et exercices adaptatifs.',
       children: [
-        _ActivityActions(
-          selectedKind: _selectedKind,
-          canStartOpenQuestion: _canStartOpenQuestion,
-          canStartRevisionSession: _trimmedSubjectId != null,
-          canStartRichClosedExercise: _canStartOpenQuestion,
-          onDiagnosticSelected: _startDiagnosticQuiz,
-          onOpenQuestionSelected: _startOpenQuestion,
-          onRevisionSessionSelected: _startRevisionSession,
-          onRichClosedSelected: _startRichClosedExercise,
-        ),
-        const SizedBox(height: AppSpacing.l),
-        SizedBox(
-          height: MediaQuery.sizeOf(context).height * 0.68,
-          child: _activity == null
-              ? const Center(child: Text('Aucune activite selectionnee'))
-              : FutureBuilder<_LoadedActivity>(
-                  future: _activity,
-                  builder: (context, snapshot) {
-                    final loadedActivity = snapshot.data;
+        if (!hasSubjectContext)
+          _NoActivityContextPanel(onOpenCourses: _openCourses)
+        else ...[
+          _ActivityActions(
+            selectedKind: _selectedKind,
+            canStartOpenQuestion: _canStartOpenQuestion,
+            canStartRevisionSession: true,
+            canStartRichClosedExercise: _canStartOpenQuestion,
+            onDiagnosticSelected: _startDiagnosticQuiz,
+            onOpenQuestionSelected: _startOpenQuestion,
+            onRevisionSessionSelected: _startRevisionSession,
+            onRichClosedSelected: _startRichClosedExercise,
+          ),
+          const SizedBox(height: AppSpacing.l),
+          SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.68,
+            child: _activity == null
+                ? _NoActivityContextPanel(onOpenCourses: _openCourses)
+                : FutureBuilder<_LoadedActivity>(
+                    future: _activity,
+                    builder: (context, snapshot) {
+                      final loadedActivity = snapshot.data;
 
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+                      if (snapshot.connectionState != ConnectionState.done) {
+                        return const _LoadingActivityPanel();
+                      }
 
-                    if (snapshot.hasError || loadedActivity == null) {
-                      return const Center(
-                        child: Text("Impossible de charger l'activite"),
-                      );
-                    }
+                      if (snapshot.hasError || loadedActivity == null) {
+                        if (snapshot.error is _ActivityLoadTimeoutException) {
+                          return _ActivityTimeoutPanel(
+                            onRetry: _restartSelectedActivity,
+                            onOpenCourses: _openCourses,
+                          );
+                        }
 
-                    return switch (loadedActivity) {
-                      _LoadedDiagnosticQuiz(:final activity) =>
-                        _DiagnosticQuizActivityPanel(
-                          activity: activity,
-                          controller: widget.controller,
-                          catalogId:
-                              _catalog.catalogId ?? 'revisionActivityCatalog',
-                        ),
-                      _LoadedOpenQuestion(:final activity) =>
-                        _OpenQuestionActivityPanel(
-                          activity: activity,
-                          controller: widget.controller,
-                        ),
-                    };
-                  },
-                ),
-        ),
+                        return _ActivityUnavailablePanel(
+                          onRetry: _restartSelectedActivity,
+                          onOpenCourses: _openCourses,
+                        );
+                      }
+
+                      return switch (loadedActivity) {
+                        _LoadedDiagnosticQuiz(:final activity) =>
+                          _DiagnosticQuizActivityPanel(
+                            activity: activity,
+                            controller: widget.controller,
+                            catalogId:
+                                _catalog.catalogId ?? 'revisionActivityCatalog',
+                            onRetry: _restartSelectedActivity,
+                            onOpenCourses: _openCourses,
+                          ),
+                        _LoadedOpenQuestion(:final activity) =>
+                          _OpenQuestionActivityPanel(
+                            activity: activity,
+                            controller: widget.controller,
+                          ),
+                      };
+                    },
+                  ),
+          ),
+        ],
       ],
     );
   }
@@ -148,25 +169,38 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
     _activity = _loadDiagnosticQuiz(subjectId);
   }
 
-  Future<_LoadedActivity> _loadDiagnosticQuiz(String subjectId) async {
-    final activity = await widget.controller.startNextActivity(
-      subjectId: subjectId,
-      knowledgeUnitId: _trimmedKnowledgeUnitId,
+  Future<_LoadedActivity> _loadDiagnosticQuiz(String subjectId) {
+    return _withActivityTimeout(
+      widget.controller
+          .startNextActivity(
+            subjectId: subjectId,
+            knowledgeUnitId: _trimmedKnowledgeUnitId,
+          )
+          .then<_LoadedActivity>(_LoadedDiagnosticQuiz.new),
     );
-
-    return _LoadedDiagnosticQuiz(activity);
   }
 
   Future<_LoadedActivity> _loadOpenQuestion({
     required String subjectId,
     required String knowledgeUnitId,
-  }) async {
-    final activity = await widget.controller.startOpenQuestion(
-      subjectId: subjectId,
-      knowledgeUnitId: knowledgeUnitId,
+  }) {
+    return _withActivityTimeout(
+      widget.controller
+          .startOpenQuestion(
+            subjectId: subjectId,
+            knowledgeUnitId: knowledgeUnitId,
+          )
+          .then<_LoadedActivity>(_LoadedOpenQuestion.new),
     );
+  }
 
-    return _LoadedOpenQuestion(activity);
+  Future<_LoadedActivity> _withActivityTimeout(
+    Future<_LoadedActivity> activity,
+  ) {
+    return activity.timeout(
+      _activityLoadTimeout,
+      onTimeout: () => throw const _ActivityLoadTimeoutException(),
+    );
   }
 
   void _startDiagnosticQuiz() {
@@ -225,6 +259,23 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
       ),
     );
   }
+
+  void _restartSelectedActivity() {
+    switch (_selectedKind) {
+      case _ActivityKind.diagnosticQuiz:
+        _startDiagnosticQuiz();
+      case _ActivityKind.openQuestion:
+        _startOpenQuestion();
+    }
+  }
+
+  void _openCourses() {
+    context.go(AppRoutes.home);
+  }
+}
+
+class _ActivityLoadTimeoutException implements Exception {
+  const _ActivityLoadTimeoutException();
 }
 
 enum _ActivityKind { diagnosticQuiz, openQuestion }
@@ -328,16 +379,23 @@ class _DiagnosticQuizActivityPanel extends StatelessWidget {
     required this.activity,
     required this.controller,
     required this.catalogId,
+    required this.onRetry,
+    required this.onOpenCourses,
   });
 
   final DiagnosticQuizActivity activity;
   final ActivityController controller;
   final String catalogId;
+  final VoidCallback onRetry;
+  final VoidCallback onOpenCourses;
 
   @override
   Widget build(BuildContext context) {
     if (!isDiagnosticQuizActivityCatalogSafe(activity)) {
-      return const Center(child: Text('Activite indisponible'));
+      return _ActivityUnavailablePanel(
+        onRetry: onRetry,
+        onOpenCourses: onOpenCourses,
+      );
     }
 
     return RevisionPanel(
@@ -354,6 +412,198 @@ class _DiagnosticQuizActivityPanel extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+class _NoActivityContextPanel extends StatelessWidget {
+  const _NoActivityContextPanel({required this.onOpenCourses});
+
+  final VoidCallback onOpenCourses;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+
+    return RevisionPanel(
+      padding: const EdgeInsets.all(AppSpacing.l),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ActivityStateHeader(
+            title: 'Choisis une notion depuis un cours',
+            message:
+                'Les activités se lancent depuis le parcours d’un cours. Ouvre un cours, choisis une notion, puis lance une activité adaptée.',
+            icon: Icons.route_outlined,
+            color: color,
+          ),
+          const SizedBox(height: AppSpacing.m),
+          RevisionButton(
+            label: 'Ouvrir les cours',
+            icon: Icons.school_outlined,
+            onPressed: onOpenCourses,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingActivityPanel extends StatelessWidget {
+  const _LoadingActivityPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return const RevisionPanel(
+      padding: EdgeInsets.all(AppSpacing.l),
+      child: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _ActivityTimeoutPanel extends StatelessWidget {
+  const _ActivityTimeoutPanel({
+    required this.onRetry,
+    required this.onOpenCourses,
+  });
+
+  final VoidCallback onRetry;
+  final VoidCallback onOpenCourses;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ActivityActionStatePanel(
+      title: 'Cette activité prend plus de temps que prévu',
+      message:
+          'Neralune prépare encore cette question. Tu peux réessayer ou ouvrir tes cours en attendant.',
+      icon: Icons.hourglass_top_outlined,
+      onRetry: onRetry,
+      onOpenCourses: onOpenCourses,
+    );
+  }
+}
+
+class _ActivityUnavailablePanel extends StatelessWidget {
+  const _ActivityUnavailablePanel({
+    required this.onRetry,
+    required this.onOpenCourses,
+  });
+
+  final VoidCallback onRetry;
+  final VoidCallback onOpenCourses;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ActivityActionStatePanel(
+      title: 'Activité indisponible pour le moment',
+      message:
+          'Cette notion n’a pas encore assez de contenu prêt. Tu peux réessayer ou revenir aux cours.',
+      icon: Icons.info_outline,
+      onRetry: onRetry,
+      onOpenCourses: onOpenCourses,
+    );
+  }
+}
+
+class _ActivityActionStatePanel extends StatelessWidget {
+  const _ActivityActionStatePanel({
+    required this.title,
+    required this.message,
+    required this.icon,
+    required this.onRetry,
+    required this.onOpenCourses,
+  });
+
+  final String title;
+  final String message;
+  final IconData icon;
+  final VoidCallback onRetry;
+  final VoidCallback onOpenCourses;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+
+    return RevisionPanel(
+      padding: const EdgeInsets.all(AppSpacing.l),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ActivityStateHeader(
+            title: title,
+            message: message,
+            icon: icon,
+            color: color,
+          ),
+          const SizedBox(height: AppSpacing.m),
+          Wrap(
+            spacing: AppSpacing.s,
+            runSpacing: AppSpacing.s,
+            children: [
+              RevisionButton(
+                label: 'Réessayer',
+                icon: Icons.refresh,
+                onPressed: onRetry,
+              ),
+              RevisionButton(
+                label: 'Ouvrir les cours',
+                icon: Icons.school_outlined,
+                style: RevisionButtonStyle.ghost,
+                onPressed: onOpenCourses,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActivityStateHeader extends StatelessWidget {
+  const _ActivityStateHeader({
+    required this.title,
+    required this.message,
+    required this.icon,
+    required this.color,
+  });
+
+  final String title;
+  final String message;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: AppSpacing.s),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: textTheme.titleMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                message,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

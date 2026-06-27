@@ -34,9 +34,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Réviser'), findsWidgets);
-    expect(find.text('Choisis une session courte et utile.'), findsOneWidget);
+    expect(find.text('Réviser depuis un cours'), findsOneWidget);
+    expect(
+      find.text(
+        'Choisis un cours prêt pour lancer une session courte. Les questions sont préparées à partir de tes sources.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Préparer un cours'), findsOneWidget);
+    expect(find.text('Ouvrir les cours'), findsOneWidget);
     expect(find.text('Commencer 5 questions'), findsNothing);
     expect(find.textContaining('MVP+'), findsNothing);
     expect(find.textContaining('backend'), findsNothing);

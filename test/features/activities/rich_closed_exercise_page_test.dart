@@ -871,6 +871,44 @@ void main() {
     expect(find.text('Réessayer'), findsOneWidget);
   });
 
+  testWidgets('page affiche un timeout actionnable au chargement trop long', (
+    tester,
+  ) async {
+    final api = _FakeRichClosedActivityApi(
+      exercise: exercise,
+      result: result,
+      startCompleter: Completer<RichClosedExercise>(),
+    );
+
+    await tester.pumpWidget(
+      _TestHost(
+        child: RichClosedExercisePage(
+          controller: ActivityController(api),
+          subjectId: 'subject-1',
+          knowledgeUnitId: 'unit-1',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pump();
+
+    expect(
+      find.textContaining('Le QCM complet prend plus de temps que prévu'),
+      findsOneWidget,
+    );
+    expect(find.text('Réessayer'), findsOneWidget);
+    expect(find.text('Ouvrir les cours'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.textContaining('backend'), findsNothing);
+    expect(find.textContaining('payload'), findsNothing);
+    expect(find.textContaining('legacy'), findsNothing);
+    expect(find.textContaining('409'), findsNothing);
+  });
+
   testWidgets('page affiche un état vide sans contexte notion', (tester) async {
     final api = _FakeRichClosedActivityApi(exercise: exercise, result: result);
 
@@ -1144,12 +1182,14 @@ class _FakeRichClosedActivityApi implements ActivityApi {
     required this.exercise,
     required this.result,
     this.submitCompleter,
+    this.startCompleter,
     this.startError,
   });
 
   final RichClosedExercise exercise;
   final RichClosedExerciseResult result;
   final Completer<RichClosedExerciseResult>? submitCompleter;
+  final Completer<RichClosedExercise>? startCompleter;
   final Object? startError;
   String? startedSubjectId;
   String? startedKnowledgeUnitId;
@@ -1208,6 +1248,11 @@ class _FakeRichClosedActivityApi implements ActivityApi {
 
     startedSubjectId = subjectId;
     startedKnowledgeUnitId = knowledgeUnitId;
+    final completer = startCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
+
     return exercise;
   }
 

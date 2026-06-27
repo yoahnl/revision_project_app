@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:Neralune/app/router/app_routes.dart';
 import 'package:Neralune/features/activities/application/activity_controller.dart';
 import 'package:Neralune/features/activities/application/rich_closed_exercise_flow_controller.dart';
 import 'package:Neralune/features/activities/domain/rich_closed_exercise.dart';
@@ -32,8 +36,13 @@ class RichClosedExercisePage extends StatefulWidget {
 }
 
 class _RichClosedExercisePageState extends State<RichClosedExercisePage> {
+  static const _exerciseLoadTimeout = Duration(seconds: 9);
+
   late RichClosedExerciseFlowController _flowController;
   late RichClosedCoreAnswerController _answerController;
+  Timer? _loadTimeoutTimer;
+  bool _loadTimedOut = false;
+  int _loadRequestId = 0;
 
   @override
   void initState() {
@@ -57,6 +66,12 @@ class _RichClosedExercisePageState extends State<RichClosedExercisePage> {
   }
 
   @override
+  void dispose() {
+    _loadTimeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = _flowController.state;
 
@@ -66,14 +81,23 @@ class _RichClosedExercisePageState extends State<RichClosedExercisePage> {
           'Un entraînement structuré avec plusieurs formats de questions.',
       children: [
         if (!_hasLoadContext)
-          _MissingContextPanel()
+          _MissingContextPanel(onOpenCourses: _openCourses)
         else if (state.isLoading)
-          const _LoadingPanel()
+          _loadTimedOut
+              ? _FailurePanel(
+                  message:
+                      'Le QCM complet prend plus de temps que prévu. Tu peux réessayer ou ouvrir tes cours en attendant.',
+                  canRetrySubmit: false,
+                  onRetry: _startOrLoadExercise,
+                  onOpenCourses: _openCourses,
+                )
+              : const _LoadingPanel()
         else if (state.status == RichClosedExerciseFlowStatus.failed)
           _FailurePanel(
             message: _failureMessage(state),
             canRetrySubmit: state.exercise != null,
             onRetry: state.exercise == null ? _startOrLoadExercise : _submit,
+            onOpenCourses: _openCourses,
           )
         else if (state.hasResult && state.exercise != null)
           _CompletedExercisePanel(
@@ -90,7 +114,7 @@ class _RichClosedExercisePageState extends State<RichClosedExercisePage> {
             onSubmit: _submit,
           )
         else
-          _MissingContextPanel(),
+          _MissingContextPanel(onOpenCourses: _openCourses),
       ],
     );
   }
@@ -109,6 +133,10 @@ class _RichClosedExercisePageState extends State<RichClosedExercisePage> {
   }
 
   Future<void> _startOrLoadExercise() async {
+    final loadRequestId = ++_loadRequestId;
+    _loadTimeoutTimer?.cancel();
+    _loadTimedOut = false;
+
     final sessionId = _normalized(widget.sessionId);
     final subjectId = _normalized(widget.subjectId);
     final knowledgeUnitId = _normalized(widget.knowledgeUnitId);
@@ -125,11 +153,29 @@ class _RichClosedExercisePageState extends State<RichClosedExercisePage> {
             documentId: _normalized(widget.documentId),
           );
     setState(() {});
+    _scheduleLoadTimeout(loadRequestId);
     await future;
 
-    if (mounted) {
-      setState(() {});
+    if (mounted && loadRequestId == _loadRequestId) {
+      _loadTimeoutTimer?.cancel();
+      setState(() {
+        _loadTimedOut = false;
+      });
     }
+  }
+
+  void _scheduleLoadTimeout(int loadRequestId) {
+    _loadTimeoutTimer = Timer(_exerciseLoadTimeout, () {
+      if (!mounted ||
+          loadRequestId != _loadRequestId ||
+          !_flowController.state.isLoading) {
+        return;
+      }
+
+      setState(() {
+        _loadTimedOut = true;
+      });
+    });
   }
 
   Future<void> _startFreshExercise() async {
@@ -164,6 +210,10 @@ class _RichClosedExercisePageState extends State<RichClosedExercisePage> {
   String? _normalized(String? value) {
     final trimmedValue = value?.trim();
     return trimmedValue == null || trimmedValue.isEmpty ? null : trimmedValue;
+  }
+
+  void _openCourses() {
+    context.go(AppRoutes.home);
   }
 }
 
@@ -417,11 +467,13 @@ class _FailurePanel extends StatelessWidget {
     required this.message,
     required this.canRetrySubmit,
     required this.onRetry,
+    this.onOpenCourses,
   });
 
   final String message;
   final bool canRetrySubmit;
   final VoidCallback onRetry;
+  final VoidCallback? onOpenCourses;
 
   @override
   Widget build(BuildContext context) {
@@ -436,10 +488,23 @@ class _FailurePanel extends StatelessWidget {
             icon: Icons.error_outline,
           ),
           const SizedBox(height: AppSpacing.m),
-          RevisionButton(
-            label: canRetrySubmit ? 'Relancer la correction' : 'Réessayer',
-            icon: Icons.refresh,
-            onPressed: onRetry,
+          Wrap(
+            spacing: AppSpacing.s,
+            runSpacing: AppSpacing.s,
+            children: [
+              RevisionButton(
+                label: canRetrySubmit ? 'Relancer la correction' : 'Réessayer',
+                icon: Icons.refresh,
+                onPressed: onRetry,
+              ),
+              if (onOpenCourses != null)
+                RevisionButton(
+                  label: 'Ouvrir les cours',
+                  icon: Icons.school_outlined,
+                  style: RevisionButtonStyle.ghost,
+                  onPressed: onOpenCourses,
+                ),
+            ],
           ),
         ],
       ),
@@ -448,15 +513,30 @@ class _FailurePanel extends StatelessWidget {
 }
 
 class _MissingContextPanel extends StatelessWidget {
+  const _MissingContextPanel({required this.onOpenCourses});
+
+  final VoidCallback onOpenCourses;
+
   @override
   Widget build(BuildContext context) {
     return RevisionPanel(
       padding: const EdgeInsets.all(AppSpacing.l),
-      child: RevisionMessage(
-        message:
-            'Sélectionne une notion depuis un cours pour démarrer un QCM complet.',
-        color: Theme.of(context).colorScheme.secondary,
-        icon: Icons.info_outline,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RevisionMessage(
+            message:
+                'Sélectionne une notion depuis un cours pour démarrer un QCM complet.',
+            color: Theme.of(context).colorScheme.secondary,
+            icon: Icons.info_outline,
+          ),
+          const SizedBox(height: AppSpacing.m),
+          RevisionButton(
+            label: 'Ouvrir les cours',
+            icon: Icons.school_outlined,
+            onPressed: onOpenCourses,
+          ),
+        ],
       ),
     );
   }

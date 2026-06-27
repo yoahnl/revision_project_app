@@ -20,7 +20,6 @@ import 'package:Neralune/features/subjects/application/subjects_controller.dart'
 import 'package:Neralune/features/subjects/domain/subject.dart';
 import 'package:Neralune/features/today/application/today_controller.dart';
 import 'package:Neralune/features/today/domain/today_plan.dart';
-import 'package:Neralune/presentation/design_system/components/revision_mvp_components.dart';
 import 'package:Neralune/presentation/widgets/revision_button.dart';
 import 'package:Neralune/presentation/widgets/revision_navigation.dart';
 
@@ -447,7 +446,7 @@ void main() {
 
     harness.router.go(AppRoutes.revisions);
     await tester.pumpAndSettle();
-    expect(find.text('Réviser'), findsWidgets);
+    expect(find.text('Réviser depuis un cours'), findsWidgets);
     expect(find.byType(RevisionBottomNavigation), findsNothing);
     expect(find.byType(RevisionNavigationRail), findsNothing);
 
@@ -463,7 +462,14 @@ void main() {
 
     harness.router.go(AppRoutes.sources);
     await tester.pumpAndSettle();
-    expect(find.text('Sources depuis les cours'), findsOneWidget);
+    expect(find.text('Les sources se gèrent depuis les cours'), findsOneWidget);
+    expect(
+      find.text(
+        'Ouvre un cours pour importer, consulter ou supprimer ses PDF. Le catalogue global arrivera plus tard.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Ouvrir les cours'), findsOneWidget);
     expect(find.byType(RevisionBottomNavigation), findsNothing);
     expect(find.byType(RevisionNavigationRail), findsNothing);
   });

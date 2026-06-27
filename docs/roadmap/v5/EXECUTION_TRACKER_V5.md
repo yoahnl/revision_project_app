@@ -49,7 +49,7 @@ Statuts utilises :
 | ID | Titre | Statut | Type | Objectif utilisateur | Ecrans concernes | Dependance | Fichiers probables | Tests obligatoires | Captures obligatoires | Evidence pack attendu | Risque principal | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | V5-01 | CTA honnetes + etats de preparation | `DONE` | Je sais si je peux reviser maintenant ou quoi faire en attendant. | Detail cours, Reviser, Fiche | Audit V5 cree | Course detail, quick launcher | Widget preparing/ready/error, route fiche fallback, absence CTA mensonger | CTA before, questions preparing, session ready, fallback fiche | `docs/roadmap/v5/evidence/V5-01_cta_honnetes_etats_preparation_EVIDENCE_PACK.md` | Etat reel non expose par le contrat | Livre le 2026-06-27 : CTA detail cours honnete et fallback stable du quick launcher. |
-| V5-02 | Anti-spinner + surfaces legacy | `NOT_STARTED` | Je ne reste jamais bloque sur une page qui charge ou ne sert a rien. | Activites, QCM, Reviser, Sources globales | V5-01 recommande | Routes legacy, pages Activites/Reviser/Sources, timeout UI | Tests timeout, retry, redirection, router legacy | Activites spinner before/after, Sources parking, Reviser legacy | `docs/roadmap/v5/evidence/V5-02_anti_spinner_surfaces_legacy_EVIDENCE_PACK.md` | Cacher une route sans alternative utile | P0 avant polish. |
+| V5-02 | Anti-spinner + surfaces legacy | `DONE` | Je ne reste jamais bloque sur une page qui charge ou ne sert a rien. | Activites, QCM, Reviser, Sources globales | V5-01 recommande | Routes legacy, pages Activites/Reviser/Sources, timeout UI | Tests timeout, retry, redirection, router legacy | Activites spinner before/after, Sources parking, Reviser legacy | `docs/roadmap/v5/evidence/V5-02_anti_spinner_surfaces_legacy_EVIDENCE_PACK.md` | Cacher une route sans alternative utile | Livre le 2026-06-27 : Activites sans contexte actionnable, timeouts 9 s sur activite et QCM complet, Reviser/Sources globales clarifies. |
 | V5-03 | Humanisation sources / PDF / notions | `NOT_STARTED` | Je vois des noms de cours et supports humains, pas des fichiers techniques. | Detail cours, Fiche, Sources fiche, Documents, Subject detail | V5-01 | Source label helpers, document models, course sheet/detail | Tests label fallback, absence filename brut, source originale secondaire | Filenames before/after, source originale secondaire | `docs/roadmap/v5/evidence/V5-03_humanisation_sources_pdf_notions_EVIDENCE_PACK.md` | Libelle humain trompeur ou incomplet | Base necessaire pour le premium. |
 | V5-04 | Aujourd'hui coach | `NOT_STARTED` | J'ouvre l'app et je comprends ma prochaine mission. | Aujourd'hui | V5-01, V5-03 | Today page, Today models/repository | Widget empty/ready/preparing, CTA fallback, wording | Today empty, fiche ready, questions preparing, session ready | `docs/roadmap/v5/evidence/V5-04_aujourdhui_coach_EVIDENCE_PACK.md` | Recommandation inventee | Cockpit V5. |
 | V5-05 | Detail cours parcours gamifie | `NOT_STARTED` | Je vois mon parcours et le prochain checkpoint. | Detail cours, Cours | V5-03, V5-04 | Course detail, learning path widgets/models | Path empty/filled, CTA contextuel, absence filename, router actions | Detail before/after, checkpoint actif, etats notion | `docs/roadmap/v5/evidence/V5-05_detail_cours_parcours_gamifie_EVIDENCE_PACK.md` | Progression simulee | Gamification legere uniquement. |
@@ -75,16 +75,17 @@ Statuts utilises :
 10. V5-11 — Progres maquette
 11. V5-12 — Onboarding emotionnel
 
-Lot termine :
+Lots termines :
 
 ```text
 V5-01 — CTA honnetes + etats de preparation
+V5-02 — Anti-spinner + surfaces legacy
 ```
 
 Prochain lot a lancer :
 
 ```text
-V5-02 — Anti-spinner + surfaces legacy
+V5-03 — Humanisation sources / PDF / notions
 ```
 
 ## 5. Regles de validation
@@ -132,3 +133,4 @@ V5-02 — Anti-spinner + surfaces legacy
 | 2026-06-27 | Creation du tracker V5 maquette-first apres audit mobile dark. | `EXECUTION_TRACKER_V5.md` | Codex |
 | 2026-06-27 | Premier lot recommande fixe a `V5-01 — CTA honnetes + etats de preparation`. | `EXECUTION_TRACKER_V5.md` | Codex |
 | 2026-06-27 | Lot `V5-01 — CTA honnetes + etats de preparation` livre avec tests, captures mobile dark 390 x 844 et evidence pack. | `EXECUTION_TRACKER_V5.md`, `V5-01_cta_honnetes_etats_preparation_EVIDENCE_PACK.md` | Codex |
+| 2026-06-27 | Lot `V5-02 — Anti-spinner + surfaces legacy` livre avec timeouts visibles, surfaces legacy actionnables, captures mobile dark et evidence pack. | `EXECUTION_TRACKER_V5.md`, `V5-02_anti_spinner_surfaces_legacy_EVIDENCE_PACK.md` | Codex |
