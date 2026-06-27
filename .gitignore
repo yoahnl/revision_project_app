@@ -47,3 +47,5 @@ app.*.map.json
 /lib/project_overview.txt
 /generate_project_overview.sh
 /project_overview.txt
+/.playwright-cli/
+/output/
