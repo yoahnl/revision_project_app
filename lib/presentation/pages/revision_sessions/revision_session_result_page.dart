@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
@@ -130,6 +131,7 @@ class _ResultContent extends StatelessWidget {
                   ? 'Préparation examen terminée'
                   : 'Session terminée',
               subtitle: 'Voilà ce qui progresse et ce qui mérite une reprise.',
+              trailing: const _ResultLuna(),
             ),
             _ResultHeroCard(result: result),
             if (hasKnowledgeUnitSummary)
@@ -163,6 +165,47 @@ class _ResultContent extends StatelessWidget {
         if (showConfetti)
           const Positioned.fill(child: RevisionConfettiOverlay()),
       ],
+    );
+  }
+}
+
+class _ResultLuna extends StatelessWidget {
+  const _ResultLuna();
+
+  static const _asset = 'assets/brand/neralune_cat.svg';
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      image: true,
+      label: 'Luna',
+      child: ExcludeSemantics(
+        child: SizedBox(
+          key: const ValueKey('result-luna-static'),
+          width: 66,
+          height: 60,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      RevisionColors.blue.withValues(alpha: 0.20),
+                      RevisionColors.violet.withValues(alpha: 0.12),
+                      Colors.transparent,
+                    ],
+                    stops: const [0, 0.54, 1],
+                  ),
+                ),
+                child: const SizedBox.expand(),
+              ),
+              SvgPicture.asset(_asset, fit: BoxFit.contain),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

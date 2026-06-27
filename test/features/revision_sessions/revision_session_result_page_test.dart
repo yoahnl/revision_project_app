@@ -22,6 +22,7 @@ void main() {
     expect(api.loadResultCount, 1);
     expect(api.loadedResultSessionId, 'revision-session-1');
     expect(find.text('Session terminée'), findsOneWidget);
+    expect(find.byKey(const ValueKey('result-luna-static')), findsOneWidget);
     expect(find.text('67%'), findsWidgets);
     expect(find.text('4 / 6 bonnes réponses'), findsOneWidget);
     expect(find.text('Bonne progression.'), findsOneWidget);

@@ -46,18 +46,18 @@ Difference entre roadmap canonique et tracker :
 
 | Area | Status | Last completed lot | Current / next lot | Main risk | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Documentation / governance | `DONE` | `V4-DOC-02` | `DEMO-05` | Tracker non maintenu apres les lots demo | Roadmap, tracker, lock MVP demo et evidence packs restent a jour. |
-| Shell & navigation | `DONE` | `V4-01B` | `DEMO-05` | Raccourci profil encore discret | Trois onglets visibles livres ; profil accessible en action secondaire. |
-| Aujourd'hui | `DONE` | `V4-02C` | `DEMO-05` | Actions secondaires de duree encore reportees | UI V4 alignee visuellement, display backend consomme en option, enrichment backend livre. |
-| Cours | `IN_PROGRESS` | `V4-03C` | `DEMO-05` | Revision matiere encore partiellement branchee | Bibliotheque V4 livree et detail cours simplifie ; selector/action matiere restent a renforcer apres la demo. |
-| Learning path | `DONE` | `V4-04B` | `DEMO-05` | Action notion-specific encore limitee par les routes legacy | Contrat backend consomme par Flutter ; timeline detail cours branchee sur les nodes reels. |
-| Study Session V4 | `IN_PROGRESS` | `DEMO-03` | `DEMO-05` | Session encore limitee au moteur quick legacy | Choix duree 5/15/30 et session courte immersive livres en demo ; facade `/study-sessions` non creee. |
-| Feedback & result | `IN_PROGRESS` | `DEMO-04` | `DEMO-05` | Feedback immediat per-question encore absent | Bilan final demo nettoye avec score secondaire, corrections utiles et prochaine action. |
+| Documentation / governance | `DONE` | `DEMO-05` | `POST-DEMO-01` | Tracker non maintenu apres la revue demo | Roadmap, tracker, lock MVP demo, runbook et evidence packs restent a jour. |
+| Shell & navigation | `DONE` | `V4-01B` | `POST-DEMO-01` | Raccourci profil encore discret | Trois onglets visibles livres ; profil accessible en action secondaire. |
+| Aujourd'hui | `DONE` | `V4-02C` | `POST-DEMO-01` | Actions secondaires de duree encore reportees | UI V4 alignee visuellement, display backend consomme en option, enrichment backend livre. |
+| Cours | `IN_PROGRESS` | `V4-03C` | `POST-DEMO-01` | Revision matiere encore partiellement branchee | Bibliotheque V4 livree et detail cours simplifie ; selector/action matiere restent a renforcer apres la demo. |
+| Learning path | `DONE` | `V4-04B` | `POST-DEMO-01` | Action notion-specific encore limitee par les routes legacy | Contrat backend consomme par Flutter ; timeline detail cours branchee sur les nodes reels. |
+| Study Session V4 | `IN_PROGRESS` | `DEMO-03` | `POST-DEMO-01` | Session encore limitee au moteur quick legacy | Choix duree 5/15/30 et session courte immersive livres en demo ; facade `/study-sessions` non creee. |
+| Feedback & result | `IN_PROGRESS` | `DEMO-04` | `POST-DEMO-01` | Feedback immediat per-question encore absent | Bilan final demo nettoye avec score secondaire, corrections utiles et prochaine action. |
 | Progres | `NOT_STARTED` | Aucun | `V4-07A` | Trop de metriques ou donnees fragiles | Trois categories max : solides, a renforcer, a decouvrir. |
 | Sujet long | `NOT_STARTED` | Aucun | `V4-08A` | Cout et qualite de correction | A garder separe des sessions normales. |
 | Epreuve blanche | `NOT_STARTED` | Aucun | `V4-09A` | Produit trop lourd trop tot | A demarrer apres sujet long stabilise. |
-| Luna / identity | `NOT_STARTED` | Aucun | `V4-10A` | Mascotte trop envahissante | Presence sobre, moments choisis, reduced motion. |
-| Cleanup / hardening | `NOT_STARTED` | Aucun | `V4-11A` | Nettoyer avant compatibilite | Audit avant suppression ou masquage durable. |
+| Luna / identity | `IN_PROGRESS` | `DEMO-05` | `POST-DEMO-01` | Mascotte trop envahissante | Presence legere sur Today, detail cours, Cours et bilan ; mascot system complet reporte. |
+| Cleanup / hardening | `IN_PROGRESS` | `DEMO-05` | `POST-DEMO-01` | Nettoyer avant compatibilite | Couloir demo documente ; audit post-demo recommande avant nouvelles grosses features. |
 
 ## 4. Canonical phase tracker
 
@@ -73,8 +73,8 @@ Difference entre roadmap canonique et tracker :
 | Phase 7 | Progrès V4 | `NOT_STARTED` | Rendre la progression actionnable. | Resume matiere, semaine, cours, a revoir maintenant. | Phase 4, Phase 6 | Captures, tests progress, decision event log. | Eviter les metriques trop proches du backend. |
 | Phase 8 | Sujet long cours | `NOT_STARTED` | S'entrainer a une vraie reponse d'examen depuis un cours. | Contrat long-form, draft, workspace, correction structuree. | Phase 5, Phase 6 | Sample correction, captures mobile/desktop, tests. | Experience separee des sessions normales. |
 | Phase 9 | Épreuve blanche matière | `NOT_STARTED` | Evaluer une matiere de facon transversale. | Scope matiere, sujet transversal, correction globale, historique. | Phase 8 | Fixtures multi-cours, tests, captures. | Ne pas la lancer trop tot. |
-| Phase 10 | Luna / identité / polish | `NOT_STARTED` | Donner une presence feline sobre sans surcharger. | Integration Today/result/progress/empty states, reduced motion. | Phases UI principales | Captures, verification reduced motion, tests widgets. | Luna n'est pas une priorite avant la boucle quotidienne. |
-| Phase 11 | Cleanup technique et hardening | `NOT_STARTED` | Stabiliser l'experience V4 et isoler le legacy. | Audit routes, cleanup visible, deprecations documentees, tests. | Phases 1 a 10 selon scope | Test report, build report, route audit. | Aucun moteur backend encore utile ne doit etre supprime trop tot. |
+| Phase 10 | Luna / identité / polish | `IN_PROGRESS` | Donner une presence feline sobre sans surcharger. | Integration Today/result/progress/empty states, reduced motion. | Phases UI principales | Captures, verification reduced motion, tests widgets. | `DEMO-05` livre une presence Luna legere pour la demo ; mascot system complet reporte. |
+| Phase 11 | Cleanup technique et hardening | `IN_PROGRESS` | Stabiliser l'experience V4 et isoler le legacy. | Audit routes, cleanup visible, deprecations documentees, tests. | Phases 1 a 10 selon scope | Test report, build report, route audit. | `DEMO-05` documente le runbook demo ; audit post-demo recommande avant nouvelles features. |
 
 ## 5. Lot tracker
 
@@ -95,6 +95,7 @@ Difference entre roadmap canonique et tracker :
 | `DEMO-02` | Choix durée simple 5 / 15 / 30 | Frontend demo | `DONE` | Frontend | Bottom sheet duree depuis detail cours, mappee au moteur quick existant | `DEMO-01` / `V4-04B` | `CourseDetailPage`, sheet duree, launcher quick | Detail/router/app tests, analyze tente | `docs/roadmap/v4/evidence/DEMO-02_choix_duree_simple_EVIDENCE_PACK.md` | 2026-06-26 | Correspondance demo de `V4-05A` ; `5/15/30 min` mappe en interne vers `questionCount` 5/10/30 sans exposer ce champ en UI. |
 | `DEMO-03` | Session immersive quick-only | Frontend demo | `DONE` | Frontend | Session courte immersive sans dashboard | `DEMO-02` | `QuickRevisionQuizFlow`, revision session tests | Quick widget/detail/router/app tests, analyze tente | `docs/roadmap/v4/evidence/DEMO-03_session_immersive_quick_only_EVIDENCE_PACK.md` | 2026-06-26 | Une question a la fois, brouillons/signalement/sortie/finalisation conserves ; aucun nouveau backend ni `/study-sessions`. |
 | `DEMO-04` | Feedback + bilan propre | Frontend demo | `DONE` | Frontend | Bilan final lisible, corrections utiles et prochaine action | `DEMO-03` | `RevisionSessionResultPage`, result/router/app tests | Result/quick/session/router/app tests, analyze tente | `docs/roadmap/v4/evidence/DEMO-04_feedback_bilan_propre_EVIDENCE_PACK.md` | 2026-06-27 | Utilise uniquement `RevisionSessionResult` et les corrections existantes ; score secondaire, pas de feedback IA, pas de backend. |
+| `DEMO-05` | Polish démo + Luna légère | Frontend demo + docs | `DONE` | Frontend | Polish wording, Luna legere, runbook demo | `DEMO-04` | Result page, runbook, tracker | Result/quick/session/detail/router/app tests, analyze tente | `docs/roadmap/v4/evidence/DEMO-05_polish_demo_luna_legere_EVIDENCE_PACK.md` | 2026-06-27 | Dernier lot du couloir MVP demo ; Luna statique ajoutee au bilan, runbook cree, aucun nouvel asset ni backend. |
 | `V4-05A` | Duration picker 5/15/30 | Frontend | `NOT_STARTED` | Frontend | Choix duree et perimetre | `V4-03B` | Bottom sheet, course/subject entry points | Widget tests | `docs/roadmap/v4/evidence/V4-05A_duration_picker_5_15_30_EVIDENCE_PACK.md` | À confirmer | Aucun `questionCount` visible. |
 | `V4-05B` | Study Session V4 backend façade | Backend | `NOT_STARTED` | API | Facade `/study-sessions`, planner duration/scope | `V4-05A`, `V4-04A` | Revision sessions, adapters, planner | Unit/controller tests | `docs/roadmap/v4/evidence/V4-05B_study_session_backend_facade_EVIDENCE_PACK.md` | À confirmer | Reutiliser moteurs existants sans big bang. |
 | `V4-05C` | Study Session V4 frontend shell | Frontend | `NOT_STARTED` | Frontend | Route immersive et renderer step | `V4-05B` | Session page, router, step renderer | Router/widget tests | `docs/roadmap/v4/evidence/V4-05C_study_session_frontend_shell_EVIDENCE_PACK.md` | À confirmer | Bottom nav masquee pendant la session. |
@@ -147,9 +148,27 @@ Verrou `LOCK-01` : jusqu'a la demo, les prochains lots autorises sont limites au
 
 5. `DEMO-05` — Polish démo + Luna légère
    - Correspondance : `V4-10A-lite / V4-11A-lite`.
-   - Statut : prochain lot recommande.
-   - Pourquoi ensuite : stabiliser le couloir demo sans rouvrir de grands chantiers.
+   - Statut : livre le 2026-06-27.
+   - Resultat : runbook demo cree, Luna legere ajoutee au bilan, wording et tests critiques verifies.
    - Ne doit pas faire : mascot system complet, nouvel asset, animation infinie.
+
+## 6 bis. MVP démo prêt pour revue manuelle
+
+Le couloir `DEMO-01` a `DEMO-05` est termine.
+
+Statut recommande :
+
+```text
+PAUSE — Démo manuelle, captures, retours utilisateur
+```
+
+ou, si un lot formel est necessaire :
+
+```text
+POST-DEMO-01 — Audit démo et stabilisation post-MVP
+```
+
+Ne pas enchainer directement sur une grosse feature (`V4-05B`, `V4-06A`, Sujet long, Epreuve blanche, Progres avance ou GenUI) avant une revue manuelle du couloir demo.
 
 ## 7. Evidence pack convention
 
@@ -212,6 +231,7 @@ Ne pas creer les evidence packs en avance. Ils sont crees uniquement a la fin du
 | 2026-06-26 | `DEMO-02` mappe les durees 5/15/30 min vers le moteur quick existant. | Accepted | La facade Study Session V4 n'existe pas encore, mais le choix utilisateur doit deja parler en duree. | `5 min` -> `questionCount 5`, `15 min` -> `questionCount 10`, `30 min` -> `questionCount 30`; le champ technique reste invisible en UI. | `DEMO-03`, puis vraie facade Study Session. |
 | 2026-06-26 | `DEMO-03` transforme le flux quick en session courte immersive sans nouveau moteur. | Accepted | La demo a besoin d'une experience montrable maintenant, sans attendre `/study-sessions` ni un planner multi-types. | `QuickRevisionQuizFlow` affiche une question a la fois, masque la bottom nav, conserve brouillons/signalement/finalisation et garde les moteurs techniques internes. | `DEMO-04`, puis vraie facade Study Session. |
 | 2026-06-27 | `DEMO-04` utilise le resultat de session existant comme feedback final de demo. | Accepted | Les corrections existent deja dans `RevisionSessionResult`; generer du feedback IA ou ouvrir `V4-06A` serait trop lourd pour le verrou demo. | `RevisionSessionResultPage` affiche score secondaire, corrections utiles, notions disponibles uniquement si reelles et prochaine action fiable. | `DEMO-05`, puis vrai feedback immediat `V4-06A/V4-06B`. |
+| 2026-06-27 | `DEMO-05` clot le couloir demo et recommande une revue manuelle avant nouvelle feature. | Accepted | Le flow demo est assez complet pour etre montre ; enchainer sur une grosse brique risquerait de rouvrir le scope creep. | Creation du runbook, evidence pack final, Luna statique dans le bilan et statut post-demo recommande. | Apres captures et retours utilisateur. |
 
 ## 9. Open risks
 
@@ -295,10 +315,11 @@ Etat initial au 2026-06-26 :
 - `DEMO-02` est realise : le choix duree 5/15/30 min est branche sur le moteur quick existant sans exposer `questionCount`.
 - `DEMO-03` est realise : la session quick demo devient immersive, une question a la fois, sans bottom nav.
 - `DEMO-04` est realise : le bilan final affiche score secondaire, corrections utiles et prochaine action sans nouveau backend.
+- `DEMO-05` est realise : le runbook demo existe, Luna reste legere et le bilan affiche une presence statique supplementaire.
 - La Phase 1 est terminee.
 - La Phase 2 est terminee.
 - La Phase 3 est `IN_PROGRESS`.
-- Le prochain lot recommande sous verrou demo est `DEMO-05`, dernier polish avant demo.
+- Le prochain lot recommande est `PAUSE — Démo manuelle, captures, retours utilisateur` ou `POST-DEMO-01 — Audit démo et stabilisation post-MVP`.
 - La Phase 4 est terminee ; les Phases 5 et 6 avancent en version demo, tandis que les phases 7+ restent `NOT_STARTED`.
 - Aucun fichier Prisma n'a ete modifie par les lots V4 livres ; `V4-02B` modifie uniquement le backend Today, `V4-02C` uniquement le frontend Today/documentation et `V4-04A` uniquement le backend Courses/documentation.
 
