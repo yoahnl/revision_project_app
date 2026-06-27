@@ -433,7 +433,7 @@ void main() {
     GoRouter.of(context).go('/revision-sessions/fake/result');
     await tester.pumpAndSettle();
 
-    expect(find.text('Impossible de charger le résultat'), findsOneWidget);
+    expect(find.text('Impossible de charger le résultat.'), findsOneWidget);
     expect(find.text('78%'), findsNothing);
     expect(find.text('4/5 bonnes'), findsNothing);
   });

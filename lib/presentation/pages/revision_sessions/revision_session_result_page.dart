@@ -66,7 +66,7 @@ class _RevisionSessionResultPageState extends State<RevisionSessionResultPage> {
         if (snapshot.hasError || result == null) {
           return RevisionPageScaffold(
             children: [
-              Text('Résultat', style: RevisionTypography.pageTitle),
+              Text('Bilan de session', style: RevisionTypography.pageTitle),
               RevisionErrorState(
                 title: _errorTitle(snapshot.error),
                 message: _errorMessage(snapshot.error),
@@ -116,46 +116,30 @@ class _ResultContent extends StatelessWidget {
         .where((correction) => !correction.isCorrect)
         .toList(growable: false);
     final courseId = result.session.courseId;
+    final hasMissedCorrections = missedCorrections.isNotEmpty;
+    final hasKnowledgeUnitSummary = mastered.isNotEmpty || toReview.isNotEmpty;
 
-    final showConfetti = result.summary.score > 0.70;
+    final showConfetti = result.summary.score >= 0.85;
 
     return Stack(
       children: [
         RevisionPageScaffold(
           children: [
-            Text(
-              result.session.mode == RevisionSessionMode.exam
-                  ? 'Préparation examen - QCM terminée'
+            RevisionPageHeader(
+              title: result.session.mode == RevisionSessionMode.exam
+                  ? 'Préparation examen terminée'
                   : 'Session terminée',
-              textAlign: TextAlign.center,
-              style: RevisionTypography.sectionTitle,
+              subtitle: 'Voilà ce qui progresse et ce qui mérite une reprise.',
             ),
-            RevisionGlassCard(
-              child: Column(
-                children: [
-                  RevisionMasteryRing(
-                    value: result.summary.score,
-                    label: '${(result.summary.score * 100).round()}%',
-                    caption: 'global',
-                    size: 112,
-                    color: _scoreColor(result.summary.score),
-                  ),
-                  const SizedBox(height: RevisionSpacing.m),
-                  Text(
-                    _resultMessage(result.summary.score),
-                    style: RevisionTypography.sectionTitle,
-                  ),
-                  const SizedBox(height: RevisionSpacing.xs),
-                  Text(
-                    '${result.summary.correctAnswers}/${result.summary.totalQuestions} bonnes réponses',
-                    style: RevisionTypography.body,
-                  ),
-                ],
+            _ResultHeroCard(result: result),
+            if (hasKnowledgeUnitSummary)
+              _ResultHighlights(
+                masteredCount: mastered.length,
+                toReviewCount: toReview.length,
               ),
-            ),
             if (mastered.isNotEmpty)
               _ResultSection(
-                title: 'Tu maîtrises',
+                title: 'Notions consolidées',
                 icon: Icons.check_circle_rounded,
                 color: RevisionColors.green,
                 units: mastered,
@@ -169,50 +153,144 @@ class _ResultContent extends StatelessWidget {
               ),
             if (missedCorrections.isNotEmpty)
               _MissedCorrectionsSection(corrections: missedCorrections),
-            RevisionGlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Prochaine étape',
-                    style: RevisionTypography.sectionTitle,
-                  ),
-                  const SizedBox(height: RevisionSpacing.m),
-                  if (courseId != null) ...[
-                    RevisionGradientButton(
-                      label: 'Voir la fiche',
-                      icon: Icons.description_rounded,
-                      expanded: true,
-                      gradient: const LinearGradient(
-                        colors: [
-                          RevisionColors.glassStrong,
-                          RevisionColors.ink3,
-                        ],
-                      ),
-                      onPressed: () =>
-                          context.push(AppRoutes.courseSheet(courseId)),
-                    ),
-                    const SizedBox(height: RevisionSpacing.m),
-                    RevisionGradientButton(
-                      label: 'Retour au cours',
-                      icon: Icons.arrow_back_rounded,
-                      expanded: true,
-                      onPressed: () => context.go(AppRoutes.course(courseId)),
-                    ),
-                  ] else
-                    RevisionGradientButton(
-                      label: 'Retour aux révisions',
-                      icon: Icons.arrow_back_rounded,
-                      expanded: true,
-                      onPressed: () => context.go(AppRoutes.revisions),
-                    ),
-                ],
-              ),
+            if (missedCorrections.isEmpty) const _NoCorrectionsCard(),
+            _NextStepCard(
+              courseId: courseId,
+              hasMissedCorrections: hasMissedCorrections,
             ),
           ],
         ),
         if (showConfetti)
           const Positioned.fill(child: RevisionConfettiOverlay()),
+      ],
+    );
+  }
+}
+
+class _ResultHeroCard extends StatelessWidget {
+  const _ResultHeroCard({required this.result});
+
+  final RevisionSessionResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = result.summary.score;
+
+    return RevisionGlassCard(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [RevisionColors.glassStrong, RevisionColors.ink2],
+      ),
+      child: Row(
+        children: [
+          RevisionMasteryRing(
+            value: score,
+            label: '${(score * 100).round()}%',
+            caption: 'score',
+            size: 104,
+            color: _scoreColor(score),
+          ),
+          const SizedBox(width: RevisionSpacing.l),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _resultMessage(score),
+                  style: RevisionTypography.sectionTitle,
+                ),
+                const SizedBox(height: RevisionSpacing.s),
+                Text(
+                  _scoreLabel(result.summary),
+                  style: RevisionTypography.body.copyWith(
+                    color: RevisionColors.text,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: RevisionSpacing.xs),
+                Text(
+                  'L’essentiel maintenant : comprendre l’erreur et choisir la suite.',
+                  style: RevisionTypography.caption,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResultHighlights extends StatelessWidget {
+  const _ResultHighlights({
+    required this.masteredCount,
+    required this.toReviewCount,
+  });
+
+  final int masteredCount;
+  final int toReviewCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final highlights = <Widget>[
+      _ResultHighlightTile(
+        value: masteredCount,
+        label: masteredCount > 1 ? 'notions consolidées' : 'notion consolidée',
+        color: RevisionColors.green,
+      ),
+      _ResultHighlightTile(
+        value: toReviewCount,
+        label: toReviewCount > 1
+            ? 'notions à retravailler'
+            : 'notion à retravailler',
+        color: RevisionColors.amber,
+      ),
+    ];
+
+    return RevisionGlassCard(
+      padding: const EdgeInsets.all(RevisionSpacing.m),
+      child: Row(
+        children: [
+          for (final tile in highlights) ...[
+            Expanded(child: tile),
+            if (tile != highlights.last)
+              const SizedBox(
+                height: 52,
+                child: VerticalDivider(color: RevisionColors.border),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ResultHighlightTile extends StatelessWidget {
+  const _ResultHighlightTile({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final int value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          '$value',
+          style: RevisionTypography.pageTitle.copyWith(color: color),
+        ),
+        const SizedBox(height: RevisionSpacing.xs),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: RevisionTypography.caption,
+        ),
       ],
     );
   }
@@ -234,7 +312,7 @@ class _MissedCorrectionsSection extends StatelessWidget {
               const Icon(Icons.school_rounded, color: RevisionColors.blue),
               const SizedBox(width: RevisionSpacing.s),
               Text(
-                'Ce que tu as loupé',
+                'Corrections utiles',
                 style: RevisionTypography.sectionTitle,
               ),
             ],
@@ -256,13 +334,21 @@ class _MissedCorrectionsSection extends StatelessWidget {
             ),
             const SizedBox(height: RevisionSpacing.xs),
             _CorrectionLine(
-              label: 'Correction',
+              label: 'Bonne réponse',
               value: _answersLabel(correction.correctAnswers),
               color: RevisionColors.green,
             ),
             if (correction.explanation != null) ...[
               const SizedBox(height: RevisionSpacing.s),
-              Text(correction.explanation!, style: RevisionTypography.caption),
+              Text(
+                'À retenir',
+                style: RevisionTypography.caption.copyWith(
+                  color: RevisionColors.textMuted,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: RevisionSpacing.xs),
+              Text(correction.explanation!, style: RevisionTypography.body),
             ],
             if (correction != corrections.last)
               const Padding(
@@ -273,6 +359,102 @@ class _MissedCorrectionsSection extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _NoCorrectionsCard extends StatelessWidget {
+  const _NoCorrectionsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionGlassCard(
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded, color: RevisionColors.green),
+          const SizedBox(width: RevisionSpacing.m),
+          Expanded(
+            child: Text(
+              'Aucune erreur à corriger pour cette session.',
+              style: RevisionTypography.body.copyWith(
+                color: RevisionColors.text,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NextStepCard extends StatelessWidget {
+  const _NextStepCard({
+    required this.courseId,
+    required this.hasMissedCorrections,
+  });
+
+  final String? courseId;
+  final bool hasMissedCorrections;
+
+  @override
+  Widget build(BuildContext context) {
+    final courseId = this.courseId;
+
+    return RevisionGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Prochaine étape', style: RevisionTypography.sectionTitle),
+          const SizedBox(height: RevisionSpacing.s),
+          Text(_nextStepMessage(), style: RevisionTypography.body),
+          const SizedBox(height: RevisionSpacing.m),
+          if (courseId != null) ...[
+            RevisionGradientButton(
+              label: hasMissedCorrections ? 'Voir la fiche' : 'Retour au cours',
+              icon: hasMissedCorrections
+                  ? Icons.description_rounded
+                  : Icons.arrow_back_rounded,
+              expanded: true,
+              onPressed: () => hasMissedCorrections
+                  ? context.push(AppRoutes.courseSheet(courseId))
+                  : context.go(AppRoutes.course(courseId)),
+            ),
+            const SizedBox(height: RevisionSpacing.m),
+            RevisionGradientButton(
+              label: hasMissedCorrections ? 'Retour au cours' : 'Voir la fiche',
+              icon: hasMissedCorrections
+                  ? Icons.arrow_back_rounded
+                  : Icons.description_rounded,
+              expanded: true,
+              gradient: const LinearGradient(
+                colors: [RevisionColors.glassStrong, RevisionColors.ink3],
+              ),
+              onPressed: () => hasMissedCorrections
+                  ? context.go(AppRoutes.course(courseId))
+                  : context.push(AppRoutes.courseSheet(courseId)),
+            ),
+          ] else
+            RevisionGradientButton(
+              label: 'Retour aux révisions',
+              icon: Icons.arrow_back_rounded,
+              expanded: true,
+              onPressed: () => context.go(AppRoutes.revisions),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _nextStepMessage() {
+    if (courseId == null) {
+      return 'Reviens à tes révisions pour choisir la suite.';
+    }
+
+    if (hasMissedCorrections) {
+      return 'Commence par revoir la fiche du cours, puis reprends la notion à froid.';
+    }
+
+    return 'Tu peux retourner au cours et choisir la prochaine notion à consolider.';
   }
 }
 
@@ -389,7 +571,11 @@ String _resultMessage(double score) {
     return 'Les bases prennent forme.';
   }
 
-  return 'Cette notion mérite une nouvelle passe.';
+  return 'On sait quoi retravailler.';
+}
+
+String _scoreLabel(RevisionSessionResultSummary summary) {
+  return '${summary.correctAnswers} / ${summary.totalQuestions} bonnes réponses';
 }
 
 String _answersLabel(List<String> answers) {
@@ -411,20 +597,16 @@ Color _scoreColor(double score) {
   return RevisionColors.red;
 }
 
-String _errorTitle(Object? error) {
-  if (error is RevisionSessionNotFoundException) {
-    return 'Session introuvable';
-  }
-  if (error is RevisionSessionResultNotReadyException) {
-    return 'Résultat indisponible';
-  }
-
-  return 'Impossible de charger le résultat';
+String _errorTitle(Object? _) {
+  return 'Impossible de charger le résultat.';
 }
 
 String _errorMessage(Object? error) {
+  if (error is RevisionSessionNotFoundException) {
+    return 'Cette session n’est pas accessible.';
+  }
   if (error is RevisionSessionResultNotReadyException) {
-    return error.message;
+    return 'Le bilan sera disponible dès que la session sera finalisée.';
   }
 
   return 'Le résultat sera affiché après une session finalisée.';

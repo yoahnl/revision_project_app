@@ -375,7 +375,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Session terminée'), findsOneWidget);
-    expect(find.text('4/6 bonnes réponses'), findsOneWidget);
+    expect(find.text('4 / 6 bonnes réponses'), findsOneWidget);
     expect(find.byType(RevisionBottomNavigation), findsNothing);
     expect(find.byType(RevisionNavigationRail), findsNothing);
     expect(find.text('78%'), findsNothing);
