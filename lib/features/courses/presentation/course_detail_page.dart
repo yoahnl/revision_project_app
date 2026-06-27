@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
@@ -158,60 +157,15 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
       (_) => _syncQuestionPolling(pollingReadiness),
     );
 
-    return RevisionPageScaffold(
-      headerChildren: [
-        _CourseTopBar(detail: detail, visual: visual, onBack: _exitToHome),
-        _CourseHeader(
-          detail: detail,
-          visual: visual,
-          learningPathState: learningPath,
-          showContent: _showDetailContent,
-          revealDelay: const Duration(milliseconds: 40),
-        ),
-      ],
-      children: [
-        _CourseDetailReveal(
-          visible: _showDetailContent,
-          delay: const Duration(milliseconds: 70),
-          child: _CoursePrimaryAction(
-            detail: detail,
-            visual: visual,
-            learningPathState: learningPath,
-          ),
-        ),
-        _CourseDetailReveal(
-          visible: _showDetailContent,
-          delay: const Duration(milliseconds: 130),
-          child: _CourseLearningPath(
-            detail: detail,
-            visual: visual,
-            learningPathState: learningPath,
-          ),
-        ),
-        _CourseDetailReveal(
-          visible: _showDetailContent,
-          delay: const Duration(milliseconds: 190),
-          child: _CourseBottomActions(
-            detail: detail,
-            hasReadySource: hasReadySource,
-            learningPathState: learningPath,
-          ),
-        ),
-        if (_pollTimedOut)
-          RevisionGlassCard(
-            child: Text(
-              'Le traitement continue en arrière-plan. Tu peux revenir plus tard.',
-              style: RevisionTypography.body,
-            ),
-          ),
-        if (_questionPollTimedOut)
-          RevisionGlassCard(
-            child: Text(
-              'La préparation prend plus de temps que prévu. Tu peux réessayer ou revenir plus tard.',
-              style: RevisionTypography.body,
-            ),
-          ),
-      ],
+    return _CourseDetailMobileScreen(
+      detail: detail,
+      visual: visual,
+      learningPathState: learningPath,
+      hasReadySource: hasReadySource,
+      showContent: _showDetailContent,
+      pollTimedOut: _pollTimedOut,
+      questionPollTimedOut: _questionPollTimedOut,
+      onBack: _exitToHome,
     );
   }
 
@@ -337,161 +291,105 @@ class _CourseDetailContentState extends ConsumerState<_CourseDetailContent> {
   }
 }
 
-class _CourseTopBar extends ConsumerWidget {
-  const _CourseTopBar({
+const _coursePrimaryGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [RevisionColors.blueDeep, Color(0xFF5638FF)],
+);
+
+class _CourseDetailMobileScreen extends StatelessWidget {
+  const _CourseDetailMobileScreen({
     required this.detail,
     required this.visual,
+    required this.learningPathState,
+    required this.hasReadySource,
+    required this.showContent,
+    required this.pollTimedOut,
+    required this.questionPollTimedOut,
     required this.onBack,
   });
 
   final CourseDetail detail;
   final RevisionSubjectVisualTheme visual;
+  final AsyncValue<CourseLearningPath> learningPathState;
+  final bool hasReadySource;
+  final bool showContent;
+  final bool pollTimedOut;
+  final bool questionPollTimedOut;
   final VoidCallback onBack;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Row(
-      children: [
-        Hero(
-          tag: CourseHeroTags.navigationControl(),
-          flightShuttleBuilder: buildCourseNavigationControlHeroFlightShuttle,
-          transitionOnUserGestures: true,
-          child: RevisionHeaderIconButton(
-            icon: Icons.arrow_back_rounded,
-            tooltip: 'Retour',
-            onPressed: onBack,
-            size: 44,
-          ),
-        ),
-        Expanded(
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: PopupMenuButton<_CourseMenuAction>(
-              tooltip: 'Plus d’actions',
-              icon: const Icon(Icons.more_horiz_rounded),
-              color: RevisionColors.ink2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
-                side: const BorderSide(color: RevisionColors.border),
-              ),
-              onSelected: (action) => switch (action) {
-                _CourseMenuAction.sources => _showSourcesSheet(
-                  context,
-                  ref,
-                  detail,
-                ),
-                _CourseMenuAction.manage => _showCourseManagement(
-                  context,
-                  ref,
-                  detail,
-                ),
-                _CourseMenuAction.history => _showCourseHistory(
-                  context,
-                  detail,
-                ),
-                _CourseMenuAction.advanced => _showCourseAdvancedActions(
-                  context,
-                  detail,
-                  visual,
-                ),
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: _CourseMenuAction.sources,
-                  child: Text('Sources'),
-                ),
-                PopupMenuItem(
-                  value: _CourseMenuAction.manage,
-                  child: Text('Gérer le cours'),
-                ),
-                PopupMenuItem(
-                  value: _CourseMenuAction.history,
-                  child: Text('Historique'),
-                ),
-                PopupMenuItem(
-                  value: _CourseMenuAction.advanced,
-                  child: Text('Actions avancées'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-enum _CourseMenuAction { sources, manage, history, advanced }
-
-class _CourseHeader extends StatelessWidget {
-  const _CourseHeader({
-    required this.detail,
-    required this.visual,
-    required this.learningPathState,
-    required this.showContent,
-    required this.revealDelay,
-  });
-
-  final CourseDetail detail;
-  final RevisionSubjectVisualTheme visual;
-  final AsyncValue<CourseLearningPath> learningPathState;
-  final bool showContent;
-  final Duration revealDelay;
-
-  @override
   Widget build(BuildContext context) {
-    final path = learningPathState.asData?.value;
-    final title = path?.course.title ?? detail.course.title;
-    final subjectName = path?.course.subjectName ?? detail.subject.name;
-    final hasReliableProgress =
-        path != null && path.summary.knowledgeUnitCount > 0;
+    final safePadding = MediaQuery.paddingOf(context);
+    final topPadding = safePadding.top > 0 ? RevisionSpacing.s : 28.0;
+    final bottomPadding = safePadding.bottom > 0
+        ? safePadding.bottom + 8
+        : 50.0;
 
-    return Hero(
-      tag: CourseHeroTags.subjectOverview(detail.subject.id),
-      flightShuttleBuilder: buildCourseCardHeroFlightShuttle,
-      transitionOnUserGestures: true,
-      child: RevisionGlassCard(
-        padding: const EdgeInsets.all(RevisionSpacing.l),
-        backgroundColor: RevisionColors.glassSoft,
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 430),
         child: _CourseDetailReveal(
           visible: showContent,
-          delay: revealDelay,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
             children: [
               Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: RevisionTypography.pageTitle,
-                    ),
-                    const SizedBox(height: RevisionSpacing.xs),
-                    Text(
-                      subjectName,
-                      style: RevisionTypography.caption.copyWith(
-                        color: RevisionColors.textMuted,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    RevisionSpacing.pageX,
+                    topPadding,
+                    RevisionSpacing.pageX,
+                    96 + bottomPadding,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _CourseTopBar(detail: detail, onBack: onBack),
+                      const SizedBox(height: 6),
+                      _CourseHeroControls(
+                        detail: detail,
+                        visual: visual,
+                        learningPathState: learningPathState,
+                        hasReadySource: hasReadySource,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      _CourseLearningPath(
+                        detail: detail,
+                        visual: visual,
+                        learningPathState: learningPathState,
+                      ),
+                      if (pollTimedOut) ...[
+                        const SizedBox(height: RevisionSpacing.l),
+                        _CourseInlineNotice(
+                          message:
+                              'Le traitement continue en arrière-plan. Tu peux revenir plus tard.',
+                        ),
+                      ],
+                      if (questionPollTimedOut) ...[
+                        const SizedBox(height: RevisionSpacing.l),
+                        _CourseInlineNotice(
+                          message:
+                              'La préparation prend plus de temps que prévu. Tu peux réessayer ou revenir plus tard.',
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: RevisionSpacing.m),
-              _CourseLuna(visual: visual),
-              if (path != null && hasReliableProgress) ...[
-                const SizedBox(width: RevisionSpacing.m),
-                RevisionMasteryRing(
-                  value: path.summary.estimatedGlobalMastery,
-                  label: _percent(path.summary.estimatedGlobalMastery),
-                  caption: 'maîtrisé',
-                  color: _learningPathStateColor(path.activeNode?.state),
-                  size: 78,
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  RevisionSpacing.pageX,
+                  0,
+                  RevisionSpacing.pageX,
+                  bottomPadding,
                 ),
-              ],
+                child: _CourseBottomActions(
+                  detail: detail,
+                  hasReadySource: hasReadySource,
+                  learningPathState: learningPathState,
+                ),
+              ),
             ],
           ),
         ),
@@ -500,18 +398,291 @@ class _CourseHeader extends StatelessWidget {
   }
 }
 
-class _CourseDetailReveal extends StatelessWidget {
-  const _CourseDetailReveal({
-    required this.visible,
-    required this.child,
-    this.delay = Duration.zero,
+class _CourseHeroControls extends ConsumerWidget {
+  const _CourseHeroControls({
+    required this.detail,
+    required this.visual,
+    required this.learningPathState,
+    required this.hasReadySource,
   });
+
+  final CourseDetail detail;
+  final RevisionSubjectVisualTheme visual;
+  final AsyncValue<CourseLearningPath> learningPathState;
+  final bool hasReadySource;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final path = learningPathState.asData?.value;
+    final action = path?.primaryAction;
+    final title = path?.course.title ?? detail.course.title;
+    final mastery = _courseMasteryValue(path, detail);
+    final estimatedMinutes = action?.estimatedMinutes ?? 8;
+    final enabled = _canRunCoursePrimaryAction(action, hasReadySource);
+
+    return Hero(
+      tag: CourseHeroTags.subjectOverview(detail.subject.id),
+      flightShuttleBuilder: buildCourseCardHeroFlightShuttle,
+      transitionOnUserGestures: true,
+      child: Material(
+        color: Colors.transparent,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: RevisionTypography.sectionTitle.copyWith(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        height: 1.12,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 162),
+                      child: _CourseActionButton(
+                        label: 'Continuer · $estimatedMinutes min',
+                        icon: Icons.play_arrow_rounded,
+                        height: 38,
+                        fontSize: 12,
+                        onPressed: enabled
+                            ? () => _runCoursePrimaryAction(
+                                context,
+                                ref,
+                                detail,
+                                action,
+                              )
+                            : null,
+                        gradient: _coursePrimaryGradient,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            RevisionMasteryRing(
+              value: mastery,
+              label: _percent(mastery),
+              caption: 'maîtrisé',
+              color: visual.accent,
+              size: 76,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CourseInlineNotice extends StatelessWidget {
+  const _CourseInlineNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: RevisionColors.glassSoft,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: RevisionColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(RevisionSpacing.m),
+        child: Text(message, style: RevisionTypography.body),
+      ),
+    );
+  }
+}
+
+class _CourseActionButton extends StatelessWidget {
+  const _CourseActionButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.gradient,
+    this.outlined = false,
+    this.height = 42,
+    this.fontSize = 13,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final Gradient? gradient;
+  final bool outlined;
+  final double height;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final borderRadius = BorderRadius.circular(8);
+    final foreground = outlined ? RevisionColors.text : Colors.white;
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.48,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: borderRadius,
+            onTap: onPressed,
+            child: Ink(
+              height: height,
+              decoration: BoxDecoration(
+                color: outlined
+                    ? RevisionColors.ink2.withValues(alpha: 0.74)
+                    : null,
+                gradient: outlined ? null : gradient ?? _coursePrimaryGradient,
+                borderRadius: borderRadius,
+                border: Border.all(
+                  color: outlined
+                      ? RevisionColors.borderBright.withValues(alpha: 0.82)
+                      : RevisionColors.blue.withValues(alpha: 0.36),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: foreground, size: outlined ? 17 : 18),
+                    const SizedBox(width: 7),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: foreground,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CourseTopBar extends ConsumerWidget {
+  const _CourseTopBar({required this.detail, required this.onBack});
+
+  final CourseDetail detail;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          Hero(
+            tag: CourseHeroTags.navigationControl(),
+            flightShuttleBuilder: buildCourseNavigationControlHeroFlightShuttle,
+            transitionOnUserGestures: true,
+            child: IconButton(
+              tooltip: 'Retour',
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: EdgeInsets.zero,
+              onPressed: onBack,
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+                color: RevisionColors.text,
+                size: 24,
+              ),
+            ),
+          ),
+          const Spacer(),
+          PopupMenuButton<_CourseMenuAction>(
+            tooltip: 'Plus d’actions',
+            icon: const Icon(
+              Icons.more_horiz_rounded,
+              color: RevisionColors.text,
+              size: 24,
+            ),
+            color: RevisionColors.ink2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: const BorderSide(color: RevisionColors.border),
+            ),
+            onSelected: (action) => switch (action) {
+              _CourseMenuAction.sources => _showSourcesSheet(
+                context,
+                ref,
+                detail,
+              ),
+              _CourseMenuAction.manage => _showCourseManagement(
+                context,
+                ref,
+                detail,
+              ),
+              _CourseMenuAction.history => _showCourseHistory(context, detail),
+              _CourseMenuAction.advanced => _showCourseAdvancedActions(
+                context,
+                detail,
+                revisionSubjectVisualThemeFor(
+                  '${detail.subject.name} ${detail.course.title}',
+                ),
+              ),
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _CourseMenuAction.sources,
+                child: Text('Sources'),
+              ),
+              PopupMenuItem(
+                value: _CourseMenuAction.manage,
+                child: Text('Gérer le cours'),
+              ),
+              PopupMenuItem(
+                value: _CourseMenuAction.history,
+                child: Text('Historique'),
+              ),
+              PopupMenuItem(
+                value: _CourseMenuAction.advanced,
+                child: Text('Actions avancées'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _CourseMenuAction { sources, manage, history, advanced }
+
+class _CourseDetailReveal extends StatelessWidget {
+  const _CourseDetailReveal({required this.visible, required this.child});
 
   static const _duration = Duration(milliseconds: 360);
 
   final bool visible;
   final Widget child;
-  final Duration delay;
 
   @override
   Widget build(BuildContext context) {
@@ -520,7 +691,7 @@ class _CourseDetailReveal extends StatelessWidget {
     }
 
     final totalDuration = visible
-        ? _duration + delay
+        ? _duration
         : const Duration(milliseconds: 220);
 
     return TweenAnimationBuilder<double>(
@@ -529,10 +700,7 @@ class _CourseDetailReveal extends StatelessWidget {
       curve: Curves.linear,
       child: child,
       builder: (context, value, child) {
-        final progress = visible
-            ? _delayedProgress(value, delay, totalDuration, _duration)
-            : value;
-        final eased = Curves.easeOutCubic.transform(progress);
+        final eased = Curves.easeOutCubic.transform(value);
 
         return Transform.translate(
           offset: Offset(0, (1 - eased) * 12),
@@ -541,215 +709,6 @@ class _CourseDetailReveal extends StatelessWidget {
       },
     );
   }
-}
-
-double _delayedProgress(
-  double value,
-  Duration delay,
-  Duration totalDuration,
-  Duration duration,
-) {
-  if (delay == Duration.zero) {
-    return value;
-  }
-
-  final elapsed = value * totalDuration.inMilliseconds;
-  return ((elapsed - delay.inMilliseconds) / duration.inMilliseconds)
-      .clamp(0.0, 1.0)
-      .toDouble();
-}
-
-class _CourseLuna extends StatelessWidget {
-  const _CourseLuna({required this.visual});
-
-  final RevisionSubjectVisualTheme visual;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Luna',
-      image: true,
-      child: SizedBox.square(
-        key: const ValueKey('course-detail-luna'),
-        dimension: 58,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: visual.accent.withValues(alpha: 0.10),
-            boxShadow: [
-              BoxShadow(
-                color: visual.accent.withValues(alpha: 0.22),
-                blurRadius: 22,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(RevisionSpacing.xs),
-            child: SvgPicture.asset(
-              'assets/brand/neralune_cat.svg',
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CoursePrimaryAction extends ConsumerWidget {
-  const _CoursePrimaryAction({
-    required this.detail,
-    required this.visual,
-    required this.learningPathState,
-  });
-
-  final CourseDetail detail;
-  final RevisionSubjectVisualTheme visual;
-  final AsyncValue<CourseLearningPath> learningPathState;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final path = learningPathState.asData?.value;
-    final action = path?.primaryAction;
-    final presentation =
-        learningPathState.hasError && !learningPathState.hasValue
-        ? const _LearningPathPrimaryActionPresentation(
-            title: 'Parcours indisponible',
-            message: 'Impossible de charger l’action recommandée.',
-            buttonLabel: 'Réessayer',
-            buttonIcon: Icons.refresh_rounded,
-            accent: RevisionColors.red,
-            canRun: false,
-            retry: true,
-          )
-        : _learningPathPrimaryActionPresentation(action);
-
-    return RevisionGlassCard(
-      borderColor: presentation.accent.withValues(alpha: 0.34),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          presentation.accent.withValues(alpha: 0.20),
-          RevisionColors.glassStrong,
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      presentation.title,
-                      style: RevisionTypography.caption.copyWith(
-                        color: visual.accent,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: RevisionSpacing.xs),
-                    Text(presentation.message, style: RevisionTypography.body),
-                    const SizedBox(height: RevisionSpacing.m),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          RevisionGradientButton(
-            label: presentation.buttonLabel,
-            icon: presentation.buttonIcon,
-            expanded: true,
-            onPressed: presentation.canRun
-                ? () => _runLearningPathPrimaryAction(
-                    context,
-                    ref,
-                    detail,
-                    action,
-                  )
-                : presentation.retry
-                ? () => ref.invalidate(
-                    courseLearningPathProvider(detail.course.id),
-                  )
-                : null,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LearningPathPrimaryActionPresentation {
-  const _LearningPathPrimaryActionPresentation({
-    required this.title,
-    required this.message,
-    required this.buttonLabel,
-    required this.buttonIcon,
-    required this.accent,
-    required this.canRun,
-    this.retry = false,
-  });
-
-  final String title;
-  final String message;
-  final String buttonLabel;
-  final IconData buttonIcon;
-  final Color accent;
-  final bool canRun;
-  final bool retry;
-}
-
-_LearningPathPrimaryActionPresentation _learningPathPrimaryActionPresentation(
-  CourseLearningPathPrimaryAction? action,
-) {
-  if (action == null) {
-    return const _LearningPathPrimaryActionPresentation(
-      title: 'Chargement du parcours',
-      message: 'Neralune récupère les notions de ce cours.',
-      buttonLabel: 'Chargement...',
-      buttonIcon: Icons.hourglass_top_rounded,
-      accent: RevisionColors.blue,
-      canRun: false,
-    );
-  }
-
-  final isEnabled = action.enabled;
-  final icon = switch (action.kind) {
-    CourseLearningPathPrimaryActionKind.addSource => Icons.add_rounded,
-    CourseLearningPathPrimaryActionKind.waitForAnalysis =>
-      Icons.hourglass_top_rounded,
-    CourseLearningPathPrimaryActionKind.prepareQuestions =>
-      Icons.auto_awesome_rounded,
-    CourseLearningPathPrimaryActionKind.reviewActiveNode ||
-    CourseLearningPathPrimaryActionKind.continueCourse =>
-      Icons.play_arrow_rounded,
-    CourseLearningPathPrimaryActionKind.unavailable =>
-      Icons.description_outlined,
-    CourseLearningPathPrimaryActionKind.unknown => Icons.play_arrow_rounded,
-  };
-  final accent = switch (action.kind) {
-    CourseLearningPathPrimaryActionKind.addSource => RevisionColors.blue,
-    CourseLearningPathPrimaryActionKind.waitForAnalysis => RevisionColors.amber,
-    CourseLearningPathPrimaryActionKind.prepareQuestions => RevisionColors.blue,
-    CourseLearningPathPrimaryActionKind.reviewActiveNode ||
-    CourseLearningPathPrimaryActionKind.continueCourse => RevisionColors.green,
-    CourseLearningPathPrimaryActionKind.unavailable =>
-      isEnabled ? RevisionColors.amber : RevisionColors.red,
-    CourseLearningPathPrimaryActionKind.unknown => RevisionColors.blue,
-  };
-
-  return _LearningPathPrimaryActionPresentation(
-    title: action.label,
-    message: action.unavailableReason ?? action.description,
-    buttonLabel: action.label,
-    buttonIcon: icon,
-    accent: accent,
-    canRun: isEnabled,
-  );
 }
 
 Future<void> _runLearningPathPrimaryAction(
@@ -820,6 +779,40 @@ Future<void> _runLearningPathPrimaryAction(
   }
 }
 
+Future<void> _runCoursePrimaryAction(
+  BuildContext context,
+  WidgetRef ref,
+  CourseDetail detail,
+  CourseLearningPathPrimaryAction? action,
+) async {
+  if (action != null) {
+    await _runLearningPathPrimaryAction(context, ref, detail, action);
+    return;
+  }
+
+  final hasReadySource = detail.sources.any(
+    (source) => source.status == CourseDocumentStatus.ready,
+  );
+
+  if (hasReadySource) {
+    await _showQuickRevisionSheet(context, ref, detail);
+    return;
+  }
+
+  _showSourcesSheet(context, ref, detail);
+}
+
+bool _canRunCoursePrimaryAction(
+  CourseLearningPathPrimaryAction? action,
+  bool hasReadySource,
+) {
+  if (action != null) {
+    return action.enabled;
+  }
+
+  return hasReadySource;
+}
+
 class _CourseLearningPath extends ConsumerWidget {
   const _CourseLearningPath({
     required this.detail,
@@ -834,31 +827,24 @@ class _CourseLearningPath extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final path = learningPathState.asData?.value;
-    Widget pathHeroCard({required Widget child, EdgeInsetsGeometry? padding}) {
-      return Hero(
-        tag: CourseHeroTags.learningPath(detail.course.id),
-        flightShuttleBuilder: buildCourseCardHeroFlightShuttle,
-        transitionOnUserGestures: true,
-        child: padding == null
-            ? RevisionGlassCard(child: child)
-            : RevisionGlassCard(padding: padding, child: child),
-      );
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Parcours', style: RevisionTypography.sectionTitle),
-        const SizedBox(height: RevisionSpacing.m),
+        Text(
+          'Parcours',
+          style: RevisionTypography.sectionTitle.copyWith(fontSize: 14),
+        ),
+        const SizedBox(height: 10),
         if (learningPathState.isLoading && !learningPathState.hasValue)
-          pathHeroCard(
+          _CoursePathStateCard(
             child: Text(
               'Chargement du parcours',
               style: RevisionTypography.body,
             ),
           )
         else if (learningPathState.hasError && path == null)
-          pathHeroCard(
+          _CoursePathStateCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -883,32 +869,50 @@ class _CourseLearningPath extends ConsumerWidget {
             ),
           )
         else if (path == null || path.nodes.isEmpty)
-          pathHeroCard(
+          _CoursePathStateCard(
             child: _LearningPathEmptyState(
               detail: detail,
               emptyState: path?.emptyState,
             ),
           )
         else
-          pathHeroCard(
-            padding: const EdgeInsets.symmetric(
-              horizontal: RevisionSpacing.m,
-              vertical: RevisionSpacing.s,
-            ),
-            child: Column(
-              children: [
-                for (final indexed in path.nodes.indexed)
-                  _LearningPathRow(
-                    node: indexed.$2,
-                    visual: visual,
-                    selected: indexed.$2.id == path.activeNodeId,
-                    first: indexed.$1 == 0,
-                    last: indexed.$1 == path.nodes.length - 1,
-                  ),
-              ],
+          Hero(
+            tag: CourseHeroTags.learningPath(detail.course.id),
+            flightShuttleBuilder: buildCourseCardHeroFlightShuttle,
+            transitionOnUserGestures: true,
+            child: Material(
+              color: Colors.transparent,
+              child: Column(
+                children: [
+                  for (final indexed in path.nodes.indexed)
+                    _LearningPathRow(
+                      node: indexed.$2,
+                      visual: visual,
+                      selected: _isSelectedPathNode(path, indexed.$2),
+                      first: indexed.$1 == 0,
+                      last: indexed.$1 == path.nodes.length - 1,
+                    ),
+                ],
+              ),
             ),
           ),
       ],
+    );
+  }
+}
+
+class _CoursePathStateCard extends StatelessWidget {
+  const _CoursePathStateCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionGlassCard(
+      padding: const EdgeInsets.all(RevisionSpacing.m),
+      radius: BorderRadius.circular(10),
+      backgroundColor: RevisionColors.glassSoft,
+      child: child,
     );
   }
 }
@@ -930,110 +934,104 @@ class _LearningPathRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stateColor = _learningPathStateColor(node.state);
-    final color = selected ? visual.accent : stateColor;
+    final completed = node.state == CourseLearningPathNodeState.solid;
+    final markerColor = selected
+        ? visual.accent
+        : completed
+        ? RevisionColors.green
+        : RevisionColors.borderBright;
+    final topLineColor = completed || selected
+        ? RevisionColors.green.withValues(alpha: 0.68)
+        : RevisionColors.borderBright.withValues(alpha: 0.55);
+    final bottomLineColor = completed
+        ? RevisionColors.green.withValues(alpha: 0.68)
+        : RevisionColors.borderBright.withValues(alpha: 0.55);
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 34,
-          height: 64,
-          child: Column(
-            children: [
-              Container(
-                width: 2,
-                height: 18,
-                color: first
-                    ? Colors.transparent
-                    : RevisionColors.borderBright.withValues(alpha: 0.55),
-              ),
-              Container(
-                width: selected ? 22 : 18,
-                height: selected ? 22 : 18,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: selected
-                      ? visual.accent.withValues(alpha: 0.22)
-                      : node.state == CourseLearningPathNodeState.solid
-                      ? stateColor
-                      : Colors.transparent,
-                  border: Border.all(color: color, width: selected ? 3 : 2),
-                ),
-                child: node.state == CourseLearningPathNodeState.solid
-                    ? const Icon(
-                        Icons.check_rounded,
-                        size: 13,
-                        color: RevisionColors.ink,
-                      )
-                    : selected
-                    ? Center(
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: visual.accent,
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-              Container(
-                width: 2,
-                height: selected ? 24 : 28,
-                color: last
-                    ? Colors.transparent
-                    : RevisionColors.borderBright.withValues(alpha: 0.55),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: RevisionSpacing.s),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: RevisionSpacing.xs),
-            padding: const EdgeInsets.symmetric(
-              horizontal: RevisionSpacing.m,
-              vertical: RevisionSpacing.s,
-            ),
-            decoration: BoxDecoration(
-              color: selected
-                  ? visual.accent.withValues(alpha: 0.12)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-              border: selected
-                  ? Border.all(color: visual.accent.withValues(alpha: 0.22))
-                  : null,
-            ),
+    return Container(
+      constraints: const BoxConstraints(minHeight: 40),
+      decoration: BoxDecoration(
+        color: selected ? visual.accent.withValues(alpha: 0.13) : null,
+        borderRadius: BorderRadius.circular(8),
+        border: selected
+            ? Border.all(color: visual.accent.withValues(alpha: 0.24))
+            : null,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 40,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  node.display.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: RevisionTypography.body.copyWith(
-                    color: RevisionColors.text,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                  ),
+                Container(
+                  width: 2,
+                  height: 9,
+                  color: first ? Colors.transparent : topLineColor,
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  _nodeMeta(node),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: RevisionTypography.caption.copyWith(
+                Container(
+                  width: selected ? 22 : 18,
+                  height: selected ? 22 : 18,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
                     color: selected
-                        ? RevisionColors.text
-                        : RevisionColors.textMuted,
+                        ? visual.accent.withValues(alpha: 0.22)
+                        : completed
+                        ? RevisionColors.green
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: markerColor,
+                      width: selected ? 3 : 2,
+                    ),
                   ),
+                  child: completed
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 13,
+                          color: RevisionColors.ink,
+                        )
+                      : selected
+                      ? Center(
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: visual.accent,
+                            ),
+                          ),
+                        )
+                      : null,
+                ),
+                Container(
+                  width: 2,
+                  height: selected ? 9 : 13,
+                  color: last ? Colors.transparent : bottomLineColor,
                 ),
               ],
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 11, right: 12),
+              child: Text(
+                node.display.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: RevisionTypography.body.copyWith(
+                  color: completed || selected
+                      ? RevisionColors.text
+                      : RevisionColors.textMuted,
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  height: 1.15,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1112,74 +1110,52 @@ class _CourseBottomActions extends ConsumerWidget {
         quickReadiness?.status == CourseQuestionBankReadinessStatus.preparing &&
         (quickReadiness?.readyQuestionCount ?? 0) < 5;
 
-    return RevisionGlassCard(
-      padding: const EdgeInsets.all(RevisionSpacing.s),
-      backgroundColor: RevisionColors.glassStrong,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (questionsPreparing) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                RevisionSpacing.s,
-                RevisionSpacing.xs,
-                RevisionSpacing.s,
-                RevisionSpacing.s,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: RevisionColors.glassStrong.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: RevisionColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 24,
+            offset: const Offset(0, -8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 116,
+              child: _CourseActionButton(
+                label: 'Comprendre',
+                icon: Icons.menu_book_rounded,
+                onPressed: hasReadySource
+                    ? () =>
+                          context.push(AppRoutes.courseSheet(detail.course.id))
+                    : null,
+                outlined: true,
               ),
-              child: Text(
-                'Questions en préparation',
-                style: RevisionTypography.caption.copyWith(
-                  color: RevisionColors.blue,
-                  fontWeight: FontWeight.w900,
-                ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _CourseActionButton(
+                label: 'Réviser cette notion',
+                icon: Icons.flash_on_rounded,
+                onPressed: questionsPreparing
+                    ? () =>
+                          context.push(AppRoutes.courseSheet(detail.course.id))
+                    : canReviewCourse
+                    ? () =>
+                          _runCoursePrimaryAction(context, ref, detail, action)
+                    : null,
+                gradient: _coursePrimaryGradient,
               ),
             ),
           ],
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: hasReadySource
-                      ? () => context.push(
-                          AppRoutes.courseSheet(detail.course.id),
-                        )
-                      : null,
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: const Text('Comprendre'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: RevisionColors.text,
-                    side: const BorderSide(color: RevisionColors.borderBright),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: RevisionSpacing.m,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: RevisionSpacing.s),
-              Expanded(
-                child: RevisionGradientButton(
-                  label: questionsPreparing
-                      ? 'Lire la fiche'
-                      : 'Réviser ce cours',
-                  icon: questionsPreparing
-                      ? Icons.menu_book_rounded
-                      : Icons.flash_on_rounded,
-                  expanded: true,
-                  onPressed: questionsPreparing
-                      ? () => context.push(
-                          AppRoutes.courseSheet(detail.course.id),
-                        )
-                      : canReviewCourse
-                      ? () => _showQuickRevisionSheet(context, ref, detail)
-                      : null,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -2076,23 +2052,28 @@ String _quickRevisionBlockedLabel(List<CourseDocument> sources) {
   return 'Source requise';
 }
 
-Color _learningPathStateColor(CourseLearningPathNodeState? state) {
-  return switch (state) {
-    CourseLearningPathNodeState.solid => RevisionColors.green,
-    CourseLearningPathNodeState.inProgress => RevisionColors.blue,
-    CourseLearningPathNodeState.toStrengthen => RevisionColors.amber,
-    CourseLearningPathNodeState.undiscovered => RevisionColors.borderBright,
-    CourseLearningPathNodeState.unknown || null => RevisionColors.borderBright,
-  };
-}
-
-String _nodeMeta(CourseLearningPathNode node) {
-  final meta = node.display.metaLabel;
-  if (meta == null || meta.trim().isEmpty) {
-    return node.display.statusLabel;
+double _courseMasteryValue(CourseLearningPath? path, CourseDetail detail) {
+  final pathMastery = path?.summary.estimatedGlobalMastery;
+  if (pathMastery != null && pathMastery > 0) {
+    return pathMastery;
   }
 
-  return '${node.display.statusLabel} · ${meta.trim()}';
+  return detail.progress?.estimatedGlobalMastery ?? 0;
+}
+
+bool _isSelectedPathNode(CourseLearningPath path, CourseLearningPathNode node) {
+  final activeId = path.activeNodeId;
+  if (activeId != null) {
+    return node.id == activeId;
+  }
+
+  for (final candidate in path.nodes) {
+    if (candidate.state != CourseLearningPathNodeState.solid) {
+      return candidate.id == node.id;
+    }
+  }
+
+  return path.nodes.isNotEmpty && path.nodes.last.id == node.id;
 }
 
 String _percent(double value) {

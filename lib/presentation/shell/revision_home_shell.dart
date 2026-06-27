@@ -32,6 +32,10 @@ class RevisionHomeShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authController = ref.read(authControllerProvider);
     final showProfileAction = navigationShell.currentIndex == 0;
+    final currentPath = GoRouter.of(
+      context,
+    ).routeInformationProvider.value.uri.path;
+    final showBottomNavigation = !currentPath.startsWith('/courses/');
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -66,11 +70,13 @@ class RevisionHomeShell extends ConsumerWidget {
               ),
             ),
           ),
-          bottomNavigationBar: RevisionBottomNavigation(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: _goToDestination,
-            destinations: _navigationDestinations,
-          ),
+          bottomNavigationBar: showBottomNavigation
+              ? RevisionBottomNavigation(
+                  selectedIndex: navigationShell.currentIndex,
+                  onDestinationSelected: _goToDestination,
+                  destinations: _navigationDestinations,
+                )
+              : null,
         );
       },
     );

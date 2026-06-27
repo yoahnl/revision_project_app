@@ -58,7 +58,9 @@ void main() {
     expect(find.text('Source ajoutée'), findsOneWidget);
   });
 
-  testWidgets('course detail shows the V4 path-first layout', (tester) async {
+  testWidgets('course detail matches the mobile mockup-first layout', (
+    tester,
+  ) async {
     final repository = InMemoryCoursesRepository()
       ..detailsByCourse['course-1'] = courseDetail(
         sources: const [
@@ -111,20 +113,24 @@ void main() {
       ),
       findsNothing,
     );
-    expect(find.byKey(const ValueKey('course-detail-luna')), findsOneWidget);
+    expect(find.byKey(const ValueKey('course-detail-luna')), findsNothing);
     expect(repository.getCourseLearningPathCount, 1);
     expect(find.text('62%'), findsOneWidget);
-    expect(find.text('Continuer'), findsWidgets);
+    expect(find.text('Continuer · 8 min'), findsOneWidget);
     expect(find.text('Parcours'), findsOneWidget);
+    expect(find.text('La Constitution'), findsOneWidget);
     expect(find.text('La séparation des pouvoirs'), findsOneWidget);
-    expect(find.textContaining('À renforcer'), findsOneWidget);
+    expect(find.text('Le contrôle de constitutionnalité'), findsOneWidget);
+    expect(find.text('Le Conseil constitutionnel'), findsOneWidget);
+    expect(find.text('Les pouvoirs du Président'), findsOneWidget);
+    expect(find.textContaining('À renforcer'), findsNothing);
+    expect(find.text('CM.pdf'), findsNothing);
     expect(find.text('Comprendre'), findsOneWidget);
-    expect(find.text('Réviser ce cours'), findsOneWidget);
+    expect(find.text('Réviser cette notion'), findsOneWidget);
     expect(find.text('Modes de révision'), findsNothing);
     expect(find.text('Historique'), findsNothing);
     expect(find.text('Temps estimé : À préciser'), findsNothing);
     expect(find.text('Difficulté : À préciser'), findsNothing);
-    expect(find.text('La Constitution'), findsNothing);
   });
 
   testWidgets('course detail primary CTA opens the duration sheet', (
@@ -149,9 +155,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.widgetWithText(RevisionGradientButton, 'Continuer').first,
-    );
+    await tester.tap(find.text('Continuer · 8 min'));
     await tester.pumpAndSettle();
 
     expect(find.text('Combien de temps as-tu ?'), findsOneWidget);
@@ -581,11 +585,8 @@ void main() {
     expect(find.textContaining('backend'), findsNothing);
     expect(find.text('Modes de révision'), findsNothing);
     expect(find.text('Historique'), findsNothing);
-
-    final understandButton = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Comprendre'),
-    );
-    expect(understandButton.onPressed, isNull);
+    expect(find.text('Comprendre'), findsOneWidget);
+    expect(find.text('Réviser cette notion'), findsOneWidget);
 
     await scrollToQuickRevision(tester);
     final emptyQuickCard = tester.widget<RevisionModeCard>(
@@ -651,11 +652,8 @@ void main() {
 
     expect(find.text('Analyse en cours'), findsWidgets);
     expect(find.text('Modes de révision'), findsNothing);
-
-    final understandButton = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Comprendre'),
-    );
-    expect(understandButton.onPressed, isNull);
+    expect(find.text('Comprendre'), findsOneWidget);
+    expect(find.text('Réviser cette notion'), findsOneWidget);
 
     await scrollToQuickRevision(tester);
     final processingQuickCard = tester.widget<RevisionModeCard>(
@@ -693,13 +691,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Continuer'), findsWidgets);
-    expect(find.text('Réviser ce cours'), findsOneWidget);
-
-    final understandButton = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Comprendre'),
-    );
-    expect(understandButton.onPressed, isNotNull);
+    expect(find.text('Continuer · 8 min'), findsOneWidget);
+    expect(find.text('Réviser cette notion'), findsOneWidget);
+    expect(find.text('Comprendre'), findsOneWidget);
 
     await scrollToQuickRevision(tester);
     final quickCard = tester.widget<RevisionModeCard>(
@@ -905,15 +899,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.widgetWithText(RevisionGradientButton, 'Réviser ce cours'),
-        findsNothing,
-      );
-      expect(
-        find.widgetWithText(RevisionGradientButton, 'Lire la fiche'),
-        findsOneWidget,
-      );
-      expect(find.text('Questions en préparation'), findsOneWidget);
+      expect(find.text('Réviser ce cours'), findsNothing);
+      expect(find.text('Lire la fiche'), findsNothing);
+      expect(find.text('Réviser cette notion'), findsOneWidget);
     },
   );
 
@@ -976,16 +964,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Continuer'), findsWidgets);
+      expect(find.text('Continuer · 8 min'), findsOneWidget);
       expect(
         find.text('Reprendre le parcours à la notion recommandée.'),
-        findsWidgets,
+        findsNothing,
       );
       expect(find.text('9 questions prêtes.'), findsNothing);
       expect(find.text('Commencer une session rapide'), findsNothing);
 
-      await tester.ensureVisible(find.text('Réviser ce cours'));
-      await tester.tap(find.text('Réviser ce cours'));
+      await tester.ensureVisible(find.text('Réviser cette notion'));
+      await tester.tap(find.text('Réviser cette notion'));
       await tester.pumpAndSettle();
 
       expect(find.text('Combien de temps as-tu ?'), findsOneWidget);
@@ -1049,8 +1037,8 @@ void main() {
       routerTestApp(repository: repository, picker: FakeCoursePdfPicker(null)),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Réviser ce cours'));
-    await tester.tap(find.text('Réviser ce cours'));
+    await tester.ensureVisible(find.text('Réviser cette notion'));
+    await tester.tap(find.text('Réviser cette notion'));
     await tester.pumpAndSettle();
 
     expect(find.text('Combien de temps as-tu ?'), findsOneWidget);
@@ -1108,8 +1096,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Réviser ce cours'));
-      await tester.tap(find.text('Réviser ce cours'));
+      await tester.ensureVisible(find.text('Réviser cette notion'));
+      await tester.tap(find.text('Réviser cette notion'));
       await tester.pumpAndSettle();
 
       await tester.tap(
@@ -1409,13 +1397,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Continuer'), findsWidgets);
+    expect(find.text('Continuer · 8 min'), findsOneWidget);
     expect(
       find.text('Reprendre le parcours à la notion recommandée.'),
-      findsOneWidget,
+      findsNothing,
     );
 
-    await tester.tap(find.widgetWithText(RevisionGradientButton, 'Continuer'));
+    await tester.tap(find.text('Continuer · 8 min'));
     await tester.pumpAndSettle();
 
     expect(repository.startQuickRevisionCount, 0);
@@ -1653,7 +1641,7 @@ CourseProgress courseProgress({
 
 CourseLearningPath courseLearningPathFixture({
   List<CourseLearningPathNode>? nodes,
-  String? activeNodeId = 'unit-2',
+  String? activeNodeId = 'unit-3',
   CourseLearningPathPrimaryAction? primaryAction,
   CourseLearningPathEmptyState? emptyState,
 }) {
@@ -1666,7 +1654,7 @@ CourseLearningPath courseLearningPathFixture({
           courseId: 'course-1',
           subjectId: 'subject-1',
           documentId: 'document-1',
-          title: 'Population et conceptions de la Nation',
+          title: 'La Constitution',
           order: 0,
           state: CourseLearningPathNodeState.solid,
           masteryScore: 0.86,
@@ -1675,7 +1663,7 @@ CourseLearningPath courseLearningPathFixture({
             fileName: 'CM.pdf',
           ),
           display: CourseLearningPathNodeDisplay(
-            title: 'Population et conceptions de la Nation',
+            title: 'La Constitution',
             statusLabel: 'Solide',
             metaLabel: 'CM.pdf',
             actionLabel: 'Revoir',
@@ -1689,17 +1677,17 @@ CourseLearningPath courseLearningPathFixture({
           documentId: 'document-1',
           title: 'La séparation des pouvoirs',
           order: 1,
-          state: CourseLearningPathNodeState.toStrengthen,
-          masteryScore: 0.34,
+          state: CourseLearningPathNodeState.solid,
+          masteryScore: 0.72,
           source: CourseLearningPathNodeSource(
             documentId: 'document-1',
             fileName: 'CM.pdf',
           ),
           display: CourseLearningPathNodeDisplay(
             title: 'La séparation des pouvoirs',
-            statusLabel: 'À renforcer',
+            statusLabel: 'Solide',
             metaLabel: 'CM.pdf',
-            actionLabel: 'Renforcer',
+            actionLabel: 'Revoir',
           ),
         ),
         CourseLearningPathNode(
@@ -1708,15 +1696,56 @@ CourseLearningPath courseLearningPathFixture({
           courseId: 'course-1',
           subjectId: 'subject-1',
           documentId: 'document-1',
-          title: "La souveraineté de l’État",
+          title: 'Le contrôle de constitutionnalité',
           order: 2,
+          state: CourseLearningPathNodeState.inProgress,
+          masteryScore: 0.48,
+          source: CourseLearningPathNodeSource(
+            documentId: 'document-1',
+            fileName: 'CM.pdf',
+          ),
+          display: CourseLearningPathNodeDisplay(
+            title: 'Le contrôle de constitutionnalité',
+            statusLabel: 'En cours',
+            metaLabel: 'CM.pdf',
+            actionLabel: 'Continuer',
+          ),
+        ),
+        CourseLearningPathNode(
+          id: 'unit-4',
+          knowledgeUnitId: 'unit-4',
+          courseId: 'course-1',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          title: 'Le Conseil constitutionnel',
+          order: 3,
           state: CourseLearningPathNodeState.undiscovered,
           source: CourseLearningPathNodeSource(
             documentId: 'document-1',
             fileName: 'CM.pdf',
           ),
           display: CourseLearningPathNodeDisplay(
-            title: "La souveraineté de l’État",
+            title: 'Le Conseil constitutionnel',
+            statusLabel: 'À découvrir',
+            metaLabel: 'CM.pdf',
+            actionLabel: 'Découvrir',
+          ),
+        ),
+        CourseLearningPathNode(
+          id: 'unit-5',
+          knowledgeUnitId: 'unit-5',
+          courseId: 'course-1',
+          subjectId: 'subject-1',
+          documentId: 'document-1',
+          title: 'Les pouvoirs du Président',
+          order: 4,
+          state: CourseLearningPathNodeState.undiscovered,
+          source: CourseLearningPathNodeSource(
+            documentId: 'document-1',
+            fileName: 'CM.pdf',
+          ),
+          display: CourseLearningPathNodeDisplay(
+            title: 'Les pouvoirs du Président',
             statusLabel: 'À découvrir',
             metaLabel: 'CM.pdf',
             actionLabel: 'Découvrir',
@@ -1763,8 +1792,8 @@ CourseLearningPath courseLearningPathFixture({
           label: 'Continuer',
           description: 'Reprendre le parcours à la notion recommandée.',
           estimatedMinutes: 8,
-          targetKnowledgeUnitId: 'unit-2',
-          targetNodeId: 'unit-2',
+          targetKnowledgeUnitId: 'unit-3',
+          targetNodeId: 'unit-3',
           enabled: true,
         ),
     nodes: resolvedNodes,

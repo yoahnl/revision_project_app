@@ -278,7 +278,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Institutions de la Ve République'), findsOneWidget);
-    expect(find.text('Droit constitutionnel'), findsOneWidget);
+    expect(find.text('Droit constitutionnel'), findsNothing);
+    expect(find.text('Parcours'), findsOneWidget);
     await openCourseDetailMenuAction(tester, 'Sources');
     expect(find.text('cours.pdf'), findsOneWidget);
     expect(find.text('Loi normale'), findsNothing);
