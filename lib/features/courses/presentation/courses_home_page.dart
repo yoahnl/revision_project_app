@@ -225,7 +225,7 @@ class _CourseList extends ConsumerWidget {
           _CourseRow(
             course: course,
             visual: visual,
-            onTap: () => context.push(AppRoutes.course(course.id)),
+            onTap: () => context.go(AppRoutes.course(course.id)),
           ),
           if (course != courses.last) const SizedBox(height: RevisionSpacing.m),
         ],
@@ -298,7 +298,7 @@ class _SubjectHeroCard extends StatelessWidget {
                       label: 'Commencer',
                       icon: Icons.play_arrow_rounded,
                       onPressed: () =>
-                          context.push(AppRoutes.course(priorityCourse.id)),
+                          context.go(AppRoutes.course(priorityCourse.id)),
                     ),
                   ],
                 ),

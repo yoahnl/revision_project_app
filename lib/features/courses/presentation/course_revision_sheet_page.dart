@@ -37,7 +37,7 @@ class CourseRevisionSheetPage extends ConsumerWidget {
             RevisionHeaderActionPill(
               label: 'Sources',
               icon: Icons.description_outlined,
-              onTap: () => context.push(AppRoutes.courseSheetSources(courseId)),
+              onTap: () => context.go(AppRoutes.courseSheetSources(courseId)),
             ),
           ],
         ),
@@ -434,7 +434,7 @@ class _SectionCard extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: () =>
-                  context.push(AppRoutes.courseSheetSources(courseId)),
+                  context.go(AppRoutes.courseSheetSources(courseId)),
               icon: const Icon(Icons.source_outlined, size: 16),
               label: const Text('Sources >'),
             ),

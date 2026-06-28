@@ -63,6 +63,8 @@ GoRouter createAppRouter({
   required TodayController todayController,
   VoidCallback? onSubjectCreated,
 }) {
+  GoRouter.optionURLReflectsImperativeAPIs = true;
+
   return GoRouter(
     initialLocation: AppRoutes.today,
     refreshListenable: authController,

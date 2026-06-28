@@ -327,74 +327,170 @@ class _CourseDetailMobileScreen extends StatelessWidget {
         ? safePadding.bottom + 8
         : 50.0;
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 430),
-        child: _CourseDetailReveal(
-          visible: showContent,
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    RevisionSpacing.pageX,
-                    topPadding,
-                    RevisionSpacing.pageX,
-                    96 + bottomPadding,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _CourseTopBar(detail: detail, onBack: onBack),
-                      const SizedBox(height: 6),
-                      _CourseHeroControls(
-                        detail: detail,
-                        visual: visual,
-                        learningPathState: learningPathState,
-                        hasReadySource: hasReadySource,
-                      ),
-                      const SizedBox(height: 16),
-                      _CourseLearningPath(
-                        detail: detail,
-                        visual: visual,
-                        learningPathState: learningPathState,
-                      ),
-                      if (pollTimedOut) ...[
-                        const SizedBox(height: RevisionSpacing.l),
-                        _CourseInlineNotice(
-                          message:
-                              'Le traitement continue en arrière-plan. Tu peux revenir plus tard.',
-                        ),
-                      ],
-                      if (questionPollTimedOut) ...[
-                        const SizedBox(height: RevisionSpacing.l),
-                        _CourseInlineNotice(
-                          message:
-                              'La préparation prend plus de temps que prévu. Tu peux réessayer ou revenir plus tard.',
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  RevisionSpacing.pageX,
-                  0,
-                  RevisionSpacing.pageX,
-                  bottomPadding,
-                ),
-                child: _CourseBottomActions(
-                  detail: detail,
-                  hasReadySource: hasReadySource,
-                  learningPathState: learningPathState,
-                ),
-              ),
-            ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final expandedWidth = constraints.maxWidth >= 600;
+        final twoColumns = constraints.maxWidth >= 980;
+        final horizontalPadding = expandedWidth
+            ? RevisionSpacing.xxl
+            : RevisionSpacing.pageX;
+        final contentMaxWidth = expandedWidth
+            ? RevisionPageScaffold.wideMaxWidth
+            : 430.0;
+        final scrollBottomPadding = twoColumns ? 40.0 : 96 + bottomPadding;
+
+        final topBar = _CourseTopBar(detail: detail, onBack: onBack);
+        final overviewCard = _CourseDetailSurfaceCard(
+          child: _CourseHeroControls(
+            detail: detail,
+            visual: visual,
+            learningPathState: learningPathState,
+            hasReadySource: hasReadySource,
           ),
+        );
+        final pathCard = _CourseDetailSurfaceCard(
+          child: _CourseLearningPath(
+            detail: detail,
+            visual: visual,
+            learningPathState: learningPathState,
+          ),
+        );
+        final notices = [
+          if (pollTimedOut)
+            const _CourseInlineNotice(
+              message:
+                  'Le traitement continue en arrière-plan. Tu peux revenir plus tard.',
+            ),
+          if (questionPollTimedOut)
+            const _CourseInlineNotice(
+              message:
+                  'La préparation prend plus de temps que prévu. Tu peux réessayer ou revenir plus tard.',
+            ),
+        ];
+        final actions = _CourseBottomActions(
+          detail: detail,
+          hasReadySource: hasReadySource,
+          learningPathState: learningPathState,
+        );
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: contentMaxWidth),
+            child: _CourseDetailReveal(
+              visible: showContent,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        topPadding,
+                        horizontalPadding,
+                        scrollBottomPadding,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          topBar,
+                          SizedBox(height: expandedWidth ? 12 : 6),
+                          if (twoColumns)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      overviewCard,
+                                      const SizedBox(height: RevisionSpacing.l),
+                                      pathCard,
+                                      for (final notice in notices) ...[
+                                        const SizedBox(
+                                          height: RevisionSpacing.l,
+                                        ),
+                                        notice,
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: RevisionSpacing.xl),
+                                SizedBox(
+                                  width: 360,
+                                  child: _CourseStickyActionPanel(
+                                    actions: actions,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else ...[
+                            overviewCard,
+                            const SizedBox(height: RevisionSpacing.l),
+                            pathCard,
+                            for (final notice in notices) ...[
+                              const SizedBox(height: RevisionSpacing.l),
+                              notice,
+                            ],
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (!twoColumns)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        0,
+                        horizontalPadding,
+                        bottomPadding,
+                      ),
+                      child: actions,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CourseDetailSurfaceCard extends StatelessWidget {
+  const _CourseDetailSurfaceCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return RevisionGlassCard(
+      padding: const EdgeInsets.all(RevisionSpacing.l),
+      radius: BorderRadius.circular(14),
+      backgroundColor: RevisionColors.glassSoft.withValues(alpha: 0.84),
+      borderColor: RevisionColors.borderBright.withValues(alpha: 0.46),
+      child: child,
+    );
+  }
+}
+
+class _CourseStickyActionPanel extends StatelessWidget {
+  const _CourseStickyActionPanel({required this.actions});
+
+  final Widget actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        actions,
+        const SizedBox(height: RevisionSpacing.m),
+        const _CourseInlineNotice(
+          message:
+              'Lis la fiche pour comprendre, puis révise quand les questions sont prêtes.',
         ),
-      ),
+      ],
     );
   }
 }
@@ -1137,8 +1233,7 @@ class _CourseBottomActions extends ConsumerWidget {
                 label: 'Comprendre',
                 icon: Icons.menu_book_rounded,
                 onPressed: hasReadySource
-                    ? () =>
-                          context.push(AppRoutes.courseSheet(detail.course.id))
+                    ? () => context.go(AppRoutes.courseSheet(detail.course.id))
                     : null,
                 outlined: true,
               ),
@@ -1149,8 +1244,7 @@ class _CourseBottomActions extends ConsumerWidget {
                 label: 'Réviser cette notion',
                 icon: Icons.flash_on_rounded,
                 onPressed: questionsPreparing
-                    ? () =>
-                          context.push(AppRoutes.courseSheet(detail.course.id))
+                    ? () => context.go(AppRoutes.courseSheet(detail.course.id))
                     : canReviewCourse
                     ? () =>
                           _runCoursePrimaryAction(context, ref, detail, action)
@@ -1594,8 +1688,7 @@ class _CourseModes extends ConsumerWidget {
           trailingLabel: richRevisionAction.trailingLabel,
           enabled: richRevisionAction.enabled,
           onTap: richRevisionAction.enabled
-              ? () =>
-                    context.push(AppRoutes.courseRichRevision(detail.course.id))
+              ? () => context.go(AppRoutes.courseRichRevision(detail.course.id))
               : null,
         ),
         const SizedBox(height: RevisionSpacing.m),
@@ -1607,8 +1700,7 @@ class _CourseModes extends ConsumerWidget {
           trailingLabel: deepRevisionAction.trailingLabel,
           enabled: deepRevisionAction.enabled,
           onTap: deepRevisionAction.enabled
-              ? () =>
-                    context.push(AppRoutes.courseDeepRevision(detail.course.id))
+              ? () => context.go(AppRoutes.courseDeepRevision(detail.course.id))
               : null,
         ),
         const SizedBox(height: RevisionSpacing.m),
@@ -1621,7 +1713,7 @@ class _CourseModes extends ConsumerWidget {
           trailingLabel: 'Configurer',
           enabled: true,
           onTap: () =>
-              context.push(AppRoutes.courseExamPreparation(detail.course.id)),
+              context.go(AppRoutes.courseExamPreparation(detail.course.id)),
         ),
         if (quickRevisionState.hasError || preparationState.hasError) ...[
           const SizedBox(height: RevisionSpacing.s),
