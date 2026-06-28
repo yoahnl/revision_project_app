@@ -93,10 +93,9 @@ void main() {
       await tester.tap(find.text('Lire la fiche'));
       await tester.pumpAndSettle();
 
-      expect(
-        router.routeInformationProvider.value.uri.path,
-        '/courses/course-1/sheet',
-      );
+      final sheetUri = router.routeInformationProvider.value.uri;
+      expect(sheetUri.path, '/courses/course-1/sheet');
+      expect(sheetUri.queryParameters['from'], 'today');
     },
   );
 

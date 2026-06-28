@@ -15,6 +15,7 @@ class AppRoutes {
       '/courses/:courseId/exam-preparation';
   static const courseSheetPath = '/courses/:courseId/sheet';
   static const courseSheetSourcesPath = '/courses/:courseId/sheet/sources';
+  static const courseSheetFromToday = 'today';
   static const revisionSessionV2Path = '/revision-sessions/:sessionId';
   static const revisionSessionResultV2Path =
       '/revision-sessions/:sessionId/result';
@@ -53,10 +54,28 @@ class AppRoutes {
     return '/courses/$courseId/exam-preparation';
   }
 
-  static String courseSheet(String courseId) => '/courses/$courseId/sheet';
+  static String courseSheet(String courseId, {String? from}) {
+    return _courseSheetRoute('/courses/${courseId.trim()}/sheet', from: from);
+  }
 
-  static String courseSheetSources(String courseId) {
-    return '/courses/$courseId/sheet/sources';
+  static String courseSheetSources(String courseId, {String? from}) {
+    return _courseSheetRoute(
+      '/courses/${courseId.trim()}/sheet/sources',
+      from: from,
+    );
+  }
+
+  static String _courseSheetRoute(String path, {String? from}) {
+    final normalizedFrom = from?.trim();
+    final queryParameters = <String, String>{};
+    if (normalizedFrom == courseSheetFromToday) {
+      queryParameters['from'] = courseSheetFromToday;
+    }
+
+    return Uri(
+      path: path,
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    ).toString();
   }
 
   static String revisionSessionV2({

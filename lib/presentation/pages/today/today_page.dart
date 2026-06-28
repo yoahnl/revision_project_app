@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:Neralune/app/router/app_routes.dart';
 import 'package:Neralune/core/routing/route_paths.dart';
 import 'package:Neralune/features/courses/application/active_subject_provider.dart';
 import 'package:Neralune/features/courses/application/courses_providers.dart';
@@ -110,7 +111,7 @@ class _CourseMissionFallback extends StatelessWidget {
         : 'Reprends le parcours et choisis la prochaine notion.';
     final primaryLabel = hasReadySheet ? 'Lire la fiche' : 'Voir le cours';
     final primaryRoute = hasReadySheet
-        ? courseSheetRoutePath(course.id)
+        ? courseSheetRoutePath(course.id, from: AppRoutes.courseSheetFromToday)
         : courseRoutePath(course.id);
     final secondaryLabel = hasReadySheet
         ? 'Voir le parcours'

@@ -365,6 +365,44 @@ void main() {
     expect(harness.router.canPop(), isFalse);
   });
 
+  testWidgets('today sheet entry returns to today instead of course detail', (
+    tester,
+  ) async {
+    final harness = _RouterHarness();
+    _seedReadyCourse(harness);
+    harness.coursesRepository.revisionSheetsByCourse['course-1'] =
+        _revisionSheet();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(harness.buildApp());
+    harness.router.go(AppRoutes.today);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Lire la fiche'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fiche de cours'), findsWidgets);
+    expect(find.byTooltip('Retour à Aujourd’hui'), findsOneWidget);
+    expect(
+      harness.router.routeInformationProvider.value.uri.path,
+      AppRoutes.courseSheet('course-1'),
+    );
+    expect(
+      harness.router.routeInformationProvider.value.uri.queryParameters['from'],
+      'today',
+    );
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded).first);
+    await tester.pumpAndSettle();
+
+    expect(
+      harness.router.routeInformationProvider.value.uri.path,
+      AppRoutes.today,
+    );
+    expect(find.text('Ta mission du jour'), findsOneWidget);
+    expect(find.byTooltip('Plus d’actions'), findsNothing);
+  });
+
   testWidgets('course sheet route shows the real course-level revision sheet', (
     tester,
   ) async {

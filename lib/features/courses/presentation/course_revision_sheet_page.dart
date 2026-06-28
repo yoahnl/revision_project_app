@@ -15,9 +15,16 @@ import '../domain/courses_repository.dart';
 import 'utils/course_source_display_label.dart';
 
 class CourseRevisionSheetPage extends ConsumerWidget {
-  const CourseRevisionSheetPage({required this.courseId, super.key});
+  const CourseRevisionSheetPage({
+    required this.courseId,
+    this.backLocation,
+    this.sourcesLocation,
+    super.key,
+  });
 
   final String courseId;
+  final String? backLocation;
+  final String? sourcesLocation;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -29,15 +36,18 @@ class CourseRevisionSheetPage extends ConsumerWidget {
         Row(
           children: [
             IconButton(
-              tooltip: 'Retour au cours',
-              onPressed: () => _popOrGo(context, AppRoutes.course(courseId)),
+              tooltip: _sheetBackTooltip(backLocation),
+              onPressed: () =>
+                  _popOrGo(context, backLocation ?? AppRoutes.course(courseId)),
               icon: const Icon(Icons.arrow_back_rounded),
             ),
             const Spacer(),
             RevisionHeaderActionPill(
               label: 'Sources',
               icon: Icons.description_outlined,
-              onTap: () => context.go(AppRoutes.courseSheetSources(courseId)),
+              onTap: () => context.go(
+                sourcesLocation ?? AppRoutes.courseSheetSources(courseId),
+              ),
             ),
           ],
         ),
@@ -62,6 +72,7 @@ class CourseRevisionSheetPage extends ConsumerWidget {
               courseId: courseId,
               sheet: sheet,
               courseDetail: detail.asData?.value,
+              sourcesLocation: sourcesLocation,
             );
           },
         ),
@@ -148,9 +159,14 @@ class _SheetErrorState extends StatelessWidget {
 }
 
 class CourseRevisionSheetSourcesPage extends ConsumerWidget {
-  const CourseRevisionSheetSourcesPage({required this.courseId, super.key});
+  const CourseRevisionSheetSourcesPage({
+    required this.courseId,
+    this.sheetLocation,
+    super.key,
+  });
 
   final String courseId;
+  final String? sheetLocation;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -163,8 +179,10 @@ class CourseRevisionSheetSourcesPage extends ConsumerWidget {
           children: [
             IconButton(
               tooltip: 'Retour à la fiche',
-              onPressed: () =>
-                  _popOrGo(context, AppRoutes.courseSheet(courseId)),
+              onPressed: () => _popOrGo(
+                context,
+                sheetLocation ?? AppRoutes.courseSheet(courseId),
+              ),
               icon: const Icon(Icons.arrow_back_rounded),
             ),
           ],
@@ -187,7 +205,9 @@ class CourseRevisionSheetSourcesPage extends ConsumerWidget {
                     'Génère la fiche avant de consulter ses sources détaillées.',
                 icon: Icons.article_outlined,
                 actionLabel: 'Retour à la fiche',
-                onAction: () => context.go(AppRoutes.courseSheet(courseId)),
+                onAction: () => context.go(
+                  sheetLocation ?? AppRoutes.courseSheet(courseId),
+                ),
               );
             }
 
@@ -272,11 +292,13 @@ class _RevisionSheetContent extends StatelessWidget {
     required this.courseId,
     required this.sheet,
     required this.courseDetail,
+    required this.sourcesLocation,
   });
 
   final String courseId;
   final RevisionSheet sheet;
   final CourseDetail? courseDetail;
+  final String? sourcesLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -364,7 +386,11 @@ class _RevisionSheetContent extends StatelessWidget {
             items: sheet.mustKnow.map(_readableStudyText).toList(),
           ),
         for (final section in sheet.sections)
-          _SectionCard(courseId: courseId, section: section),
+          _SectionCard(
+            courseId: courseId,
+            section: section,
+            sourcesLocation: sourcesLocation,
+          ),
         if (sheet.practiceSuggestions.isNotEmpty)
           _TextListCard(
             title: 'S’entraîner',
@@ -412,10 +438,15 @@ class _TextListCard extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.courseId, required this.section});
+  const _SectionCard({
+    required this.courseId,
+    required this.section,
+    required this.sourcesLocation,
+  });
 
   final String courseId;
   final RevisionSheetSection section;
+  final String? sourcesLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -433,8 +464,9 @@ class _SectionCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () =>
-                  context.go(AppRoutes.courseSheetSources(courseId)),
+              onPressed: () => context.go(
+                sourcesLocation ?? AppRoutes.courseSheetSources(courseId),
+              ),
               icon: const Icon(Icons.source_outlined, size: 16),
               label: const Text('Sources >'),
             ),
@@ -499,4 +531,10 @@ void _popOrGo(BuildContext context, String fallbackLocation) {
   }
 
   context.go(fallbackLocation);
+}
+
+String _sheetBackTooltip(String? backLocation) {
+  return backLocation == AppRoutes.today
+      ? 'Retour à Aujourd’hui'
+      : 'Retour au cours';
 }

@@ -52,7 +52,7 @@ Statuts utilises :
 | V5-02 | Anti-spinner + surfaces legacy | `DONE` | Je ne reste jamais bloque sur une page qui charge ou ne sert a rien. | Activites, QCM, Reviser, Sources globales | V5-01 recommande | Routes legacy, pages Activites/Reviser/Sources, timeout UI | Tests timeout, retry, redirection, router legacy | Activites spinner before/after, Sources parking, Reviser legacy | `docs/roadmap/v5/evidence/V5-02_anti_spinner_surfaces_legacy_EVIDENCE_PACK.md` | Cacher une route sans alternative utile | Livre le 2026-06-27 : Activites sans contexte actionnable, timeouts 9 s sur activite et QCM complet, Reviser/Sources globales clarifies. |
 | V5-03 | Humanisation sources / PDF / notions | `DONE` | Je vois des noms de cours et supports humains, pas des fichiers techniques. | Detail cours, Fiche, Sources fiche, Documents, Subject detail | V5-01 | Source label helpers, document models, course sheet/detail | Tests label fallback, absence filename brut, source originale secondaire | Filenames before/after, source originale secondaire | `docs/roadmap/v5/evidence/V5-03_humanisation_sources_pdf_notions_EVIDENCE_PACK.md` | Libelle humain trompeur ou incomplet | Livre le 2026-06-27 : helper central de labels humains, surfaces cours/fiche/sources/matiere/document humanisees, fichier original relaye en secondaire. |
 | V5-04 | Aujourd'hui coach | `DONE` | J'ouvre l'app et je comprends ma prochaine mission. | Aujourd'hui | V5-01, V5-03 | Today page, Today models/repository | Widget empty/ready/preparing, CTA fallback, wording | Today empty, fiche ready, questions preparing, session ready | `docs/roadmap/v5/evidence/V5-04_aujourdhui_coach_EVIDENCE_PACK.md` | Recommandation inventee | Livre le 2026-06-28 : Today affiche une mission utile, fallback fiche/cours/no-course, erreur actionnable, sans fake progression ni detail cours modifie. |
-| V5-05 | Detail cours parcours gamifie | `NOT_STARTED` | Je vois mon parcours et le prochain checkpoint. | Detail cours, Cours | V5-03, V5-04 | Course detail, learning path widgets/models | Path empty/filled, CTA contextuel, absence filename, router actions | Detail before/after, checkpoint actif, etats notion | `docs/roadmap/v5/evidence/V5-05_detail_cours_parcours_gamifie_EVIDENCE_PACK.md` | Progression simulee | Gamification legere uniquement. |
+| V5-05 | Detail cours parcours gamifie | `DONE` | Je vois mon parcours et le prochain checkpoint. | Detail cours, Cours | V5-03, V5-04 | Course detail, learning path widgets/models | Path empty/filled, CTA contextuel, absence filename, router actions | Detail before/after, checkpoint actif, etats notion | `docs/roadmap/v5/evidence/V5-05_detail_cours_parcours_gamifie_EVIDENCE_PACK.md` | Progression simulee | Livre le 2026-06-28 : detail cours en timeline checkpoint, CTA contextuel, actions bas d'ecran et captures dark mobile. |
 | V5-06 | Fiche premium actionnable | `NOT_STARTED` | Je peux vraiment reviser depuis une belle fiche. | Fiche, Sources fiche | V5-03 | Course sheet, source widgets, fiche sections | Sections, sources collapsed/expanded, CTA, overflow mobile | Fiche before/after, sources before/after, CTA fiche | `docs/roadmap/v5/evidence/V5-06_fiche_premium_actionnable_EVIDENCE_PACK.md` | Fiche belle mais trop longue | Lot cle pour la demande "belles fiches". |
 | V5-07 | Choix duree aligne maquette | `NOT_STARTED` | Je choisis une duree seulement si la revision est possible. | Choix duree | V5-01 | Duration sheet/page, quick launcher | Options, disabled/preparing, mapping interne non visible | Choix duree ready/preparing, comparaison maquette | `docs/roadmap/v5/evidence/V5-07_choix_duree_aligne_maquette_EVIDENCE_PACK.md` | Confusion temps reel vs nombre de questions | Peut garder moteur quick interne. |
 | V5-08 | Session question alignee maquette | `NOT_STARTED` | Je reponds a une question claire et tactile. | Session question | V5-07 | Quick revision quiz flow, session widgets | Selection, validation, mobile sans nav, overflow, submit error | Session question, reponse selectionnee, loading/error | `docs/roadmap/v5/evidence/V5-08_session_question_alignee_maquette_EVIDENCE_PACK.md` | Erreur backend cachee | Pas de multi-type complet. |
@@ -63,14 +63,13 @@ Statuts utilises :
 
 ## 4. Lots immediats recommandes
 
-1. V5-05 — Detail cours parcours gamifie
-2. V5-06 — Fiche premium actionnable
-3. V5-07 — Choix duree aligne maquette
-4. V5-08 — Session question alignee maquette
-5. V5-09 — Feedback reponse
-6. V5-10 — Bilan resultat
-7. V5-11 — Progres maquette
-8. V5-12 — Onboarding emotionnel
+1. V5-06 — Fiche premium actionnable
+2. V5-07 — Choix duree aligne maquette
+3. V5-08 — Session question alignee maquette
+4. V5-09 — Feedback reponse
+5. V5-10 — Bilan resultat
+6. V5-11 — Progres maquette
+7. V5-12 — Onboarding emotionnel
 
 Lots termines :
 
@@ -79,12 +78,13 @@ V5-01 — CTA honnetes + etats de preparation
 V5-02 — Anti-spinner + surfaces legacy
 V5-03 — Humanisation sources / PDF / notions
 V5-04 — Aujourd'hui coach
+V5-05 — Detail cours parcours gamifie
 ```
 
 Prochain lot a lancer :
 
 ```text
-V5-05 — Detail cours parcours gamifie
+V5-06 — Fiche premium actionnable
 ```
 
 ## 5. Regles de validation
@@ -112,6 +112,7 @@ V5-05 — Detail cours parcours gamifie
 | 2026-06-27 | Les grosses features V4 restent reportees. | Accepted | Elles risquent de masquer les P0 visuels et fonctionnels. | Pas de Study Session complete, sujet long, epreuve blanche ou GenUI avant P0/P1. |
 | 2026-06-27 | Les sources sans titre backend stable restent neutres cote UI. | Accepted | Inventer un titre pedagogique serait plus trompeur qu'un label `Support N`. | V5-03 humanise l'affichage sans modifier le contrat backend. |
 | 2026-06-28 | Today doit toujours proposer une action honnete avant de se declarer vide. | Accepted | Un cours ou une fiche exploitable suffit pour guider l'utilisateur, meme sans session prete. | V5-04 ajoute des fallbacks front-only `Lire la fiche`, `Voir le cours` et `Ouvrir les cours`. |
+| 2026-06-28 | Le detail cours reste une gamification legere fondee sur le LearningPath. | Accepted | La maquette demande des checkpoints, mais la roadmap interdit XP, badges et progression inventee. | V5-05 affiche une timeline et une notion active sans ajouter de mecanique fictive. |
 
 ## 7. Risques ouverts
 
@@ -128,6 +129,7 @@ V5-05 — Detail cours parcours gamifie
 | R-V5-009 | Onboarding auth moins accessible apres polish. | Medium | Tests autofill/semantics, email/password toujours accessible. | V5-12 |
 | R-V5-010 | Titres de sources vraiment intelligents absents du backend. | Medium | Garder `Support N` maintenant ; envisager un champ backend futur si le produit veut des titres editoriaux stables. | V5-03 / futur |
 | R-V5-011 | Contrat Today encore trop pauvre pour prioriser finement les missions. | Medium | Fallback front-only depuis cours/sources ; documenter un contrat Today futur avec etat fiche/questions. | V5-04 / futur |
+| R-V5-012 | Etat parcours vide difficile a reproduire visuellement sans donnees backend dediees. | Medium | Couverture widget test et documentation dans l'evidence pack ; prevoir un fixture visuel si cet etat devient critique. | V5-05 |
 
 ## 8. Journal de mise a jour
 

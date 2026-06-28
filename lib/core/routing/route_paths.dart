@@ -24,8 +24,8 @@ String courseRoutePath(String courseId) {
   return AppRoutes.course(courseId);
 }
 
-String courseSheetRoutePath(String courseId) {
-  return AppRoutes.courseSheet(courseId);
+String courseSheetRoutePath(String courseId, {String? from}) {
+  return AppRoutes.courseSheet(courseId, from: from);
 }
 
 String documentDetailRoutePath({

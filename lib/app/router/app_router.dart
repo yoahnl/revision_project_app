@@ -140,15 +140,34 @@ GoRouter createAppRouter({
               ),
               GoRoute(
                 path: AppRoutes.courseSheetPath,
-                builder: (context, state) => CourseRevisionSheetPage(
-                  courseId: state.pathParameters['courseId'] ?? '',
-                ),
+                builder: (context, state) {
+                  final courseId = state.pathParameters['courseId'] ?? '';
+                  final from = _courseSheetFrom(state);
+
+                  return CourseRevisionSheetPage(
+                    courseId: courseId,
+                    backLocation: _courseSheetBackLocation(
+                      courseId: courseId,
+                      from: from,
+                    ),
+                    sourcesLocation: AppRoutes.courseSheetSources(
+                      courseId,
+                      from: from,
+                    ),
+                  );
+                },
               ),
               GoRoute(
                 path: AppRoutes.courseSheetSourcesPath,
-                builder: (context, state) => CourseRevisionSheetSourcesPage(
-                  courseId: state.pathParameters['courseId'] ?? '',
-                ),
+                builder: (context, state) {
+                  final courseId = state.pathParameters['courseId'] ?? '';
+                  final from = _courseSheetFrom(state);
+
+                  return CourseRevisionSheetSourcesPage(
+                    courseId: courseId,
+                    sheetLocation: AppRoutes.courseSheet(courseId, from: from),
+                  );
+                },
               ),
               GoRoute(
                 path: AppRoutes.subjects,
@@ -294,6 +313,26 @@ RevisionSessionPreferredAction? _preferredActionFromQuery(String? value) {
     'rich_closed_exercise' => RevisionSessionPreferredAction.richClosedExercise,
     _ => null,
   };
+}
+
+String? _courseSheetFrom(GoRouterState state) {
+  final from = state.uri.queryParameters['from']?.trim();
+  if (from == AppRoutes.courseSheetFromToday) {
+    return AppRoutes.courseSheetFromToday;
+  }
+
+  return null;
+}
+
+String _courseSheetBackLocation({
+  required String courseId,
+  required String? from,
+}) {
+  if (from == AppRoutes.courseSheetFromToday) {
+    return AppRoutes.today;
+  }
+
+  return AppRoutes.course(courseId);
 }
 
 @visibleForTesting
