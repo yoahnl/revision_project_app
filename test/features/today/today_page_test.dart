@@ -5,6 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:Neralune/app/di/providers.dart';
+import 'package:Neralune/features/courses/application/active_subject_provider.dart';
+import 'package:Neralune/features/courses/application/courses_providers.dart';
+import 'package:Neralune/features/courses/domain/course_models.dart';
+import 'package:Neralune/features/subjects/domain/subject.dart';
 import 'package:Neralune/features/today/domain/today_plan.dart';
 import 'package:Neralune/presentation/pages/today/today_page.dart';
 
@@ -20,7 +24,9 @@ void main() {
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
 
-  testWidgets('affiche un état vide sans fausse session', (tester) async {
+  testWidgets('affiche un état coach sans cours sans fausse session', (
+    tester,
+  ) async {
     final repository = InMemoryTodayRepository();
     final router = _router(repository);
 
@@ -33,18 +39,129 @@ void main() {
     expect(find.text('Aujourd’hui'), findsNothing);
     expect(_findGreeting(), findsOneWidget);
     expect(find.byKey(const ValueKey('today-luna-static')), findsOneWidget);
-    expect(find.text('Rien de prêt pour aujourd’hui'), findsOneWidget);
+    expect(find.text('Rien de prêt pour aujourd’hui'), findsNothing);
+    expect(find.text('Prépare ta première matière'), findsOneWidget);
     expect(
       find.text(
-        'Ajoute un cours ou une source pour que Neralune prépare ta prochaine session.',
+        'Ajoute un cours ou une source pour que Neralune crée ta fiche et tes questions.',
       ),
       findsOneWidget,
     );
-    expect(find.text('Voir mes cours'), findsOneWidget);
-    expect(find.text('Ta session du jour'), findsOneWidget);
+    expect(find.text('Ouvrir les cours'), findsOneWidget);
+    expect(find.text('Ta mission du jour'), findsOneWidget);
     expect(find.text('Réviser maintenant'), findsNothing);
+    expect(find.text('Commencer'), findsNothing);
 
-    await tester.tap(find.text('Voir mes cours'));
+    await tester.tap(find.text('Ouvrir les cours'));
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/home');
+  });
+
+  testWidgets(
+    'affiche Lire la fiche quand un cours a une source prête mais aucune session Today',
+    (tester) async {
+      final repository = InMemoryTodayRepository();
+      final router = _router(repository);
+
+      await tester.pumpWidget(
+        _buildScopedApp(
+          repository: repository,
+          router: router,
+          activeSubject: _subject(),
+          courses: [_course(readySourceCount: 1, processingSourceCount: 2)],
+        ),
+      );
+      addTearDown(router.dispose);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Rien de prêt pour aujourd’hui'), findsNothing);
+      expect(find.text('Ta mission du jour'), findsOneWidget);
+      expect(find.text('Ta fiche est prête'), findsOneWidget);
+      expect(find.text('Questions en préparation'), findsOneWidget);
+      expect(
+        find.text('Ta fiche est prête. Les questions arrivent bientôt.'),
+        findsOneWidget,
+      );
+      expect(find.text('Lire la fiche'), findsOneWidget);
+      expect(find.text('Voir le parcours'), findsOneWidget);
+      expect(find.text('Commencer'), findsNothing);
+      expect(find.textContaining('.pdf'), findsNothing);
+      expect(find.textContaining('COURSE_QUICK_REVISION'), findsNothing);
+
+      await tester.tap(find.text('Lire la fiche'));
+      await tester.pumpAndSettle();
+
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        '/courses/course-1/sheet',
+      );
+    },
+  );
+
+  testWidgets(
+    'affiche Voir le cours quand un cours existe mais la fiche/session ne sont pas prêtes',
+    (tester) async {
+      final repository = InMemoryTodayRepository();
+      final router = _router(repository);
+
+      await tester.pumpWidget(
+        _buildScopedApp(
+          repository: repository,
+          router: router,
+          activeSubject: _subject(),
+          courses: [_course(processingSourceCount: 1)],
+        ),
+      );
+      addTearDown(router.dispose);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Rien de prêt pour aujourd’hui'), findsNothing);
+      expect(find.text('Continue ton cours'), findsOneWidget);
+      expect(
+        find.text('Reprends le parcours et choisis la prochaine notion.'),
+        findsOneWidget,
+      );
+      expect(find.text('Voir le cours'), findsOneWidget);
+      expect(find.text('Ouvrir les cours'), findsOneWidget);
+      expect(find.text('Commencer'), findsNothing);
+
+      await tester.tap(find.text('Voir le cours'));
+      await tester.pumpAndSettle();
+
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        '/courses/course-1',
+      );
+    },
+  );
+
+  testWidgets('affiche un fallback utile si les cours ne chargent pas', (
+    tester,
+  ) async {
+    final repository = InMemoryTodayRepository();
+    final router = _router(repository);
+
+    await tester.pumpWidget(
+      _buildScopedApp(
+        repository: repository,
+        router: router,
+        activeSubject: _subject(),
+        coursesError: StateError('network'),
+      ),
+    );
+    addTearDown(router.dispose);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Impossible de charger Aujourd’hui'), findsOneWidget);
+    expect(find.text('Réessayer'), findsOneWidget);
+    expect(find.text('Ouvrir les cours'), findsOneWidget);
+    expect(find.textContaining('StateError'), findsNothing);
+
+    await tester.tap(find.text('Ouvrir les cours'));
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/home');
@@ -251,9 +368,27 @@ Widget _buildApp({required InMemoryTodayRepository repository}) {
 Widget _buildScopedApp({
   required InMemoryTodayRepository repository,
   required GoRouter router,
+  Subject? activeSubject,
+  List<CourseListItem>? courses,
+  Object? coursesError,
 }) {
+  final overrides = [
+    todayRepositoryProvider.overrideWithValue(repository),
+    activeSubjectProvider.overrideWithValue(AsyncData(activeSubject)),
+    if (activeSubject != null) ...[
+      coursesProvider(activeSubject.id).overrideWith((ref) async {
+        final error = coursesError;
+        if (error != null) {
+          throw error;
+        }
+
+        return courses ?? const <CourseListItem>[];
+      }),
+    ],
+  ];
+
   return ProviderScope(
-    overrides: [todayRepositoryProvider.overrideWithValue(repository)],
+    overrides: overrides,
     child: MaterialApp.router(routerConfig: router),
   );
 }
@@ -283,6 +418,14 @@ GoRouter _router(InMemoryTodayRepository repository) {
         path: '/activities/rich-closed',
         builder: (context, state) => const Scaffold(body: Text('Session')),
       ),
+      GoRoute(
+        path: '/courses/:courseId',
+        builder: (context, state) => const Scaffold(body: Text('Cours détail')),
+      ),
+      GoRoute(
+        path: '/courses/:courseId/sheet',
+        builder: (context, state) => const Scaffold(body: Text('Fiche')),
+      ),
     ],
   );
 }
@@ -311,6 +454,32 @@ const _forbiddenTodayLabels = [
   'backend',
   'GenUI',
 ];
+
+Subject _subject() {
+  return const Subject(
+    id: 'subject-1',
+    name: 'Droit',
+    priority: 1,
+    weeklyMinutes: 120,
+  );
+}
+
+CourseListItem _course({
+  int sourceCount = 1,
+  int readySourceCount = 0,
+  int processingSourceCount = 0,
+}) {
+  return CourseListItem(
+    id: 'course-1',
+    subjectId: 'subject-1',
+    title: 'Droit constitutionnel',
+    description: 'Contrôle de constitutionnalité',
+    estimatedMinutes: 12,
+    sourceCount: sourceCount,
+    readySourceCount: readySourceCount,
+    processingSourceCount: processingSourceCount,
+  );
+}
 
 TodayPlan todayPlan() {
   return TodayPlan(

@@ -444,7 +444,7 @@ void main() {
 
     harness.router.go(AppRoutes.today);
     await tester.pumpAndSettle();
-    expect(find.text('Rien de prêt pour aujourd’hui'), findsOneWidget);
+    expect(find.text('Prépare ta première matière'), findsOneWidget);
 
     harness.router.go(AppRoutes.activities);
     await tester.pumpAndSettle();

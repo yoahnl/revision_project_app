@@ -1,36 +1,53 @@
+# Design QA - V5-04 Aujourd'hui coach
+
+source visual truth path: `docs/roadmap/v5/evidence/screenshots/V5-04/target/mockup-reference.png`
+
+implementation screenshot path: `docs/roadmap/v5/evidence/screenshots/V5-04/after/today-coach-fallback-sheet-ready.png`
+
+additional implementation states:
+
+- `docs/roadmap/v5/evidence/screenshots/V5-04/after/today-coach-questions-preparing.png`
+- `docs/roadmap/v5/evidence/screenshots/V5-04/after/today-coach-no-course.png`
+- `docs/roadmap/v5/evidence/screenshots/V5-04/after/today-coach-error-or-loading.png`
+
+viewport: `390 x 844`
+
+state: mobile dark, Today empty plan fallback, fiche/course/no-course/error states.
+
+full-view comparison evidence:
+
+| Source | Implementation |
+|---|---|
+| `docs/roadmap/v5/evidence/screenshots/V5-04/target/mockup-reference.png` | `docs/roadmap/v5/evidence/screenshots/V5-04/after/today-coach-fallback-sheet-ready.png` |
+
+focused region comparison evidence:
+
+- Primary mission card inspected against the target Today card: title hierarchy, purple surface, white primary CTA, violet secondary CTA, and bottom support cards are readable at full viewport.
+- No separate crop was needed because the implementation screenshots are single-screen mobile captures and the relevant text/CTA regions are legible in full view.
+
 **Findings**
-- No P0/P1/P2 findings remain.
+- No actionable P0/P1/P2 findings remain for V5-04.
 
-**Evidence**
-- Source visual truth path: `/var/folders/b5/7gsfwzyd449_54n8l40h40gc0000gn/T/codex-clipboard-5c8551ae-f283-414a-b7be-04514b7a8af1.png`
-- Implementation screenshot path: `/Users/karim/Project/app-révision/revision_app/.superpowers/design-qa/course-detail-impl-310x500.png`
-- Full-view comparison evidence: `/Users/karim/Project/app-révision/revision_app/.superpowers/design-qa/course-detail-comparison.png`
-- Viewport: 310 x 500 mobile viewport, dark mode.
-- State: course detail for `Droit constitutionnel`, 62% mastered, five path nodes, active node `Le contrôle de constitutionnalité`, bottom actions visible.
-- Focused region comparison evidence: not needed; the full-view comparison is readable at native size and contains all critical elements: header, CTA, progress ring, timeline, active notion, and bottom action bar.
-
-**Required Fidelity Surfaces**
-- Fonts and typography: hierarchy now matches the mockup structure with compact title, small path labels, and CTA labels. Residual P3: Flutter web renders text slightly heavier than the source image, which appears closer to iOS/SF rendering.
-- Spacing and layout rhythm: five timeline nodes are visible above the sticky bottom actions; active node card wraps the timeline marker; bottom action bar sits at the same visual band as the mockup.
-- Colors and visual tokens: dark background, violet/blue CTA gradient, green completed nodes, muted future nodes, and purple active state match the provided palette.
-- Image quality and asset fidelity: no app-specific raster asset is required on this screen; no placeholder image or fake illustration remains.
-- Copy and content: visible labels match the mockup: `Continuer · 8 min`, `Parcours`, `Comprendre`, `Réviser cette notion`, and the five course notions.
-
-**Patches Made Since Previous QA Pass**
-- Replaced the old course detail layout with a mockup-first mobile layout.
-- Removed the Luna/header card and visible legacy mode/history/source surfaces from the primary screen.
-- Made the active timeline row include the marker, matching the mockup.
-- Tightened typography, CTA sizing, timeline spacing, and bottom action proportions.
-- Hid shell bottom navigation on `/courses/...` drill-in routes so the course detail action bar owns the bottom area.
-- Updated router and course detail tests for the new mobile contract.
-
-**Follow-up Polish**
-- P3: If we want pixel-level typography parity, use an iOS/SF-like app font or tune Flutter text rendering further.
-- P3: The source image includes a phone frame/status bar and bottom label; the implementation screenshot is the app viewport itself, so those decorative frame elements are intentionally absent.
+**Open Questions**
+- `Bonsoir, Lea` and exact profile personalization remain future data work; current implementation keeps the existing app greeting.
+- The mascot is the existing Neralune asset treatment, not a newly generated exact replica of the board illustration.
+- Live authenticated capture is blocked because `NERALUNE_EMAIL` and `NERALUNE_PASSWORD` are absent and `http://localhost:60164/` is unavailable.
 
 **Implementation Checklist**
-- Keep route behavior and menu actions wired.
-- Keep the generated comparison artifacts for this QA pass.
-- Re-run the mobile capture if design tokens or shell safe-area behavior change.
+- Replace the poor Today empty state with an honest coach fallback. Done.
+- Show `Lire la fiche` when a course has a ready source and no Today session. Done.
+- Show `Voir le cours` when a course exists but no fiche/session is ready. Done.
+- Show `Ouvrir les cours` when no course is available. Done.
+- Add error/retry state for course loading failures. Done.
+- Verify router destinations with tests. Done.
+
+**Follow-up Polish**
+- P3: connect profile display name when the account model is ready.
+- P3: make the mascot illustration match the mockup board more closely in a later visual polish pass.
+
+patches made since previous QA pass:
+
+- Expanded the status pill layout so `Questions en preparation` no longer truncates on 390px mobile.
+- Regenerated V5-04 after screenshots with the visible Luna asset.
 
 final result: passed

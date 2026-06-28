@@ -117,8 +117,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Aujourd’hui'), findsWidgets);
-    expect(find.text('Rien de prêt pour aujourd’hui'), findsOneWidget);
-    expect(find.text('Voir mes cours'), findsOneWidget);
+    expect(find.text('Rien de prêt pour aujourd’hui'), findsNothing);
+    expect(find.text('Prépare ta première matière'), findsOneWidget);
+    expect(find.text('Ouvrir les cours'), findsOneWidget);
     expect(find.text('Aujourd’hui'), findsWidgets);
     expect(find.text('Cours'), findsOneWidget);
     expect(find.text('Progrès'), findsOneWidget);
